@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34701.34
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RustPlusApi", "RustPlusApi\RustPlusApi\RustPlusApi.csproj", "{2E744AA2-4D20-4B44-A79E-AC1CC56E848E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Exemples", "Exemples", "{BC948ADE-1674-4955-B27C-F0E96100978E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SendTeamChat", "RustPlusApi\Exemples\SendTeamChat\SendTeamChat.csproj", "{FC788BAA-BB25-48AD-BE3D-2046C111AD00}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2E744AA2-4D20-4B44-A79E-AC1CC56E848E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E744AA2-4D20-4B44-A79E-AC1CC56E848E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E744AA2-4D20-4B44-A79E-AC1CC56E848E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E744AA2-4D20-4B44-A79E-AC1CC56E848E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FC788BAA-BB25-48AD-BE3D-2046C111AD00}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC788BAA-BB25-48AD-BE3D-2046C111AD00}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC788BAA-BB25-48AD-BE3D-2046C111AD00}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC788BAA-BB25-48AD-BE3D-2046C111AD00}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{FC788BAA-BB25-48AD-BE3D-2046C111AD00} = {BC948ADE-1674-4955-B27C-F0E96100978E}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A4B4251F-ADA4-418D-95B5-27BA99A307A3}
+	EndGlobalSection
+EndGlobal
