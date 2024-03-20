@@ -4,8 +4,12 @@ var rustPlus = new RustPlusApi.RustPlusApi(RustPlusConst.Ip, RustPlusConst.Port,
 
 rustPlus.Connected += async (sender, e) =>
 {
-    await rustPlus.SendTeamMessageAsync("Hello from RustPlusApi!");
-    rustPlus.Dispose();
+    await rustPlus.GetTimeAsync(message =>
+    {
+        Console.WriteLine($"Time: {message.Response.Time.Time}");
+        rustPlus.Dispose();
+        return true;
+    });
 };
 
 await rustPlus.ConnectAsync();
