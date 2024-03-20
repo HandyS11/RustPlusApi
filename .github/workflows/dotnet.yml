@@ -29,7 +29,7 @@ jobs:
       run: dotnet test --no-build --verbosity normal
 
     - name: Pack NuGet Package
-      run: dotnet pack --no-build --configuration Release --output nupkgs ./RustPlusApi/RustPlusApi/RustPlusApi.csproj
+      run: dotnet pack --configuration Release --output nupkgs ./RustPlusApi/RustPlusApi/RustPlusApi.csproj
 
     - name: Publish NuGet Package
       run: dotnet nuget push ./RustPlusApi/RustPlusApi/bin/Release/*.nupkg --api-key ${{secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
