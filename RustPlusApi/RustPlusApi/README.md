@@ -38,4 +38,4 @@ rustPlusApi.ErrorOccurred += (sender, e) => { /* handle error event */ };
 rustPlusApi.MessageReceived += (sender, e) => { /* handle received message event */ };
 ```
 
-Remember to dispose of the `RustPlusApi` instance when you're done:
+Remember to dispose of the `RustPlus` instance when you're done:
