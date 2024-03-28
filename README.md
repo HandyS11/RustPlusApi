@@ -31,10 +31,10 @@ dotnet add package RustPlusApi
 
 ## ⚙️ Usage
 
-First, instantiate the `RustPlusApi` class with the necessary parameters:
+First, instantiate the `RustPlus` class with the necessary parameters:
 
 ```csharp
-var rustPlusApi = new RustPlusApi(server, port, playerId, playerToken, useFacepunchProxy);
+var rustPlusApi = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy);
 ```
 
 Parameters:
