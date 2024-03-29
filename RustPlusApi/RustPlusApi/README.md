@@ -8,10 +8,10 @@ This is a C# client for the Rust+ API. It allows you to interact with the Rust+ 
 
 ## Usage
 
-First, instantiate the `RustPlusApi` class with the necessary parameters:
+First, instantiate the `RustPlus` class with the necessary parameters:
 
 ```csharp
-var rustPlusApi = new RustPlusApi(server, port, playerId, playerToken, useFacepunchProxy);
+var rustPlusApi = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy);
 ```
 
 Parameters:
@@ -38,4 +38,4 @@ rustPlusApi.ErrorOccurred += (sender, e) => { /* handle error event */ };
 rustPlusApi.MessageReceived += (sender, e) => { /* handle received message event */ };
 ```
 
-Remember to dispose of the `RustPlusApi` instance when you're done:
+Remember to dispose of the `RustPlus` instance when you're done:

@@ -5,10 +5,10 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<PackageId>RustPlusApi</PackageId>
-		<Version>1.0.1</Version>
+		<Version>1.0.2</Version>
 		<Authors>HandyS11</Authors>
 		<Owners>HandyS11</Owners>
-		<Product>A Rust+ API client made in C#.</Product>
+		<Product>A Rust+ API made in C#.</Product>
 		<Description>RustPlusApi is a C# library for interacting with the Rust+ API.</Description>
 		<PackageTags>rust rustplus rustplusapi</PackageTags>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -20,15 +20,11 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Google.Protobuf" Version="3.26.0" />
-		<PackageReference Include="protobuf-net.BuildTools" Version="3.2.33">
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-			<PrivateAssets>all</PrivateAssets>
-		</PackageReference>
+		<PackageReference Include="Google.Protobuf" Version="3.26.1" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="README.md" Pack="true" PackagePath="\"/>
+		<None Include="README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 </Project>

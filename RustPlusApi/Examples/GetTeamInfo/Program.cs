@@ -1,8 +1,10 @@
-﻿using __Constants;
+﻿using RustPlusApi;
 
-var rustPlus = new RustPlusApi.RustPlusApi(RustPlusConst.Ip, RustPlusConst.Port, RustPlusConst.PlayerId, RustPlusConst.PlayerToken);
+using static __Constants.RustPlusConst;
 
-rustPlus.Connected += async (sender, e) =>
+var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
+
+rustPlus.Connected += async (_, _) =>
 {
     await rustPlus.GetTeamInfoAsync(message =>
     {

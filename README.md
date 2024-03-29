@@ -2,16 +2,16 @@
 
 ## 📊 Features
 
-This is a non exhaustive list of the features that the Rust+ API provides:
+This is a list of the features that the Rust+ API provides:
 
-- `sendTeamMessage` Send messages to Team Chat
-- `getEntityInfo` Get current state of a Smart Device
-- `setEntityValue` Set the value of a Smart Device
-- `getMap` Fetch map info, which inclues a jpeg image
-- `getMapMarkers` Get map markers, such as vending machines and cargo/heli
-- `getTime` Get the current in game time
-- `getInfo` Get info about the Rust Server
-- `getTeamInfo` Get list of team members and positions on map
+- `SetEntityValue` Set the value of a Smart Device
+- `StrobeAsync` Strobe a Smart Device
+- `SendTeamMessage` Send messages to Team Chat
+- `GetEntityInfo` Get current state of a Smart Device
+- `GetMap` Fetch map info, which inclues a jpg image
+- `GetTime` Get the current in game time
+- `GetInfo` Get info about the Rust Server
+- `GetTeamInfo` Get list of team members and positions on map
 
 Feel free to **explore** the `./RustPlusApi/Exemples/` folder to see how to **use** the API.
 
@@ -31,10 +31,10 @@ dotnet add package RustPlusApi
 
 ## ⚙️ Usage
 
-First, instantiate the `RustPlusApi` class with the necessary parameters:
+First, instantiate the `RustPlus` class with the necessary parameters:
 
 ```csharp
-var rustPlusApi = new RustPlusApi(server, port, playerId, playerToken, useFacepunchProxy);
+var rustPlusApi = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy);
 ```
 
 Parameters:
@@ -61,7 +61,7 @@ rustPlusApi.ErrorOccurred += (sender, e) => { /* handle error event */ };
 rustPlusApi.MessageReceived += (sender, e) => { /* handle received message event */ };
 ```
 
-Remember to dispose of the `RustPlusApi` instance when you're done:
+Remember to dispose of the `RustPlus` instance when you're done:
 
 ## 🖼️ Credits
 
