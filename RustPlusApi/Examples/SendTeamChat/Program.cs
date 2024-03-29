@@ -1,6 +1,6 @@
 ﻿using RustPlusApi;
 
-using static __Constants.RustPlusConst;
+using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 

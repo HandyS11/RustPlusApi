@@ -8,12 +8,19 @@ var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 
 rustPlus.Connected += async (_, _) =>
 {
-    await rustPlus.GetInfoAsync(message =>
+    await rustPlus.GetEntityInfoAsync(EntityId, message =>
     {
         Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
-        rustPlus.Dispose();
         return true;
     });
+};
+
+rustPlus.MessageReceived += (_, message) =>
+{
+    if (message.Broadcast is not { EntityChanged: not null }) return;
+
+    var entityChanged = message.Broadcast.EntityChanged;
+    Console.WriteLine($"Message:\n{JsonConvert.SerializeObject(entityChanged, JsonSettings)}");
 };
 
 await rustPlus.ConnectAsync();
