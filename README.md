@@ -64,6 +64,10 @@ rustPlusApi.MessageReceived += (sender, e) => { /* handle received message event
 
 Remember to dispose the `RustPlus` instance when you're done:
 
+```csharp
+rustPlusApi.Dispose();
+```
+
 ## 🖼️ Credits
 
 This project is grandly inspired by [liamcottle/rustplus.js](https://github.com/liamcottle/rustplus.js).
