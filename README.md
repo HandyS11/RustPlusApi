@@ -4,14 +4,15 @@
 
 This is a list of the features that the Rust+ API provides:
 
+- `GetEntityInfo` Get current state of a Smart Device
+- `GetInfo` Get info about the Rust Server
+- `GetMap` Fetch map info, which inclues a jpg image
+- `GetMapMarkers` Get map markers
+- `GetTeamInfo` Get list of team members and positions on map
+- `GetTime` Get the current in game time
+- `SendTeamMessage` Send messages to Team Chat
 - `SetEntityValue` Set the value of a Smart Device
 - `StrobeAsync` Strobe a Smart Device
-- `SendTeamMessage` Send messages to Team Chat
-- `GetEntityInfo` Get current state of a Smart Device
-- `GetMap` Fetch map info, which inclues a jpg image
-- `GetTime` Get the current in game time
-- `GetInfo` Get info about the Rust Server
-- `GetTeamInfo` Get list of team members and positions on map
 
 Feel free to **explore** the `./RustPlusApi/Examples/` folder to see how to **use** the API.
 
@@ -61,7 +62,7 @@ rustPlusApi.ErrorOccurred += (sender, e) => { /* handle error event */ };
 rustPlusApi.MessageReceived += (sender, e) => { /* handle received message event */ };
 ```
 
-Remember to dispose of the `RustPlus` instance when you're done:
+Remember to dispose the `RustPlus` instance when you're done:
 
 ## 🖼️ Credits
 
