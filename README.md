@@ -13,7 +13,7 @@ This is a list of the features that the Rust+ API provides:
 - `GetInfo` Get info about the Rust Server
 - `GetTeamInfo` Get list of team members and positions on map
 
-Feel free to **explore** the `./RustPlusApi/Exemples/` folder to see how to **use** the API.
+Feel free to **explore** the `./RustPlusApi/Examples/` folder to see how to **use** the API.
 
 ## 🖊️ Versions 
 
