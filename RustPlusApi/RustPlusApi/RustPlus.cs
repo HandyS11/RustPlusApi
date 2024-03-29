@@ -59,28 +59,40 @@ namespace RustPlusApi
         private async Task ReceiveMessagesAsync()
         {
             const int bufferSize = 1024;
-            while (_webSocket!.State == WebSocketState.Open)
+            var buffer = new byte[bufferSize];
+
+            try
             {
-                var buffer = new byte[bufferSize];
-                var receiveBuffer = new List<byte>();
-                WebSocketReceiveResult result;
-
-                do
+                while (_webSocket!.State == WebSocketState.Open)
                 {
-                    result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                    receiveBuffer.AddRange(buffer.Take(result.Count));
-                } while (!result.EndOfMessage);
+                    var receiveBuffer = new List<byte>();
+                    WebSocketReceiveResult result;
 
-                var messageData = receiveBuffer.ToArray();
-                var message = AppMessage.Parser.ParseFrom(messageData);
-                MessageReceived?.Invoke(this, message);
-                HandleResponse(message);
+                    do
+                    {
+                        result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                        receiveBuffer.AddRange(buffer.Take(result.Count));
+                    } while (!result.EndOfMessage);
+
+                    var messageData = receiveBuffer.ToArray();
+                    var message = AppMessage.Parser.ParseFrom(messageData);
+                    HandleResponse(message);
+                }
+            }
+            catch (WebSocketException ex)
+            {
+                ErrorOccurred?.Invoke(this, ex);
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke(this, ex);
             }
         }
 
         /// <summary>
         /// Handles the response received from the Rust+ server.
         /// </summary>
+        /// <param name="message">The AppMessage received from the server.</param>
         private void HandleResponse(AppMessage message)
         {
             if (message.Response != null && message.Response.Seq != 0 && _seqCallbacks.ContainsKey((int)message.Response.Seq))
@@ -96,6 +108,9 @@ namespace RustPlusApi
         /// <summary>
         /// Sends a request to the Rust+ server asynchronously.
         /// </summary>
+        /// <param name="request">The request to send.</param>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         private async Task SendRequestAsync(AppRequest request, Func<AppMessage, bool>? callback = null)
         {
             var seq = ++_seq;
@@ -132,11 +147,120 @@ namespace RustPlusApi
         /// <summary>
         /// Checks if the client is connected to the Rust+ server.
         /// </summary>
+        /// <returns>True if the client is connected; otherwise, false.</returns>
         public bool IsConnected() => _webSocket is { State: WebSocketState.Open };
+
+        /// <summary>
+        /// Retrieves information about an entity from the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the entity to retrieve information for.</param>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task GetEntityInfoAsync(int entityId, Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                EntityId = (uint)entityId,
+                GetEntityInfo = new AppEmpty()
+            };
+            await SendRequestAsync(request, callback);
+        }
+
+        /// <summary>
+        /// Retrieves general information from the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task GetInfoAsync(Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                GetInfo = new AppEmpty()
+            };
+            await SendRequestAsync(request, callback);
+        }
+
+        /// <summary>
+        /// Retrieves the map from the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task GetMapAsync(Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                GetMap = new AppEmpty()
+            };
+            await SendRequestAsync(request, callback);
+        }
+
+        /// <summary>
+        /// Retrieves the map markers from the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task GetMapMarkersAsync(Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                GetMapMarkers = new AppEmpty()
+            };
+            await SendRequestAsync(request, callback);
+        }
+
+        /// <summary>
+        /// Retrieves team information from the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task GetTeamInfoAsync(Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                GetTeamInfo = new AppEmpty()
+            };
+            await SendRequestAsync(request, callback);
+        }
+
+        /// <summary>
+        /// Retrieves the current time from the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task GetTimeAsync(Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                GetTime = new AppEmpty()
+            };
+            await SendRequestAsync(request, callback);
+        }
+
+        /// <summary>
+        /// Sends a team message to the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="message">The message to send.</param>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task SendTeamMessageAsync(string message, Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                SendTeamMessage = new AppSendMessage
+                {
+                    Message = message
+                }
+            };
+            await SendRequestAsync(request, callback);
+        }
 
         /// <summary>
         /// Sets the value of an entity asynchronously.
         /// </summary>
+        /// <param name="entityId">The ID of the entity to set the value for.</param>
+        /// <param name="value">The value to set.</param>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public async Task SetEntityValueAsync(int entityId, bool value, Func<AppMessage, bool>? callback = null)
         {
             var request = new AppRequest
@@ -153,87 +277,15 @@ namespace RustPlusApi
         /// <summary>
         /// Toggles the value of an entity repeatedly with a specified timeout.
         /// </summary>
-        public async Task StrobeAsync(int entityId, int timeoutMilliseconds = 100, bool value = true)
+        /// <param name="entityId">The ID of the entity to toggle the value for.</param>
+        /// <param name="timeoutMilliseconds">The timeout in milliseconds between toggling the value.</param>
+        /// <param name="value">The initial value to set.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task StrobeAsync(int entityId, int timeoutMilliseconds = 1000, bool value = true)
         {
             await SetEntityValueAsync(entityId, value);
             await Task.Delay(timeoutMilliseconds);
-            await StrobeAsync(entityId, timeoutMilliseconds, !value);
-        }
-
-        /// <summary>
-        /// Sends a team message to the Rust+ server asynchronously.
-        /// </summary>
-        public async Task SendTeamMessageAsync(string message, Func<AppMessage, bool>? callback = null)
-        {
-            var request = new AppRequest
-            {
-                SendTeamMessage = new AppSendMessage
-                {
-                    Message = message
-                }
-            };
-            await SendRequestAsync(request, callback);
-        }
-
-        /// <summary>
-        /// Retrieves information about an entity from the Rust+ server asynchronously.
-        /// </summary>
-        public async Task GetEntityInfoAsync(int entityId, Func<AppMessage, bool>? callback = null)
-        {
-            var request = new AppRequest
-            {
-                EntityId = (uint)entityId,
-                GetEntityInfo = new AppEmpty()
-            };
-            await SendRequestAsync(request, callback);
-        }
-
-        /// <summary>
-        /// Retrieves the map from the Rust+ server asynchronously.
-        /// </summary>
-        public async Task GetMapAsync(Func<AppMessage, bool>? callback = null)
-        {
-            var request = new AppRequest
-            {
-                GetMap = new AppEmpty()
-            };
-            await SendRequestAsync(request, callback);
-        }
-
-        /// <summary>
-        /// Retrieves the current time from the Rust+ server asynchronously.
-        /// </summary>
-        public async Task GetTimeAsync(Func<AppMessage, bool>? callback = null)
-        {
-            var request = new AppRequest
-            {
-                GetTime = new AppEmpty()
-            };
-            await SendRequestAsync(request, callback);
-        }
-
-        /// <summary>
-        /// Retrieves general information from the Rust+ server asynchronously.
-        /// </summary>
-        public async Task GetInfoAsync(Func<AppMessage, bool>? callback = null)
-        {
-            var request = new AppRequest
-            {
-                GetInfo = new AppEmpty()
-            };
-            await SendRequestAsync(request, callback);
-        }
-
-        /// <summary>
-        /// Retrieves team information from the Rust+ server asynchronously.
-        /// </summary>
-        public async Task GetTeamInfoAsync(Func<AppMessage, bool>? callback = null)
-        {
-            var request = new AppRequest
-            {
-                GetTeamInfo = new AppEmpty()
-            };
-            await SendRequestAsync(request, callback);
+            await SetEntityValueAsync(entityId, !value);
         }
     }
 }
