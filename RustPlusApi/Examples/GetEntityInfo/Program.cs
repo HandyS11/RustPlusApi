@@ -2,14 +2,13 @@
 
 using RustPlusApi;
 
-using static __Constants.RustPlusConst;
+using static __Constants.ExamplesConst;
 
-const int entityId = 232773;
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 
 rustPlus.Connected += async (_, _) =>
 {
-    await rustPlus.GetEntityInfoAsync(entityId, message =>
+    await rustPlus.GetEntityInfoAsync(EntityId, message =>
     {
         Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
         rustPlus.Dispose();

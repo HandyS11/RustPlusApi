@@ -8,7 +8,7 @@ var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 
 rustPlus.Connected += async (_, _) =>
 {
-    await rustPlus.GetInfoAsync(message =>
+    await rustPlus.GetMapMarkersAsync(message =>
     {
         Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
         rustPlus.Dispose();

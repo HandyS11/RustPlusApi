@@ -2,9 +2,15 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ "develop" ]
+    branches:
+      - "develop"
+      - "feature/*"
+      - "fix/*"
   pull_request:
-    branches: [ "develop" ]
+    branches:
+      - "develop"
+      - "feature/*"
+      - "fix/*"
 
 jobs:
   build-and-deploy:
