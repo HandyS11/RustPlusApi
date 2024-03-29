@@ -1,20 +1,10 @@
 name: Continuous Deployment
 
 on:
-  workflow_run:
-    workflows: ["CI.yml Continuous Integration"]
-    types:
-      - completed
+  push:
+    branches: [ "main" ]
 
-jobs:
-  check_branch:
-    runs-on: ubuntu-latest
-    outputs:
-      is_main: ${{ steps.check.outputs.is_main }}
-    steps:
-      - id: check
-        run: echo "::set-output name=is_main::${{ github.event.workflow_run.head_branch == 'main' }}"
-        
+jobs:  
   build-and-deploy:
     runs-on: ubuntu-latest
 
