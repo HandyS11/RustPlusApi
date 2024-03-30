@@ -4,6 +4,8 @@ using Google.Protobuf;
 
 using RustPlusContracts;
 
+using static System.GC;
+
 namespace RustPlusApi
 {
     /// <summary>
@@ -18,7 +20,7 @@ namespace RustPlusApi
     {
         private ClientWebSocket? _webSocket;
         private uint _seq;
-        private readonly Dictionary<int, Func<AppMessage, bool>> _seqCallbacks = new();
+        private readonly Dictionary<int, Func<AppMessage, bool>> _seqCallbacks = [];
 
         public event EventHandler? Connecting;
         public event EventHandler? Connected;
@@ -49,7 +51,7 @@ namespace RustPlusApi
             catch (Exception ex)
             {
                 ErrorOccurred?.Invoke(this, ex);
-                Disconnect();
+                Dispose();
             }
         }
 
@@ -127,9 +129,9 @@ namespace RustPlusApi
         }
 
         /// <summary>
-        /// Disconnects from the Rust+ server.
+        /// Disposes the Rust+ API client and disconnects from the Rust+ server.
         /// </summary>
-        private void Disconnect()
+        public void Dispose()
         {
             if (_webSocket is not { State: WebSocketState.Open }) return;
 
@@ -137,12 +139,9 @@ namespace RustPlusApi
             _webSocket.Dispose();
 
             Disconnected?.Invoke(this, EventArgs.Empty);
-        }
 
-        /// <summary>
-        /// Disposes the Rust+ API client and disconnects from the Rust+ server.
-        /// </summary>
-        public void Dispose() => Disconnect();
+            SuppressFinalize(this);
+        }
 
         /// <summary>
         /// Checks if the client is connected to the Rust+ server.
