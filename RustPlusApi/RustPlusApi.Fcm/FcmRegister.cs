@@ -5,9 +5,19 @@ namespace RustPlusApi.Fcm
 {
     public class FcmRegister
     {
-        public async Task<Credentials> RegisterApp(string senderId)
+        public async Task<Credentials> RegisterAsync(string senderId)
         {
-            return await Register.RegisterAsync(senderId);
+            var appId = $"wp:receiver.push.com#{Guid.NewGuid()}";
+
+            var gcmSubscription = await GcmTools.RegisterAsync(appId);
+            var fcmRegistration = await FcmTools.RegisterFcmAsync(senderId, gcmSubscription.Token);
+
+            return new Credentials
+            {
+                Keys = fcmRegistration.Item1,
+                Gcm = gcmSubscription,
+                Fcm = fcmRegistration.Item2,
+            };
         }
     }
 }
