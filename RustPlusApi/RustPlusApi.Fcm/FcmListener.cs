@@ -2,12 +2,13 @@
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Numerics;
-using Google.Protobuf;
+
 using McsProto;
 
 using ProtoBuf;
-using ProtoBuf.Meta;
+
 using RustPlusApi.Fcm.Data;
+using RustPlusApi.Fcm.Gcm;
 using RustPlusApi.Fcm.Utils;
 
 using static RustPlusApi.Fcm.Data.Constants;
@@ -42,6 +43,8 @@ namespace RustPlusApi.Fcm
             try
             {
                 Connected?.Invoke(this, EventArgs.Empty);
+
+                var checkIn = await GcmTools.CheckInAsync(credentials.Gcm.AndroidId, credentials.Gcm.SecurityToken);
 
                 var buffer = LoginBuffer();
                 await _sslStream.WriteAsync(buffer);
@@ -102,10 +105,6 @@ namespace RustPlusApi.Fcm
                 ClientEvent = { },
                 ReceivedPersistentId = { persistentIds },
             };
-
-            var model = RuntimeTypeModel.Default;
-            if (!model.IsDefined(typeof(LoginRequest))) model.Add(typeof(LoginRequest), true);
-
             using var stream = new MemoryStream();
             Serializer.Serialize(stream, loginRequest);
             var buffer = stream.ToArray();

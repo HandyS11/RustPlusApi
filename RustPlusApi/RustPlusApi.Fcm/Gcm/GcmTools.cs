@@ -13,7 +13,6 @@ namespace RustPlusApi.Fcm.Gcm
 
         public static async Task<AndroidCheckinResponse> CheckInAsync(long androidId, ulong securityToken)
         {
-
             var buffer = GetCheckInRequest(androidId, securityToken);
 
             using var client = new HttpClient();
@@ -48,7 +47,6 @@ namespace RustPlusApi.Fcm.Gcm
                 Id = androidId,
                 SecurityToken = securityToken
             };
-
             using var stream = new MemoryStream();
             Serializer.Serialize(stream, payload);
             return stream.ToArray();
