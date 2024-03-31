@@ -37,7 +37,7 @@ namespace RustPlusApi.Fcm.Data
         [JsonProperty(PropertyName = "token")]
         public string Token { get; set; }
         [JsonProperty(PropertyName = "androidId")]
-        public long AndroidId { get; set; }
+        public ulong AndroidId { get; set; }
         [JsonProperty(PropertyName = "securityToken")]
         public ulong SecurityToken { get; set; }
         [JsonProperty(PropertyName = "appId")]

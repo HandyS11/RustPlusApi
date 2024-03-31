@@ -8,7 +8,7 @@ using McsProto;
 using ProtoBuf;
 
 using RustPlusApi.Fcm.Data;
-using RustPlusApi.Fcm.Gcm;
+using RustPlusApi.Fcm.Tools;
 using RustPlusApi.Fcm.Utils;
 
 using static RustPlusApi.Fcm.Data.Constants;
