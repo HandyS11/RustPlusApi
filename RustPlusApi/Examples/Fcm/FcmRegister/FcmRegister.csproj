@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\RustPlusApi\RustPlusApi.Fcm\RustPlusApi.Fcm.csproj" />
+    <ProjectReference Include="..\..\..\RustPlusApi.Fcm\RustPlusApi.Fcm.csproj" />
   </ItemGroup>
 
 </Project>
