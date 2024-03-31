@@ -2,15 +2,16 @@
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Numerics;
+using Google.Protobuf;
 using McsProto;
 
 using ProtoBuf;
-
+using ProtoBuf.Meta;
+using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Utils;
 
 using static RustPlusApi.Fcm.Data.Constants;
 using static System.GC;
-using RustPlusApi.Fcm.Data;
 
 namespace RustPlusApi.Fcm
 {
@@ -73,7 +74,7 @@ namespace RustPlusApi.Fcm
 
             while (true)
             {
-                var bytesRead = await _sslStream!.ReadAsync(buffer, 0, buffer.Length);
+                var bytesRead = await _sslStream!.ReadAsync(buffer);
                 if (bytesRead == 0) return;
 
                 var data = new byte[bytesRead];
@@ -92,15 +93,18 @@ namespace RustPlusApi.Fcm
                 AuthToken = credentials.Gcm.SecurityToken.ToString(),
                 Id = "chrome-63.0.3234.0",
                 Domain = "mcs.android.com",
-                DeviceId = $"android-{BigInteger.Parse(credentials.Gcm.AndroidId.ToString()).ToString("X")}",
+                DeviceId = $"android-{BigInteger.Parse(credentials.Gcm.AndroidId.ToString()):X}",
                 NetworkType = 1,
                 Resource = credentials.Gcm.AndroidId.ToString(),
                 User = credentials.Gcm.AndroidId.ToString(),
                 UseRmq2 = true,
                 Setting = { new Setting { Name = "new_vc", Value = "1" } },
                 ClientEvent = { },
-                ReceivedPersistentId = { persistentIds }
+                ReceivedPersistentId = { persistentIds },
             };
+
+            var model = RuntimeTypeModel.Default;
+            if (!model.IsDefined(typeof(LoginRequest))) model.Add(typeof(LoginRequest), true);
 
             using var stream = new MemoryStream();
             Serializer.Serialize(stream, loginRequest);
