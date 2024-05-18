@@ -5,7 +5,7 @@ namespace RustPlusApi.Fcm
 {
     public class FcmRegister
     {
-        public async Task<Credentials> RegisterAsync(string senderId)
+        public static async Task<Credentials> RegisterAsync(string senderId)
         {
             var appId = $"wp:receiver.push.com#{Guid.NewGuid()}";
 

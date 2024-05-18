@@ -1,5 +1,6 @@
 ﻿using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Data;
+using Newtonsoft.Json;
 
 var credentials = new Credentials
 {
@@ -23,11 +24,11 @@ var credentials = new Credentials
     }
 };
 
-var listener = new FcmListener(credentials, new List<string>());
+var listener = new FcmListener(credentials, []);
 
 listener.NotificationReceived += (_, message) =>
 {
-    Console.WriteLine(message);
+    Console.WriteLine(JsonConvert.SerializeObject(message, Formatting.Indented));
 };
 
 await listener.ConnectAsync();

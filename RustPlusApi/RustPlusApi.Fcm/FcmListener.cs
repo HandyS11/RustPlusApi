@@ -3,16 +3,18 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Numerics;
 
+using Google.Protobuf;
+
 using McsProto;
 
 using ProtoBuf;
 
 using RustPlusApi.Fcm.Data;
-using RustPlusApi.Fcm.Tools;
 using RustPlusApi.Fcm.Utils;
 
 using static RustPlusApi.Fcm.Data.Constants;
 using static System.GC;
+
 
 namespace RustPlusApi.Fcm
 {
@@ -42,12 +44,10 @@ namespace RustPlusApi.Fcm
 
             try
             {
-                Connected?.Invoke(this, EventArgs.Empty);
-
-                var checkIn = await GcmTools.CheckInAsync(credentials.Gcm.AndroidId, credentials.Gcm.SecurityToken);
-
                 var buffer = LoginBuffer();
                 await _sslStream.WriteAsync(buffer);
+
+                Connected?.Invoke(this, EventArgs.Empty);
 
                 await ReceiveMessagesAsync();
             }
@@ -106,7 +106,7 @@ namespace RustPlusApi.Fcm
                 ReceivedPersistentId = { persistentIds },
             };
             using var stream = new MemoryStream();
-            Serializer.Serialize(stream, loginRequest);
+            Serializer.Serialize(stream, loginRequest.ToByteArray());
             var buffer = stream.ToArray();
 
             var header = new byte[] { KMcsVersion, (byte)McsProtoTag.KLoginRequestTag };

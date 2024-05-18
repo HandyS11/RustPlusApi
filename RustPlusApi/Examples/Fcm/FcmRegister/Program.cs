@@ -1,6 +1,7 @@
 ﻿using RustPlusApi.Fcm;
+using Newtonsoft.Json;
 
-var register = new FcmRegister();
-var credentials = await register.RegisterAsync("976529667804");
+var senderId = "976529667804";
+var credentials = await FcmRegister.RegisterAsync(senderId);
 
-Console.ReadKey();
+Console.WriteLine(JsonConvert.SerializeObject(credentials, Formatting.Indented));

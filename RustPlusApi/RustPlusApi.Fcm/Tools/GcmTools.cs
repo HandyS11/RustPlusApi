@@ -29,25 +29,34 @@ namespace RustPlusApi.Fcm.Tools
 
         public static async Task<AndroidCheckinResponse> CheckInAsync(ulong? androidId = null, ulong? securityToken = null)
         {
-            var id = (androidId != null) ? (long)androidId : (long?)null;
-            var requestBody = GetCheckInRequest(id, securityToken);
-
-            var request = new HttpRequestMessage(HttpMethod.Post, CheckInUrl)
+            try
             {
-                Headers =
-                {
-                    { "Content-Type", "application/x-protobuf" },
-                },
-                Content = new ByteArrayContent(requestBody.ToByteArray())
-            };
-            var response = await HttpClient.SendAsync(request);
-            var data = await response.Content.ReadAsByteArrayAsync();
+                var id = (androidId != null) ? (long)androidId : (long?)null;
+                var requestBody = GetCheckInRequest(id, securityToken);
 
-            using var stream = new MemoryStream(data);
-            var message = Serializer.Deserialize<AndroidCheckinResponse>(stream);
+                var request = new HttpRequestMessage(HttpMethod.Post, CheckInUrl);
 
-            return message;
+                var content = new ByteArrayContent(requestBody.ToByteArray());
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
+
+                request.Content = content;
+
+                var response = await HttpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var data = await response.Content.ReadAsByteArrayAsync();
+
+                using var stream = new MemoryStream(data);
+                var message = Serializer.Deserialize<AndroidCheckinResponse>(stream);
+
+                return message;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("Error during check-in request.", ex);
+            }
         }
+
 
         private static AndroidCheckinRequest GetCheckInRequest(long? androidId = null, ulong? securityToken = null)
         {
