@@ -1,10 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Net.Http.Headers;
-
+using AndroidCheckinProto;
 using CheckinProto;
-
-using Google.Protobuf;
-
+using McsProto;
 using ProtoBuf;
 
 using RustPlusApi.Fcm.Data;
@@ -36,20 +34,25 @@ namespace RustPlusApi.Fcm.Tools
 
                 var request = new HttpRequestMessage(HttpMethod.Post, CheckInUrl);
 
-                var content = new ByteArrayContent(requestBody.ToByteArray());
-                content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
+                using (var ms = new MemoryStream())
+                {
+                    Serializer.Serialize(ms, requestBody);
 
-                request.Content = content;
+                    var content = new ByteArrayContent(ms.ToArray());
+                    content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
 
-                var response = await HttpClient.SendAsync(request);
-                response.EnsureSuccessStatusCode();
+                    request.Content = content;
 
-                var data = await response.Content.ReadAsByteArrayAsync();
+                    var response = await HttpClient.SendAsync(request);
+                    response.EnsureSuccessStatusCode();
 
-                using var stream = new MemoryStream(data);
-                var message = Serializer.Deserialize<AndroidCheckinResponse>(stream);
+                    var data = await response.Content.ReadAsByteArrayAsync();
 
-                return message;
+                    using var stream = new MemoryStream(data);
+                    var message = Serializer.Deserialize<AndroidCheckinResponse>(stream);
+
+                    return message;
+                }
             }
             catch (Exception ex)
             {
@@ -63,14 +66,14 @@ namespace RustPlusApi.Fcm.Tools
             return new AndroidCheckinRequest
             {
                 UserSerialNumber = 0,
-                Checkin = new AndroidCheckinProto
+                Checkin = new AndroidCheckinProto.AndroidCheckinProto
                 {
                     Type = DeviceType.DeviceChromeBrowser,
                     ChromeBuild = new ChromeBuildProto
                     {
-                        Platform = ChromeBuildProto.Types.Platform.Mac,
+                        platform = ChromeBuildProto.Platform.PlatformMac,
                         ChromeVersion = "63.0.3234.0",
-                        Channel = ChromeBuildProto.Types.Channel.Stable
+                        channel = ChromeBuildProto.Channel.ChannelStable
                     }
                 },
                 Version = 3,

@@ -10,6 +10,10 @@
             McsProtoBytes = 3
         }
 
+        public const int ReadTimeoutSecs = 60 * 60;
+        public const int MinResetIntervalSecs = 5 * 60;
+        public const int MaxSilentIntervalSecs = 60 * 60;
+
         public const int KVersionPacketLen = 1;
         public const int KTagPacketLen = 1;
         public const int KSizePacketLenMin = 1;

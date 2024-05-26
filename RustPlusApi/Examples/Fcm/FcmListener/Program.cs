@@ -28,7 +28,9 @@ var listener = new FcmListener(credentials, []);
 
 listener.NotificationReceived += (_, message) =>
 {
-    Console.WriteLine(JsonConvert.SerializeObject(message, Formatting.Indented));
+    var rustPlusMessage = JsonConvert.DeserializeObject<RustPlusMessage>(message);
+    var formattedMessage = JsonConvert.SerializeObject(rustPlusMessage, Formatting.Indented);
+    Console.WriteLine(formattedMessage);
 };
 
 await listener.ConnectAsync();

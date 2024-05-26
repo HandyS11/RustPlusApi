@@ -13,169 +13,47 @@ namespace RustPlusApi.Fcm.Utils
         public event EventHandler<Exception>? ErrorOccurred;
         public event EventHandler<MessageEventArgs>? MessageReceived;
 
+        private FcmListener _listener;
         private ProcessingState _state = ProcessingState.McsVersionTagAndSize;
         private byte[] _data = [];
 
-        private int _sizePacketSoFar = 0;
-        private McsProtoTag _messageTag = 0;
-        private int _messageSize = 0;
-
         private bool _handshakeComplete;
-        private bool _isWaitingForData = true;
 
-        public void OnData(byte[] buffer)
+        public Parser(FcmListener listener)
         {
-            _data = [.. _data, .. buffer];
-            if (!_isWaitingForData) return;
-            _isWaitingForData = false;
-            WaitForData();
+            _listener = listener; // Link to instance just to be able to reset from parser. Maybe will need this for something else later, or could be done better
         }
 
-        private void WaitForData()
+        public void OnData(byte[] buffer, Type type)
         {
-            Debug.WriteLine($"waitForData state: {_state}");
-
-            int minBytesNeeded;
-
-            switch (_state)
-            {
-                case ProcessingState.McsVersionTagAndSize:
-                    minBytesNeeded = KVersionPacketLen + KTagPacketLen + KSizePacketLenMin;
-                    break;
-                case ProcessingState.McsTagAndSize:
-                    minBytesNeeded = KTagPacketLen + KSizePacketLenMin;
-                    break;
-                case ProcessingState.McsSize:
-                    minBytesNeeded = _sizePacketSoFar + 1;
-                    break;
-                case ProcessingState.McsProtoBytes:
-                    minBytesNeeded = _messageSize;
-                    break;
-                default:
-                    ErrorOccurred?.Invoke(this, new Exception($"Unexpected state: {_state}"));
-                    return;
-            }
-
-            if (_data.Length < minBytesNeeded)
-            {
-                Debug.WriteLine($"Socket read finished prematurely. Waiting for {minBytesNeeded - _data.Length} more bytes");
-                _isWaitingForData = true;
-                return;
-            }
-
-            Debug.WriteLine($"Processing MCS data: state == {_state}");
-
-            switch (_state)
-            {
-                case ProcessingState.McsVersionTagAndSize:
-                    OnGotVersion();
-                    break;
-                case ProcessingState.McsTagAndSize:
-                    OnGotMessageTag();
-                    break;
-                case ProcessingState.McsSize:
-                    OnGotMessageSize();
-                    break;
-                case ProcessingState.McsProtoBytes:
-                    OnGotMessageBytes();
-                    break;
-                default:
-                    ErrorOccurred?.Invoke(this, new Exception($"Unexpected state: {_state}"));
-                    return;
-            }
+            _data = buffer;
+            OnGotMessageBytes(type);
         }
 
-        private void OnGotVersion()
+        internal void OnGotLoginResponse()
         {
-            var version = _data[0];
-            _data = _data.Skip(1).ToArray();
-            Debug.WriteLine($"VERSION IS {version}");
-
-            if (version < KMcsVersion && version != 38)
-            {
-                ErrorOccurred?.Invoke(this, new Exception($"Got wrong version: {version}"));
-                return;
-            }
-            OnGotMessageTag();
+            _handshakeComplete = true;
         }
 
-        private void OnGotMessageTag()
+        private void OnGotMessageBytes(Type type)
         {
-            _messageTag = (McsProtoTag)_data[0];
-            _data = _data.Skip(1).ToArray();
-            Debug.WriteLine($"RECEIVED PROTO OF TYPE {_messageTag}");
+            var messageTag = GetTagFromProtobufType(type);
 
-            OnGotMessageSize();
-        }
-
-        private void OnGotMessageSize()
-        {
-            var incompleteSizePacket = false;
-            var reader = new BinaryReader(new MemoryStream(_data));
-
-            try
+            if (_data.Length == 0)
             {
-                _messageSize = reader.ReadInt32();
-            }
-            catch (EndOfStreamException)
-            {
-                incompleteSizePacket = true;
-            }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke(this, ex);
+                MessageReceived?.Invoke(this, new MessageEventArgs { Tag = messageTag, Object = Activator.CreateInstance(type) });
                 return;
             }
 
-            if (incompleteSizePacket)
-            {
-                _sizePacketSoFar = (int)reader.BaseStream.Position;
-                _state = ProcessingState.McsSize;
-                WaitForData();
-                return;
-            }
-
-            _data = _data.Skip((int)reader.BaseStream.Position).ToArray();
-
-            Debug.WriteLine($"Proto size: {_messageSize}");
-            _sizePacketSoFar = 0;
-
-            if (_messageSize > 0)
-            {
-                _state = ProcessingState.McsProtoBytes;
-                WaitForData();
-            }
-            else OnGotMessageBytes();
-        }
-
-        private void OnGotMessageBytes()
-        {
-            var protobuf = BuildProtobufFromTag(_messageTag);
-
-            if (_messageSize == 0)
-            {
-                MessageReceived?.Invoke(this, new MessageEventArgs { Tag = _messageTag, Object = Activator.CreateInstance(protobuf) });
-                GetNextMessage();
-                return;
-            }
-
-            if (_data.Length < _messageSize)
-            {
-                Debug.WriteLine($"Continuing data read. Buffer size is {_data.Length}, expecting {_messageSize}");
-                _state = ProcessingState.McsProtoBytes;
-                WaitForData();
-                return;
-            }
-
-            var buffer = _data.Take(_messageSize).ToArray();
-            _data = _data.Skip(_messageSize).ToArray();
+            var buffer = _data.Take(_data.Length).ToArray();
+            _data = _data.Skip(_data.Length).ToArray();
 
             using var stream = new MemoryStream(buffer);
-            var message = Serializer.NonGeneric.Deserialize(protobuf, stream);
+            var message = Serializer.NonGeneric.Deserialize(type, stream);
 
-            MessageReceived?.Invoke(this, new MessageEventArgs { Tag = _messageTag, Object = message });
+            MessageReceived?.Invoke(this, new MessageEventArgs { Tag = messageTag, Object = message });
 
-            if (_messageTag == McsProtoTag.KLoginResponseTag)
+            if (messageTag == McsProtoTag.KLoginResponseTag)
             {
                 if (_handshakeComplete) Debug.WriteLine("Unexpected login response");
                 else
@@ -184,18 +62,31 @@ namespace RustPlusApi.Fcm.Utils
                     Debug.WriteLine("GCM Handshake complete.");
                 }
             }
-            GetNextMessage();
         }
 
-        private void GetNextMessage()
+        internal static McsProtoTag GetTagFromProtobufType(Type type)
         {
-            _messageTag = 0;
-            _messageSize = 0;
-            _state = ProcessingState.McsTagAndSize;
-            WaitForData();
+            if (type == typeof(HeartbeatPing))
+                return McsProtoTag.KHeartbeatPingTag;
+            else if (type == typeof(HeartbeatAck))
+                return McsProtoTag.KHeartbeatAckTag;
+            else if (type == typeof(LoginRequest))
+                return McsProtoTag.KLoginRequestTag;
+            else if (type == typeof(LoginResponse))
+                return McsProtoTag.KLoginResponseTag;
+            else if (type == typeof(Close))
+                return McsProtoTag.KCloseTag;
+            else if (type == typeof(IqStanza))
+                return McsProtoTag.KIqStanzaTag;
+            else if (type == typeof(DataMessageStanza))
+                return McsProtoTag.KDataMessageStanzaTag;
+            else if (type == typeof(StreamErrorStanza))
+                return McsProtoTag.KStreamErrorStanzaTag;
+            else
+                throw new ArgumentOutOfRangeException(nameof(type), type, null);
         }
 
-        private static Type BuildProtobufFromTag(McsProtoTag tag)
+        internal static Type BuildProtobufFromTag(McsProtoTag tag)
         {
             // ReSharper disable once SwitchExpressionHandlesSomeKnownEnumValuesWithExceptionInDefault
             return tag switch
