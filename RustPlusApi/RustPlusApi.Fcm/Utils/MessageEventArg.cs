@@ -2,7 +2,7 @@
 
 namespace RustPlusApi.Fcm.Utils
 {
-    public class MessageEventArgs : EventArgs
+    internal class MessageEventArgs : EventArgs
     {
         public McsProtoTag Tag { get; set; }
         public object? Object { get; set; }

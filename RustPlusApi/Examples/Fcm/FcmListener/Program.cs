@@ -1,6 +1,5 @@
 ﻿using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Data;
-using Newtonsoft.Json;
 
 var credentials = new Credentials
 {
@@ -28,9 +27,7 @@ var listener = new FcmListener(credentials, []);
 
 listener.NotificationReceived += (_, message) =>
 {
-    var rustPlusMessage = JsonConvert.DeserializeObject<RustPlusMessage>(message);
-    var formattedMessage = JsonConvert.SerializeObject(rustPlusMessage, Formatting.Indented);
-    Console.WriteLine(formattedMessage);
+    Console.WriteLine(message);
 };
 
 await listener.ConnectAsync();

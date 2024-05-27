@@ -1,8 +1,10 @@
 ﻿using System.Diagnostics;
 using System.Net.Http.Headers;
+
 using AndroidCheckinProto;
+
 using CheckinProto;
-using McsProto;
+
 using ProtoBuf;
 
 using RustPlusApi.Fcm.Data;
@@ -34,25 +36,23 @@ namespace RustPlusApi.Fcm.Tools
 
                 var request = new HttpRequestMessage(HttpMethod.Post, CheckInUrl);
 
-                using (var ms = new MemoryStream())
-                {
-                    Serializer.Serialize(ms, requestBody);
+                using var ms = new MemoryStream();
+                Serializer.Serialize(ms, requestBody);
 
-                    var content = new ByteArrayContent(ms.ToArray());
-                    content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
+                var content = new ByteArrayContent(ms.ToArray());
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/x-protobuf");
 
-                    request.Content = content;
+                request.Content = content;
 
-                    var response = await HttpClient.SendAsync(request);
-                    response.EnsureSuccessStatusCode();
+                var response = await HttpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
 
-                    var data = await response.Content.ReadAsByteArrayAsync();
+                var data = await response.Content.ReadAsByteArrayAsync();
 
-                    using var stream = new MemoryStream(data);
-                    var message = Serializer.Deserialize<AndroidCheckinResponse>(stream);
+                using var stream = new MemoryStream(data);
+                var message = Serializer.Deserialize<AndroidCheckinResponse>(stream);
 
-                    return message;
-                }
+                return message;
             }
             catch (Exception ex)
             {

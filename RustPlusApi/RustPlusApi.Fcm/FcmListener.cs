@@ -5,6 +5,8 @@ using System.Numerics;
 
 using McsProto;
 
+using Newtonsoft.Json;
+
 using ProtoBuf;
 
 using RustPlusApi.Fcm.Data;
@@ -12,7 +14,6 @@ using RustPlusApi.Fcm.Utils;
 
 using static RustPlusApi.Fcm.Data.Constants;
 using static System.GC;
-
 
 namespace RustPlusApi.Fcm
 {
@@ -59,10 +60,10 @@ namespace RustPlusApi.Fcm
                     UseRmq2 = true,
                     Settings = { new Setting() { Name = "new_vc", Value = "1" } },
                     ClientEvents = { new ClientEvent() },
+                    ReceivedPersistentIds = { },
                 };
 
-                if (persistentIds != null)
-                    loginRequest.ReceivedPersistentIds.AddRange(persistentIds);
+                if (persistentIds != null) loginRequest.ReceivedPersistentIds.AddRange(persistentIds);
 
                 SendPacket(loginRequest);
 
@@ -72,7 +73,7 @@ namespace RustPlusApi.Fcm
                 Connected?.Invoke(this, EventArgs.Empty);
 
                 StatusCheck();
-                await ReceiveMessagesAsync();
+                ReceiveMessages();
             }
             catch (Exception ex)
             {
@@ -91,9 +92,9 @@ namespace RustPlusApi.Fcm
             SuppressFinalize(this);
         }
 
-        private async Task ReceiveMessagesAsync()
+        private void ReceiveMessages()
         {
-            var parser = new Parser(this);
+            var parser = new Parser();
             parser.MessageReceived += (_, e) => OnMessage(e);
 
             // First receival (LoginResponse)
@@ -105,10 +106,10 @@ namespace RustPlusApi.Fcm
                 throw new InvalidOperationException($"Protocol version {version} unsupported");
 
             int size = ReadVarint32();
-            Debug.WriteLine($"Got message size: {size}bytes");
+            Debug.WriteLine($"Got message size: {size} bytes");
 
             byte[] payload = Read(size);
-            Debug.WriteLine($"Successfully read {payload.Length}bytes");
+            Debug.WriteLine($"Successfully read: {payload.Length} bytes");
 
             Type type = Parser.BuildProtobufFromTag(((McsProtoTag)tag));
             Debug.WriteLine($"RECEIVED PROTO OF TYPE {type.Name}");
@@ -123,7 +124,7 @@ namespace RustPlusApi.Fcm
             Debug.WriteLine("Starting receiver loop.");
             while (true)
             {
-                tag = _sslStream.ReadByte();
+                tag = _sslStream!.ReadByte();
                 size = ReadVarint32();
                 payload = Read(size);
                 type = Parser.BuildProtobufFromTag((McsProtoTag)tag);
@@ -139,7 +140,7 @@ namespace RustPlusApi.Fcm
             int bytesRead = 0;
             while (bytesRead < size)
             {
-                bytesRead += _sslStream.Read(buffer, bytesRead, size - bytesRead);
+                bytesRead += _sslStream!.Read(buffer, bytesRead, size - bytesRead);
             }
             return buffer;
         }
@@ -150,41 +151,37 @@ namespace RustPlusApi.Fcm
             int shift = 0;
             while (true)
             {
-                byte b = (byte)_sslStream.ReadByte();
+                byte b = (byte)_sslStream!.ReadByte();
                 result |= (b & 0x7F) << shift;
-                if ((b & 0x80) == 0)
-                    break;
+                if ((b & 0x80) == 0) break;
                 shift += 7;
             }
             return result;
         }
 
-        internal byte[] EncodeVarint32(int value)
+        internal static byte[] EncodeVarint32(int value)
         {
-            List<byte> result = new List<byte>();
+            List<byte> result = [];
             while (value != 0)
             {
                 byte b = (byte)(value & 0x7F);
                 value >>= 7;
-                if (value != 0)
-                    b |= 0x80;
+                if (value != 0) b |= 0x80;
                 result.Add(b);
             }
-            return result.ToArray();
+            return [.. result];
         }
 
-        internal void SendPacket(object packet)
+        private void SendPacket(object packet)
         {
             var tagEnum = Parser.GetTagFromProtobufType(packet.GetType());
             var header = new byte[] { KMcsVersion, (byte)(int)tagEnum };
 
-            using (var ms = new MemoryStream())
-            {
-                Serializer.Serialize(ms, packet);
+            using var ms = new MemoryStream();
+            Serializer.Serialize(ms, packet);
 
-                byte[] payload = ms.ToArray();
-                _sslStream.Write([.. header, .. EncodeVarint32(payload.Length), .. payload]);
-            }
+            byte[] payload = ms.ToArray();
+            _sslStream!.Write([.. header, .. EncodeVarint32(payload.Length), .. payload]);
         }
 
         private void HandlePing(HeartbeatPing? ping)
@@ -202,7 +199,7 @@ namespace RustPlusApi.Fcm
             SendPacket(pingResponse);
         }
 
-        internal void Reset(bool noWait = false)
+        private void Reset(bool noWait = false)
         {
             if (!noWait)
             {
@@ -218,19 +215,12 @@ namespace RustPlusApi.Fcm
                     Thread.Sleep(waitTime);
                 }
             }
-
             _lastReset = DateTime.Now;
+
             Debug.WriteLine("Resetting listener.");
+            Dispose();
 
-            _tcpClient.Close();
-            _sslStream.Close();
-            Disconnected?.Invoke(this, EventArgs.Empty);
             ConnectAsync().GetAwaiter().GetResult();
-        }
-
-        public void Reset()
-        {
-            Reset(true);
         }
 
         private void StatusCheck(object? state = null)
@@ -239,7 +229,7 @@ namespace RustPlusApi.Fcm
             if (timeSinceLastMessage > TimeSpan.FromSeconds(MaxSilentIntervalSecs))
             {
                 Debug.WriteLine($"No communications received in {timeSinceLastMessage.TotalSeconds}s. Resetting connection.");
-                Reset();
+                Reset(true);
             }
             else
             {
@@ -265,7 +255,7 @@ namespace RustPlusApi.Fcm
                     HandlePing(e.Object as HeartbeatPing);
                     break;
                 case McsProtoTag.KCloseTag:
-                    Reset();
+                    Reset(true);
                     break;
                 case McsProtoTag.KIqStanzaTag:
                     break; // I'm not sure about what this message does, and it arrives partially empty, so I will just leave it like this for now
@@ -290,12 +280,18 @@ namespace RustPlusApi.Fcm
                     ex.Message.Contains("salt is missing"))
                 {
                     Debug.WriteLine($"Message dropped as it could not be decrypted: {ex.Message}");
-                    persistentIds?.Add(dataMessage!.PersistentId);
                     return;
                 }
             }
-            persistentIds?.Add(dataMessage!.PersistentId);
-            NotificationReceived?.Invoke(this, message);
+            finally
+            {
+                persistentIds?.Add(dataMessage!.PersistentId);
+            }
+
+            var rustPlusMessage = JsonConvert.DeserializeObject<RustPlusMessage>(message);
+            var formattedMessage = JsonConvert.SerializeObject(rustPlusMessage, Formatting.Indented);
+
+            NotificationReceived?.Invoke(this, formattedMessage);
         }
     }
 }
