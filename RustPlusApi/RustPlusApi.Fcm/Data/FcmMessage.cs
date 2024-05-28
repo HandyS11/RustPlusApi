@@ -4,7 +4,7 @@ using RustPlusApi.Fcm.Converters;
 
 namespace RustPlusApi.Fcm.Data
 {
-    public class RustPlusMessage
+    public class FcmMessage
     {
         public Data Data { get; set; } = null!;
         public string From { get; set; } = null!;

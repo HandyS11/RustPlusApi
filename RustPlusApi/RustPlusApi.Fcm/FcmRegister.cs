@@ -3,7 +3,7 @@ using RustPlusApi.Fcm.Tools;
 
 namespace RustPlusApi.Fcm
 {
-    public class FcmRegister
+    /*public class FcmRegister
     {
         public static async Task<Credentials> RegisterAsync(string senderId)
         {
@@ -19,5 +19,5 @@ namespace RustPlusApi.Fcm
                 Fcm = fcmRegistration.Item2,
             };
         }
-    }
+    }*/
 }

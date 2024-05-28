@@ -17,7 +17,7 @@ using static System.GC;
 
 namespace RustPlusApi.Fcm
 {
-    public class FcmListener(Credentials credentials, ICollection<string> persistentIds) : IDisposable
+    public class FcmListener(Credentials credentials, ICollection<string>? persistentIds = null) : IDisposable
     {
         private const string Host = "mtalk.google.com";
         private const int Port = 5228;
@@ -264,9 +264,12 @@ namespace RustPlusApi.Fcm
             }
         }
 
-        private void OnDataMessage(DataMessageStanza? dataMessage)
+        protected void OnDataMessage(DataMessageStanza? dataMessage)
         {
-            if (dataMessage?.PersistentId != null && persistentIds != null && persistentIds!.Contains(dataMessage?.PersistentId!)) return;
+            if (dataMessage?.PersistentId != null
+                && persistentIds != null
+                && persistentIds!.Contains(dataMessage?.PersistentId!))
+                return;
 
             var message = string.Empty;
             try
@@ -288,10 +291,10 @@ namespace RustPlusApi.Fcm
                 persistentIds?.Add(dataMessage!.PersistentId);
             }
 
-            var rustPlusMessage = JsonConvert.DeserializeObject<RustPlusMessage>(message);
-            var formattedMessage = JsonConvert.SerializeObject(rustPlusMessage, Formatting.Indented);
+            var fcmMessage = JsonConvert.DeserializeObject<FcmMessage>(message);
+            var betterMessage = JsonConvert.SerializeObject(fcmMessage, Formatting.Indented);
 
-            NotificationReceived?.Invoke(this, formattedMessage);
+            NotificationReceived?.Invoke(this, betterMessage);
         }
     }
 }

@@ -11,7 +11,7 @@ using RustPlusApi.Fcm.Data;
 
 namespace RustPlusApi.Fcm.Tools
 {
-    public static class GcmTools
+    internal static class GcmTools
     {
         private static readonly HttpClient HttpClient = new();
 
@@ -27,7 +27,7 @@ namespace RustPlusApi.Fcm.Tools
             return credentials;
         }
 
-        public static async Task<AndroidCheckinResponse> CheckInAsync(ulong? androidId = null, ulong? securityToken = null)
+        internal static async Task<AndroidCheckinResponse> CheckInAsync(ulong? androidId = null, ulong? securityToken = null)
         {
             try
             {

@@ -5,14 +5,14 @@ using RustPlusApi.Fcm.Data;
 
 namespace RustPlusApi.Fcm.Tools
 {
-    public static class FcmTools
+    internal static class FcmTools
     {
         private const string FcmSubscribeUrl = "https://fcm.googleapis.com/fcm/connect/subscribe";
         private const string FcmEndpoint = "https://fcm.googleapis.com/fcm/send";
 
         private static readonly HttpClient HttpClient = new();
 
-        public static async Task<Tuple<Keys, FcmCredentials>> RegisterFcmAsync(string senderId, string token)
+        internal static async Task<Tuple<Keys, FcmCredentials>> RegisterFcmAsync(string senderId, string token)
         {
             var keys = CreateKeys();
             var response = await HttpClient.PostAsync(FcmSubscribeUrl, new FormUrlEncodedContent(new Dictionary<string, string>
