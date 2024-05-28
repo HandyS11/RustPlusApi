@@ -113,7 +113,7 @@ namespace RustPlusApi
         /// <param name="request">The request to send.</param>
         /// <param name="callback">An optional callback function to handle the response.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        private async Task SendRequestAsync(AppRequest request, Func<AppMessage, bool>? callback = null)
+        public async Task SendRequestAsync(AppRequest request, Func<AppMessage, bool>? callback = null)
         {
             var seq = ++_seq;
             if (callback != null) _seqCallbacks[(int)seq] = callback;
@@ -194,6 +194,20 @@ namespace RustPlusApi
         }
 
         /// <summary>
+        /// Retrieves the team chat from the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task GetTeamChatAsync(Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                GetTeamChat = new AppEmpty(),
+            };
+            await SendRequestAsync(request, callback);
+        }
+
+        /// <summary>
         /// Retrieves the map markers from the Rust+ server asynchronously.
         /// </summary>
         /// <param name="callback">An optional callback function to handle the response.</param>
@@ -231,6 +245,24 @@ namespace RustPlusApi
             var request = new AppRequest
             {
                 GetTime = new AppEmpty()
+            };
+            await SendRequestAsync(request, callback);
+        }
+
+        /// <summary>
+        /// Retrieves the team chat from the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="steamId">The steam ID of the new group owner</param>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task PromoteToLeaderAsync(ulong steamId, Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                PromoteToLeader = new AppPromoteToLeader
+                {
+                    SteamId = steamId
+                }
             };
             await SendRequestAsync(request, callback);
         }
@@ -285,6 +317,24 @@ namespace RustPlusApi
             await SetEntityValueAsync(entityId, value);
             await Task.Delay(timeoutMilliseconds);
             await SetEntityValueAsync(entityId, !value);
+        }
+
+        public async Task GetClanChatAsync(Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                GetClanChat = new AppEmpty()
+            };
+            await SendRequestAsync(request, callback);
+        }
+
+        public async Task GetClanInfoAsync(Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                GetClanInfo = new AppEmpty()
+            };
+            await SendRequestAsync(request, callback);
         }
     }
 }

@@ -10,8 +10,10 @@ rustPlus.Connected += async (_, _) =>
     {
         var imageData = message.Response.Map.JpgImage.ToByteArray();
         if (imageData == null) return false;
+
         File.WriteAllBytes("map.jpg", imageData);
         Console.WriteLine(@"Saved under .\RustPlusApi\RustPlusApi\Examples\GetMap\bin\Debug\net8.0");
+
         rustPlus.Dispose();
         return true;
     });

@@ -3,10 +3,11 @@
 using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
+var entityId = 0;
 
 rustPlus.Connected += async (_, _) =>
 {
-    await rustPlus.StrobeAsync(EntityId);
+    await rustPlus.StrobeAsync(entityId);
     rustPlus.Dispose();
 };
 

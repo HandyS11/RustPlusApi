@@ -9,9 +9,6 @@ namespace __Constants
         public const ulong PlayerId = 0;
         public const int PlayerToken = 0;
 
-        public const int EntityId = 0;
-        public const bool EntityValue = true;
-
         public static JsonSerializerSettings JsonSettings = new()
         {
             NullValueHandling = NullValueHandling.Ignore,

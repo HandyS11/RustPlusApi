@@ -5,11 +5,10 @@ using RustPlusApi;
 using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
-var entityId = 0;
 
 rustPlus.Connected += async (_, _) =>
 {
-    await rustPlus.GetEntityInfoAsync(entityId, message =>
+    await rustPlus.GetTeamChatAsync(message =>
     {
         Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
         return true;
@@ -18,10 +17,10 @@ rustPlus.Connected += async (_, _) =>
 
 rustPlus.MessageReceived += (_, message) =>
 {
-    if (message.Broadcast is not { EntityChanged: not null }) return;
+    if (message.Broadcast is not { TeamMessage: not null }) return;
 
-    var entityChanged = message.Broadcast.EntityChanged;
-    Console.WriteLine($"Message:\n{JsonConvert.SerializeObject(entityChanged, JsonSettings)}");
+    var teamMessage = message.Broadcast.TeamMessage;
+    Console.WriteLine($"Message:\n{JsonConvert.SerializeObject(teamMessage, JsonSettings)}");
 };
 
 await rustPlus.ConnectAsync();
