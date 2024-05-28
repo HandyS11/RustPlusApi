@@ -1,6 +1,6 @@
 ﻿using static RustPlusApi.Fcm.Data.Constants;
 
-namespace RustPlusApi.Fcm.Utils
+namespace RustPlusApi.Fcm.Data.Events
 {
     internal class MessageEventArgs : EventArgs
     {

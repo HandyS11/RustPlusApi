@@ -6,39 +6,39 @@ namespace RustPlusApi.Fcm.Data
 {
     public class FcmMessage
     {
-        public Data Data { get; set; } = null!;
-        public string From { get; set; } = null!;
+        public Guid FcmMessageId { get; set; }
         public string Priority { get; set; } = null!;
-        public string FcmMessageId { get; set; } = null!;
+        public long From { get; set; }
+        public MessageData Data { get; set; } = null!;
     }
 
-    public class Data
+    public class MessageData
     {
+        public Guid ProjectId { get; set; }
+        public string ChannelId { get; set; } = null!;
+        public string Title { get; set; } = null!;
+        public string Message { get; set; } = null!;
         public string ExperienceId { get; set; } = null!;
         public string ScopeKey { get; set; } = null!;
         [JsonConverter(typeof(BodyConverter))]
         public Body Body { get; set; } = null!;
-        public string Message { get; set; } = null!;
-        public string Title { get; set; } = null!;
-        public string ProjectId { get; set; } = null!;
-        public string ChannelId { get; set; } = null!;
     }
 
     public class Body
     {
-        public string Img { get; set; } = null!;
-        public string EntityType { get; set; } = null!;
+        public Guid Id { get; set; }
         public string Ip { get; set; } = null!;
-        public string EntityId { get; set; } = null!;
-        public string Type { get; set; } = null!;
-        public string Url { get; set; } = null!;
-        public string PlayerToken { get; set; } = null!;
-        public string Port { get; set; } = null!;
-        public string EntityName { get; set; } = null!;
+        public int Port { get; set; }
         public string Name { get; set; } = null!;
-        public string Logo { get; set; } = null!;
-        public string Id { get; set; } = null!;
         public string Desc { get; set; } = null!;
-        public string PlayerId { get; set; } = null!;
+        public int Logo { get; set; }
+        public int Img { get; set; }
+        public string Url { get; set; } = null!;
+        public ulong PlayerId { get; set; }
+        public string PlayerToken { get; set; } = null!;
+        public string Type { get; set; } = null!;
+        public int? EntityType { get; set; }
+        public int? EntityId { get; set; }
+        public string EntityName { get; set; } = null!;
     }
 }

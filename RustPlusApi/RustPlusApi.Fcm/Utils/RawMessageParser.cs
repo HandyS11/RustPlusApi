@@ -4,11 +4,13 @@ using McsProto;
 
 using ProtoBuf;
 
+using RustPlusApi.Fcm.Data.Events;
+
 using static RustPlusApi.Fcm.Data.Constants;
 
 namespace RustPlusApi.Fcm.Utils
 {
-    internal class Parser()
+    internal class RawMessageParser()
     {
         internal event EventHandler<Exception>? ErrorOccurred;
         internal event EventHandler<MessageEventArgs>? MessageReceived;
