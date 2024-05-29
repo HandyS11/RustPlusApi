@@ -1,6 +1,10 @@
-﻿using System.Net.WebSockets;
+﻿using System.Diagnostics;
+using System.Net.WebSockets;
 
 using Google.Protobuf;
+
+using RustPlusApi.Data.Events;
+using RustPlusApi.Extensions;
 
 using RustPlusContracts;
 
@@ -20,7 +24,7 @@ namespace RustPlusApi
     {
         private ClientWebSocket? _webSocket;
         private uint _seq;
-        private readonly Dictionary<int, Func<AppMessage, bool>> _seqCallbacks = [];
+        private readonly Dictionary<int, TaskCompletionSource<AppMessage>> _seqCallbacks = [];
 
         public event EventHandler? Connecting;
         public event EventHandler? Connected;
@@ -28,6 +32,9 @@ namespace RustPlusApi
         public event EventHandler<AppRequest>? RequestSent;
         public event EventHandler? Disconnected;
         public event EventHandler<Exception>? ErrorOccurred;
+
+        public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered; // The Alarm behave exactly like the SmartSwitch so if you get the status of the alarm, this will be triggered
+        public event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 
         /// <summary>
         /// Connects to the Rust+ server asynchronously.
@@ -58,7 +65,8 @@ namespace RustPlusApi
         /// <summary>
         /// Receives messages from the Rust+ server asynchronously.
         /// </summary>
-        private async Task ReceiveMessagesAsync()
+        /// <returns>A task representing the asynchronous operation.</returns>
+        protected async Task ReceiveMessagesAsync()
         {
             const int bufferSize = 1024;
             var buffer = new byte[bufferSize];
@@ -83,11 +91,17 @@ namespace RustPlusApi
             }
             catch (WebSocketException ex)
             {
+                Debug.WriteLine($"Disconnected from the Rust+ socket due to a WebSocketException: {ex}");
                 ErrorOccurred?.Invoke(this, ex);
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"Disconnected from the Rust+ socket due to an Exception: {ex}");
                 ErrorOccurred?.Invoke(this, ex);
+            }
+            finally
+            {
+                Dispose();
             }
         }
 
@@ -95,28 +109,31 @@ namespace RustPlusApi
         /// Handles the response received from the Rust+ server.
         /// </summary>
         /// <param name="message">The AppMessage received from the server.</param>
-        private void HandleResponse(AppMessage message)
+        protected void HandleResponse(AppMessage message)
         {
-            if (message.Response != null && message.Response.Seq != 0 && _seqCallbacks.ContainsKey((int)message.Response.Seq))
+            if (message.Response != null
+                && message.Response.Seq != 0
+                && _seqCallbacks.ContainsKey((int)message.Response.Seq))
             {
-                var callback = _seqCallbacks[(int)message.Response.Seq];
-                var result = callback.Invoke(message);
+                var tcs = _seqCallbacks[(int)message.Response.Seq];
+                tcs.SetResult(message);
                 _seqCallbacks.Remove((int)message.Response.Seq);
-                if (result) return;
+                return;
             }
             MessageReceived?.Invoke(this, message);
+            ParseNotification(message.Broadcast);
         }
 
         /// <summary>
         /// Sends a request to the Rust+ server asynchronously.
         /// </summary>
         /// <param name="request">The request to send.</param>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task SendRequestAsync(AppRequest request, Func<AppMessage, bool>? callback = null)
+        /// <return>A task representing the asynchronous operation.</returns>
+        public async Task<AppMessage> SendRequestAsync(AppRequest request)
         {
             var seq = ++_seq;
-            if (callback != null) _seqCallbacks[(int)seq] = callback;
+            var tcs = new TaskCompletionSource<AppMessage>();
+            _seqCallbacks[(int)seq] = tcs;
 
             request.Seq = seq;
             request.PlayerId = playerId;
@@ -126,6 +143,28 @@ namespace RustPlusApi
             var buffer = new ArraySegment<byte>(requestData);
             await _webSocket!.SendAsync(buffer, WebSocketMessageType.Binary, true, CancellationToken.None);
             RequestSent?.Invoke(this, request);
+
+            return await tcs.Task;
+        }
+
+        /// <summary>
+        /// Parses the notification received from the Rust+ server.
+        /// </summary>
+        /// <param name="broadcast">The AppBroadcast received from the server.</param>
+        protected void ParseNotification(AppBroadcast? broadcast)
+        {
+            if (broadcast is null) return;
+
+            if (broadcast.EntityChanged is not null)
+            {
+                // It is physically impossible to differentiate between a SmartSwitch and an Alarm
+                // This is a limitation of the Rust+ API
+                if (broadcast.EntityChanged.Payload.Capacity is 0)
+                    OnSmartSwitchTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartSwitchEvent());
+                else
+                    OnStorageMonitorTriggered?.Invoke(this, broadcast.EntityChanged.ToStorageMonitorEvent());
+            }
+            else Debug.WriteLine($"Unknown broadcast:\n{broadcast}");
         }
 
         /// <summary>
@@ -144,27 +183,49 @@ namespace RustPlusApi
         }
 
         /// <summary>
-        /// Checks if the client is connected to the Rust+ server.
+        /// Checks if the client is connected to the Rust+ socket.
         /// </summary>
         /// <returns>True if the client is connected; otherwise, false.</returns>
         public bool IsConnected() => _webSocket is { State: WebSocketState.Open };
 
         /// <summary>
+        /// Checks if the given response is an error.
+        /// </summary>
+        /// <param name="response">The AppMessage response to check.</param>
+        /// <returns>True if the response is an error; otherwise, false.</returns>
+        private static bool IsError(AppMessage response) => response.Response.Error is not null;
+
+        /// <summary>
         /// Retrieves information about an entity from the Rust+ server asynchronously.
         /// </summary>
         /// <param name="entityId">The ID of the entity to retrieve information for.</param>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task GetEntityInfoAsync(int entityId, Func<AppMessage, bool>? callback = null)
+        /// <param name="useRawObject">Specifies whether to use the raw object or convert it to a custom entity info object.</param>
+        /// <returns>
+        /// The entity information.
+        /// If useRawObject is true, it returns an instance of the AppMessage class.
+        /// If useRawObject is false, it returns a custom entity info object such as SmartSwitchInfo, AlarmInfo, or StorageMonitorInfo.
+        /// </returns>
+        public async Task<object> GetEntityInfoAsync(uint entityId, bool useRawObject = false)
         {
             var request = new AppRequest
             {
-                EntityId = (uint)entityId,
+                EntityId = entityId,
                 GetEntityInfo = new AppEmpty()
             };
-            await SendRequestAsync(request, callback);
+            var response = await SendRequestAsync(request);
+
+            if (IsError(response))
+                return useRawObject
+                    ? response
+                    : response.Response.Error;
+
+            return useRawObject
+                ? response
+                : response.Response.EntityInfo.ToEntityInfo();
         }
 
+
+        /*
         /// <summary>
         /// Retrieves general information from the Rust+ server asynchronously.
         /// </summary>
@@ -335,6 +396,6 @@ namespace RustPlusApi
                 GetClanInfo = new AppEmpty()
             };
             await SendRequestAsync(request, callback);
-        }
+        }*/
     }
 }
