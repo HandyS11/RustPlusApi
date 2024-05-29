@@ -196,6 +196,27 @@ namespace RustPlusApi
         private static bool IsError(AppMessage response) => response.Response.Error is not null;
 
         /// <summary>
+        /// Processes a request to the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="request">The request to process.</param>
+        /// <param name="useRawObject">Specifies whether to use the raw object or convert it to a custom object.</param>
+        /// <param name="successSelector">A function to select the success response.</param>
+        /// <returns>The processed response.</returns>
+        private async Task<object> ProcessRequestAsync(AppRequest request, bool useRawObject, Func<AppMessage, object> successSelector)
+        {
+            var response = await SendRequestAsync(request);
+
+            if (IsError(response))
+                return useRawObject
+                    ? response
+                    : response.Response.Error;
+
+            return useRawObject
+                ? response
+                : successSelector(response);
+        }
+
+        /// <summary>
         /// Retrieves information about an entity from the Rust+ server asynchronously.
         /// </summary>
         /// <param name="entityId">The ID of the entity to retrieve information for.</param>
@@ -212,44 +233,55 @@ namespace RustPlusApi
                 EntityId = entityId,
                 GetEntityInfo = new AppEmpty()
             };
-            var response = await SendRequestAsync(request);
-
-            if (IsError(response))
-                return useRawObject
-                    ? response
-                    : response.Response.Error;
-
-            return useRawObject
-                ? response
-                : response.Response.EntityInfo.ToEntityInfo();
+            return await ProcessRequestAsync(request, useRawObject, r => r.Response.EntityInfo.ToEntityInfo());
         }
 
-
-        /*
         /// <summary>
-        /// Retrieves general information from the Rust+ server asynchronously.
+        /// Retrieves information about the Rust+ server asynchronously.
         /// </summary>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task GetInfoAsync(Func<AppMessage, bool>? callback = null)
+        /// <param name="useRawObject">Specifies whether to use the raw object or convert it to a custom info object.</param>
+        /// <returns>
+        /// The server information.
+        /// If useRawObject is true, it returns an instance of the AppMessage class.
+        /// If useRawObject is false, it returns an ServerInfo.
+        /// </returns>
+        public async Task<object> GetInfoAsync(bool useRawObject = false)
         {
             var request = new AppRequest
             {
                 GetInfo = new AppEmpty()
             };
-            await SendRequestAsync(request, callback);
+            return await ProcessRequestAsync(request, useRawObject, r => r.Response.Info.ToServerInfo());
         }
 
         /// <summary>
         /// Retrieves the map from the Rust+ server asynchronously.
         /// </summary>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task GetMapAsync(Func<AppMessage, bool>? callback = null)
+        /// <param name="useRawObject">Specifies whether to use the raw object or convert it to a custom map object.</param>
+        /// <returns>
+        /// The map.
+        /// If useRawObject is true, it returns an instance of the AppMessage class.
+        /// If useRawObject is false, it returns a MapInfo.
+        /// </returns>
+        public async Task<object> GetMapAsync(bool useRawObject = false)
         {
             var request = new AppRequest
             {
                 GetMap = new AppEmpty()
+            };
+            return await ProcessRequestAsync(request, useRawObject, r => r.Response.Map.ToServerMap());
+        }
+        /*
+        /// <summary>
+        /// Retrieves the map markers from the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="callback">An optional callback function to handle the response.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task GetMapMarkersAsync(Func<AppMessage, bool>? callback = null)
+        {
+            var request = new AppRequest
+            {
+                GetMapMarkers = new AppEmpty()
             };
             await SendRequestAsync(request, callback);
         }
@@ -264,20 +296,6 @@ namespace RustPlusApi
             var request = new AppRequest
             {
                 GetTeamChat = new AppEmpty(),
-            };
-            await SendRequestAsync(request, callback);
-        }
-
-        /// <summary>
-        /// Retrieves the map markers from the Rust+ server asynchronously.
-        /// </summary>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task GetMapMarkersAsync(Func<AppMessage, bool>? callback = null)
-        {
-            var request = new AppRequest
-            {
-                GetMapMarkers = new AppEmpty()
             };
             await SendRequestAsync(request, callback);
         }

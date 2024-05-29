@@ -9,12 +9,12 @@ ulong steamId = 0;
 
 rustPlus.Connected += async (_, _) =>
 {
-    await rustPlus.PromoteToLeaderAsync(steamId, message =>
-    {
-        Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
-        rustPlus.Dispose();
-        return true;
-    });
+    //await rustPlus.PromoteToLeaderAsync(steamId, message =>
+    //{
+    //    Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+    //    rustPlus.Dispose();
+    //    return true;
+    //});
 };
 
 await rustPlus.ConnectAsync();

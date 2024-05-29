@@ -1,4 +1,7 @@
-﻿using RustPlusApi;
+﻿using Newtonsoft.Json;
+
+using RustPlusApi;
+using RustPlusApi.Data;
 
 using static __Constants.ExamplesConst;
 
@@ -6,17 +9,22 @@ var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 
 rustPlus.Connected += async (_, _) =>
 {
-    await rustPlus.GetMapAsync(message =>
-    {
-        var imageData = message.Response.Map.JpgImage.ToByteArray();
-        if (imageData == null) return false;
+    // The message would be a ServerMap
+    // If you want to do your own parsing you can set the useRawObject parameter to true
+    // (this code will obviously break if you do)
+    var message = await rustPlus.GetMapAsync();
 
-        File.WriteAllBytes("map.jpg", imageData);
-        Console.WriteLine(@"Saved under .\RustPlusApi\RustPlusApi\Examples\GetMap\bin\Debug\net8.0");
+    if (message is not ServerMap) return;
+    var serverMap = (ServerMap)message;
 
-        rustPlus.Dispose();
-        return true;
-    });
+    File.WriteAllBytes("map.jpg", serverMap.JpgImage!);
+
+    serverMap.JpgImage = null;
+    Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(serverMap, JsonSettings)}");
+
+    Console.WriteLine($"Image saved under: {Directory.GetCurrentDirectory()}");
+
+    rustPlus.Dispose();
 };
 
 await rustPlus.ConnectAsync();

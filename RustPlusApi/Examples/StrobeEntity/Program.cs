@@ -7,8 +7,8 @@ var entityId = 0;
 
 rustPlus.Connected += async (_, _) =>
 {
-    await rustPlus.StrobeAsync(entityId);
-    rustPlus.Dispose();
+    //await rustPlus.StrobeAsync(entityId);
+    //rustPlus.Dispose();
 };
 
 await rustPlus.ConnectAsync();
