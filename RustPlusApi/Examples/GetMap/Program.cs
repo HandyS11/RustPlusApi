@@ -1,4 +1,6 @@
-﻿using RustPlusApi;
+﻿using Newtonsoft.Json;
+
+using RustPlusApi;
 
 using static __Constants.ExamplesConst;
 
@@ -6,15 +8,18 @@ var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 
 rustPlus.Connected += async (_, _) =>
 {
-    await rustPlus.GetMapAsync(message =>
-    {
-        var imageData = message.Response.Map.JpgImage.ToByteArray();
-        if (imageData == null) return false;
-        File.WriteAllBytes("map.jpg", imageData);
-        Console.WriteLine(@"Saved under .\RustPlusApi\RustPlusApi\Examples\GetMap\bin\Debug\net8.0");
-        rustPlus.Dispose();
-        return true;
-    });
+    var message = await rustPlus.GetMapAsync();
+
+    if (!message.IsSuccess) return;
+
+    File.WriteAllBytes("map.jpg", message.Data?.JpgImage!);
+
+    message.Data!.JpgImage = null;
+    Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+
+    Console.WriteLine($"Image saved under: {Directory.GetCurrentDirectory()}");
+
+    rustPlus.Dispose();
 };
 
 await rustPlus.ConnectAsync();

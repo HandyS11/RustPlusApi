@@ -1,6 +1,9 @@
-﻿using System.Net.WebSockets;
+﻿using System.Diagnostics;
 
-using Google.Protobuf;
+using RustPlusApi.Data;
+using RustPlusApi.Data.Events;
+using RustPlusApi.Extensions;
+using RustPlusApi.Utils;
 
 using RustPlusContracts;
 
@@ -14,278 +17,197 @@ namespace RustPlusApi
     /// <param name="playerId">Your Steam ID.</param>
     /// <param name="playerToken">Your player token acquired with FCM.</param>
     /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
-    public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false) : IDisposable
+    public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false) 
+        : RustPlusLegacy(server, port, playerId, playerToken, useFacepunchProxy)
     {
-        private ClientWebSocket? _webSocket;
-        private uint _seq;
-        private readonly Dictionary<int, Func<AppMessage, bool>> _seqCallbacks = new();
-
-        public event EventHandler? Connecting;
-        public event EventHandler? Connected;
-        public event EventHandler<AppMessage>? MessageReceived;
-        public event EventHandler<AppRequest>? RequestSent;
-        public event EventHandler? Disconnected;
-        public event EventHandler<Exception>? ErrorOccurred;
+        public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered; // Alarm will also be triggered since there is no physical difference between them
+        public event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 
         /// <summary>
-        /// Connects to the Rust+ server asynchronously.
+        /// Parses the notification received from the Rust+ server.
         /// </summary>
-        public async Task ConnectAsync()
+        /// <param name="broadcast">The broadcast received from the server.</param>
+        protected override void ParseNotification(AppBroadcast? broadcast)
         {
-            _webSocket = new ClientWebSocket();
-            _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
-            var address = useFacepunchProxy
-                ? new Uri($"wss://companion-rust.facepunch.com/game/{server}/{port}")
-                : new Uri($"ws://{server}:{port}");
+            if (broadcast is null) return;
 
-            Connecting?.Invoke(this, EventArgs.Empty);
-
-            try
+            if (broadcast.EntityChanged is not null)
             {
-                await _webSocket.ConnectAsync(address, CancellationToken.None);
-                Connected?.Invoke(this, EventArgs.Empty);
-                await ReceiveMessagesAsync();
+                // There is no physical difference between a SmartSwitch and an Alarm
+                // If you check the status of an alarm, it will return the same as a smart switch
+                if (broadcast.EntityChanged.Payload.Capacity is 0)
+                    OnSmartSwitchTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartSwitchEvent());
+                else
+                    OnStorageMonitorTriggered?.Invoke(this, broadcast.EntityChanged.ToStorageMonitorEvent());
             }
-            catch (Exception ex)
+            else
             {
-                ErrorOccurred?.Invoke(this, ex);
-                Disconnect();
+                Debug.WriteLine($"Unknown broadcast:\n{broadcast}");
             }
         }
 
         /// <summary>
-        /// Receives messages from the Rust+ server asynchronously.
+        /// Processes the request asynchronously and returns the result.
         /// </summary>
-        private async Task ReceiveMessagesAsync()
+        /// <typeparam name="T">The type of the result.</typeparam>
+        /// <param name="request">The request to be processed.</param>
+        /// <param name="successSelector">The function to select the result from the response.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
+        private async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
         {
-            const int bufferSize = 1024;
-            var buffer = new byte[bufferSize];
+            var response = await SendRequestAsync(request);
 
-            try
-            {
-                while (_webSocket!.State == WebSocketState.Open)
-                {
-                    var receiveBuffer = new List<byte>();
-                    WebSocketReceiveResult result;
-
-                    do
-                    {
-                        result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                        receiveBuffer.AddRange(buffer.Take(result.Count));
-                    } while (!result.EndOfMessage);
-
-                    var messageData = receiveBuffer.ToArray();
-                    var message = AppMessage.Parser.ParseFrom(messageData);
-                    HandleResponse(message);
-                }
-            }
-            catch (WebSocketException ex)
-            {
-                ErrorOccurred?.Invoke(this, ex);
-            }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke(this, ex);
-            }
+            return IsError(response)
+                ? ResponseHelper.BuildGenericOutput<T>(false, default!, response.Response.Error.Error)
+                : ResponseHelper.BuildGenericOutput(true, successSelector(response));
         }
 
         /// <summary>
-        /// Handles the response received from the Rust+ server.
+        /// Retrieves the information of a smart switch asynchronously.
         /// </summary>
-        /// <param name="message">The AppMessage received from the server.</param>
-        private void HandleResponse(AppMessage message)
-        {
-            if (message.Response != null && message.Response.Seq != 0 && _seqCallbacks.ContainsKey((int)message.Response.Seq))
-            {
-                var callback = _seqCallbacks[(int)message.Response.Seq];
-                var result = callback.Invoke(message);
-                _seqCallbacks.Remove((int)message.Response.Seq);
-                if (result) return;
-            }
-            MessageReceived?.Invoke(this, message);
-        }
-
-        /// <summary>
-        /// Sends a request to the Rust+ server asynchronously.
-        /// </summary>
-        /// <param name="request">The request to send.</param>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        private async Task SendRequestAsync(AppRequest request, Func<AppMessage, bool>? callback = null)
-        {
-            var seq = ++_seq;
-            if (callback != null) _seqCallbacks[(int)seq] = callback;
-
-            request.Seq = seq;
-            request.PlayerId = playerId;
-            request.PlayerToken = playerToken;
-
-            var requestData = request.ToByteArray();
-            var buffer = new ArraySegment<byte>(requestData);
-            await _webSocket!.SendAsync(buffer, WebSocketMessageType.Binary, true, CancellationToken.None);
-            RequestSent?.Invoke(this, request);
-        }
-
-        /// <summary>
-        /// Disconnects from the Rust+ server.
-        /// </summary>
-        private void Disconnect()
-        {
-            if (_webSocket is not { State: WebSocketState.Open }) return;
-
-            _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Connection closed by client.", CancellationToken.None).Wait();
-            _webSocket.Dispose();
-
-            Disconnected?.Invoke(this, EventArgs.Empty);
-        }
-
-        /// <summary>
-        /// Disposes the Rust+ API client and disconnects from the Rust+ server.
-        /// </summary>
-        public void Dispose() => Disconnect();
-
-        /// <summary>
-        /// Checks if the client is connected to the Rust+ server.
-        /// </summary>
-        /// <returns>True if the client is connected; otherwise, false.</returns>
-        public bool IsConnected() => _webSocket is { State: WebSocketState.Open };
-
-        /// <summary>
-        /// Retrieves information about an entity from the Rust+ server asynchronously.
-        /// </summary>
-        /// <param name="entityId">The ID of the entity to retrieve information for.</param>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task GetEntityInfoAsync(int entityId, Func<AppMessage, bool>? callback = null)
+        /// <param name="entityId">The ID of the smart switch entity.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
+        public async Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(uint entityId)
         {
             var request = new AppRequest
             {
-                EntityId = (uint)entityId,
+                EntityId = entityId,
                 GetEntityInfo = new AppEmpty()
             };
-            await SendRequestAsync(request, callback);
+            return await ProcessRequestAsync<SmartSwitchInfo?>(request, r => r.Response.EntityInfo.ToSmartSwitchInfo());
         }
 
         /// <summary>
-        /// Retrieves general information from the Rust+ server asynchronously.
+        /// Retrieves the information of an alarm asynchronously.
         /// </summary>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task GetInfoAsync(Func<AppMessage, bool>? callback = null)
+        /// <param name="entityId">The ID of the alarm entity.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the alarm information.</returns>
+        public async Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId)
+        {
+            var request = new AppRequest
+            {
+                EntityId = entityId,
+                GetEntityInfo = new AppEmpty()
+            };
+            return await ProcessRequestAsync<AlarmInfo?>(request, r => r.Response.EntityInfo.ToAlarmInfo());
+        }
+
+        /// <summary>
+        /// Retrieves the information of a storage monitor asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the storage monitor entity.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the storage monitor information.</returns>
+        public async Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(uint entityId)
+        {
+            var request = new AppRequest
+            {
+                EntityId = entityId,
+                GetEntityInfo = new AppEmpty()
+            };
+            return await ProcessRequestAsync<StorageMonitorInfo?>(request, r => r.Response.EntityInfo.ToStorageMonitorInfo());
+        }
+
+        /// <summary>
+        /// Retrieves the server information asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the server information.</returns>
+        public async Task<Response<ServerInfo?>> GetInfoAsync()
         {
             var request = new AppRequest
             {
                 GetInfo = new AppEmpty()
             };
-            await SendRequestAsync(request, callback);
+            return await ProcessRequestAsync<ServerInfo?>(request, r => r.Response.Info.ToServerInfo());
         }
 
         /// <summary>
-        /// Retrieves the map from the Rust+ server asynchronously.
+        /// Retrieves the server map asynchronously.
         /// </summary>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task GetMapAsync(Func<AppMessage, bool>? callback = null)
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the server map.</returns>
+        public async Task<Response<ServerMap?>> GetMapAsync()
         {
             var request = new AppRequest
             {
                 GetMap = new AppEmpty()
             };
-            await SendRequestAsync(request, callback);
+            return await ProcessRequestAsync<ServerMap?>(request, r => r.Response.Map.ToServerMap());
         }
 
-        /// <summary>
-        /// Retrieves the map markers from the Rust+ server asynchronously.
-        /// </summary>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
+        /*
+        
         public async Task GetMapMarkersAsync(Func<AppMessage, bool>? callback = null)
         {
-            var request = new AppRequest
-            {
-                GetMapMarkers = new AppEmpty()
-            };
-            await SendRequestAsync(request, callback);
+           var request = new AppRequest
+           {
+               GetMapMarkers = new AppEmpty()
+           };
+           await SendRequestAsync(request, callback);
         }
 
-        /// <summary>
-        /// Retrieves team information from the Rust+ server asynchronously.
-        /// </summary>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task GetTeamChatAsync(Func<AppMessage, bool>? callback = null)
+        {
+           var request = new AppRequest
+           {
+               GetTeamChat = new AppEmpty(),
+           };
+           await SendRequestAsync(request, callback);
+        }
+
         public async Task GetTeamInfoAsync(Func<AppMessage, bool>? callback = null)
         {
-            var request = new AppRequest
-            {
-                GetTeamInfo = new AppEmpty()
-            };
-            await SendRequestAsync(request, callback);
+           var request = new AppRequest
+           {
+               GetTeamInfo = new AppEmpty()
+           };
+           await SendRequestAsync(request, callback);
         }
 
-        /// <summary>
-        /// Retrieves the current time from the Rust+ server asynchronously.
-        /// </summary>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
         public async Task GetTimeAsync(Func<AppMessage, bool>? callback = null)
         {
-            var request = new AppRequest
-            {
-                GetTime = new AppEmpty()
-            };
-            await SendRequestAsync(request, callback);
+           var request = new AppRequest
+           {
+               GetTime = new AppEmpty()
+           };
+           await SendRequestAsync(request, callback);
         }
 
-        /// <summary>
-        /// Sends a team message to the Rust+ server asynchronously.
-        /// </summary>
-        /// <param name="message">The message to send.</param>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task PromoteToLeaderAsync(ulong steamId, Func<AppMessage, bool>? callback = null)
+        {
+           var request = new AppRequest
+           {
+               PromoteToLeader = new AppPromoteToLeader
+               {
+                   SteamId = steamId
+               }
+           };
+           await SendRequestAsync(request, callback);
+        }
+
         public async Task SendTeamMessageAsync(string message, Func<AppMessage, bool>? callback = null)
         {
-            var request = new AppRequest
-            {
-                SendTeamMessage = new AppSendMessage
-                {
-                    Message = message
-                }
-            };
-            await SendRequestAsync(request, callback);
+           var request = new AppRequest
+           {
+               SendTeamMessage = new AppSendMessage
+               {
+                   Message = message
+               }
+           };
+           await SendRequestAsync(request, callback);
         }
 
-        /// <summary>
-        /// Sets the value of an entity asynchronously.
-        /// </summary>
-        /// <param name="entityId">The ID of the entity to set the value for.</param>
-        /// <param name="value">The value to set.</param>
-        /// <param name="callback">An optional callback function to handle the response.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
         public async Task SetEntityValueAsync(int entityId, bool value, Func<AppMessage, bool>? callback = null)
         {
-            var request = new AppRequest
-            {
-                EntityId = (uint)entityId,
-                SetEntityValue = new AppSetEntityValue
-                {
-                    Value = value
-                }
-            };
-            await SendRequestAsync(request, callback);
+           var request = new AppRequest
+           {
+               EntityId = (uint)entityId,
+               SetEntityValue = new AppSetEntityValue
+               {
+                   Value = value
+               }
+           };
+           await SendRequestAsync(request, callback);
         }
 
-        /// <summary>
-        /// Toggles the value of an entity repeatedly with a specified timeout.
-        /// </summary>
-        /// <param name="entityId">The ID of the entity to toggle the value for.</param>
-        /// <param name="timeoutMilliseconds">The timeout in milliseconds between toggling the value.</param>
-        /// <param name="value">The initial value to set.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task StrobeAsync(int entityId, int timeoutMilliseconds = 1000, bool value = true)
-        {
-            await SetEntityValueAsync(entityId, value);
-            await Task.Delay(timeoutMilliseconds);
-            await SetEntityValueAsync(entityId, !value);
-        }
+        */
     }
 }
