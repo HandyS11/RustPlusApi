@@ -33,7 +33,7 @@ namespace RustPlusApi
 
             if (broadcast.EntityChanged is not null)
             {
-                // There is no physical difference between aSmartSwitch and an Alarm
+                // There is no physical difference between a SmartSwitch and an Alarm
                 // If you check the status of an alarm, it will return the same as a smart switch
                 if (broadcast.EntityChanged.Payload.Capacity is 0)
                     OnSmartSwitchTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartSwitchEvent());
@@ -59,7 +59,7 @@ namespace RustPlusApi
 
             return IsError(response)
                 ? ResponseHelper.BuildGenericOutput<T>(false, default!, response.Response.Error.Error)
-                : ResponseHelper.BuildGenericOutput<T>(true, successSelector(response));
+                : ResponseHelper.BuildGenericOutput(true, successSelector(response));
         }
 
         /// <summary>
@@ -132,5 +132,82 @@ namespace RustPlusApi
             };
             return await ProcessRequestAsync<ServerMap?>(request, r => r.Response.Map.ToServerMap());
         }
+
+        /*
+        
+        public async Task GetMapMarkersAsync(Func<AppMessage, bool>? callback = null)
+        {
+           var request = new AppRequest
+           {
+               GetMapMarkers = new AppEmpty()
+           };
+           await SendRequestAsync(request, callback);
+        }
+
+        public async Task GetTeamChatAsync(Func<AppMessage, bool>? callback = null)
+        {
+           var request = new AppRequest
+           {
+               GetTeamChat = new AppEmpty(),
+           };
+           await SendRequestAsync(request, callback);
+        }
+
+        public async Task GetTeamInfoAsync(Func<AppMessage, bool>? callback = null)
+        {
+           var request = new AppRequest
+           {
+               GetTeamInfo = new AppEmpty()
+           };
+           await SendRequestAsync(request, callback);
+        }
+
+        public async Task GetTimeAsync(Func<AppMessage, bool>? callback = null)
+        {
+           var request = new AppRequest
+           {
+               GetTime = new AppEmpty()
+           };
+           await SendRequestAsync(request, callback);
+        }
+
+        public async Task PromoteToLeaderAsync(ulong steamId, Func<AppMessage, bool>? callback = null)
+        {
+           var request = new AppRequest
+           {
+               PromoteToLeader = new AppPromoteToLeader
+               {
+                   SteamId = steamId
+               }
+           };
+           await SendRequestAsync(request, callback);
+        }
+
+        public async Task SendTeamMessageAsync(string message, Func<AppMessage, bool>? callback = null)
+        {
+           var request = new AppRequest
+           {
+               SendTeamMessage = new AppSendMessage
+               {
+                   Message = message
+               }
+           };
+           await SendRequestAsync(request, callback);
+        }
+
+        public async Task SetEntityValueAsync(int entityId, bool value, Func<AppMessage, bool>? callback = null)
+        {
+           var request = new AppRequest
+           {
+               EntityId = (uint)entityId,
+               SetEntityValue = new AppSetEntityValue
+               {
+                   Value = value
+               }
+           };
+           await SendRequestAsync(request, callback);
+        }
+
+        */
     }
 }

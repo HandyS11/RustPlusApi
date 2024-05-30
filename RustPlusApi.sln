@@ -33,31 +33,39 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FcmRegister", "RustPlusApi\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FcmListener", "RustPlusApi\Examples\Fcm\FcmListener\FcmListener.csproj", "{5B175E6B-4118-422D-BF08-F94B7337D229}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetTeamChat", "RustPlusApi\Examples\GetTeamChat\GetTeamChat.csproj", "{1A186504-8461-4F19-BDC5-C3DB90A554D6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetTeamChat", "RustPlusApi\Examples\GetTeamChat\GetTeamChat.csproj", "{1A186504-8461-4F19-BDC5-C3DB90A554D6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PromoteToLeader", "RustPlusApi\Examples\PromoteToLeader\PromoteToLeader.csproj", "{3DE93E0D-DAF5-48E7-A353-BD99ABB942DE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PromoteToLeader", "RustPlusApi\Examples\PromoteToLeader\PromoteToLeader.csproj", "{3DE93E0D-DAF5-48E7-A353-BD99ABB942DE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetTeamChatChanges", "RustPlusApi\Examples\GetTeamChatChanges\GetTeamChatChanges.csproj", "{D39626D0-079C-40C6-A260-09852E11C70A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetTeamChatChanges", "RustPlusApi\Examples\GetTeamChatChanges\GetTeamChatChanges.csproj", "{D39626D0-079C-40C6-A260-09852E11C70A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetSmartSwitchInfo", "RustPlusApi\Examples\GetSmartSwitchInfo\GetSmartSwitchInfo.csproj", "{CCC95529-EA3A-4FF3-945A-97151848F6BB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetSmartSwitchInfo", "RustPlusApi\Examples\GetSmartSwitchInfo\GetSmartSwitchInfo.csproj", "{CCC95529-EA3A-4FF3-945A-97151848F6BB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetAlarmInfo", "RustPlusApi\Examples\GetAlarmInfo\GetAlarmInfo.csproj", "{B9E7E802-867B-40E4-BEEE-807735F091E3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetAlarmInfo", "RustPlusApi\Examples\GetAlarmInfo\GetAlarmInfo.csproj", "{B9E7E802-867B-40E4-BEEE-807735F091E3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetStorageMonitorInfo", "RustPlusApi\Examples\GetStorageMonitorInfo\GetStorageMonitorInfo.csproj", "{51CD85C0-0240-4C7C-BBDC-0DCF5234299E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetStorageMonitorInfo", "RustPlusApi\Examples\GetStorageMonitorInfo\GetStorageMonitorInfo.csproj", "{51CD85C0-0240-4C7C-BBDC-0DCF5234299E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Legacy", "Legacy", "{EBB661D0-93FF-4742-AF91-9036027CD136}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetEntityInfoLegacy", "RustPlusApi\Examples\Legacy\GetEntityInfoLegacy\GetEntityInfoLegacy.csproj", "{39EC2C27-0351-4099-A07B-237DD8C73FA6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetEntityInfoLegacy", "RustPlusApi\Examples\Legacy\GetEntityInfoLegacy\GetEntityInfoLegacy.csproj", "{39EC2C27-0351-4099-A07B-237DD8C73FA6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetEntityChangesLegacy", "RustPlusApi\Examples\Legacy\GetEntityChangesLegacy\GetEntityChangesLegacy.csproj", "{443F0C99-2BC7-44CB-9DE8-A292B10B9CE3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetEntityChangesLegacy", "RustPlusApi\Examples\Legacy\GetEntityChangesLegacy\GetEntityChangesLegacy.csproj", "{443F0C99-2BC7-44CB-9DE8-A292B10B9CE3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetInfoLegacy", "RustPlusApi\Examples\Legacy\GetInfoLegacy\GetInfoLegacy.csproj", "{17F33FF0-AFE2-4DE4-81E9-6804A2B210A7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetInfoLegacy", "RustPlusApi\Examples\Legacy\GetInfoLegacy\GetInfoLegacy.csproj", "{17F33FF0-AFE2-4DE4-81E9-6804A2B210A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetMapLegacy", "RustPlusApi\Examples\Legacy\GetMapLegacy\GetMapLegacy.csproj", "{4C4D800C-1DF9-4139-BD7C-2FE0D78FF30C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetMapLegacy", "RustPlusApi\Examples\Legacy\GetMapLegacy\GetMapLegacy.csproj", "{4C4D800C-1DF9-4139-BD7C-2FE0D78FF30C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetSmartSwitchChanges", "RustPlusApi\Examples\GetSmartSwitchChanges\GetSmartSwitchChanges.csproj", "{A7852D6E-9371-4026-B3BE-1BE264718D1D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetSmartSwitchChanges", "RustPlusApi\Examples\GetSmartSwitchChanges\GetSmartSwitchChanges.csproj", "{A7852D6E-9371-4026-B3BE-1BE264718D1D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetStorageMonitorChanges", "RustPlusApi\Examples\GetStorageMonitorChanges\GetStorageMonitorChanges.csproj", "{2E65E71F-1C4E-4813-86C9-C5F5D3E60187}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetStorageMonitorChanges", "RustPlusApi\Examples\GetStorageMonitorChanges\GetStorageMonitorChanges.csproj", "{2E65E71F-1C4E-4813-86C9-C5F5D3E60187}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetMapMarkersLegacy", "RustPlusApi\Examples\Legacy\GetMapMarkersLegacy\GetMapMarkersLegacy.csproj", "{70F7555D-DEC9-45E7-BB64-CB31704A2C0A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetTeamChatLegacy", "RustPlusApi\Examples\Legacy\GetTeamChatLegacy\GetTeamChatLegacy.csproj", "{2223E2FE-9CAA-45DF-9F47-E52371018077}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetTeamInfoLegacy", "RustPlusApi\Examples\Legacy\GetTeamInfoLegacy\GetTeamInfoLegacy.csproj", "{4E63E17B-7FD4-4B58-9F22-265B0EE92672}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetTimeLegacy", "RustPlusApi\Examples\Legacy\GetTimeLegacy\GetTimeLegacy.csproj", "{4255A1A9-C7D8-45F5-81C3-BBCA96886DAA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -165,6 +173,22 @@ Global
 		{2E65E71F-1C4E-4813-86C9-C5F5D3E60187}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2E65E71F-1C4E-4813-86C9-C5F5D3E60187}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2E65E71F-1C4E-4813-86C9-C5F5D3E60187}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70F7555D-DEC9-45E7-BB64-CB31704A2C0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70F7555D-DEC9-45E7-BB64-CB31704A2C0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70F7555D-DEC9-45E7-BB64-CB31704A2C0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70F7555D-DEC9-45E7-BB64-CB31704A2C0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2223E2FE-9CAA-45DF-9F47-E52371018077}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2223E2FE-9CAA-45DF-9F47-E52371018077}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2223E2FE-9CAA-45DF-9F47-E52371018077}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2223E2FE-9CAA-45DF-9F47-E52371018077}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E63E17B-7FD4-4B58-9F22-265B0EE92672}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E63E17B-7FD4-4B58-9F22-265B0EE92672}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E63E17B-7FD4-4B58-9F22-265B0EE92672}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E63E17B-7FD4-4B58-9F22-265B0EE92672}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4255A1A9-C7D8-45F5-81C3-BBCA96886DAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4255A1A9-C7D8-45F5-81C3-BBCA96886DAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4255A1A9-C7D8-45F5-81C3-BBCA96886DAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4255A1A9-C7D8-45F5-81C3-BBCA96886DAA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -195,6 +219,10 @@ Global
 		{4C4D800C-1DF9-4139-BD7C-2FE0D78FF30C} = {EBB661D0-93FF-4742-AF91-9036027CD136}
 		{A7852D6E-9371-4026-B3BE-1BE264718D1D} = {BC948ADE-1674-4955-B27C-F0E96100978E}
 		{2E65E71F-1C4E-4813-86C9-C5F5D3E60187} = {BC948ADE-1674-4955-B27C-F0E96100978E}
+		{70F7555D-DEC9-45E7-BB64-CB31704A2C0A} = {EBB661D0-93FF-4742-AF91-9036027CD136}
+		{2223E2FE-9CAA-45DF-9F47-E52371018077} = {EBB661D0-93FF-4742-AF91-9036027CD136}
+		{4E63E17B-7FD4-4B58-9F22-265B0EE92672} = {EBB661D0-93FF-4742-AF91-9036027CD136}
+		{4255A1A9-C7D8-45F5-81C3-BBCA96886DAA} = {EBB661D0-93FF-4742-AF91-9036027CD136}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A4B4251F-ADA4-418D-95B5-27BA99A307A3}
