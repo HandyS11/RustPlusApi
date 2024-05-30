@@ -120,7 +120,7 @@ enum AppEntityType {
 }
 
 enum AppMarkerType {
-	Undefined = 0;
+	Death = 0;
 	Player = 1;
 	Explosion = 2;
 	VendingMachine = 3;
@@ -255,7 +255,7 @@ message AppMap {
 	optional string background = 6;
 
 	message Monument {
-		required string token = 1;
+		required string name = 1;
 		required float x = 2;
 		required float y = 3;
 	}
@@ -301,7 +301,34 @@ message AppTeamInfo {
 		required int32 type = 2;
 		required float x = 3;
 		required float y = 4;
+		required IconType icon = 5;
+		required IconColor colour = 6;
+		optional string name = 7;
 	}
+}
+
+enum IconType {
+	Default = 0;
+	Money = 1;
+	Home = 2;
+	Drop = 3;
+	Sight = 4;
+	Shield = 5;
+	Skull = 6;
+	Bed = 7;
+	Sleep = 8;
+	Gun = 9;
+	Rock = 10;
+	Chest = 11;
+}
+
+enum IconColor {
+	Yellow = 0;
+	Blue = 1;
+	Green = 2;
+	Red = 3;
+	Purple = 4;
+	Cyan = 5;
 }
 
 message AppTeamMessage {

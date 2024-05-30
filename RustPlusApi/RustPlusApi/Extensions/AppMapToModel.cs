@@ -27,7 +27,7 @@ namespace RustPlusApi.Extensions
         {
             return new ServerMapMonument
             {
-                Token = appMapMonument.Token,
+                Name = appMapMonument.Name,
                 X = appMapMonument.X,
                 Y = appMapMonument.Y
             };

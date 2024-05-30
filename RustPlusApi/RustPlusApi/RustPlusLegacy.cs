@@ -15,6 +15,21 @@ namespace RustPlusApi
         : RustPlusBase(server, port, playerId, playerToken, useFacepunchProxy)
     {
         /// <summary>
+        /// Checks the subscription status for a specific entity in the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the entity to check the subscription for.</param>
+        /// <returns>The subscription status.</returns>
+        public async Task<AppMessage> CheckSubscritionLegacyAsync(uint entityId)
+        {
+            var request = new AppRequest
+            {
+                CheckSubscription = new AppEmpty(),
+                EntityId = entityId
+            };
+            return await SendRequestAsync(request);
+        }
+
+        /// <summary>
         /// Retrieves the clan chat from the Rust+ server asynchronously.
         /// </summary>
         /// <returns>The clan chat.</returns>
@@ -169,6 +184,25 @@ namespace RustPlusApi
                 {
                     Value = value
                 }
+            };
+            return await SendRequestAsync(request);
+        }
+
+        /// <summary>
+        /// Sets the subscription status for a specific entity in the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the entity to set the subscription for.</param>
+        /// <param name="EnablePushNotification">Specifies whether to enable push notifications for the entity. Default is true.</param>
+        /// <returns>The response from the server.</returns>
+        public async Task<AppMessage> SetSubscritionLegacyAsync(uint entityId, bool EnablePushNotification = true)
+        {
+            var request = new AppRequest
+            {
+                SetSubscription = new AppFlag
+                {
+                    Value = EnablePushNotification
+                },
+                EntityId = entityId
             };
             return await SendRequestAsync(request);
         }

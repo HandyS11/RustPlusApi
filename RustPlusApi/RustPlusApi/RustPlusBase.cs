@@ -49,7 +49,7 @@ namespace RustPlusApi
             {
                 await _webSocket.ConnectAsync(address, CancellationToken.None);
                 Connected?.Invoke(this, EventArgs.Empty);
-                await ReceiveMessagesAsync();
+                _ = Task.Run(ReceiveMessagesAsync);
             }
             catch (Exception ex)
             {

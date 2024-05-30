@@ -67,19 +67,25 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetTimeLegacy", "RustPlusAp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PromoteToLeaderLegacy", "RustPlusApi\Examples\Legacy\PromoteToLeader\PromoteToLeaderLegacy.csproj", "{80F46159-40F8-4CA3-90A1-EAE62E6BF2F3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SendTeamMessageLegacy", "RustPlusApi\Examples\Legacy\SendTeamMessageLegacy\SendTeamMessageLegacy.csproj", "{232323AD-2A44-4EF4-AD71-100563083FAD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendTeamMessageLegacy", "RustPlusApi\Examples\Legacy\SendTeamMessageLegacy\SendTeamMessageLegacy.csproj", "{232323AD-2A44-4EF4-AD71-100563083FAD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetTeamChatChangesLegacy", "RustPlusApi\Examples\Legacy\GetTeamChatChangesLegacy\GetTeamChatChangesLegacy.csproj", "{F8EDEF6A-5EF8-4D01-9C6E-FB379ACF9C9E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetTeamChatChangesLegacy", "RustPlusApi\Examples\Legacy\GetTeamChatChangesLegacy\GetTeamChatChangesLegacy.csproj", "{F8EDEF6A-5EF8-4D01-9C6E-FB379ACF9C9E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetClanChatLegacy", "RustPlusApi\Examples\Legacy\GetClanChatLegacy\GetClanChatLegacy.csproj", "{D90102B3-1F28-42C9-AE3D-D19E689C4D4E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetClanChatLegacy", "RustPlusApi\Examples\Legacy\GetClanChatLegacy\GetClanChatLegacy.csproj", "{D90102B3-1F28-42C9-AE3D-D19E689C4D4E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetClanChatChangesLegacy", "RustPlusApi\Examples\Legacy\GetClanChatChangesLegacy\GetClanChatChangesLegacy.csproj", "{248A7713-161F-4A78-9C33-14E5470DFB08}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetClanChatChangesLegacy", "RustPlusApi\Examples\Legacy\GetClanChatChangesLegacy\GetClanChatChangesLegacy.csproj", "{248A7713-161F-4A78-9C33-14E5470DFB08}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SetEntityValueLegacy", "RustPlusApi\Examples\Legacy\SetEntityValueLegacy\SetEntityValueLegacy.csproj", "{F4BB95F4-2171-4087-889D-F65158AFD713}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SetEntityValueLegacy", "RustPlusApi\Examples\Legacy\SetEntityValueLegacy\SetEntityValueLegacy.csproj", "{F4BB95F4-2171-4087-889D-F65158AFD713}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrobeEntityLegacy", "RustPlusApi\Examples\Legacy\StrobeEntityLegacy\StrobeEntityLegacy.csproj", "{9A41A0A3-9FAD-42E2-BD22-E3B4E2DBA161}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StrobeEntityLegacy", "RustPlusApi\Examples\Legacy\StrobeEntityLegacy\StrobeEntityLegacy.csproj", "{9A41A0A3-9FAD-42E2-BD22-E3B4E2DBA161}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ToggleEntityLegacy", "RustPlusApi\Examples\Legacy\ToggleEntityLegacy\ToggleEntityLegacy.csproj", "{172AAEAA-0F46-457C-9494-8BBEE5377D66}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ToggleEntityLegacy", "RustPlusApi\Examples\Legacy\ToggleEntityLegacy\ToggleEntityLegacy.csproj", "{172AAEAA-0F46-457C-9494-8BBEE5377D66}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SetSubscriptionLegacy", "RustPlusApi\Examples\Legacy\SetSubscriptionLegacy\SetSubscriptionLegacy.csproj", "{135FF8CD-4561-4DD8-897F-A5B898DCAF17}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CheckSubscritionLegacy", "RustPlusApi\Examples\Legacy\CheckSubscritionLegacy\CheckSubscritionLegacy.csproj", "{846C0B38-B7F8-454C-9E3C-40DC15E0D390}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "__Events", "RustPlusApi\Examples\Legacy\__Events\__Events.csproj", "{630A388E-41EC-4AC1-9737-61759BA40164}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -231,6 +237,18 @@ Global
 		{172AAEAA-0F46-457C-9494-8BBEE5377D66}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{172AAEAA-0F46-457C-9494-8BBEE5377D66}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{172AAEAA-0F46-457C-9494-8BBEE5377D66}.Release|Any CPU.Build.0 = Release|Any CPU
+		{135FF8CD-4561-4DD8-897F-A5B898DCAF17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{135FF8CD-4561-4DD8-897F-A5B898DCAF17}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{135FF8CD-4561-4DD8-897F-A5B898DCAF17}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{135FF8CD-4561-4DD8-897F-A5B898DCAF17}.Release|Any CPU.Build.0 = Release|Any CPU
+		{846C0B38-B7F8-454C-9E3C-40DC15E0D390}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{846C0B38-B7F8-454C-9E3C-40DC15E0D390}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{846C0B38-B7F8-454C-9E3C-40DC15E0D390}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{846C0B38-B7F8-454C-9E3C-40DC15E0D390}.Release|Any CPU.Build.0 = Release|Any CPU
+		{630A388E-41EC-4AC1-9737-61759BA40164}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{630A388E-41EC-4AC1-9737-61759BA40164}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{630A388E-41EC-4AC1-9737-61759BA40164}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{630A388E-41EC-4AC1-9737-61759BA40164}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -272,6 +290,9 @@ Global
 		{F4BB95F4-2171-4087-889D-F65158AFD713} = {EBB661D0-93FF-4742-AF91-9036027CD136}
 		{9A41A0A3-9FAD-42E2-BD22-E3B4E2DBA161} = {EBB661D0-93FF-4742-AF91-9036027CD136}
 		{172AAEAA-0F46-457C-9494-8BBEE5377D66} = {EBB661D0-93FF-4742-AF91-9036027CD136}
+		{135FF8CD-4561-4DD8-897F-A5B898DCAF17} = {EBB661D0-93FF-4742-AF91-9036027CD136}
+		{846C0B38-B7F8-454C-9E3C-40DC15E0D390} = {EBB661D0-93FF-4742-AF91-9036027CD136}
+		{630A388E-41EC-4AC1-9737-61759BA40164} = {EBB661D0-93FF-4742-AF91-9036027CD136}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A4B4251F-ADA4-418D-95B5-27BA99A307A3}
