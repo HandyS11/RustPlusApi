@@ -7,9 +7,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\RustPlusApi\RustPlusApi.csproj" />
-    <ProjectReference Include="..\__Constants\__Constants.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\RustPlusApi\RustPlusApi.csproj" />
+		<ProjectReference Include="..\__Constants\__Constants.csproj" />
+	</ItemGroup>
 
 </Project>

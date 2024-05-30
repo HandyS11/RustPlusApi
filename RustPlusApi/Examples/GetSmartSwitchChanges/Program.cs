@@ -5,17 +5,18 @@ using RustPlusApi;
 using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
-uint entityId = 0;
+const uint entityId = 0;
 
 rustPlus.Connected += async (_, _) =>
 {
-    // The message would be SmartSwitchInfo, AlarmInfo, or StorageMonitorInfo
-    // If you want to do your own parsing you can set the useRawObject parameter to true
-    var message = await rustPlus.GetEntityInfoAsync(entityId);
+    var message = await rustPlus.GetSmartSwitchInfoAsync(entityId);
 
     Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+};
 
-    rustPlus.Dispose();
+rustPlus.OnSmartSwitchTriggered += (_, message) =>
+{
+    Console.WriteLine($"SmartSwitch:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
 };
 
 await rustPlus.ConnectAsync();

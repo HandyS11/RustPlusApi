@@ -1,4 +1,6 @@
 ﻿using Newtonsoft.Json;
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable FieldCanBeMadeReadOnly.Global
 
 namespace __Constants
 {
