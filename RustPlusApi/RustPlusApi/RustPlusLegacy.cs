@@ -11,9 +11,22 @@ namespace RustPlusApi
     /// <param name="playerId">Your Steam ID.</param>
     /// <param name="playerToken">Your player token acquired with FCM.</param>
     /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
-    public class RustPlusLegacy(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false) 
+    public class RustPlusLegacy(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false)
         : RustPlusBase(server, port, playerId, playerToken, useFacepunchProxy)
     {
+        /// <summary>
+        /// Retrieves the clan chat from the Rust+ server asynchronously.
+        /// </summary>
+        /// <returns>The clan chat.</returns>
+        public async Task<AppMessage> GetClanChatLegacyAsync()
+        {
+            var request = new AppRequest
+            {
+                GetClanChat = new AppEmpty()
+            };
+            return await SendRequestAsync(request);
+        }
+
         /// <summary>
         /// Retrieves information about an entity from the Rust+ server asynchronously.
         /// </summary>
@@ -67,7 +80,7 @@ namespace RustPlusApi
             };
             return await SendRequestAsync(request);
         }
-        
+
         /// <summary>
         /// Retrieves the team chat from the Rust+ server asynchronously.
         /// </summary>
@@ -76,7 +89,7 @@ namespace RustPlusApi
         {
             var request = new AppRequest
             {
-                GetTeamChat = new AppEmpty(),
+                GetTeamChat = new AppEmpty()
             };
             return await SendRequestAsync(request);
         }
@@ -166,10 +179,22 @@ namespace RustPlusApi
         /// <param name="entityId">The ID of the entity.</param>
         /// <param name="timeoutMilliseconds">The timeout in milliseconds.</param>
         /// <param name="value">The value to set.</param>
-        public async void StrobeLegacyAsync(uint entityId, int timeoutMilliseconds = 1000, bool value = true)
+        public async Task StrobeEntityLegacyAsync(uint entityId, int timeoutMilliseconds = 1000, bool value = true)
         {
             await SetEntityValueLegacyAsync(entityId, value);
             await Task.Delay(timeoutMilliseconds);
+            await SetEntityValueLegacyAsync(entityId, !value);
+        }
+
+        /// <summary>
+        /// Toggles the value of an entity in the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the entity.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public async Task ToogleEntityValueLegacyAsync(uint entityId)
+        {
+            var entityInfo = await GetEntityInfoLegacyAsync(entityId);
+            var value = entityInfo.Response.EntityInfo.Payload.Value;
             await SetEntityValueLegacyAsync(entityId, !value);
         }
     }

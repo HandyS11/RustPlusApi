@@ -11,7 +11,7 @@ namespace __Constants
         public const ulong PlayerId = 0;
         public const int PlayerToken = 0;
 
-        public static JsonSerializerSettings JsonSettings = new()
+        public static readonly JsonSerializerSettings JsonSettings = new()
         {
             NullValueHandling = NullValueHandling.Ignore,
             Formatting = Formatting.Indented,

@@ -11,8 +11,13 @@ rustPlus.Connected += async (_, _) =>
     var message = await rustPlus.GetTeamChatLegacyAsync();
 
     Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+};
 
-    rustPlus.Dispose();
+rustPlus.MessageReceived += (_, message) =>
+{
+    if (message.Broadcast is not { TeamMessage: not null }) return;
+
+    Console.WriteLine($"Message:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
 };
 
 await rustPlus.ConnectAsync();

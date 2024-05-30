@@ -1,16 +1,15 @@
-﻿using Newtonsoft.Json;
-
-using RustPlusApi;
+﻿using RustPlusApi;
 
 using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlusLegacy(Ip, Port, PlayerId, PlayerToken);
+const uint entityId = 0;
 
 rustPlus.Connected += async (_, _) =>
 {
-    var message = await rustPlus.GetTeamChatLegacyAsync();
+    await rustPlus.StrobeEntityLegacyAsync(entityId);
 
-    Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+    Console.WriteLine($"Strobed entity: {entityId}");
 
     rustPlus.Dispose();
 };

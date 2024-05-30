@@ -11,5 +11,4 @@
 		<ProjectReference Include="..\..\..\RustPlusApi\RustPlusApi.csproj" />
 		<ProjectReference Include="..\..\__Constants\__Constants.csproj" />
 	</ItemGroup>
-
 </Project>
