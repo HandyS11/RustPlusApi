@@ -8,7 +8,7 @@ var rustPlus = new RustPlusLegacy(Ip, Port, PlayerId, PlayerToken);
 
 rustPlus.Connected += async (_, _) =>
 {
-    var message = await rustPlus.GetInfoLegacyAsync();
+    var message = await rustPlus.GetTeamChatLegacyAsync();
 
     Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
 

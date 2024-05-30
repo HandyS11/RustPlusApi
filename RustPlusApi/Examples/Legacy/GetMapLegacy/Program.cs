@@ -2,7 +2,7 @@
 
 using static __Constants.ExamplesConst;
 
-var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
+var rustPlus = new RustPlusLegacy(Ip, Port, PlayerId, PlayerToken);
 
 rustPlus.Connected += async (_, _) =>
 {
