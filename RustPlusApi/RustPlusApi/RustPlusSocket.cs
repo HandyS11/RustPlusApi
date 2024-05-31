@@ -192,8 +192,6 @@ namespace RustPlusApi
                 await Task.Delay(50, CancellationToken.None);
             }
 
-            _cancellationTokenSource.Cancel();
-
             // For some reason I have to wait
             await Task.Delay(1000, CancellationToken.None).ContinueWith(async (t) =>
             {
