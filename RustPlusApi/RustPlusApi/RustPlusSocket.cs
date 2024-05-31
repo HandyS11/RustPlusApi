@@ -29,7 +29,8 @@ namespace RustPlusApi
         private readonly ConcurrentQueue<AppRequest> _sendQueue = new();
         private readonly ConcurrentQueue<TaskCompletionSource<AppMessage>> _responseQueue = new();
 
-        private readonly CancellationToken _cancellationToken = new CancellationTokenSource().Token;
+        private readonly CancellationTokenSource _cancellationTokenSource = new();
+        private CancellationToken _cancellationToken;
 
         public event EventHandler? Connecting;
         public event EventHandler? Connected;
@@ -67,6 +68,8 @@ namespace RustPlusApi
 
                 _ = Task.Run(ReceiveAsync, _cancellationToken);
                 _ = Task.Run(ProcessSendQueueAsync, _cancellationToken);
+
+                _cancellationToken = _cancellationTokenSource.Token;
 
                 Connected?.Invoke(this, EventArgs.Empty);
             }
@@ -189,10 +192,12 @@ namespace RustPlusApi
                 await Task.Delay(50, CancellationToken.None);
             }
 
+            _cancellationTokenSource.Cancel();
+
             // For some reason I have to wait
             await Task.Delay(1000, CancellationToken.None).ContinueWith(async (t) =>
             {
-                await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, _cancellationToken);
+                await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
             }, CancellationToken.None);
 
             Disconnected?.Invoke(this, EventArgs.Empty);
