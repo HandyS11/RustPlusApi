@@ -97,6 +97,23 @@ namespace RustPlusApi
         }
 
         /// <summary>
+        /// Retrieves the Nexus authentication from the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="apiKey">The API key for Nexus authentication.</param>
+        /// <returns>The Nexus authentication response.</returns>
+        public async Task<AppMessage> GetNexusAuthLegacyAsync(string apiKey)
+        {
+            var request = new AppRequest
+            {
+                GetNexusAuth = new AppGetNexusAuth
+                {
+                    AppKey = apiKey,
+                },
+            };
+            return await SendRequestAsync(request);
+        }
+
+        /// <summary>
         /// Retrieves the team chat from the Rust+ server asynchronously.
         /// </summary>
         /// <returns>The team chat.</returns>
@@ -162,6 +179,23 @@ namespace RustPlusApi
             var request = new AppRequest
             {
                 SendTeamMessage = new AppSendMessage
+                {
+                    Message = message
+                }
+            };
+            return await SendRequestAsync(request);
+        }
+
+        /// <summary>
+        /// Sets the Clan Message of the Day (MOTD) in the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="message">The message to set as the Clan MOTD.</param>
+        /// <returns>The response from the server.</returns>
+        public async Task<AppMessage> SetClanMotdLegacyAsync(string message)
+        {
+            var request = new AppRequest
+            {
+                SetClanMotd = new AppSendMessage
                 {
                     Message = message
                 }

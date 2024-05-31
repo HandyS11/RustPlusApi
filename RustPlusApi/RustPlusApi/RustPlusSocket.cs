@@ -180,14 +180,14 @@ namespace RustPlusApi
         /// Disconnects from the Rust+ server asynchronously.
         /// </summary>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task DisconnectAsync()
+        public async Task DisconnectAsync(bool forceClose = false)
         {
             if (!IsConnected()) return;
 
             Disconnecting?.Invoke(this, EventArgs.Empty);
 
             // Not sure about that
-            while (!_responseQueue.IsEmpty)
+            while (!_responseQueue.IsEmpty && !forceClose)
             {
                 await Task.Delay(50, CancellationToken.None);
             }
