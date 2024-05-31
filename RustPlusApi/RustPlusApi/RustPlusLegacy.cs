@@ -12,8 +12,23 @@ namespace RustPlusApi
     /// <param name="playerToken">Your player token acquired with FCM.</param>
     /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
     public class RustPlusLegacy(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false)
-        : RustPlusBase(server, port, playerId, playerToken, useFacepunchProxy)
+        : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy)
     {
+        /// <summary>
+        /// Checks the subscription status for a specific entity in the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the entity to check the subscription for.</param>
+        /// <returns>The subscription status.</returns>
+        public async Task<AppMessage> CheckSubscriptionLegacyAsync(uint entityId)
+        {
+            var request = new AppRequest
+            {
+                CheckSubscription = new AppEmpty(),
+                EntityId = entityId
+            };
+            return await SendRequestAsync(request);
+        }
+
         /// <summary>
         /// Retrieves the clan chat from the Rust+ server asynchronously.
         /// </summary>
@@ -174,6 +189,25 @@ namespace RustPlusApi
         }
 
         /// <summary>
+        /// Sets the subscription status for a specific entity in the Rust+ server asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the entity to set the subscription for.</param>
+        /// <param name="enablePushNotification">Specifies whether to enable push notifications for the entity. Default is true.</param>
+        /// <returns>The response from the server.</returns>
+        public async Task<AppMessage> SetSubscriptionLegacyAsync(uint entityId, bool enablePushNotification = true)
+        {
+            var request = new AppRequest
+            {
+                SetSubscription = new AppFlag
+                {
+                    Value = enablePushNotification
+                },
+                EntityId = entityId
+            };
+            return await SendRequestAsync(request);
+        }
+
+        /// <summary>
         /// Strobes an entity in the Rust+ server asynchronously.
         /// </summary>
         /// <param name="entityId">The ID of the entity.</param>
@@ -191,7 +225,7 @@ namespace RustPlusApi
         /// </summary>
         /// <param name="entityId">The ID of the entity.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task ToogleEntityValueLegacyAsync(uint entityId)
+        public async Task ToggleEntityValueLegacyAsync(uint entityId)
         {
             var entityInfo = await GetEntityInfoLegacyAsync(entityId);
             var value = entityInfo.Response.EntityInfo.Payload.Value;

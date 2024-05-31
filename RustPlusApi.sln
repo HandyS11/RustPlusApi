@@ -81,6 +81,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrobeEntityLegacy", "RustP
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ToggleEntityLegacy", "RustPlusApi\Examples\Legacy\ToggleEntityLegacy\ToggleEntityLegacy.csproj", "{172AAEAA-0F46-457C-9494-8BBEE5377D66}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SetSubscriptionLegacy", "RustPlusApi\Examples\Legacy\SetSubscriptionLegacy\SetSubscriptionLegacy.csproj", "{135FF8CD-4561-4DD8-897F-A5B898DCAF17}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CheckSubscriptionLegacy", "RustPlusApi\Examples\Legacy\CheckSubscritionLegacy\CheckSubscriptionLegacy.csproj", "{846C0B38-B7F8-454C-9E3C-40DC15E0D390}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "__Events", "RustPlusApi\Examples\Legacy\__Events\__Events.csproj", "{630A388E-41EC-4AC1-9737-61759BA40164}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -231,6 +237,18 @@ Global
 		{172AAEAA-0F46-457C-9494-8BBEE5377D66}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{172AAEAA-0F46-457C-9494-8BBEE5377D66}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{172AAEAA-0F46-457C-9494-8BBEE5377D66}.Release|Any CPU.Build.0 = Release|Any CPU
+		{135FF8CD-4561-4DD8-897F-A5B898DCAF17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{135FF8CD-4561-4DD8-897F-A5B898DCAF17}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{135FF8CD-4561-4DD8-897F-A5B898DCAF17}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{135FF8CD-4561-4DD8-897F-A5B898DCAF17}.Release|Any CPU.Build.0 = Release|Any CPU
+		{846C0B38-B7F8-454C-9E3C-40DC15E0D390}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{846C0B38-B7F8-454C-9E3C-40DC15E0D390}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{846C0B38-B7F8-454C-9E3C-40DC15E0D390}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{846C0B38-B7F8-454C-9E3C-40DC15E0D390}.Release|Any CPU.Build.0 = Release|Any CPU
+		{630A388E-41EC-4AC1-9737-61759BA40164}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{630A388E-41EC-4AC1-9737-61759BA40164}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{630A388E-41EC-4AC1-9737-61759BA40164}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{630A388E-41EC-4AC1-9737-61759BA40164}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -272,6 +290,9 @@ Global
 		{F4BB95F4-2171-4087-889D-F65158AFD713} = {EBB661D0-93FF-4742-AF91-9036027CD136}
 		{9A41A0A3-9FAD-42E2-BD22-E3B4E2DBA161} = {EBB661D0-93FF-4742-AF91-9036027CD136}
 		{172AAEAA-0F46-457C-9494-8BBEE5377D66} = {EBB661D0-93FF-4742-AF91-9036027CD136}
+		{135FF8CD-4561-4DD8-897F-A5B898DCAF17} = {EBB661D0-93FF-4742-AF91-9036027CD136}
+		{846C0B38-B7F8-454C-9E3C-40DC15E0D390} = {EBB661D0-93FF-4742-AF91-9036027CD136}
+		{630A388E-41EC-4AC1-9737-61759BA40164} = {EBB661D0-93FF-4742-AF91-9036027CD136}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A4B4251F-ADA4-418D-95B5-27BA99A307A3}
