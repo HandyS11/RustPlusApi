@@ -181,16 +181,20 @@ namespace RustPlusApi
             return await ProcessRequestAsync<TeamChatInfo?>(request, r => r.Response.TeamChat.ToTeamChatInfo());
         }
 
-        /*
-        public async Task GetTeamInfoAsync(Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Retrieves the team information asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the team information.</returns>
+        public async Task<Response<TeamInfo?>> GetTeamInfoAsync()
         {
-           var request = new AppRequest
-           {
-               GetTeamInfo = new AppEmpty()
-           };
-           await SendRequestAsync(request, callback);
+            var request = new AppRequest
+            {
+                GetTeamInfo = new AppEmpty()
+            };
+            return await ProcessRequestAsync<TeamInfo?>(request, r => r.Response.TeamInfo.ToTeamInfo());
         }
 
+        /*
         public async Task GetTimeAsync(Func<AppMessage, bool>? callback = null)
         {
            var request = new AppRequest

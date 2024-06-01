@@ -23,7 +23,7 @@ namespace RustPlusApi.Extensions
                 Capacity = entityChanged.Payload.Capacity,
                 HasProtection = entityChanged.Payload.HasProtection,
                 ProtectionExpiry = DateTimeOffset.FromUnixTimeSeconds(entityChanged.Payload.ProtectionExpiry).UtcDateTime,
-                Items = entityChanged.Payload.Items.ToStorageMonitorItemsInfo().ToList()
+                Items = entityChanged.Payload.Items.ToStorageMonitorItemsInfo()
             };
         }
     }
