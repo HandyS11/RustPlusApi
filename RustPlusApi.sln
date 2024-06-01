@@ -85,11 +85,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SetSubscriptionLegacy", "Ru
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CheckSubscriptionLegacy", "RustPlusApi\Examples\Legacy\CheckSubscritionLegacy\CheckSubscriptionLegacy.csproj", "{846C0B38-B7F8-454C-9E3C-40DC15E0D390}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "__Events", "RustPlusApi\Examples\Legacy\__Events\__Events.csproj", "{630A388E-41EC-4AC1-9737-61759BA40164}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "__Events", "RustPlusApi\Examples\Legacy\__Events\__Events.csproj", "{630A388E-41EC-4AC1-9737-61759BA40164}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GetNexusAuthLegacy", "RustPlusApi\Examples\Legacy\GetNexusAuthLegacy\GetNexusAuthLegacy.csproj", "{54E876DD-3A7F-40B7-A46F-CADE857E70FC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GetNexusAuthLegacy", "RustPlusApi\Examples\Legacy\GetNexusAuthLegacy\GetNexusAuthLegacy.csproj", "{54E876DD-3A7F-40B7-A46F-CADE857E70FC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SetClanMotdLegacy", "RustPlusApi\Examples\Legacy\SetClanMotdLegacy\SetClanMotdLegacy.csproj", "{5367015E-E15F-4A3A-BB23-55BAA8E0475E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SetClanMotdLegacy", "RustPlusApi\Examples\Legacy\SetClanMotdLegacy\SetClanMotdLegacy.csproj", "{5367015E-E15F-4A3A-BB23-55BAA8E0475E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CheckSubscription", "RustPlusApi\Examples\CheckSubscription\CheckSubscription.csproj", "{8B282E8C-56D7-4642-BF6C-42A286864FA1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -261,6 +263,10 @@ Global
 		{5367015E-E15F-4A3A-BB23-55BAA8E0475E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5367015E-E15F-4A3A-BB23-55BAA8E0475E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5367015E-E15F-4A3A-BB23-55BAA8E0475E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B282E8C-56D7-4642-BF6C-42A286864FA1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B282E8C-56D7-4642-BF6C-42A286864FA1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B282E8C-56D7-4642-BF6C-42A286864FA1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B282E8C-56D7-4642-BF6C-42A286864FA1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -307,6 +313,7 @@ Global
 		{630A388E-41EC-4AC1-9737-61759BA40164} = {EBB661D0-93FF-4742-AF91-9036027CD136}
 		{54E876DD-3A7F-40B7-A46F-CADE857E70FC} = {EBB661D0-93FF-4742-AF91-9036027CD136}
 		{5367015E-E15F-4A3A-BB23-55BAA8E0475E} = {EBB661D0-93FF-4742-AF91-9036027CD136}
+		{8B282E8C-56D7-4642-BF6C-42A286864FA1} = {BC948ADE-1674-4955-B27C-F0E96100978E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A4B4251F-ADA4-418D-95B5-27BA99A307A3}
