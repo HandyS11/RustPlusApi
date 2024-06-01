@@ -17,7 +17,7 @@ namespace RustPlusApi
     /// <param name="playerId">Your Steam ID.</param>
     /// <param name="playerToken">Your player token acquired with FCM.</param>
     /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
-    public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false) 
+    public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false)
         : RustPlusLegacy(server, port, playerId, playerToken, useFacepunchProxy)
     {
         public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered; // Alarm will also be triggered since there is no physical difference between them
@@ -53,7 +53,7 @@ namespace RustPlusApi
         /// <param name="request">The request to be processed.</param>
         /// <param name="successSelector">The function to select the result from the response.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
-        private async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
+        public async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
         {
             var response = await SendRequestAsync(request);
 
@@ -63,18 +63,20 @@ namespace RustPlusApi
         }
 
         /// <summary>
-        /// Retrieves the information of a smart switch asynchronously.
+        /// Retrieves the information of an entity asynchronously.
         /// </summary>
-        /// <param name="entityId">The ID of the smart switch entity.</param>
-        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
-        public async Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(uint entityId)
+        /// <typeparam name="T">The type of the entity information.</typeparam>
+        /// <param name="entityId">The ID of the entity.</param>
+        /// <param name="selector">The function to select the entity information from the response.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the entity information.</returns>
+        private async Task<Response<T?>> GetEntityInfoAsync<T>(uint entityId, Func<AppMessage, T> selector)
         {
             var request = new AppRequest
             {
                 EntityId = entityId,
                 GetEntityInfo = new AppEmpty()
             };
-            return await ProcessRequestAsync<SmartSwitchInfo?>(request, r => r.Response.EntityInfo.ToSmartSwitchInfo());
+            return await ProcessRequestAsync(request, selector);
         }
 
         /// <summary>
@@ -82,14 +84,19 @@ namespace RustPlusApi
         /// </summary>
         /// <param name="entityId">The ID of the alarm entity.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the alarm information.</returns>
-        public async Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId)
+        public Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId)
         {
-            var request = new AppRequest
-            {
-                EntityId = entityId,
-                GetEntityInfo = new AppEmpty()
-            };
-            return await ProcessRequestAsync<AlarmInfo?>(request, r => r.Response.EntityInfo.ToAlarmInfo());
+            return GetEntityInfoAsync<AlarmInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo());
+        }
+
+        /// <summary>
+        /// Retrieves the information of a smart switch asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the smart switch entity.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
+        public Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(uint entityId)
+        {
+            return GetEntityInfoAsync<SmartSwitchInfo?>(entityId, r => r.Response.EntityInfo.ToSmartSwitchInfo());
         }
 
         /// <summary>
@@ -97,14 +104,9 @@ namespace RustPlusApi
         /// </summary>
         /// <param name="entityId">The ID of the storage monitor entity.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the storage monitor information.</returns>
-        public async Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(uint entityId)
+        public Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(uint entityId)
         {
-            var request = new AppRequest
-            {
-                EntityId = entityId,
-                GetEntityInfo = new AppEmpty()
-            };
-            return await ProcessRequestAsync<StorageMonitorInfo?>(request, r => r.Response.EntityInfo.ToStorageMonitorInfo());
+            return GetEntityInfoAsync<StorageMonitorInfo?>(entityId, r => r.Response.EntityInfo.ToStorageMonitorInfo());
         }
 
         /// <summary>
