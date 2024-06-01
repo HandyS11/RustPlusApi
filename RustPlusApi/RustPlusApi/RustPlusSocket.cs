@@ -30,7 +30,7 @@ namespace RustPlusApi
         private readonly ConcurrentQueue<TaskCompletionSource<AppMessage>> _responseQueue = new();
 
         private readonly CancellationTokenSource _cancellationTokenSource = new();
-        private CancellationToken _cancellationToken;
+        private CancellationToken _cancellationToken => _cancellationTokenSource.Token;
 
         public event EventHandler? Connecting;
         public event EventHandler? Connected;
@@ -66,10 +66,8 @@ namespace RustPlusApi
             {
                 await _webSocket.ConnectAsync(uri, CancellationToken.None);
 
-                _ = Task.Run(ReceiveAsync, _cancellationToken);
-                _ = Task.Run(ProcessSendQueueAsync, _cancellationToken);
-
-                _cancellationToken = _cancellationTokenSource.Token;
+                _ = Task.Run(ReceiveAsync, CancellationToken.None);
+                _ = Task.Run(ProcessSendQueueAsync, CancellationToken.None);
 
                 Connected?.Invoke(this, EventArgs.Empty);
             }
@@ -110,14 +108,14 @@ namespace RustPlusApi
         /// <returns>A task representing the asynchronous operation.</returns>
         private async Task ProcessSendQueueAsync()
         {
-            while (IsConnected())
+            while (IsConnected() && !_cancellationToken.IsCancellationRequested)
             {
                 if (_sendQueue.TryDequeue(out var request))
                 {
                     var buffer = request.ToByteArray();
-                    await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true, _cancellationToken);
+                    await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true, CancellationToken.None);
                 }
-                await Task.Delay(100, _cancellationToken);
+                await Task.Delay(100, CancellationToken.None);
             }
         }
 
@@ -130,8 +128,11 @@ namespace RustPlusApi
             const int bufferSize = 1024;
             var buffer = new byte[bufferSize];
 
-            while (IsConnected())
+            Debug.WriteLine("Receiving data from the Rust+ server...");
+
+            while (IsConnected() && !_cancellationToken.IsCancellationRequested)
             {
+                Debug.WriteLine("Waiting for data...");
                 try
                 {
                     var receiveBuffer = new List<byte>();
@@ -139,28 +140,37 @@ namespace RustPlusApi
 
                     do
                     {
-                        result = await _webSocket!.ReceiveAsync(new ArraySegment<byte>(buffer), _cancellationToken);
+                        result = await _webSocket!.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
                         receiveBuffer.AddRange(buffer.Take(result.Count));
                     } while (!result.EndOfMessage);
 
                     var messageData = receiveBuffer.ToArray();
                     var message = AppMessage.Parser.ParseFrom(messageData);
 
+                    Debug.WriteLine($"Received message:\n{message}");
                     MessageReceived?.Invoke(this, message);
 
-                    if (message.Response?.Seq == 0)
+                    if (message.Broadcast is not null)
                     {
+                        Debug.WriteLine($"Received notification:\n{message}");
                         NotificationReceived?.Invoke(this, message);
                         ParseNotification(message.Broadcast);
                     }
                     else
+                    {
+                        Debug.WriteLine($"Received response:\n{message}");
                         ResponseReceived?.Invoke(this, message);
+                    }
 
-                    if (_responseQueue.TryDequeue(out var tcs))
-                        tcs.SetResult(message);
+                    _ = Task.Run(() =>
+                    {
+                        if (_responseQueue.TryDequeue(out var tcs))
+                            tcs.SetResult(message);
+                    });
                 }
                 catch (OperationCanceledException)
                 {
+                    Debug.WriteLine("Operation canceled.");
                     break;
                 }
                 catch (WebSocketException ex)
@@ -174,6 +184,7 @@ namespace RustPlusApi
                     ErrorOccurred?.Invoke(this, ex);
                 }
             }
+            Debug.WriteLine("Receive loop exited.");
         }
 
         /// <summary>
