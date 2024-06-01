@@ -195,19 +195,19 @@ namespace RustPlusContracts {
             "c3RQbHVzQ29udHJhY3RzLlZlY3RvcjMSKAoEc2l6ZRgFIAIoCzIaLlJ1c3RQ",
             "bHVzQ29udHJhY3RzLlZlY3RvcjMSDAoEbmFtZRgGIAEoCSIiCgpFbnRpdHlU",
             "eXBlEggKBFRyZWUQARIKCgZQbGF5ZXIQAio6Cg1BcHBFbnRpdHlUeXBlEgoK",
-            "BlN3aXRjaBABEgkKBUFsYXJtEAISEgoOU3RvcmFnZU1vbml0b3IQAyqWAQoN",
-            "QXBwTWFya2VyVHlwZRIJCgVEZWF0aBAAEgoKBlBsYXllchABEg0KCUV4cGxv",
-            "c2lvbhACEhIKDlZlbmRpbmdNYWNoaW5lEAMSCAoEQ0g0NxAEEg0KCUNhcmdv",
-            "U2hpcBAFEgkKBUNyYXRlEAYSEQoNR2VuZXJpY1JhZGl1cxAHEhQKEFBhdHJv",
-            "bEhlbGljb3B0ZXIQCCqKAQoISWNvblR5cGUSCwoHRGVmYXVsdBAAEgkKBU1v",
-            "bmV5EAESCAoESG9tZRACEggKBERyb3AQAxIJCgVTaWdodBAEEgoKBlNoaWVs",
-            "ZBAFEgkKBVNrdWxsEAYSBwoDQmVkEAcSCQoFU2xlZXAQCBIHCgNHdW4QCRII",
-            "CgRSb2NrEAoSCQoFQ2hlc3QQCypLCglJY29uQ29sb3ISCgoGWWVsbG93EAAS",
-            "CAoEQmx1ZRABEgkKBUdyZWVuEAISBwoDUmVkEAMSCgoGUHVycGxlEAQSCAoE",
-            "Q3lhbhAF"));
+            "BlN3aXRjaBABEgkKBUFsYXJtEAISEgoOU3RvcmFnZU1vbml0b3IQAyqKAQoI",
+            "SWNvblR5cGUSCwoHRGVmYXVsdBAAEgkKBU1vbmV5EAESCAoESG9tZRACEggK",
+            "BERyb3AQAxIJCgVTaWdodBAEEgoKBlNoaWVsZBAFEgkKBVNrdWxsEAYSBwoD",
+            "QmVkEAcSCQoFU2xlZXAQCBIHCgNHdW4QCRIICgRSb2NrEAoSCQoFQ2hlc3QQ",
+            "CypLCglJY29uQ29sb3ISCgoGWWVsbG93EAASCAoEQmx1ZRABEgkKBUdyZWVu",
+            "EAISBwoDUmVkEAMSCgoGUHVycGxlEAQSCAoEQ3lhbhAFKpcBCg1BcHBNYXJr",
+            "ZXJUeXBlEgoKBlVua25vdxAAEgoKBlBsYXllchABEg0KCUV4cGxvc2lvbhAC",
+            "EhIKDlZlbmRpbmdNYWNoaW5lEAMSCAoEQ0g0NxAEEg0KCUNhcmdvU2hpcBAF",
+            "EgkKBUNyYXRlEAYSEQoNR2VuZXJpY1JhZGl1cxAHEhQKEFBhdHJvbEhlbGlj",
+            "b3B0ZXIQCA=="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
-          new pbr::GeneratedClrTypeInfo(new[] {typeof(global::RustPlusContracts.AppEntityType), typeof(global::RustPlusContracts.AppMarkerType), typeof(global::RustPlusContracts.IconType), typeof(global::RustPlusContracts.IconColor), }, null, new pbr::GeneratedClrTypeInfo[] {
+          new pbr::GeneratedClrTypeInfo(new[] {typeof(global::RustPlusContracts.AppEntityType), typeof(global::RustPlusContracts.IconType), typeof(global::RustPlusContracts.IconColor), typeof(global::RustPlusContracts.AppMarkerType), }, null, new pbr::GeneratedClrTypeInfo[] {
             new pbr::GeneratedClrTypeInfo(typeof(global::RustPlusContracts.Vector2), global::RustPlusContracts.Vector2.Parser, new[]{ "X", "Y" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::RustPlusContracts.Vector3), global::RustPlusContracts.Vector3.Parser, new[]{ "X", "Y", "Z" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::RustPlusContracts.Vector4), global::RustPlusContracts.Vector4.Parser, new[]{ "X", "Y", "Z", "W" }, null, null, null, null),
@@ -268,18 +268,6 @@ namespace RustPlusContracts {
     [pbr::OriginalName("StorageMonitor")] StorageMonitor = 3,
   }
 
-  public enum AppMarkerType {
-    [pbr::OriginalName("Death")] Death = 0,
-    [pbr::OriginalName("Player")] Player = 1,
-    [pbr::OriginalName("Explosion")] Explosion = 2,
-    [pbr::OriginalName("VendingMachine")] VendingMachine = 3,
-    [pbr::OriginalName("CH47")] Ch47 = 4,
-    [pbr::OriginalName("CargoShip")] CargoShip = 5,
-    [pbr::OriginalName("Crate")] Crate = 6,
-    [pbr::OriginalName("GenericRadius")] GenericRadius = 7,
-    [pbr::OriginalName("PatrolHelicopter")] PatrolHelicopter = 8,
-  }
-
   public enum IconType {
     [pbr::OriginalName("Default")] Default = 0,
     [pbr::OriginalName("Money")] Money = 1,
@@ -302,6 +290,18 @@ namespace RustPlusContracts {
     [pbr::OriginalName("Red")] Red = 3,
     [pbr::OriginalName("Purple")] Purple = 4,
     [pbr::OriginalName("Cyan")] Cyan = 5,
+  }
+
+  public enum AppMarkerType {
+    [pbr::OriginalName("Unknow")] Unknow = 0,
+    [pbr::OriginalName("Player")] Player = 1,
+    [pbr::OriginalName("Explosion")] Explosion = 2,
+    [pbr::OriginalName("VendingMachine")] VendingMachine = 3,
+    [pbr::OriginalName("CH47")] Ch47 = 4,
+    [pbr::OriginalName("CargoShip")] CargoShip = 5,
+    [pbr::OriginalName("Crate")] Crate = 6,
+    [pbr::OriginalName("GenericRadius")] GenericRadius = 7,
+    [pbr::OriginalName("PatrolHelicopter")] PatrolHelicopter = 8,
   }
 
   #endregion
@@ -15354,7 +15354,7 @@ namespace RustPlusContracts {
 
     /// <summary>Field number for the "type" field.</summary>
     public const int TypeFieldNumber = 2;
-    private readonly static global::RustPlusContracts.AppMarkerType TypeDefaultValue = global::RustPlusContracts.AppMarkerType.Death;
+    private readonly static global::RustPlusContracts.AppMarkerType TypeDefaultValue = global::RustPlusContracts.AppMarkerType.Unknow;
 
     private global::RustPlusContracts.AppMarkerType type_;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]

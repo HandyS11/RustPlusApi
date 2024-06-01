@@ -11,7 +11,7 @@ namespace RustPlusApi.Extensions
             return new SmartSwitchEventArg
             {
                 Id = entityChanged.EntityId,
-                Value = entityChanged.Payload.Value
+                IsActive = entityChanged.Payload.Value
             };
         }
 
@@ -22,8 +22,8 @@ namespace RustPlusApi.Extensions
                 Id = entityChanged.EntityId,
                 Capacity = entityChanged.Payload.Capacity,
                 HasProtection = entityChanged.Payload.HasProtection,
-                ProtectionExpiry = entityChanged.Payload.ProtectionExpiry,
-                Items = entityChanged.Payload.Items.ToStorageMonitorItemsInfo().ToList()
+                ProtectionExpiry = DateTimeOffset.FromUnixTimeSeconds(entityChanged.Payload.ProtectionExpiry).UtcDateTime,
+                Items = entityChanged.Payload.Items.ToStorageMonitorItemsInfo()
             };
         }
     }

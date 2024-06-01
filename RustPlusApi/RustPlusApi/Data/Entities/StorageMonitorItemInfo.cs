@@ -1,4 +1,4 @@
-﻿namespace RustPlusApi.Data
+﻿namespace RustPlusApi.Data.Entities
 {
     public class StorageMonitorItemInfo
     {

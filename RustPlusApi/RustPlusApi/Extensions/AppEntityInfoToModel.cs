@@ -1,5 +1,5 @@
 ﻿using RustPlusApi.Data;
-
+using RustPlusApi.Data.Entities;
 using RustPlusContracts;
 // ReSharper disable MemberCanBePrivate.Global
 
@@ -22,7 +22,7 @@ namespace RustPlusApi.Extensions
         {
             return new SmartSwitchInfo
             {
-                Value = entity.Payload.Value
+                IsActive = entity.Payload.Value
             };
         }
 
@@ -30,7 +30,7 @@ namespace RustPlusApi.Extensions
         {
             return new AlarmInfo
             {
-                Value = entity.Payload.Value
+                IsActive = entity.Payload.Value
             };
         }
 
@@ -40,7 +40,7 @@ namespace RustPlusApi.Extensions
             {
                 Capacity = entity.Payload.Capacity,
                 HasProtection = entity.Payload.HasProtection,
-                ProtectionExpiry = entity.Payload.ProtectionExpiry,
+                ProtectionExpiry = DateTimeOffset.FromUnixTimeSeconds(entity.Payload.ProtectionExpiry).UtcDateTime,
                 Items = entity.Payload.Items.ToStorageMonitorItemsInfo().ToList()
             };
         }

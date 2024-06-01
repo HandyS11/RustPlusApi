@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 
 using RustPlusApi.Data;
+using RustPlusApi.Data.Entities;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Extensions;
 using RustPlusApi.Utils;
@@ -17,11 +18,13 @@ namespace RustPlusApi
     /// <param name="playerId">Your Steam ID.</param>
     /// <param name="playerToken">Your player token acquired with FCM.</param>
     /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
-    public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false) 
+    public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false)
         : RustPlusLegacy(server, port, playerId, playerToken, useFacepunchProxy)
     {
         public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered; // Alarm will also be triggered since there is no physical difference between them
         public event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
+
+        public event EventHandler<TeamMessageEventArg>? OnTeamChatReceived;
 
         /// <summary>
         /// Parses the notification received from the Rust+ server.
@@ -39,11 +42,14 @@ namespace RustPlusApi
                     OnSmartSwitchTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartSwitchEvent());
                 else
                     OnStorageMonitorTriggered?.Invoke(this, broadcast.EntityChanged.ToStorageMonitorEvent());
+                return;
             }
-            else
+            if (broadcast.TeamMessage is not null)
             {
-                Debug.WriteLine($"Unknown broadcast:\n{broadcast}");
+                OnTeamChatReceived?.Invoke(this, broadcast.TeamMessage.Message.ToTeamMessageEvent());
+                return;
             }
+            Debug.WriteLine($"Unknown broadcast:\n{broadcast}");
         }
 
         /// <summary>
@@ -53,7 +59,7 @@ namespace RustPlusApi
         /// <param name="request">The request to be processed.</param>
         /// <param name="successSelector">The function to select the result from the response.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
-        private async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
+        public async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
         {
             var response = await SendRequestAsync(request);
 
@@ -63,18 +69,35 @@ namespace RustPlusApi
         }
 
         /// <summary>
-        /// Retrieves the information of a smart switch asynchronously.
+        /// Retrieves the information of an entity asynchronously.
         /// </summary>
-        /// <param name="entityId">The ID of the smart switch entity.</param>
-        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
-        public async Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(uint entityId)
+        /// <typeparam name="T">The type of the entity information.</typeparam>
+        /// <param name="entityId">The ID of the entity.</param>
+        /// <param name="selector">The function to select the entity information from the response.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the entity information.</returns>
+        public async Task<Response<T?>> GetEntityInfoAsync<T>(uint entityId, Func<AppMessage, T> selector)
         {
             var request = new AppRequest
             {
                 EntityId = entityId,
                 GetEntityInfo = new AppEmpty()
             };
-            return await ProcessRequestAsync<SmartSwitchInfo?>(request, r => r.Response.EntityInfo.ToSmartSwitchInfo());
+            return await ProcessRequestAsync(request, selector);
+        }
+
+        /// <summary>
+        /// Checks the subscription status of an alarm asynchronously.
+        /// </summary>
+        /// <param name="alarmId">The ID of the alarm entity.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the subscription information.</returns>
+        public async Task<Response<SubscriptionInfo?>> CheckSubscriptionAsync(uint alarmId)
+        {
+            var request = new AppRequest
+            {
+                CheckSubscription = new AppEmpty(),
+                EntityId = alarmId
+            };
+            return await ProcessRequestAsync<SubscriptionInfo?>(request, r => r.Response.Flag.ToSubscriptionInfo());
         }
 
         /// <summary>
@@ -84,27 +107,7 @@ namespace RustPlusApi
         /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the alarm information.</returns>
         public async Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId)
         {
-            var request = new AppRequest
-            {
-                EntityId = entityId,
-                GetEntityInfo = new AppEmpty()
-            };
-            return await ProcessRequestAsync<AlarmInfo?>(request, r => r.Response.EntityInfo.ToAlarmInfo());
-        }
-
-        /// <summary>
-        /// Retrieves the information of a storage monitor asynchronously.
-        /// </summary>
-        /// <param name="entityId">The ID of the storage monitor entity.</param>
-        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the storage monitor information.</returns>
-        public async Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(uint entityId)
-        {
-            var request = new AppRequest
-            {
-                EntityId = entityId,
-                GetEntityInfo = new AppEmpty()
-            };
-            return await ProcessRequestAsync<StorageMonitorInfo?>(request, r => r.Response.EntityInfo.ToStorageMonitorInfo());
+            return await GetEntityInfoAsync<AlarmInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo());
         }
 
         /// <summary>
@@ -133,81 +136,177 @@ namespace RustPlusApi
             return await ProcessRequestAsync<ServerMap?>(request, r => r.Response.Map.ToServerMap());
         }
 
-        /*
-        
-        public async Task GetMapMarkersAsync(Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Retrieves the map markers asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the map markers.</returns>
+        public async Task<Response<MapMarkers?>> GetMapMarkersAsync()
         {
-           var request = new AppRequest
-           {
-               GetMapMarkers = new AppEmpty()
-           };
-           await SendRequestAsync(request, callback);
+            var request = new AppRequest
+            {
+                GetMapMarkers = new AppEmpty()
+            };
+            return await ProcessRequestAsync<MapMarkers?>(request, r => r.Response.MapMarkers.ToMapMarkers());
         }
 
-        public async Task GetTeamChatAsync(Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Retrieves the information of a smart switch asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the smart switch entity.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
+        public async Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(uint entityId)
         {
-           var request = new AppRequest
-           {
-               GetTeamChat = new AppEmpty(),
-           };
-           await SendRequestAsync(request, callback);
+            return await GetEntityInfoAsync<SmartSwitchInfo?>(entityId, r => r.Response.EntityInfo.ToSmartSwitchInfo());
         }
 
-        public async Task GetTeamInfoAsync(Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Retrieves the information of a storage monitor asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the storage monitor entity.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the storage monitor information.</returns>
+        public async Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(uint entityId)
         {
-           var request = new AppRequest
-           {
-               GetTeamInfo = new AppEmpty()
-           };
-           await SendRequestAsync(request, callback);
+            return await GetEntityInfoAsync<StorageMonitorInfo?>(entityId, r => r.Response.EntityInfo.ToStorageMonitorInfo());
         }
 
-        public async Task GetTimeAsync(Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Retrieves the team chat information asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the team chat information.</returns>
+        public async Task<Response<TeamChatInfo?>> GetTeamChatAsync()
         {
-           var request = new AppRequest
-           {
-               GetTime = new AppEmpty()
-           };
-           await SendRequestAsync(request, callback);
+            var request = new AppRequest
+            {
+                GetTeamChat = new AppEmpty()
+            };
+            return await ProcessRequestAsync<TeamChatInfo?>(request, r => r.Response.TeamChat.ToTeamChatInfo());
         }
 
-        public async Task PromoteToLeaderAsync(ulong steamId, Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Retrieves the team information asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the team information.</returns>
+        public async Task<Response<TeamInfo?>> GetTeamInfoAsync()
         {
-           var request = new AppRequest
-           {
-               PromoteToLeader = new AppPromoteToLeader
-               {
-                   SteamId = steamId
-               }
-           };
-           await SendRequestAsync(request, callback);
+            var request = new AppRequest
+            {
+                GetTeamInfo = new AppEmpty()
+            };
+            return await ProcessRequestAsync<TeamInfo?>(request, r => r.Response.TeamInfo.ToTeamInfo());
         }
 
-        public async Task SendTeamMessageAsync(string message, Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Retrieves the current time information asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the time information.</returns>
+        public async Task<Response<TimeInfo?>> GetTimeAsync()
         {
-           var request = new AppRequest
-           {
-               SendTeamMessage = new AppSendMessage
-               {
-                   Message = message
-               }
-           };
-           await SendRequestAsync(request, callback);
+            var request = new AppRequest
+            {
+                GetTime = new AppEmpty()
+            };
+            return await ProcessRequestAsync<TimeInfo?>(request, r => r.Response.Time.ToTimeInfo());
         }
 
-        public async Task SetEntityValueAsync(int entityId, bool value, Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Promotes a player to leader asynchronously.
+        /// </summary>
+        /// <param name="steamId">The Steam ID of the player to promote.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the promotion result.</returns>
+        public async Task PromoteToLeaderAsync(ulong steamId)
         {
-           var request = new AppRequest
-           {
-               EntityId = (uint)entityId,
-               SetEntityValue = new AppSetEntityValue
-               {
-                   Value = value
-               }
-           };
-           await SendRequestAsync(request, callback);
+            var request = new AppRequest
+            {
+                PromoteToLeader = new AppPromoteToLeader
+                {
+                    SteamId = steamId
+                }
+            };
+            await SendRequestAsync(request);
         }
 
-        */
+        /// <summary>
+        /// Sends a team message asynchronously.
+        /// </summary>
+        /// <param name="message">The message to send.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task SendTeamMessageAsync(string message)
+        {
+            var request = new AppRequest
+            {
+                SendTeamMessage = new AppSendMessage
+                {
+                    Message = message
+                }
+            };
+            await SendRequestAsync(request);
+        }
+
+        /// <summary>
+        /// Sets the value of a smart switch asynchronously.
+        /// </summary>
+        /// <param name="smartSwitchId">The ID of the smart switch entity.</param>
+        /// <param name="smartSwitchValue">The value to set for the smart switch.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task SetSmartSwitchValue(uint smartSwitchId, bool smartSwitchValue)
+        {
+            var request = new AppRequest
+            {
+                EntityId = smartSwitchId,
+                SetEntityValue = new AppSetEntityValue
+                {
+                    Value = smartSwitchValue
+                },
+            };
+            await SendRequestAsync(request);
+        }
+
+        /// <summary>
+        /// Sets the subscription status of an entity asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the entity.</param>
+        /// <param name="doSubscribe">Specifies whether to subscribe or unsubscribe.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task SetSubscriptionAsync(uint entityId, bool doSubscribe = true)
+        {
+            var request = new AppRequest
+            {
+                EntityId = entityId,
+                SetSubscription = new AppFlag
+                {
+                    Value = doSubscribe
+                }
+            };
+            await SendRequestAsync(request);
+        }
+
+        /// <summary>
+        /// Strobes a smart switch asynchronously by toggling its value on and off with a specified timeout.
+        /// </summary>
+        /// <param name="entityId">The ID of the smart switch entity.</param>
+        /// <param name="timeoutMilliseconds">The timeout in milliseconds between toggling the smart switch value.</param>
+        /// <param name="value">The initial value to set for the smart switch.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task StrobeSmartSwitchAsync(uint entityId, int timeoutMilliseconds = 1000, bool value = true)
+        {
+            await SetSmartSwitchValue(entityId, value);
+            await Task.Delay(timeoutMilliseconds);
+            await SetSmartSwitchValue(entityId, !value);
+        }
+
+        /// <summary>
+        /// Toggles the value of a smart switch asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the smart switch entity.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task ToggleSmartSwitchAsync(uint entityId)
+        {
+            var entityInfo = await GetSmartSwitchInfoAsync(entityId);
+
+            if (!entityInfo.IsSuccess) return;
+
+            var value = entityInfo!.Data!.IsActive;
+            await SetSmartSwitchValue(entityId, !value);
+        }
     }
 }

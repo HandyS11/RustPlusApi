@@ -119,18 +119,6 @@ enum AppEntityType {
 	StorageMonitor = 3;
 }
 
-enum AppMarkerType {
-	Death = 0;
-	Player = 1;
-	Explosion = 2;
-	VendingMachine = 3;
-	CH47 = 4;
-	CargoShip = 5;
-	Crate = 6;
-	GenericRadius = 7;
-	PatrolHelicopter = 8;
-}
-
 message AppRequest {
 	required uint32 seq = 1;
 	required uint64 playerId = 2;
@@ -369,6 +357,18 @@ message AppMarker {
 		optional float itemCondition = 8;
 		optional float itemConditionMax = 9;
 	}
+}
+
+enum AppMarkerType {
+	Unknow = 0;
+	Player = 1;
+	Explosion = 2;
+	VendingMachine = 3;
+	CH47 = 4;
+	CargoShip = 5;
+	Crate = 6;
+	GenericRadius = 7;
+	PatrolHelicopter = 8;
 }
 
 message AppMapMarkers {

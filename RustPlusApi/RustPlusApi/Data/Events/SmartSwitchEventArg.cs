@@ -1,4 +1,6 @@
-﻿namespace RustPlusApi.Data.Events
+﻿using RustPlusApi.Data.Entities;
+
+namespace RustPlusApi.Data.Events
 {
     public class SmartSwitchEventArg : SmartSwitchInfo
     {
