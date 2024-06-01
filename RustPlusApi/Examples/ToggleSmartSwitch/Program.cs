@@ -3,7 +3,7 @@
 using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
-const uint smartSwitchId = 85942;
+const uint smartSwitchId = 0;
 
 await rustPlus.ConnectAsync();
 
