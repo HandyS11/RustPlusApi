@@ -207,19 +207,24 @@ namespace RustPlusApi
             return await ProcessRequestAsync<TimeInfo?>(request, r => r.Response.Time.ToTimeInfo());
         }
 
-        /*
-        public async Task PromoteToLeaderAsync(ulong steamId, Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Promotes a player to leader asynchronously.
+        /// </summary>
+        /// <param name="steamId">The Steam ID of the player to promote.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the promotion result.</returns>
+        public async Task<Response<object?>> PromoteToLeaderAsync(ulong steamId)
         {
-           var request = new AppRequest
-           {
-               PromoteToLeader = new AppPromoteToLeader
-               {
-                   SteamId = steamId
-               }
-           };
-           await SendRequestAsync(request, callback);
+            var request = new AppRequest
+            {
+                PromoteToLeader = new AppPromoteToLeader
+                {
+                    SteamId = steamId
+                }
+            };
+            return await ProcessRequestAsync<object?>(request, r => r.Response);
         }
 
+        /*
         public async Task SendTeamMessageAsync(string message, Func<AppMessage, bool>? callback = null)
         {
            var request = new AppRequest
