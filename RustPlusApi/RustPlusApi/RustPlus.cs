@@ -23,6 +23,8 @@ namespace RustPlusApi
         public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered; // Alarm will also be triggered since there is no physical difference between them
         public event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 
+        public event EventHandler<TeamMessageEventArg>? OnTeamChatReceived;
+
         /// <summary>
         /// Parses the notification received from the Rust+ server.
         /// </summary>
@@ -39,11 +41,14 @@ namespace RustPlusApi
                     OnSmartSwitchTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartSwitchEvent());
                 else
                     OnStorageMonitorTriggered?.Invoke(this, broadcast.EntityChanged.ToStorageMonitorEvent());
+                return;
             }
-            else
+            if (broadcast.TeamMessage is not null)
             {
-                Debug.WriteLine($"Unknown broadcast:\n{broadcast}");
+                OnTeamChatReceived?.Invoke(this, broadcast.TeamMessage.Message.ToTeamMessageEvent());
+                return;
             }
+            Debug.WriteLine($"Unknown broadcast:\n{broadcast}");
         }
 
         /// <summary>
@@ -79,6 +84,11 @@ namespace RustPlusApi
             return await ProcessRequestAsync(request, selector);
         }
 
+        /// <summary>
+        /// Checks the subscription status of an alarm asynchronously.
+        /// </summary>
+        /// <param name="alarmId">The ID of the alarm entity.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the subscription information.</returns>
         public async Task<Response<SubscriptionInfo?>> CheckSubscriptionAsync(uint alarmId)
         {
             var request = new AppRequest
@@ -125,6 +135,10 @@ namespace RustPlusApi
             return await ProcessRequestAsync<ServerMap?>(request, r => r.Response.Map.ToServerMap());
         }
 
+        /// <summary>
+        /// Retrieves the map markers asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the map markers.</returns>
         public async Task<Response<MapMarkers?>> GetMapMarkersAsync()
         {
             var request = new AppRequest
@@ -154,26 +168,20 @@ namespace RustPlusApi
             return await GetEntityInfoAsync<StorageMonitorInfo?>(entityId, r => r.Response.EntityInfo.ToStorageMonitorInfo());
         }
 
+        /// <summary>
+        /// Retrieves the team chat information asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the team chat information.</returns>
+        public async Task<Response<TeamChatInfo?>> GetTeamChatAsync()
+        {
+            var request = new AppRequest
+            {
+                GetTeamChat = new AppEmpty()
+            };
+            return await ProcessRequestAsync<TeamChatInfo?>(request, r => r.Response.TeamChat.ToTeamChatInfo());
+        }
+
         /*
-        
-        public async Task GetMapMarkersAsync(Func<AppMessage, bool>? callback = null)
-        {
-           var request = new AppRequest
-           {
-               GetMapMarkers = new AppEmpty()
-           };
-           await SendRequestAsync(request, callback);
-        }
-
-        public async Task GetTeamChatAsync(Func<AppMessage, bool>? callback = null)
-        {
-           var request = new AppRequest
-           {
-               GetTeamChat = new AppEmpty(),
-           };
-           await SendRequestAsync(request, callback);
-        }
-
         public async Task GetTeamInfoAsync(Func<AppMessage, bool>? callback = null)
         {
            var request = new AppRequest

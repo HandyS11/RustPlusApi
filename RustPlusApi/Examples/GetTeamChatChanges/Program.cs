@@ -6,21 +6,15 @@ using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 
-rustPlus.Connected += async (_, _) =>
+rustPlus.OnTeamChatReceived += (sender, message) =>
 {
-    //await rustPlus.GetTeamChatAsync(message =>
-    //{
-    //    Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
-    //    return true;
-    //});
-};
-
-rustPlus.MessageReceived += (_, message) =>
-{
-    if (message.Broadcast is not { TeamMessage: not null }) return;
-
-    var teamMessage = message.Broadcast.TeamMessage;
-    Console.WriteLine($"Message:\n{JsonConvert.SerializeObject(teamMessage, JsonSettings)}");
+    Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
 };
 
 await rustPlus.ConnectAsync();
+
+var message = await rustPlus.GetTeamChatAsync();
+Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+
+Console.ReadLine();
+await rustPlus.DisconnectAsync();
