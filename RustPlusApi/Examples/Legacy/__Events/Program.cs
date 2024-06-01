@@ -31,7 +31,7 @@ await rustPlus.ConnectAsync();
 var request = new AppRequest
 {
     GetTime = new AppEmpty()
-}; 
+};
 await rustPlus.SendRequestAsync(request);
 
 await rustPlus.DisconnectAsync();

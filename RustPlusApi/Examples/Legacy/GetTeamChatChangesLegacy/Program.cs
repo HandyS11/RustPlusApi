@@ -17,3 +17,6 @@ await rustPlus.ConnectAsync();
 
 var message = await rustPlus.GetTeamChatLegacyAsync();
 Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+
+Console.ReadLine();
+await rustPlus.DisconnectAsync();
