@@ -1,5 +1,5 @@
 ﻿using RustPlusApi.Data;
-
+using RustPlusApi.Data.Entities;
 using RustPlusContracts;
 // ReSharper disable MemberCanBePrivate.Global
 

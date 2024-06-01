@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 
 using RustPlusApi.Data;
+using RustPlusApi.Data.Entities;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Extensions;
 using RustPlusApi.Utils;
@@ -212,7 +213,7 @@ namespace RustPlusApi
         /// </summary>
         /// <param name="steamId">The Steam ID of the player to promote.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the promotion result.</returns>
-        public async Task<Response<object?>> PromoteToLeaderAsync(ulong steamId)
+        public async Task PromoteToLeaderAsync(ulong steamId)
         {
             var request = new AppRequest
             {
@@ -221,35 +222,91 @@ namespace RustPlusApi
                     SteamId = steamId
                 }
             };
-            return await ProcessRequestAsync<object?>(request, r => r.Response);
+            await SendRequestAsync(request);
         }
 
-        /*
-        public async Task SendTeamMessageAsync(string message, Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Sends a team message asynchronously.
+        /// </summary>
+        /// <param name="message">The message to send.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task SendTeamMessageAsync(string message)
         {
-           var request = new AppRequest
-           {
-               SendTeamMessage = new AppSendMessage
-               {
-                   Message = message
-               }
-           };
-           await SendRequestAsync(request, callback);
+            var request = new AppRequest
+            {
+                SendTeamMessage = new AppSendMessage
+                {
+                    Message = message
+                }
+            };
+            await SendRequestAsync(request);
         }
 
-        public async Task SetEntityValueAsync(int entityId, bool value, Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Sets the value of a smart switch asynchronously.
+        /// </summary>
+        /// <param name="smartSwitchId">The ID of the smart switch entity.</param>
+        /// <param name="smartSwitchValue">The value to set for the smart switch.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task SetSmartSwitchValue(uint smartSwitchId, bool smartSwitchValue)
         {
-           var request = new AppRequest
-           {
-               EntityId = (uint)entityId,
-               SetEntityValue = new AppSetEntityValue
-               {
-                   Value = value
-               }
-           };
-           await SendRequestAsync(request, callback);
+            var request = new AppRequest
+            {
+                EntityId = smartSwitchId,
+                SetEntityValue = new AppSetEntityValue
+                {
+                    Value = smartSwitchValue
+                },
+            };
+            await SendRequestAsync(request);
         }
 
-        */
+        /// <summary>
+        /// Sets the subscription status of an entity asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the entity.</param>
+        /// <param name="doSubscribe">Specifies whether to subscribe or unsubscribe.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task SetSubscriptionAsync(uint entityId, bool doSubscribe = true)
+        {
+            var request = new AppRequest
+            {
+                EntityId = entityId,
+                SetSubscription = new AppFlag
+                {
+                    Value = doSubscribe
+                }
+            };
+            await SendRequestAsync(request);
+        }
+
+        /// <summary>
+        /// Strobes a smart switch asynchronously by toggling its value on and off with a specified timeout.
+        /// </summary>
+        /// <param name="entityId">The ID of the smart switch entity.</param>
+        /// <param name="timeoutMilliseconds">The timeout in milliseconds between toggling the smart switch value.</param>
+        /// <param name="value">The initial value to set for the smart switch.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task StrobeSmartSwitchAsync(uint entityId, int timeoutMilliseconds = 1000, bool value = true)
+        {
+            await SetSmartSwitchValue(entityId, value);
+            await Task.Delay(timeoutMilliseconds);
+            await SetSmartSwitchValue(entityId, !value);
+        }
+
+        /// <summary>
+        /// Toggles the value of a smart switch asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the smart switch entity.</param>
+        /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+        public async Task ToggleSmartSwitchAsync(uint entityId)
+        {
+            var entityInfo = await GetSmartSwitchInfoAsync(entityId);
+
+            if (!entityInfo.IsSuccess) return;
+
+            var value = entityInfo!.Data!.IsActive;
+            await SetSmartSwitchValue(entityId, !value);
+        }
     }
 }

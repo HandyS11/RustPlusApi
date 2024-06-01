@@ -3,11 +3,11 @@
 using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
-const ulong steamId = 0;
+const uint smartSwitchId = 0;
 
 await rustPlus.ConnectAsync();
 
-await rustPlus.PromoteToLeaderAsync(steamId);
-Console.WriteLine($"Player: {steamId} is now the team leader!");
+await rustPlus.StrobeSmartSwitchAsync(smartSwitchId);
+Console.WriteLine($"Smart switch: {smartSwitchId} have been strobe!");
 
 await rustPlus.DisconnectAsync();
