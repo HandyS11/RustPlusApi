@@ -2,6 +2,6 @@
 {
     public class AlarmInfo
     {
-        public bool Value { get; set; }
+        public bool IsActive { get; set; }
     }
 }

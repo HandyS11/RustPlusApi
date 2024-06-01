@@ -69,7 +69,7 @@ namespace RustPlusApi
         /// <param name="entityId">The ID of the entity.</param>
         /// <param name="selector">The function to select the entity information from the response.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the entity information.</returns>
-        private async Task<Response<T?>> GetEntityInfoAsync<T>(uint entityId, Func<AppMessage, T> selector)
+        public async Task<Response<T?>> GetEntityInfoAsync<T>(uint entityId, Func<AppMessage, T> selector)
         {
             var request = new AppRequest
             {
@@ -79,34 +79,24 @@ namespace RustPlusApi
             return await ProcessRequestAsync(request, selector);
         }
 
+        public async Task<Response<SubscriptionInfo?>> CheckSubscriptionAsync(uint alarmId)
+        {
+            var request = new AppRequest
+            {
+                CheckSubscription = new AppEmpty(),
+                EntityId = alarmId
+            };
+            return await ProcessRequestAsync<SubscriptionInfo?>(request, r => r.Response.Flag.ToSubscriptionInfo());
+        }
+
         /// <summary>
         /// Retrieves the information of an alarm asynchronously.
         /// </summary>
         /// <param name="entityId">The ID of the alarm entity.</param>
         /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the alarm information.</returns>
-        public Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId)
+        public async Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId)
         {
-            return GetEntityInfoAsync<AlarmInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo());
-        }
-
-        /// <summary>
-        /// Retrieves the information of a smart switch asynchronously.
-        /// </summary>
-        /// <param name="entityId">The ID of the smart switch entity.</param>
-        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
-        public Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(uint entityId)
-        {
-            return GetEntityInfoAsync<SmartSwitchInfo?>(entityId, r => r.Response.EntityInfo.ToSmartSwitchInfo());
-        }
-
-        /// <summary>
-        /// Retrieves the information of a storage monitor asynchronously.
-        /// </summary>
-        /// <param name="entityId">The ID of the storage monitor entity.</param>
-        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the storage monitor information.</returns>
-        public Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(uint entityId)
-        {
-            return GetEntityInfoAsync<StorageMonitorInfo?>(entityId, r => r.Response.EntityInfo.ToStorageMonitorInfo());
+            return await GetEntityInfoAsync<AlarmInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo());
         }
 
         /// <summary>
@@ -133,6 +123,35 @@ namespace RustPlusApi
                 GetMap = new AppEmpty()
             };
             return await ProcessRequestAsync<ServerMap?>(request, r => r.Response.Map.ToServerMap());
+        }
+
+        public async Task<Response<MapMarkers?>> GetMapMarkersAsync()
+        {
+            var request = new AppRequest
+            {
+                GetMapMarkers = new AppEmpty()
+            };
+            return await ProcessRequestAsync<MapMarkers?>(request, r => r.Response.MapMarkers.ToMapMarkers());
+        }
+
+        /// <summary>
+        /// Retrieves the information of a smart switch asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the smart switch entity.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
+        public async Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(uint entityId)
+        {
+            return await GetEntityInfoAsync<SmartSwitchInfo?>(entityId, r => r.Response.EntityInfo.ToSmartSwitchInfo());
+        }
+
+        /// <summary>
+        /// Retrieves the information of a storage monitor asynchronously.
+        /// </summary>
+        /// <param name="entityId">The ID of the storage monitor entity.</param>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the storage monitor information.</returns>
+        public async Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(uint entityId)
+        {
+            return await GetEntityInfoAsync<StorageMonitorInfo?>(entityId, r => r.Response.EntityInfo.ToStorageMonitorInfo());
         }
 
         /*

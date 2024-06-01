@@ -2,6 +2,6 @@
 {
     public class SmartSwitchInfo
     {
-        public bool Value { get; set; }
+        public bool IsActive { get; set; }
     }
 }

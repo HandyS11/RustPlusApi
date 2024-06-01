@@ -22,7 +22,7 @@ namespace RustPlusApi.Extensions
         {
             return new SmartSwitchInfo
             {
-                Value = entity.Payload.Value
+                IsActive = entity.Payload.Value
             };
         }
 
@@ -30,7 +30,7 @@ namespace RustPlusApi.Extensions
         {
             return new AlarmInfo
             {
-                Value = entity.Payload.Value
+                IsActive = entity.Payload.Value
             };
         }
 

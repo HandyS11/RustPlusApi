@@ -11,7 +11,7 @@ namespace RustPlusApi.Extensions
             return new SmartSwitchEventArg
             {
                 Id = entityChanged.EntityId,
-                Value = entityChanged.Payload.Value
+                IsActive = entityChanged.Payload.Value
             };
         }
 
