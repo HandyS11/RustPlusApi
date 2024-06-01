@@ -194,16 +194,20 @@ namespace RustPlusApi
             return await ProcessRequestAsync<TeamInfo?>(request, r => r.Response.TeamInfo.ToTeamInfo());
         }
 
-        /*
-        public async Task GetTimeAsync(Func<AppMessage, bool>? callback = null)
+        /// <summary>
+        /// Retrieves the current time information asynchronously.
+        /// </summary>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the time information.</returns>
+        public async Task<Response<TimeInfo?>> GetTimeAsync()
         {
-           var request = new AppRequest
-           {
-               GetTime = new AppEmpty()
-           };
-           await SendRequestAsync(request, callback);
+            var request = new AppRequest
+            {
+                GetTime = new AppEmpty()
+            };
+            return await ProcessRequestAsync<TimeInfo?>(request, r => r.Response.Time.ToTimeInfo());
         }
 
+        /*
         public async Task PromoteToLeaderAsync(ulong steamId, Func<AppMessage, bool>? callback = null)
         {
            var request = new AppRequest

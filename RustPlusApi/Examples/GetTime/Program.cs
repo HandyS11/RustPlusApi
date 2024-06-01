@@ -1,17 +1,14 @@
-﻿using RustPlusApi;
+﻿using Newtonsoft.Json;
+
+using RustPlusApi;
 
 using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 
-rustPlus.Connected += async (_, _) =>
-{
-    //await rustPlus.GetTimeAsync(message =>
-    //{
-    //    Console.WriteLine($"Time: {message.Response.Time.Time}");
-    //    rustPlus.Dispose();
-    //    return true;
-    //});
-};
-
 await rustPlus.ConnectAsync();
+
+var message = await rustPlus.GetTimeAsync();
+Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+
+await rustPlus.DisconnectAsync();
