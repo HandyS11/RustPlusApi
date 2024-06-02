@@ -234,6 +234,11 @@ namespace RustPlusApi
         /// </summary>
         /// <param name="response">The AppMessage response to check.</param>
         /// <returns>True if the response is an error; otherwise, false.</returns>
-        protected static bool IsError(AppMessage response) => response.Response.Error is not null;
+        protected static bool IsError(AppMessage response)
+        {
+            if (response.Response is null && response.Broadcast is not null) return false;
+            if (response.Response!.Error is not null) return true;
+            return false;
+        }
     }
 }
