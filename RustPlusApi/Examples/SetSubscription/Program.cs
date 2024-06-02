@@ -1,4 +1,6 @@
-﻿using RustPlusApi;
+﻿using Newtonsoft.Json;
+
+using RustPlusApi;
 
 using static __Constants.ExamplesConst;
 
@@ -8,7 +10,10 @@ var smartSwitchValue = true;
 
 await rustPlus.ConnectAsync();
 
-await rustPlus.SetSubscriptionAsync(smartSwitchId, smartSwitchValue);
-Console.WriteLine($"Smart switch: {smartSwitchId} is now {(smartSwitchValue ? "enable" : "disable")}!");
+var message = await rustPlus.SetSubscriptionAsync(smartSwitchId, smartSwitchValue);
+Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+
+if (message.IsSuccess)
+    Console.WriteLine($"Smart switch: {smartSwitchId} have its notifications {(smartSwitchValue ? "enable" : "disable")}!");
 
 await rustPlus.DisconnectAsync();

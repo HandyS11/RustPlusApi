@@ -1,4 +1,6 @@
-﻿using RustPlusApi;
+﻿using Newtonsoft.Json;
+
+using RustPlusApi;
 
 using static __Constants.ExamplesConst;
 
@@ -6,7 +8,7 @@ var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 
 await rustPlus.ConnectAsync();
 
-await rustPlus.SendTeamMessageAsync("Hello from RustPlusApi!");
-Console.WriteLine("Message sent in-game!");
+var message = await rustPlus.SendTeamMessageAsync("Hello from RustPlusApi!");
+Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
 
 await rustPlus.DisconnectAsync();

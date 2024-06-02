@@ -1,4 +1,6 @@
-﻿using RustPlusApi;
+﻿using Newtonsoft.Json;
+
+using RustPlusApi;
 
 using static __Constants.ExamplesConst;
 
@@ -7,7 +9,7 @@ const ulong steamId = 0;
 
 await rustPlus.ConnectAsync();
 
-await rustPlus.PromoteToLeaderAsync(steamId);
-Console.WriteLine($"Player: {steamId} is now the team leader!");
+var message = await rustPlus.PromoteToLeaderAsync(steamId);
+Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
 
 await rustPlus.DisconnectAsync();
