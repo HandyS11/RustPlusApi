@@ -5,8 +5,10 @@
         public string Ip { get; set; } = null!;
         public int Port { get; set; }
         public string Desc { get; set; } = null!;
-        public int Logo { get; set; }
-        public int Img { get; set; }
+        public string Logo { get; set; }
+        public string Img { get; set; }
         public string Url { get; set; } = null!;
+        public ulong PlayerId { get; set; }
+        public string PlayerToken { get; set; } = null!;
     }
 }
