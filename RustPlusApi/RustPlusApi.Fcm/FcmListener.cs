@@ -72,7 +72,9 @@ namespace RustPlusApi.Fcm
                         Desc = body.Desc,
                         Logo = body.Logo,
                         Img = body.Img,
-                        Url = body.Url
+                        Url = body.Url,
+                        PlayerId = body.PlayerId,
+                        PlayerToken = body.PlayerToken
                     };
                     OnServerPairing?.Invoke(this, serverFull);
                     break;
