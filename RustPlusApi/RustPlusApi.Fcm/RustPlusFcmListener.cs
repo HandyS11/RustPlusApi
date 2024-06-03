@@ -27,7 +27,7 @@ namespace RustPlusApi.Fcm
         public event EventHandler<Notification<int?>>? OnSmartAlarmParing;
         public event EventHandler<Notification<int?>>? OnStorageMonitorParing;
 
-        public event EventHandler<Notification<AlarmEvent?>>? OnAlarmTriggered;
+        public event EventHandler<AlarmEvent?>? OnAlarmTriggered;
 
         protected override void ParseNotification(string? message)
         {
@@ -43,8 +43,7 @@ namespace RustPlusApi.Fcm
                     ParsePairing(msg.Data.Body);
                     break;
                 case "alarm":
-                    var alarm = BuildGenericOutput(msg.Data.Body, msg.Data.ToAlarmEvent());
-                    OnAlarmTriggered?.Invoke(this, alarm);
+                    OnAlarmTriggered?.Invoke(this, msg.Data.ToAlarmEvent());
                     break;
                 default:
                     Debug.WriteLine($"Unknown channel: {msg.Data.ChannelId}");

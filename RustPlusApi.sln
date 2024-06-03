@@ -97,6 +97,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SendTeamMessage", "RustPlus
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RustPlusFcmListenerClient", "RustPlusApi\Examples\Fcm\RustPlusFcmListenerClient\RustPlusFcmListenerClient.csproj", "{89321BD6-3D4E-479B-A795-B30A6898E7BF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusFcmListener", "RustPlusApi\Examples\Fcm\RustPlusFcmListener\RustPlusFcmListener.csproj", "{4D0DCF6E-ABA1-407F-B0C9-59306E7FC8CA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -279,6 +281,10 @@ Global
 		{89321BD6-3D4E-479B-A795-B30A6898E7BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{89321BD6-3D4E-479B-A795-B30A6898E7BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{89321BD6-3D4E-479B-A795-B30A6898E7BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D0DCF6E-ABA1-407F-B0C9-59306E7FC8CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D0DCF6E-ABA1-407F-B0C9-59306E7FC8CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D0DCF6E-ABA1-407F-B0C9-59306E7FC8CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D0DCF6E-ABA1-407F-B0C9-59306E7FC8CA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -328,6 +334,7 @@ Global
 		{EE0FE493-5230-485F-8D45-B5887FA50D86} = {BC948ADE-1674-4955-B27C-F0E96100978E}
 		{83CC5666-ABBF-4057-BCDA-66A6F1881A7E} = {BC948ADE-1674-4955-B27C-F0E96100978E}
 		{89321BD6-3D4E-479B-A795-B30A6898E7BF} = {A4EF8656-723B-4E2E-9457-57DCB24CB409}
+		{4D0DCF6E-ABA1-407F-B0C9-59306E7FC8CA} = {A4EF8656-723B-4E2E-9457-57DCB24CB409}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A4B4251F-ADA4-418D-95B5-27BA99A307A3}
