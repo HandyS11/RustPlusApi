@@ -4,6 +4,9 @@ using Newtonsoft.Json;
 
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
+using RustPlusApi.Fcm.Extensions;
+
+using static RustPlusApi.Fcm.Utils.ResponseHelper;
 
 namespace RustPlusApi.Fcm
 {
@@ -12,14 +15,14 @@ namespace RustPlusApi.Fcm
     {
         public event EventHandler<MessageData>? OnParing;
 
-        public event EventHandler<(ServerEventArg, EntityEventArg)>? OnEntityParing;
-        public event EventHandler<ServerFullEventArg>? OnServerPairing;
+        public event EventHandler<Notification<EntityEvent?>>? OnEntityParing;
+        public event EventHandler<Notification<ServerEvent?>>? OnServerPairing;
 
-        public event EventHandler<(ServerEventArg, int)>? OnSmartSwitchParing;
-        public event EventHandler<(ServerEventArg, int)>? OnSmartAlarmParing;
-        public event EventHandler<(ServerEventArg, int)>? OnStorageMonitorParing;
+        public event EventHandler<Notification<int?>>? OnSmartSwitchParing;
+        public event EventHandler<Notification<int?>>? OnSmartAlarmParing;
+        public event EventHandler<Notification<int?>>? OnStorageMonitorParing;
 
-        public event EventHandler<AlarmEventArg>? OnAlarmTriggered;
+        public event EventHandler<Notification<AlarmEvent?>>? OnAlarmTriggered;
 
         protected override void ParseNotification(string? message)
         {
@@ -35,12 +38,7 @@ namespace RustPlusApi.Fcm
                     ParsePairing(msg.Data.Body);
                     break;
                 case "alarm":
-                    var alarm = new AlarmEventArg()
-                    {
-                        ServerId = msg.Data.Body.Id,
-                        Title = msg.Data.Title,
-                        Message = msg.Data.Message
-                    };
+                    var alarm = BuildGenericOutput(msg.Data.Body, msg.Data.ToAlarmEvent());
                     OnAlarmTriggered?.Invoke(this, alarm);
                     break;
                 default:
@@ -54,33 +52,13 @@ namespace RustPlusApi.Fcm
             switch (body.Type)
             {
                 case "entity":
-                    var server = new ServerEventArg()
-                    {
-                        Id = body.Id,
-                        Name = body.Name
-                    };
-                    var entity = new EntityEventArg()
-                    {
-                        EntityType = body.EntityType ?? 0,
-                        EntityId = body.EntityId ?? 0,
-                        EntityName = body.EntityName
-                    };
-                    OnEntityParing?.Invoke(this, (server, entity));
+                    var entity = BuildGenericOutput(body, body.ToEntityEvent());
+                    OnEntityParing?.Invoke(this, entity);
                     ParsePairingEntity(body);
                     break;
                 case "server":
-                    var serverFull = new ServerFullEventArg()
-                    {
-                        Id = body.Id,
-                        Name = body.Name,
-                        Ip = body.Ip,
-                        Port = body.Port,
-                        Desc = body.Desc,
-                        Logo = body.Logo,
-                        Img = body.Img,
-                        Url = body.Url
-                    };
-                    OnServerPairing?.Invoke(this, serverFull);
+                    var server = BuildGenericOutput(body, body.ToServerEvent());
+                    OnServerPairing?.Invoke(this, server);
                     break;
                 default:
                     Debug.WriteLine($"Unknown pairing type: {body.Type}");
@@ -90,22 +68,18 @@ namespace RustPlusApi.Fcm
 
         private void ParsePairingEntity(Body body)
         {
-            var server = new ServerEventArg()
-            {
-                Id = body.Id,
-                Name = body.Name
-            };
+            var response = BuildGenericOutput(body, body.ToEntityId());
 
             switch (body.EntityType)
             {
                 case 1:
-                    OnSmartSwitchParing?.Invoke(this, (server, body.EntityId ?? 0));
+                    OnSmartSwitchParing?.Invoke(this, response);
                     break;
                 case 2:
-                    OnSmartAlarmParing?.Invoke(this, (server, body.EntityId ?? 0));
+                    OnSmartAlarmParing?.Invoke(this, response);
                     break;
                 case 3:
-                    OnStorageMonitorParing?.Invoke(this, (server, body.EntityId ?? 0));
+                    OnStorageMonitorParing?.Invoke(this, response);
                     break;
                 default:
                     Debug.WriteLine($"Unknown entity type: {body.EntityType}");
