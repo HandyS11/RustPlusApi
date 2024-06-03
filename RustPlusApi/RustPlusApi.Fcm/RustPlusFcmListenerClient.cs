@@ -5,45 +5,54 @@ using System.Numerics;
 
 using McsProto;
 
-using Newtonsoft.Json;
-
 using ProtoBuf;
 
 using RustPlusApi.Fcm.Data;
+using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Utils;
 
-using static RustPlusApi.Fcm.Data.Constants;
+using static RustPlusApi.Fcm.Data.Tags;
+using static RustPlusApi.Fcm.Utils.Utils;
 using static System.GC;
-using RustPlusApi.Fcm.Data.Events;
 
 namespace RustPlusApi.Fcm
 {
-    public class FcmListenerBasic(Credentials credentials, ICollection<string>? persistentIds = null) : IDisposable
+    public class RustPlusFcmListenerClient(Credentials credentials, ICollection<string>? persistentIds = null) : IDisposable
     {
         private const string Host = "mtalk.google.com";
         private const int Port = 5228;
 
+        private const int MinResetIntervalSecs = 5 * 60;
+        private const int MaxSilentIntervalSecs = 60 * 60;
+
+        private const int KMcsVersion = 41;
+
         private TcpClient? _tcpClient;
         private SslStream? _sslStream;
+
         private DateTime _lastReset;
         private DateTime _timeLastMessageReceived;
         private Timer? _checkinTimer;
 
         public event EventHandler? Connecting;
         public event EventHandler? Connected;
+
         public event EventHandler<string>? NotificationReceived;
+
+        public event EventHandler? Disconnecting;
         public event EventHandler? Disconnected;
+
         public event EventHandler<Exception>? ErrorOccurred;
 
         public async Task ConnectAsync()
         {
+            Connecting?.Invoke(this, EventArgs.Empty);
+
             _tcpClient = new TcpClient();
             await _tcpClient.ConnectAsync(Host, Port);
 
             _sslStream = new SslStream(_tcpClient.GetStream(), false);
             await _sslStream.AuthenticateAsClientAsync(Host);
-
-            Connecting?.Invoke(this, EventArgs.Empty);
 
             try
             {
@@ -78,27 +87,35 @@ namespace RustPlusApi.Fcm
             }
             catch (Exception ex)
             {
+                Debug.WriteLine($"Exception occured on ConnectAsync: {ex}");
                 ErrorOccurred?.Invoke(this, ex);
-                Dispose();
             }
         }
 
-        public void Dispose()
+        /// <summary>
+        /// Disconnects the FCM listener client asynchronously.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public void Disconnect()
         {
-            _sslStream?.Dispose();
-            _tcpClient?.Dispose();
+            Disconnecting?.Invoke(this, EventArgs.Empty);
+
+            _sslStream?.Close();
+            _tcpClient?.Close();
 
             Disconnected?.Invoke(this, EventArgs.Empty);
-
-            SuppressFinalize(this);
         }
+
+        /// <summary>
+        /// Disposes the FCM listener client.
+        /// </summary>
+        public void Dispose() => SuppressFinalize(this);
 
         private void ReceiveMessages()
         {
             var parser = new RawMessageParser();
             parser.MessageReceived += (_, e) => OnMessage(e);
 
-            // First receival (LoginResponse)
             byte[] header = Read(2);
             int version = header[0];
             int tag = header[1];
@@ -106,13 +123,13 @@ namespace RustPlusApi.Fcm
             if (version < KMcsVersion && version != 38)
                 throw new InvalidOperationException($"Protocol version {version} unsupported");
 
-            int size = ReadVarint32();
+            var size = ReadVarint32();
             Debug.WriteLine($"Got message size: {size} bytes");
 
-            byte[] payload = Read(size);
+            var payload = Read(size);
             Debug.WriteLine($"Successfully read: {payload.Length} bytes");
 
-            Type type = RawMessageParser.BuildProtobufFromTag(((McsProtoTag)tag));
+            Type type = BuildProtobufFromTag((McsProtoTag)tag);
             Debug.WriteLine($"RECEIVED PROTO OF TYPE {type.Name}");
 
             if (type != typeof(LoginResponse))
@@ -128,7 +145,7 @@ namespace RustPlusApi.Fcm
                 tag = _sslStream!.ReadByte();
                 size = ReadVarint32();
                 payload = Read(size);
-                type = RawMessageParser.BuildProtobufFromTag((McsProtoTag)tag);
+                type = BuildProtobufFromTag((McsProtoTag)tag);
                 Debug.WriteLine($"RECEIVED PROTO OF TYPE {type.Name}");
 
                 parser.OnData(payload, type);
@@ -160,22 +177,9 @@ namespace RustPlusApi.Fcm
             return result;
         }
 
-        private static byte[] EncodeVarint32(int value)
-        {
-            List<byte> result = [];
-            while (value != 0)
-            {
-                byte b = (byte)(value & 0x7F);
-                value >>= 7;
-                if (value != 0) b |= 0x80;
-                result.Add(b);
-            }
-            return [.. result];
-        }
-
         private void SendPacket(object packet)
         {
-            var tagEnum = RawMessageParser.GetTagFromProtobufType(packet.GetType());
+            var tagEnum = GetTagFromProtobufType(packet.GetType());
             var header = new byte[] { KMcsVersion, (byte)(int)tagEnum };
 
             using var ms = new MemoryStream();
@@ -219,8 +223,7 @@ namespace RustPlusApi.Fcm
             _lastReset = DateTime.Now;
 
             Debug.WriteLine("Resetting listener.");
-            Dispose();
-
+            Disconnect();
             ConnectAsync().GetAwaiter().GetResult();
         }
 
@@ -292,16 +295,10 @@ namespace RustPlusApi.Fcm
                 persistentIds?.Add(dataMessage!.PersistentId);
             }
 
-            var fcmMessage = JsonConvert.DeserializeObject<FcmMessage>(message);
-
-            fcmMessage!.Data.Body.Desc = "";
-
-            var betterMessage = JsonConvert.SerializeObject(fcmMessage, Formatting.Indented);
-
-            ParseNotification(fcmMessage);
-            NotificationReceived?.Invoke(this, betterMessage);
+            ParseNotification(message);
+            NotificationReceived?.Invoke(this, message);
         }
 
-        protected virtual void ParseNotification(FcmMessage? message) { }
+        protected virtual void ParseNotification(string message) { }
     }
 }

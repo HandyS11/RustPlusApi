@@ -1,11 +1,14 @@
 ﻿using System.Diagnostics;
 
+using Newtonsoft.Json;
+
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 
 namespace RustPlusApi.Fcm
 {
-    public class FcmListener(Credentials credentials, ICollection<string>? persistentIds = null) : FcmListenerBasic(credentials, persistentIds)
+    public class RustPlusFcmListener(Credentials credentials, ICollection<string>? persistentIds = null)
+        : RustPlusFcmListenerClient(credentials, persistentIds)
     {
         public event EventHandler<MessageData>? OnParing;
 
@@ -18,27 +21,30 @@ namespace RustPlusApi.Fcm
 
         public event EventHandler<AlarmEventArg>? OnAlarmTriggered;
 
-        protected override void ParseNotification(FcmMessage? message)
+        protected override void ParseNotification(string? message)
         {
-            if (message == null) return;
+            if (message is null) return;
 
-            switch (message.Data.ChannelId)
+            var msg = JsonConvert.DeserializeObject<FcmMessage>(message);
+            if (msg is null) return;
+
+            switch (msg.Data.ChannelId)
             {
                 case "pairing":
-                    OnParing?.Invoke(this, message.Data);
-                    ParsePairing(message.Data.Body);
+                    OnParing?.Invoke(this, msg.Data);
+                    ParsePairing(msg.Data.Body);
                     break;
                 case "alarm":
                     var alarm = new AlarmEventArg()
                     {
-                        ServerId = message.Data.Body.Id,
-                        Title = message.Data.Title,
-                        Message = message.Data.Message
+                        ServerId = msg.Data.Body.Id,
+                        Title = msg.Data.Title,
+                        Message = msg.Data.Message
                     };
                     OnAlarmTriggered?.Invoke(this, alarm);
                     break;
                 default:
-                    Debug.WriteLine($"Unknown channel: {message.Data.ChannelId}");
+                    Debug.WriteLine($"Unknown channel: {msg.Data.ChannelId}");
                     break;
             }
         }

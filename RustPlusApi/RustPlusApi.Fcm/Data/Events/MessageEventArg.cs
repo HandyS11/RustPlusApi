@@ -1,4 +1,4 @@
-﻿using static RustPlusApi.Fcm.Data.Constants;
+﻿using static RustPlusApi.Fcm.Data.Tags;
 
 namespace RustPlusApi.Fcm.Data.Events
 {
