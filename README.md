@@ -1,8 +1,12 @@
 # RustPlusApi
 
+| CI | CD |
+| -- | -- |
+| ![](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml/badge.svg) |![](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg) |
+
 ## 📊 Features
 
-This is a list of some of the features that the RustPlusApi provides:
+Some of the features that the **RustPlusApi** provides:
 
 - `GetEntityInfo` Get current state of a Smart Device
 - `GetInfo` Get info about the Rust Server
@@ -12,6 +16,12 @@ This is a list of some of the features that the RustPlusApi provides:
 - `GetTime` Get the current in game time
 - `SendTeamMessage` Send messages to Team Chat
 - `SetEntityValue` Set the value of a Smart Device
+
+Some of the features that the **RustPlusApi.Fcm** provides:
+
+- `OnServerPairing` Event fired when the server is paired
+- `OnEntityParing` Event fired when an entity is paired
+- `OnAlarmTriggered` Event fired when an alarm is triggered
 
 Feel free to **explore** the `./RustPlusApi/Examples/` folder to see how to **use** the API.
 
@@ -23,11 +33,10 @@ Feel free to **explore** the `./RustPlusApi/Examples/` folder to see how to **us
 
 ## 📚 Sumary
 
-- [RustPlusLegacy](#RustPlusLegacy)
-- [RustPlus](#RustPlus)
-- [RustPlusListener](#RustPlusListener)
+- [RustPlusApi](#RustPlusApi)
+- [RustPlusApi.Fcm](#RustPlusApi.Fcm)
 
-The library provides three classes to interact with the Rust+ API: `RustPlusLegacy`, `RustPlus` & `RustPlusListener`.
+The library provides 4 classes to interact with the Rust+ API: `RustPlusLegacy`, `RustPlus`, `RustPlusFcmListenerClient` & `RustPlusFcmListener`.
 
 - `RustPlusLegacy` is the original implementation based on the `./Protobuf/RustPlus.proto` file.
 - `RustPlus` is a new implementation that return a response based on `./Data/Response.cs` object.
@@ -35,6 +44,7 @@ The library provides three classes to interact with the Rust+ API: `RustPlusLega
 Since `RustPlus` inherit from `RustPlusLegacy`, you can use both classes to interact with the Rust+ API. The `RustPlus` class is recommended for new projects, as it provides a more user-friendly interface and better error handling.
 
 - `RustPlusListener` is a class to listen to the FCM socket and handle notifications.
+- `RustPlusFcmListener` is a new implementation that own more events.
 
 ## 📍 NuGet
 
@@ -214,43 +224,17 @@ rustPlusApi.DisconnectAsync();
 
 ### RustPlusApi.Fcm
 
-<details><summary> RustPlusListener </summary>
+<details><summary> RustPlusFcmListenerClient </summary>
 
-First, instantiate the `FcmListener` class with the necessary parameters:
-
-```csharp
-var fcmListener = new FcmListener(credentials, persistentIds);
-```
-
-Parameters:
-
-- `credentials`: The `Credentials`\* object containing the FCM & GCM credentials + the keys to decrypt the notification.
-- `persistentIds`: A list of notification IDs that should be ignored. Default is null.
-
-\* Go to the [Credentials](#credentials) section to know how to get it.
-
-Then, connect to the FCM socket:
-
-```csharp
-await fcmListener.ConnectAsync();
-```
-
-You can subscribe to events to handle connection, disconnection, errors, and received messages:
-
-```csharp
-fcmListener.Connecting += (sender, e) => { /* handle connecting event */ };
-fcmListener.Connected += (sender, e) => { /* handle connected event */ };
-fcmListener.Disconnected += (sender, e) => { /* handle disconnected event */ };
-fcmListener.ErrorOccurred += (sender, e) => { /* handle error event */ };
-fcmListener.MessageReceived += (sender, e) => { /* handle received message event */ };
-```
-
-Remember to dispose the `FcmListener` instance when you're done:
-
-```csharp
-fcmListener.Dispose(); 
-```
 </details>
+
+---
+
+<details><summary> RustPlusFcmListener </summary>
+
+</details>
+
+---
 
 ## Credentials
 

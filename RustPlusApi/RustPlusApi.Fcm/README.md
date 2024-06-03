@@ -6,49 +6,29 @@ This is a C# client for the Rust+ websocket. It allows you to receive notificati
 
 - **.NET 8** or later
 
-## Usage
+## Sumary 
 
-First, instantiate the `FcmListener` class with the necessary parameters:
+- [RustPlusFcmListenerClient](#RustPlusFcmListenerClient)
+- [RustPlusFcmListener](#RustPlusFcmListener)
 
-```csharp
-var fcmListener = new FcmListener(credentials, persistentIds);
-```
+The library provides two classes to interact with the Rust+ API: `RustPlusFcmListenerClient` and `RustPlusFcmListener`.
 
-Parameters:
+- `RustPlusFcmListenerClient` is the base client to interact with FCM.
+- `RustPlusFcmListener` is a new implementation that own more events.
 
-- `credentials`: The `Credentials`* object containing the FCM & GCM credentials + the keys to decrypt the notification.
-- `persistentIds`: A list of notification IDs that should be ignored. Default is null.
+Since `RustPlusFcmListener` inherit from `RustPlusFcmListenerClient`, you can use both classes to interact with FCM. The `RustPlus` class is recommended for new projects, as it provides more events.
 
-\* Go to the next section to see how to create a `Credentials` object.
+### RustPlusFcmListenerClient
 
-Then, connect to the FCM socket:
 
-```csharp
-await fcmListener.ConnectAsync();
-```
-
-You can subscribe to events to handle connection, disconnection, errors, and received messages:
-
-```csharp
-fcmListener.Connecting += (sender, e) => { /* handle connecting event */ };
-fcmListener.Connected += (sender, e) => { /* handle connected event */ };
-fcmListener.Disconnected += (sender, e) => { /* handle disconnected event */ };
-fcmListener.ErrorOccurred += (sender, e) => { /* handle error event */ };
-fcmListener.MessageReceived += (sender, e) => { /* handle received message event */ };
-```
-
-Remember to dispose the `FcmListener` instance when you're done:
-
-```csharp
-fcmListener.Dispose(); 
-```
+### RustPlusFcmListener
 
 ## Credentials
 
-Currenlty, there is not simple way to get the FCM & GCM credentials using .NET.
+Currenlty, there is not simple way to get the FCM credentials & keys using .NET.
 I've planned to implement a solution but it's not ready yet.
 
-To use this library, you need to get the FCM & GCM credentials manually.
+To use this library, you need to get the FCM credentials manually.
 To do so I recommand you to use [this project](https://github.com/liamcottle/rustplus.js) to get the credentials.
 
 I'm sorry for the inconvenience but since the API is not fully complete it's the easiest way.
