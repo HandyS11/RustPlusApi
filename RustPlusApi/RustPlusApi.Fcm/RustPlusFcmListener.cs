@@ -18,7 +18,7 @@ namespace RustPlusApi.Fcm
     public class RustPlusFcmListener(Credentials credentials, ICollection<string>? persistentIds = null)
             : RustPlusFcmListenerClient(credentials, persistentIds)
     {
-        public event EventHandler<MessageData>? OnParing;
+        public event EventHandler<FcmMessage>? OnParing;
 
         public event EventHandler<Notification<EntityEvent?>>? OnEntityParing;
         public event EventHandler<Notification<ServerEvent?>>? OnServerPairing;
@@ -39,11 +39,11 @@ namespace RustPlusApi.Fcm
             switch (msg.Data.ChannelId)
             {
                 case "pairing":
-                    OnParing?.Invoke(this, msg.Data);
-                    ParsePairing(msg.Data.Body);
+                    OnParing?.Invoke(this, msg);
+                    ParsePairing(msg.FcmMessageId, msg.Data.Body);
                     break;
                 case "alarm":
-                    OnAlarmTriggered?.Invoke(this, msg.Data.ToAlarmEvent());
+                    OnAlarmTriggered?.Invoke(this, msg.Data.ToAlarmEvent(msg.FcmMessageId));
                     break;
                 default:
                     Debug.WriteLine($"Unknown channel: {msg.Data.ChannelId}");
@@ -51,17 +51,17 @@ namespace RustPlusApi.Fcm
             }
         }
 
-        private void ParsePairing(Body body)
+        private void ParsePairing(Guid notifId, Body body)
         {
             switch (body.Type)
             {
                 case "entity":
-                    var entity = BuildGenericOutput(body, body.ToEntityEvent());
+                    var entity = BuildGenericOutput(notifId, body, body.ToEntityEvent());
                     OnEntityParing?.Invoke(this, entity);
-                    ParsePairingEntity(body);
+                    ParsePairingEntity(notifId, body);
                     break;
                 case "server":
-                    var server = BuildGenericOutput(body, body.ToServerEvent());
+                    var server = BuildGenericOutput(notifId, body, body.ToServerEvent());
                     OnServerPairing?.Invoke(this, server);
                     break;
                 default:
@@ -70,9 +70,9 @@ namespace RustPlusApi.Fcm
             }
         }
 
-        private void ParsePairingEntity(Body body)
+        private void ParsePairingEntity(Guid notifId, Body body)
         {
-            var response = BuildGenericOutput(body, body.ToEntityId());
+            var response = BuildGenericOutput(notifId, body, body.ToEntityId());
 
             switch (body.EntityType)
             {
