@@ -17,22 +17,23 @@ using static System.GC;
 
 namespace RustPlusApi.Fcm
 {
+    /// <summary>
+    /// Represents a RustPlus FCM listener.
+    /// </summary>
+    /// <param name="credentials">The credentials used for authentication.</param>
+    /// <param name="persistentIds">The collection of persistent IDs.</param>
     public class RustPlusFcmListenerClient(Credentials credentials, ICollection<string>? persistentIds = null) : IDisposable
     {
         private const string Host = "mtalk.google.com";
         private const int Port = 5228;
-
-        private const int MinResetIntervalSecs = 5 * 60;
-        private const int MaxSilentIntervalSecs = 60 * 60;
 
         private const int KMcsVersion = 41;
 
         private TcpClient? _tcpClient;
         private SslStream? _sslStream;
 
-        private DateTime _lastReset;
-        private DateTime _timeLastMessageReceived;
-        private Timer? _checkinTimer;
+        private readonly CancellationTokenSource _cancellationTokenSource = new();
+        private CancellationToken _cancellationToken => _cancellationTokenSource.Token;
 
         public event EventHandler? Connecting;
         public event EventHandler? Connected;
@@ -42,6 +43,7 @@ namespace RustPlusApi.Fcm
         public event EventHandler? Disconnecting;
         public event EventHandler? Disconnected;
 
+        public event EventHandler? SocketClosed;
         public event EventHandler<Exception>? ErrorOccurred;
 
         public async Task ConnectAsync()
@@ -77,13 +79,9 @@ namespace RustPlusApi.Fcm
 
                 SendPacket(loginRequest);
 
-                _lastReset = DateTime.Now;
-                _timeLastMessageReceived = DateTime.Now;
-
                 Connected?.Invoke(this, EventArgs.Empty);
 
-                StatusCheck();
-                ReceiveMessages();
+                _ = Task.Run(ReceiveMessages, _cancellationToken);
             }
             catch (Exception ex)
             {
@@ -100,6 +98,8 @@ namespace RustPlusApi.Fcm
         {
             Disconnecting?.Invoke(this, EventArgs.Empty);
 
+            _cancellationTokenSource.Cancel();
+
             _sslStream?.Close();
             _tcpClient?.Close();
 
@@ -111,12 +111,13 @@ namespace RustPlusApi.Fcm
         /// </summary>
         public void Dispose() => SuppressFinalize(this);
 
+        /// <summary>
+        /// Receives messages from the FCM listener.
+        /// </summary>
         private void ReceiveMessages()
         {
-            var parser = new RawMessageParser();
-            parser.MessageReceived += (_, e) => OnMessage(e);
-
-            byte[] header = Read(2);
+            // Read the header
+            var header = Read(2);
             int version = header[0];
             int tag = header[1];
 
@@ -124,34 +125,62 @@ namespace RustPlusApi.Fcm
                 throw new InvalidOperationException($"Protocol version {version} unsupported");
 
             var size = ReadVarint32();
-            Debug.WriteLine($"Got message size: {size} bytes");
-
             var payload = Read(size);
-            Debug.WriteLine($"Successfully read: {payload.Length} bytes");
-
-            Type type = BuildProtobufFromTag((McsProtoTag)tag);
-            Debug.WriteLine($"RECEIVED PROTO OF TYPE {type.Name}");
+            var type = BuildProtobufFromTag((McsProtoTag)tag);
 
             if (type != typeof(LoginResponse))
                 throw new Exception($"Got wrong login response. Expected {typeof(LoginResponse).Name}, got {type.Name}");
 
-            parser.OnGotLoginResponse();
-            parser.OnData(payload, type);
+            OnGotMessageBytes(payload, type);
 
-            // Start receival of the rest of messages
-            Debug.WriteLine("Starting receiver loop.");
-            while (true)
+            while (!_cancellationToken.IsCancellationRequested)
             {
+                // Read the tag and size
                 tag = _sslStream!.ReadByte();
                 size = ReadVarint32();
                 payload = Read(size);
                 type = BuildProtobufFromTag((McsProtoTag)tag);
-                Debug.WriteLine($"RECEIVED PROTO OF TYPE {type.Name}");
 
-                parser.OnData(payload, type);
+                OnGotMessageBytes(payload, type);
             }
         }
 
+        /// <summary>
+        /// Handles the received message bytes.
+        /// </summary>
+        /// <param name="data">The message bytes.</param>
+        /// <param name="type">The type of the message.</param>
+        private void OnGotMessageBytes(byte[] data, Type type)
+        {
+            try
+            {
+                var messageTag = GetTagFromProtobufType(type);
+
+                if (data.Length == 0)
+                {
+                    OnMessage(new MessageEventArgs { Tag = messageTag, Object = Activator.CreateInstance(type) });
+                    return;
+                }
+
+                var buffer = data.Take(data.Length).ToArray();
+                data = data.Skip(data.Length).ToArray();
+
+                using var stream = new MemoryStream(buffer);
+                var message = Serializer.NonGeneric.Deserialize(type, stream);
+
+                OnMessage(new MessageEventArgs { Tag = messageTag, Object = message });
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke(this, ex);
+            }
+        }
+
+        /// <summary>
+        /// Reads the specified number of bytes from the SSL stream.
+        /// </summary>
+        /// <param name="size">The number of bytes to read.</param>
+        /// <returns>An array of bytes read from the stream.</returns>
         private byte[] Read(int size)
         {
             byte[] buffer = new byte[size];
@@ -163,6 +192,10 @@ namespace RustPlusApi.Fcm
             return buffer;
         }
 
+        /// <summary>
+        /// Reads a variable-length 32-bit integer from the SSL stream.
+        /// </summary>
+        /// <returns>The 32-bit integer read from the stream.</returns>
         private int ReadVarint32()
         {
             int result = 0;
@@ -177,6 +210,10 @@ namespace RustPlusApi.Fcm
             return result;
         }
 
+        /// <summary>
+        /// Sends a packet over the SSL stream.
+        /// </summary>
+        /// <param name="packet">The packet to send.</param>
         private void SendPacket(object packet)
         {
             var tagEnum = GetTagFromProtobufType(packet.GetType());
@@ -189,6 +226,10 @@ namespace RustPlusApi.Fcm
             _sslStream!.Write([.. header, .. EncodeVarint32(payload.Length), .. payload]);
         }
 
+        /// <summary>
+        /// Handles a ping message by sending a ping response.
+        /// </summary>
+        /// <param name="ping">The ping message to handle.</param>
         private void HandlePing(HeartbeatPing? ping)
         {
             if (ping == null) return;
@@ -204,48 +245,12 @@ namespace RustPlusApi.Fcm
             SendPacket(pingResponse);
         }
 
-        private void Reset(bool noWait = false)
-        {
-            if (!noWait)
-            {
-                var timeSinceLastReset = DateTime.Now - _lastReset;
-
-                if (timeSinceLastReset < TimeSpan.FromSeconds(MinResetIntervalSecs))
-                {
-                    Debug.WriteLine($"{timeSinceLastReset.TotalSeconds}s since last reset attempt.");
-
-                    var waitTime = TimeSpan.FromSeconds(MinResetIntervalSecs) - timeSinceLastReset;
-
-                    Debug.WriteLine($"Waiting {waitTime.TotalSeconds}seconds");
-                    Thread.Sleep(waitTime);
-                }
-            }
-            _lastReset = DateTime.Now;
-
-            Debug.WriteLine("Resetting listener.");
-            Disconnect();
-            ConnectAsync().GetAwaiter().GetResult();
-        }
-
-        private void StatusCheck(object? state = null)
-        {
-            TimeSpan timeSinceLastMessage = DateTime.UtcNow - _timeLastMessageReceived;
-            if (timeSinceLastMessage > TimeSpan.FromSeconds(MaxSilentIntervalSecs))
-            {
-                Debug.WriteLine($"No communications received in {timeSinceLastMessage.TotalSeconds}s. Resetting connection.");
-                Reset(true);
-            }
-            else
-            {
-                int expectedTimeout = 1 + MaxSilentIntervalSecs - (int)timeSinceLastMessage.TotalSeconds;
-                _checkinTimer = new Timer(StatusCheck, null, expectedTimeout * 1000, Timeout.Infinite);
-            }
-        }
-
+        /// <summary>
+        /// Handles a message received event.
+        /// </summary>
+        /// <param name="e">The message event arguments.</param>
         private void OnMessage(MessageEventArgs e)
         {
-            _timeLastMessageReceived = DateTime.Now;
-
             // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
             switch (e.Tag)
             {
@@ -259,7 +264,8 @@ namespace RustPlusApi.Fcm
                     HandlePing(e.Object as HeartbeatPing);
                     break;
                 case McsProtoTag.KCloseTag:
-                    Reset(true);
+                    SocketClosed?.Invoke(this, EventArgs.Empty);
+                    Disconnect();
                     break;
                 case McsProtoTag.KIqStanzaTag:
                     break; // I'm not sure about what this message does, and it arrives partially empty, so I will just leave it like this for now
@@ -268,6 +274,10 @@ namespace RustPlusApi.Fcm
             }
         }
 
+        /// <summary>
+        /// Handles a data message received event.
+        /// </summary>
+        /// <param name="dataMessage">The data message stanza.</param>
         private void OnDataMessage(DataMessageStanza? dataMessage)
         {
             if (dataMessage?.PersistentId != null
@@ -299,6 +309,10 @@ namespace RustPlusApi.Fcm
             NotificationReceived?.Invoke(this, message);
         }
 
+        /// <summary>
+        /// Parses the notification message.
+        /// </summary>
+        /// <param name="message">The notification message to parse.</param>
         protected virtual void ParseNotification(string message) { }
     }
 }

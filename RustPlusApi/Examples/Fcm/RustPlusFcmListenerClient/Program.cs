@@ -31,7 +31,12 @@ listener.Connected += (_, _) =>
 
 listener.NotificationReceived += (_, message) =>
 {
-    Console.WriteLine($"[MESSAGE]: {DateTime.Now}:\n{message.ToFcmMessageString()}");
+    Console.WriteLine($"[NOTIFICATION]: {DateTime.Now}:\n{message.ToFcmMessageString()}");
+};
+
+listener.SocketClosed += (_, _) =>
+{
+    Console.WriteLine($"[SOCKET CLOSED]: {DateTime.Now}");
 };
 
 listener.ErrorOccurred += (_, error) =>

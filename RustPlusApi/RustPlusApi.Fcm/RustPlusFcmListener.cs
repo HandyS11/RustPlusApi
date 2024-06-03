@@ -10,8 +10,13 @@ using static RustPlusApi.Fcm.Utils.ResponseHelper;
 
 namespace RustPlusApi.Fcm
 {
+    /// <summary>
+    /// Represents a RustPlus FCM listener.
+    /// </summary>
+    /// <param name="credentials">The credentials used for authentication.</param>
+    /// <param name="persistentIds">The collection of persistent IDs.</param>
     public class RustPlusFcmListener(Credentials credentials, ICollection<string>? persistentIds = null)
-        : RustPlusFcmListenerClient(credentials, persistentIds)
+            : RustPlusFcmListenerClient(credentials, persistentIds)
     {
         public event EventHandler<MessageData>? OnParing;
 
