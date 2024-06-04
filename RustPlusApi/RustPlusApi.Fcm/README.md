@@ -6,49 +6,111 @@ This is a C# client for the Rust+ websocket. It allows you to receive notificati
 
 - **.NET 8** or later
 
-## Usage
+## Sumary 
 
-First, instantiate the `FcmListener` class with the necessary parameters:
+- [RustPlusFcmListenerClient](#RustPlusFcmListenerClient)
+- [RustPlusFcmListener](#RustPlusFcmListener)
+
+The library provides two classes to interact with the Rust+ API: `RustPlusFcmListenerClient` and `RustPlusFcmListener`.
+
+- `RustPlusFcmListenerClient` is the base client to interact with FCM.
+- `RustPlusFcmListener` is a new implementation that own more events.
+
+Since `RustPlusFcmListener` inherit from `RustPlusFcmListenerClient`, you can use both classes to interact with FCM. The `RustPlus` class is recommended for new projects, as it provides more events.
+
+### RustPlusFcmListenerClient
+
+First, instantiate the `RustPlusFcmListenerClient` class with the necessary parameters:
 
 ```csharp
-var fcmListener = new FcmListener(credentials, persistentIds);
+var rustPlusFcmListenerClient = new RustPlusFcmListenerClient(credentials, notificationIds);
 ```
 
 Parameters:
 
-- `credentials`: The `Credentials`* object containing the FCM & GCM credentials + the keys to decrypt the notification.
-- `persistentIds`: A list of notification IDs that should be ignored. Default is null.
+- `credentials`: The FCM credentials\*.
+- `notificationIds`: The notification ids to mark as read.
 
-\* Go to the next section to see how to create a `Credentials` object.
+\* See the [Credentials](#Credentials) section for more information.
 
-Then, connect to the FCM socket:
+Then, connect to the FCM server:
 
 ```csharp
-await fcmListener.ConnectAsync();
+await rustPlusFcmListenerClient.ConnectAsync();
 ```
 
-You can subscribe to events to handle connection, disconnection, errors, and received messages:
+---
+
+To listen to the FCM notifications, you can use the `OnNotificationReceived` event:
 
 ```csharp
-fcmListener.Connecting += (sender, e) => { /* handle connecting event */ };
-fcmListener.Connected += (sender, e) => { /* handle connected event */ };
-fcmListener.Disconnected += (sender, e) => { /* handle disconnected event */ };
-fcmListener.ErrorOccurred += (sender, e) => { /* handle error event */ };
-fcmListener.MessageReceived += (sender, e) => { /* handle received message event */ };
+rustPlusFcmListenerClient.OnNotificationReceived += (sender, e) =>
+{
+    Console.WriteLine($"Notification received: {e.Notification}");
+};
 ```
 
-Remember to dispose the `FcmListener` instance when you're done:
+---
+
+Don't forget to disconnect from the FCM server when you're done:
 
 ```csharp
-fcmListener.Dispose(); 
+rustPlusFcmListenerClient.Disconnect();
+```
+
+### RustPlusFcmListener
+
+The `RustPlusFcmListener` inherits from `RustPlusFcmListenerClient` and provides more events.
+
+Such as `RustPlusFcmListenerClient` you need to instantiate the `RustPlusFcmListener` class with the necessary parameters:
+
+```csharp
+var rustPlusFcmListener = new RustPlusFcmListener(credentials, notificationIds);
+```
+
+---
+
+Then you can connect to the FCM server:
+
+```csharp
+await rustPlusFcmListener.ConnectAsync();
+```
+
+---
+
+You can subscribe to events to handle specific actions:
+
+```csharp
+rustPlusFcmListener.OnServerPairing += (sender, e) =>
+{
+    Console.WriteLine($"Server pairing: {e.ServerPairing}");
+};
+
+rustPlusFcmListener.OnEntityParing += (sender, e) =>
+{
+    Console.WriteLine($"Entity pairing: {e.EntityPairing}");
+};
+
+rustPlusFcmListener.OnAlarmTriggered += (sender, e) =>
+{
+    Console.WriteLine($"Alarm triggered: {e.Alarm}");
+};
+```
+
+---
+
+Don't forget to disconnect from the FCM server when you're done:
+
+```csharp
+rustPlusFcmListener.Disconnect();
 ```
 
 ## Credentials
 
-Currenlty, there is not simple way to get the FCM & GCM credentials using .NET.
+Currenlty, there is not simple way to get the FCM credentials & keys using .NET.
 I've planned to implement a solution but it's not ready yet.
 
-To use this library, you need to get the FCM & GCM credentials manually.
+To use this library, you need to get the FCM credentials manually.
 To do so I recommand you to use [this project](https://github.com/liamcottle/rustplus.js) to get the credentials.
 
 I'm sorry for the inconvenience but since the API is not fully complete it's the easiest way.

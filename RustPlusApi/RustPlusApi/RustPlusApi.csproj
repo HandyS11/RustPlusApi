@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<PackageId>RustPlusApi</PackageId>
-		<Version>1.1.0</Version>
+		<Version>1.2.0</Version>
 		<Authors>HandyS11</Authors>
 		<Owners>HandyS11</Owners>
 		<Product>A Rust+ API made in C#.</Product>
