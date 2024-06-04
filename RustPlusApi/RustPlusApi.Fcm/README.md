@@ -20,8 +20,90 @@ Since `RustPlusFcmListener` inherit from `RustPlusFcmListenerClient`, you can us
 
 ### RustPlusFcmListenerClient
 
+First, instantiate the `RustPlusFcmListenerClient` class with the necessary parameters:
+
+```csharp
+var rustPlusFcmListenerClient = new RustPlusFcmListenerClient(credentials, notificationIds);
+```
+
+Parameters:
+
+- `credentials`: The FCM credentials\*.
+- `notificationIds`: The notification ids to mark as read.
+
+\* See the [Credentials](#Credentials) section for more information.
+
+Then, connect to the FCM server:
+
+```csharp
+await rustPlusFcmListenerClient.ConnectAsync();
+```
+
+---
+
+To listen to the FCM notifications, you can use the `OnNotificationReceived` event:
+
+```csharp
+rustPlusFcmListenerClient.OnNotificationReceived += (sender, e) =>
+{
+    Console.WriteLine($"Notification received: {e.Notification}");
+};
+```
+
+---
+
+Don't forget to disconnect from the FCM server when you're done:
+
+```csharp
+rustPlusFcmListenerClient.Disconnect();
+```
 
 ### RustPlusFcmListener
+
+The `RustPlusFcmListener` inherits from `RustPlusFcmListenerClient` and provides more events.
+
+Such as `RustPlusFcmListenerClient` you need to instantiate the `RustPlusFcmListener` class with the necessary parameters:
+
+```csharp
+var rustPlusFcmListener = new RustPlusFcmListener(credentials, notificationIds);
+```
+
+---
+
+Then you can connect to the FCM server:
+
+```csharp
+await rustPlusFcmListener.ConnectAsync();
+```
+
+---
+
+You can subscribe to events to handle specific actions:
+
+```csharp
+rustPlusFcmListener.OnServerPairing += (sender, e) =>
+{
+    Console.WriteLine($"Server pairing: {e.ServerPairing}");
+};
+
+rustPlusFcmListener.OnEntityParing += (sender, e) =>
+{
+    Console.WriteLine($"Entity pairing: {e.EntityPairing}");
+};
+
+rustPlusFcmListener.OnAlarmTriggered += (sender, e) =>
+{
+    Console.WriteLine($"Alarm triggered: {e.Alarm}");
+};
+```
+
+---
+
+Don't forget to disconnect from the FCM server when you're done:
+
+```csharp
+rustPlusFcmListener.Disconnect();
+```
 
 ## Credentials
 

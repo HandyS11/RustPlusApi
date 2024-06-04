@@ -1,8 +1,7 @@
 # RustPlusApi
 
-| CI | CD |
-| -- | -- |
-| ![](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml/badge.svg) |![](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg) |
+![](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml/badge.svg)
+![](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg)
 
 ## 📊 Features
 
@@ -50,11 +49,11 @@ Since `RustPlus` inherit from `RustPlusLegacy`, you can use both classes to inte
 
 Simply use this library in your project by running the following commands:
 
-```dotnet
+```bash
 dotnet add package RustPlusApi
 ```
 
-```dotnet
+```bash
 dotnet add package RustPlusApi.Fcm
 ```
 
@@ -226,12 +225,93 @@ rustPlusApi.DisconnectAsync();
 
 <details><summary> RustPlusFcmListenerClient </summary>
 
+First, instantiate the `RustPlusFcmListenerClient` class with the necessary parameters:
+
+```csharp
+var rustPlusFcmListenerClient = new RustPlusFcmListenerClient(credentials, notificationIds);
+```
+
+Parameters:
+
+- `credentials`: The FCM credentials\*.
+- `notificationIds`: The notification ids to mark as read.
+
+\* See the [Credentials](#Credentials) section for more information.
+
+Then, connect to the FCM server:
+
+```csharp
+await rustPlusFcmListenerClient.ConnectAsync();
+```
+
+---
+
+To listen to the FCM notifications, you can use the `OnNotificationReceived` event:
+
+```csharp
+rustPlusFcmListenerClient.OnNotificationReceived += (sender, e) =>
+{
+    Console.WriteLine($"Notification received: {e.Notification}");
+};
+```
+
+---
+
+Don't forget to disconnect from the FCM server when you're done:
+
+```csharp
+rustPlusFcmListenerClient.Disconnect();
+```
 </details>
 
 ---
 
 <details><summary> RustPlusFcmListener </summary>
 
+The `RustPlusFcmListener` inherits from `RustPlusFcmListenerClient` and provides more events.
+
+Such as `RustPlusFcmListenerClient` you need to instantiate the `RustPlusFcmListener` class with the necessary parameters:
+
+```csharp
+var rustPlusFcmListener = new RustPlusFcmListener(credentials, notificationIds);
+```
+
+---
+
+Then you can connect to the FCM server:
+
+```csharp
+await rustPlusFcmListener.ConnectAsync();
+```
+
+---
+
+You can subscribe to events to handle specific actions:
+
+```csharp
+rustPlusFcmListener.OnServerPairing += (sender, e) =>
+{
+    Console.WriteLine($"Server pairing: {e.ServerPairing}");
+};
+
+rustPlusFcmListener.OnEntityParing += (sender, e) =>
+{
+    Console.WriteLine($"Entity pairing: {e.EntityPairing}");
+};
+
+rustPlusFcmListener.OnAlarmTriggered += (sender, e) =>
+{
+    Console.WriteLine($"Alarm triggered: {e.Alarm}");
+};
+```
+
+---
+
+Don't forget to disconnect from the FCM server when you're done:
+
+```csharp
+rustPlusFcmListener.Disconnect();
+```
 </details>
 
 ---
@@ -250,6 +330,6 @@ I'm sorry for the inconvenience but since the API is not fully complete it's the
 
 *This project is grandly inspired by [liamcottle/rustplus.js](https://github.com/liamcottle/rustplus.js).*
 
-Special thanks to [**Versette**](https://github.com/Versette) for his work on the `RustPlusApi.Fcm` socket.
+Special thanks to [**Versette**](https://github.com/Versette) for her work on the `RustPlusApi.Fcm` socket.
 
 * Author: [**HandyS11**](https://github.com/HandyS11)
