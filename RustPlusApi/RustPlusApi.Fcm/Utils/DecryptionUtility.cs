@@ -18,30 +18,30 @@ using Org.BouncyCastle.Security;
 using RustPlusApi.Fcm.Data;
 
 using ECCurve = Org.BouncyCastle.Math.EC.ECCurve;
+// ReSharper disable ClassNeverInstantiated.Local
 
 namespace RustPlusApi.Fcm.Utils
 {
     internal class DecryptionUtility
     {
-        private const int SHA_256_LENGTH = 32;
-        private const int KEY_LENGTH = 16;
-        private const int NONCE_LENGTH = 12;
-        private const int HEADER_RS = 4096;
-        private const int TAG_LENGTH = 16;
-        private const int CHUNK_SIZE = HEADER_RS + TAG_LENGTH;
-        private const int PADSIZE = 2;
+        private const int Sha256Length = 32;
+        private const int KeyLength = 16;
+        private const int NonceLength = 12;
+        private const int HeaderRs = 4096;
+        private const int TagLength = 16;
+        private const int ChunkSize = HeaderRs + TagLength;
+        private const int PadSize = 2;
 
-        private static readonly ECDomainParameters ecDomainParameters;
-        private static readonly ECKeyGenerationParameters eckgparameters;
-        private static readonly ECCurve ecCurve;
-        private static readonly ECDomainParameters ecSpec;
-        private static readonly X9ECParameters ecParams = NistNamedCurves.GetByName("P-256");
-        private static readonly SecureRandom secureRandom = new();
+        private static readonly ECDomainParameters EcDomainParameters;
+        private static readonly ECKeyGenerationParameters EckgParameters;
+        private static readonly ECCurve EcCurve;
+        private static readonly X9ECParameters EcParams = NistNamedCurves.GetByName("P-256");
+        private static readonly SecureRandom SecureRandom = new();
 
-        private static readonly byte[] keyInfoParameter = Encoding.ASCII.GetBytes("Content-Encoding: aesgcm\0");
-        private static readonly byte[] _nonceInfoParameter = Encoding.ASCII.GetBytes("Content-Encoding: nonce\0");
-        private static readonly byte[] _authInfoParameter = Encoding.ASCII.GetBytes("Content-Encoding: auth\0");
-        private static readonly byte[] _keyLabel = Encoding.ASCII.GetBytes("P-256");
+        private static readonly byte[] KeyInfoParameter = "Content-Encoding: aesgcm\0"u8.ToArray();
+        private static readonly byte[] NonceInfoParameter = "Content-Encoding: nonce\0"u8.ToArray();
+        private static readonly byte[] AuthInfoParameter = "Content-Encoding: auth\0"u8.ToArray();
+        private static readonly byte[] KeyLabel = "P-256"u8.ToArray();
 
         private readonly ECPrivateKeyParameters _privateKey;
         private readonly ECPublicKeyParameters _publicKey;
@@ -51,11 +51,11 @@ namespace RustPlusApi.Fcm.Utils
 
         static DecryptionUtility()
         {
-            ecCurve = ecParams.Curve;
-            ecSpec = new ECDomainParameters(ecCurve, ecParams.G, ecParams.N, ecParams.H, ecParams.GetSeed());
+            EcCurve = EcParams.Curve;
+            var ecSpec = new ECDomainParameters(EcCurve, EcParams.G, EcParams.N, EcParams.H, EcParams.GetSeed());
 
-            eckgparameters = new ECKeyGenerationParameters(ecSpec, secureRandom);
-            ecDomainParameters = eckgparameters.DomainParameters;
+            EckgParameters = new ECKeyGenerationParameters(ecSpec, SecureRandom);
+            EcDomainParameters = EckgParameters.DomainParameters;
         }
 
         public DecryptionUtility()
@@ -64,7 +64,7 @@ namespace RustPlusApi.Fcm.Utils
             PublicKey = _publicKey.Q.GetEncoded();
 
             AuthSecret = new byte[16];
-            secureRandom.NextBytes(AuthSecret);
+            SecureRandom.NextBytes(AuthSecret);
         }
 
         public static string Decrypt(DataMessageStanza dataMessage, Keys keys)
@@ -98,12 +98,12 @@ namespace RustPlusApi.Fcm.Utils
             // TODO: this is not tested with more than one iteration
             for (uint i = 0; start < buffer.Length; ++i)
             {
-                var end = start + CHUNK_SIZE;
+                var end = start + ChunkSize;
                 if (end == buffer.Length) throw new InvalidOperationException("Truncated payload");
 
                 end = Math.Min(end, buffer.Length);
 
-                if (end - start <= TAG_LENGTH) throw new InvalidOperationException("Invalid block: too small at " + i);
+                if (end - start <= TagLength) throw new InvalidOperationException("Invalid block: too small at " + i);
 
                 var block = DecryptRecord(key, nonce, i, ByteArray.Slice(buffer, start, end), end >= buffer.Length);
                 result = ByteArray.Concat(result, block);
@@ -114,9 +114,9 @@ namespace RustPlusApi.Fcm.Utils
 
         private DecryptionUtility(byte[] publicKey, byte[] privateKey, byte[] authSecret)
         {
-            var pt = ecCurve.DecodePoint(publicKey);
-            _publicKey = new ECPublicKeyParameters(pt, ecDomainParameters);
-            _privateKey = new ECPrivateKeyParameters(new BigInteger(1, privateKey), ecDomainParameters);
+            var pt = EcCurve.DecodePoint(publicKey);
+            _publicKey = new ECPublicKeyParameters(pt, EcDomainParameters);
+            _privateKey = new ECPrivateKeyParameters(new BigInteger(1, privateKey), EcDomainParameters);
 
             AuthSecret = authSecret;
             PublicKey = _publicKey.Q.GetEncoded();
@@ -139,11 +139,11 @@ namespace RustPlusApi.Fcm.Utils
 
         private static byte[] RemovePad(byte[] buffer)
         {
-            var pad = (int)ByteArray.ReadUInt64(buffer, 0, PADSIZE);
+            var pad = (int)ByteArray.ReadUInt64(buffer, 0, PadSize);
 
-            if (pad + PADSIZE > buffer.Length) throw new InvalidOperationException("padding exceeds block size");
+            if (pad + PadSize > buffer.Length) throw new InvalidOperationException("padding exceeds block size");
 
-            return ByteArray.Slice(buffer, pad + PADSIZE, buffer.Length);
+            return ByteArray.Slice(buffer, pad + PadSize, buffer.Length);
         }
 
         private static byte[] DecryptRecord(byte[] key, byte[] nonce, uint counter, byte[] buffer, bool last)
@@ -167,14 +167,14 @@ namespace RustPlusApi.Fcm.Utils
             ECPublicKeyParameters receiverPublicKey, ECPrivateKeyParameters receiverPrivateKey)
         {
             var (secret, context) = ExtractSecretAndContext(senderPublicKey, receiverPublicKey, receiverPrivateKey);
-            secret = HKDF.GetBytes(authSecret, secret, _authInfoParameter, SHA_256_LENGTH);
+            secret = Hkdf.GetBytes(authSecret, secret, AuthInfoParameter, Sha256Length);
 
-            var keyInfo = ByteArray.Concat(keyInfoParameter, context);
-            var nonceInfo = ByteArray.Concat(_nonceInfoParameter, context);
+            var keyInfo = ByteArray.Concat(KeyInfoParameter, context);
+            var nonceInfo = ByteArray.Concat(NonceInfoParameter, context);
 
-            var prk = HKDF.Extract(salt, secret);
+            var prk = Hkdf.Extract(salt, secret);
 
-            return (HKDF.Expand(prk, keyInfo, KEY_LENGTH), HKDF.Expand(prk, nonceInfo, NONCE_LENGTH));
+            return (Hkdf.Expand(prk, keyInfo, KeyLength), Hkdf.Expand(prk, nonceInfo, NonceLength));
         }
 
         private static (byte[], byte[]) ExtractSecretAndContext(ECPublicKeyParameters senderPublicKey,
@@ -188,11 +188,11 @@ namespace RustPlusApi.Fcm.Utils
             var receiverKeyBytes = AddLengthPrefix(receiverPublicKey.Q.GetEncoded());
             var senderPublicKeyBytes = AddLengthPrefix(senderPublicKey.Q.GetEncoded());
 
-            var context = new byte[_keyLabel.Length + 1 + receiverKeyBytes.Length + senderPublicKeyBytes.Length];
+            var context = new byte[KeyLabel.Length + 1 + receiverKeyBytes.Length + senderPublicKeyBytes.Length];
 
             var destinationOffset = 0;
-            Array.Copy(_keyLabel, 0, context, destinationOffset, _keyLabel.Length);
-            destinationOffset += _keyLabel.Length + 1;
+            Array.Copy(KeyLabel, 0, context, destinationOffset, KeyLabel.Length);
+            destinationOffset += KeyLabel.Length + 1;
             Array.Copy(receiverKeyBytes, 0, context, destinationOffset, receiverKeyBytes.Length);
             destinationOffset += receiverKeyBytes.Length;
             Array.Copy(senderPublicKeyBytes, 0, context, destinationOffset, senderPublicKeyBytes.Length);
@@ -214,7 +214,7 @@ namespace RustPlusApi.Fcm.Utils
         private static (ECPrivateKeyParameters, ECPublicKeyParameters) GenerateKeys()
         {
             var gen = new ECKeyPairGenerator("ECDH");
-            gen.Init(eckgparameters);
+            gen.Init(EckgParameters);
             var eckp = gen.GenerateKeyPair();
 
             var ecPub = (ECPublicKeyParameters)eckp.Public;
@@ -272,10 +272,10 @@ namespace RustPlusApi.Fcm.Utils
             }
         }
 
-        private class HKDF
+        private class Hkdf
         {
             /// <summary>
-            ///     Returns a 32 byte psuedorandom number that can be used with the Expand method if
+            ///     Returns a 32 byte pseudorandom number that can be used with the Expand method if
             ///     a cryptographically secure pseudorandom number is not already available.
             /// </summary>
             /// <param name="salt">
@@ -287,7 +287,7 @@ namespace RustPlusApi.Fcm.Utils
             /// <param name="inputKeyMaterial">
             ///     Material that is not necessarily random that
             ///     will be used with the HMACSHA256 hash function and the salt to produce
-            ///     a 32 byte psuedorandom number.
+            ///     a 32 byte pseudorandom number.
             /// </param>
             /// <returns></returns>
             internal static byte[] Extract(byte[] salt, byte[] inputKeyMaterial)
@@ -300,14 +300,14 @@ namespace RustPlusApi.Fcm.Utils
 
             /// <summary>
             ///     Returns a secure pseudorandom key of the desired length. Useful as a key derivation
-            ///     function to derive one cryptograpically secure pseudorandom key from another
-            ///     cryptograpically secure pseudorandom key. This can be useful, for example,
+            ///     function to derive one cryptographically secure pseudorandom key from another
+            ///     cryptographically secure pseudorandom key. This can be useful, for example,
             ///     when needing to create a subKey from a master key.
             /// </summary>
             /// <param name="key">
-            ///     A cryptograpically secure pseudorandom number. Can be obtained
+            ///     A cryptographically secure pseudorandom number. Can be obtained
             ///     via the Extract method or elsewhere. Must be 32 bytes or greater. 64 bytes is
-            ///     the prefered size.  Shorter keys are padded to 64 bytes, longer ones are hashed
+            ///     the preferred size.  Shorter keys are padded to 64 bytes, longer ones are hashed
             ///     to 64 bytes.
             /// </param>
             /// <param name="info">
@@ -333,38 +333,35 @@ namespace RustPlusApi.Fcm.Utils
                 ArgumentOutOfRangeException.ThrowIfGreaterThan(length, 255 * hashLength);
 
                 var outputIndex = 0;
-                byte[] buffer;
                 var hash = Array.Empty<byte>();
                 var output = new byte[length];
                 var count = 1;
-                int bytesToCopy;
 
-                using (var hmac = new HMACSHA256(key))
+                using var hmac = new HMACSHA256(key);
+                while (outputIndex < length)
                 {
-                    while (outputIndex < length)
-                    {
-                        //Setup buffer to hash
-                        buffer = new byte[hash.Length + info.Length + 1];
-                        Buffer.BlockCopy(hash, 0, buffer, 0, hash.Length);
-                        Buffer.BlockCopy(info, 0, buffer, hash.Length, info.Length);
-                        buffer[^1] = (byte)count++;
+                    //Setup buffer to hash
+                    var buffer = new byte[hash.Length + info.Length + 1];
+                    Buffer.BlockCopy(hash, 0, buffer, 0, hash.Length);
+                    Buffer.BlockCopy(info, 0, buffer, hash.Length, info.Length);
+                    buffer[^1] = (byte)count++;
 
-                        //Hash the buffer and return a 32 byte hash
-                        hash = hmac.ComputeHash(buffer, 0, buffer.Length);
+                    //Hash the buffer and return a 32 byte hash
+                    hash = hmac.ComputeHash(buffer, 0, buffer.Length);
 
-                        //Copy as much of the hash as we need to the final output
-                        bytesToCopy = Math.Min(length - outputIndex, hash.Length);
-                        Buffer.BlockCopy(hash, 0, output, outputIndex, bytesToCopy);
-                        outputIndex += bytesToCopy;
-                    }
+                    //Copy as much of the hash as we need to the final output
+                    var bytesToCopy = Math.Min(length - outputIndex, hash.Length);
+                    Buffer.BlockCopy(hash, 0, output, outputIndex, bytesToCopy);
+                    outputIndex += bytesToCopy;
                 }
+
                 return output;
             }
 
             /// <summary>
-            ///     Generates a psuedorandom number of the length specified.  This number is suitable
+            ///     Generates a pseudorandom number of the length specified.  This number is suitable
             ///     for use as an encryption key, HMAC validation key or other uses of a cryptographically
-            ///     secure psuedorandom number.
+            ///     secure pseudorandom number.
             /// </summary>
             /// <param name="salt">
             ///     non-secret random value. If less than 64 bytes it is
@@ -373,7 +370,7 @@ namespace RustPlusApi.Fcm.Utils
             /// <param name="inputKeyMaterial">
             ///     Material that is not necessarily random that
             ///     will be used with the HMACSHA256 hash function and the salt to produce
-            ///     a 32 byte psuedorandom number.
+            ///     a 32 byte pseudorandom number.
             /// </param>
             /// <param name="info">
             ///     (Optional) context and application specific information.

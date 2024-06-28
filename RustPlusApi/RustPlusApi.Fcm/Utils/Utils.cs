@@ -6,12 +6,12 @@ namespace RustPlusApi.Fcm.Utils
 {
     public static class Utils
     {
-        public static byte[] EncodeVarint32(int value)
+        public static byte[] EncodeVarInt32(int value)
         {
             List<byte> result = [];
             while (value != 0)
             {
-                byte b = (byte)(value & 0x7F);
+                var b = (byte)(value & 0x7F);
                 value >>= 7;
                 if (value != 0) b |= 0x80;
                 result.Add(b);
