@@ -6,7 +6,7 @@ using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 
-rustPlus.OnTeamChatReceived += (sender, message) =>
+rustPlus.OnTeamChatReceived += (_, message) =>
 {
     Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
 };
