@@ -78,6 +78,11 @@ namespace RustPlusApi
             }
         }
 
+        /// <summary>
+        /// Sets the player ID and player token.
+        /// </summary>
+        /// <param name="newPlayerId">The new player ID.</param>
+        /// <param name="newPlayerToken">The new player token.</param>
         public void SetPlayer(ulong newPlayerId, int newPlayerToken)
         {
             playerId = newPlayerId;
@@ -210,7 +215,7 @@ namespace RustPlusApi
             }
 
             // For some reason I have to wait
-            await Task.Delay(1000, CancellationToken.None).ContinueWith(async (t) =>
+            await Task.Delay(1000, CancellationToken.None).ContinueWith(async _ =>
             {
                 await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
             }, CancellationToken.None);

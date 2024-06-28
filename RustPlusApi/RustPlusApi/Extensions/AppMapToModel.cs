@@ -5,6 +5,7 @@ using RustPlusApi.Data;
 using RustPlusContracts;
 
 using static RustPlusContracts.AppMap.Types;
+// ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions
 {
