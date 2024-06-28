@@ -30,7 +30,7 @@ namespace RustPlusApi
         private readonly ConcurrentQueue<TaskCompletionSource<AppMessage>> _responseQueue = new();
 
         private readonly CancellationTokenSource _cancellationTokenSource = new();
-        private CancellationToken _cancellationToken => _cancellationTokenSource.Token;
+        private CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
         public event EventHandler? Connecting;
         public event EventHandler? Connected;
@@ -78,6 +78,12 @@ namespace RustPlusApi
             }
         }
 
+        public void SetPlayer(ulong newPlayerId, int newPlayerToken)
+        {
+            playerId = newPlayerId;
+            playerToken = newPlayerToken;
+        }
+
         /// <summary>
         /// Sends a request to the Rust+ server asynchronously.
         /// </summary>
@@ -108,7 +114,7 @@ namespace RustPlusApi
         /// <returns>A task representing the asynchronous operation.</returns>
         private async Task ProcessSendQueueAsync()
         {
-            while (IsConnected() && !_cancellationToken.IsCancellationRequested)
+            while (IsConnected() && !CancellationToken.IsCancellationRequested)
             {
                 if (_sendQueue.TryDequeue(out var request))
                 {
@@ -130,7 +136,7 @@ namespace RustPlusApi
 
             Debug.WriteLine("Receiving data from the Rust+ server...");
 
-            while (IsConnected() && !_cancellationToken.IsCancellationRequested)
+            while (IsConnected() && !CancellationToken.IsCancellationRequested)
             {
                 Debug.WriteLine("Waiting for data...");
                 try
@@ -166,7 +172,7 @@ namespace RustPlusApi
                     {
                         if (_responseQueue.TryDequeue(out var tcs))
                             tcs.SetResult(message);
-                    });
+                    }, CancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
@@ -237,8 +243,7 @@ namespace RustPlusApi
         protected static bool IsError(AppMessage response)
         {
             if (response.Response is null && response.Broadcast is not null) return false;
-            if (response.Response!.Error is not null) return true;
-            return false;
+            return response.Response!.Error is not null;
         }
     }
 }
