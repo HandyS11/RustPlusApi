@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 
 using RustPlusApi.Fcm.Converters;
+// ReSharper disable ClassNeverInstantiated.Global
 
 namespace RustPlusApi.Fcm.Data
 {

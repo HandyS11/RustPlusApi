@@ -6,7 +6,7 @@ using static __Constants.ExamplesConst;
 
 var rustPlus = new RustPlus(Ip, Port, PlayerId, PlayerToken);
 const uint smartSwitchId = 0;
-var smartSwitchValue = true;
+const bool smartSwitchValue = true;
 
 await rustPlus.ConnectAsync();
 

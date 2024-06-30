@@ -33,7 +33,7 @@ namespace RustPlusApi.Fcm
         private SslStream? _sslStream;
 
         private readonly CancellationTokenSource _cancellationTokenSource = new();
-        private CancellationToken _cancellationToken => _cancellationTokenSource.Token;
+        private CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
         public event EventHandler? Connecting;
         public event EventHandler? Connected;
@@ -51,7 +51,7 @@ namespace RustPlusApi.Fcm
             Connecting?.Invoke(this, EventArgs.Empty);
 
             _tcpClient = new TcpClient();
-            await _tcpClient.ConnectAsync(Host, Port);
+            await _tcpClient.ConnectAsync(Host, Port, CancellationToken);
 
             _sslStream = new SslStream(_tcpClient.GetStream(), false);
             await _sslStream.AuthenticateAsClientAsync(Host);
@@ -81,7 +81,7 @@ namespace RustPlusApi.Fcm
 
                 Connected?.Invoke(this, EventArgs.Empty);
 
-                _ = Task.Run(ReceiveMessages, _cancellationToken);
+                _ = Task.Run(ReceiveMessages, CancellationToken);
             }
             catch (Exception ex)
             {
@@ -124,20 +124,20 @@ namespace RustPlusApi.Fcm
             if (version < KMcsVersion && version != 38)
                 throw new InvalidOperationException($"Protocol version {version} unsupported");
 
-            var size = ReadVarint32();
+            var size = ReadVarInt32();
             var payload = Read(size);
             var type = BuildProtobufFromTag((McsProtoTag)tag);
 
             if (type != typeof(LoginResponse))
-                throw new Exception($"Got wrong login response. Expected {typeof(LoginResponse).Name}, got {type.Name}");
+                throw new Exception($"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
 
             OnGotMessageBytes(payload, type);
 
-            while (!_cancellationToken.IsCancellationRequested)
+            while (!CancellationToken.IsCancellationRequested)
             {
                 // Read the tag and size
                 tag = _sslStream!.ReadByte();
-                size = ReadVarint32();
+                size = ReadVarInt32();
                 payload = Read(size);
                 type = BuildProtobufFromTag((McsProtoTag)tag);
 
@@ -183,8 +183,8 @@ namespace RustPlusApi.Fcm
         /// <returns>An array of bytes read from the stream.</returns>
         private byte[] Read(int size)
         {
-            byte[] buffer = new byte[size];
-            int bytesRead = 0;
+            var buffer = new byte[size];
+            var bytesRead = 0;
             while (bytesRead < size)
             {
                 bytesRead += _sslStream!.Read(buffer, bytesRead, size - bytesRead);
@@ -196,13 +196,13 @@ namespace RustPlusApi.Fcm
         /// Reads a variable-length 32-bit integer from the SSL stream.
         /// </summary>
         /// <returns>The 32-bit integer read from the stream.</returns>
-        private int ReadVarint32()
+        private int ReadVarInt32()
         {
-            int result = 0;
-            int shift = 0;
+            var result = 0;
+            var shift = 0;
             while (true)
             {
-                byte b = (byte)_sslStream!.ReadByte();
+                var b = (byte)_sslStream!.ReadByte();
                 result |= (b & 0x7F) << shift;
                 if ((b & 0x80) == 0) break;
                 shift += 7;
@@ -222,8 +222,8 @@ namespace RustPlusApi.Fcm
             using var ms = new MemoryStream();
             Serializer.Serialize(ms, packet);
 
-            byte[] payload = ms.ToArray();
-            _sslStream!.Write([.. header, .. EncodeVarint32(payload.Length), .. payload]);
+            var payload = ms.ToArray();
+            _sslStream!.Write([.. header, .. EncodeVarInt32(payload.Length), .. payload]);
         }
 
         /// <summary>

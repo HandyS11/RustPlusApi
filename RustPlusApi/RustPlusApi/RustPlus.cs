@@ -7,6 +7,7 @@ using RustPlusApi.Extensions;
 using RustPlusApi.Utils;
 
 using RustPlusContracts;
+// ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi
 {
@@ -229,7 +230,7 @@ namespace RustPlusApi
         /// Sends a team message asynchronously.
         /// </summary>
         /// <param name="message">The message to send.</param>
-        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the sent team message.</returns>
+        /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the team message.</returns>
         public async Task<Response<TeamMessage?>> SendTeamMessageAsync(string message)
         {
             var request = new AppRequest
@@ -308,7 +309,7 @@ namespace RustPlusApi
 
             if (!entityInfo.IsSuccess) return entityInfo;
 
-            var value = entityInfo!.Data!.IsActive;
+            var value = entityInfo.Data!.IsActive;
             return await SetSmartSwitchValue(entityId, !value);
         }
     }

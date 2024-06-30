@@ -18,7 +18,7 @@ namespace RustPlusApi.Extensions
             Dictionary<uint, Ch47Marker> ch47Markers = [];
             Dictionary<uint, CargoShipMarker> cargoShipMarkers = [];
             // 6. Crates: doesn't appear anymore in the API
-            // 7. GenericRadius: idk what is this
+            // 7. GenericRadius: I don't know what is this
             Dictionary<uint, PatrolHelicopterMarker> patrolHelicopterMarkers = [];
 
             foreach (var marker in appMapMarker.Markers)
@@ -32,7 +32,7 @@ namespace RustPlusApi.Extensions
                         playerMarkers.Add(marker.Id, marker.ToPlayerMarker());
                         break;
                     case AppMarkerType.Explosion:
-                        Debug.WriteLine("WTF!! Facepunch acknowledge their misstake?");
+                        Debug.WriteLine("WTF!! Facepunch acknowledge their mistake?");
                         break;
                     case AppMarkerType.VendingMachine:
                         vendingMachineMarkers.Add(marker.Id, marker.ToVendingMachineMarker());
@@ -44,7 +44,7 @@ namespace RustPlusApi.Extensions
                         cargoShipMarkers.Add(marker.Id, marker.ToCargoShipMarker());
                         break;
                     case AppMarkerType.Crate:
-                        Debug.WriteLine("WTF!! Facepunch acknowledge their misstake?");
+                        Debug.WriteLine("WTF!! Facepunch acknowledge their mistake?");
                         break;
                     case AppMarkerType.GenericRadius:
                         Debug.WriteLine($"What the fuck is that?\n{marker}");
@@ -59,7 +59,7 @@ namespace RustPlusApi.Extensions
 
             return new MapMarkers
             {
-                UnknowMarkers = unknownMarkers.Count > 0 ? unknownMarkers : null,
+                UnknownMarkers = unknownMarkers.Count > 0 ? unknownMarkers : null,
                 PlayerMarkers = playerMarkers.Count > 0 ? playerMarkers : null,
                 VendingMachineMarkers = vendingMachineMarkers.Count > 0 ? vendingMachineMarkers : null,
                 Ch47Markers = ch47Markers.Count > 0 ? ch47Markers : null,

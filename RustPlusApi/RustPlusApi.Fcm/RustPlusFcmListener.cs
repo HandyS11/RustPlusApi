@@ -51,17 +51,17 @@ namespace RustPlusApi.Fcm
             }
         }
 
-        private void ParsePairing(Guid notifId, Body body)
+        private void ParsePairing(Guid notificationId, Body body)
         {
             switch (body.Type)
             {
                 case "entity":
-                    var entity = BuildGenericOutput(notifId, body, body.ToEntityEvent());
+                    var entity = BuildGenericOutput(notificationId, body, body.ToEntityEvent());
                     OnEntityParing?.Invoke(this, entity);
-                    ParsePairingEntity(notifId, body);
+                    ParsePairingEntity(notificationId, body);
                     break;
                 case "server":
-                    var server = BuildGenericOutput(notifId, body, body.ToServerEvent());
+                    var server = BuildGenericOutput(notificationId, body, body.ToServerEvent());
                     OnServerPairing?.Invoke(this, server);
                     break;
                 default:
@@ -70,9 +70,9 @@ namespace RustPlusApi.Fcm
             }
         }
 
-        private void ParsePairingEntity(Guid notifId, Body body)
+        private void ParsePairingEntity(Guid notificationId, Body body)
         {
-            var response = BuildGenericOutput(notifId, body, body.ToEntityId());
+            var response = BuildGenericOutput(notificationId, body, body.ToEntityId());
 
             switch (body.EntityType)
             {

@@ -15,7 +15,7 @@ namespace RustPlusApi.Fcm.Converters
 
         public override void WriteJson(JsonWriter writer, Body? value, JsonSerializer serializer)
         {
-            JObject jsonObject = JObject.FromObject(value!, serializer);
+            var jsonObject = JObject.FromObject(value!, serializer);
             jsonObject.WriteTo(writer);
         }
     }
