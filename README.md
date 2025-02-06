@@ -22,7 +22,7 @@ Some of the features that the **RustPlusApi.Fcm** provides:
 - `OnEntityParing` Event fired when an entity is paired
 - `OnAlarmTriggered` Event fired when an alarm is triggered
 
-Feel free to **explore** the `./RustPlusApi/Examples/` folder to see how to **use** the API.
+Feel free to **explore** the `samples/` folder to see how to **use** the API.
 
 ## 🖊️ Versions
 
