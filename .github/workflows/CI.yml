@@ -6,11 +6,15 @@ on:
       - "develop"
       - "feature/*"
       - "fix/*"
+      - "refacto/*"
+      - "refactor/*"
   pull_request:
     branches:
       - "develop"
       - "feature/*"
       - "fix/*"
+      - "refacto/*"
+      - "refactor/*"
 
 jobs:
   build-and-deploy:
