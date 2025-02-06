@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <PackageId>RustPlusApi.Fcm</PackageId>
+        <Version>1.2.2</Version>
+        <Authors>HandyS11</Authors>
+        <Owners>HandyS11</Owners>
+        <Product>A Rust+ API websocket made in C#.</Product>
+        <Description>This is a C# client for the Rust+ websocket. It allows you to receive notification via FCM.</Description>
+        <PackageTags>rust rustplus rustplusapi</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <LicenseUrl>https://github.com/HandyS11/RustPlusApi/blob/main/LICENSE</LicenseUrl>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+        <RepositoryUrl>https://github.com/HandyS11/RustPlusApi</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BouncyCastle.Cryptography" />
+        <PackageReference Include="Newtonsoft.Json" />
+        <PackageReference Include="protobuf-net" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+</Project>

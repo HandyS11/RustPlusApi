@@ -1,7 +1,7 @@
 # RustPlusApi
 
-![](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml/badge.svg)
-![](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg)
+![CI](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml/badge.svg)
+![CD](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg)
 
 ## 📊 Features
 
@@ -22,9 +22,9 @@ Some of the features that the **RustPlusApi.Fcm** provides:
 - `OnEntityParing` Event fired when an entity is paired
 - `OnAlarmTriggered` Event fired when an alarm is triggered
 
-Feel free to **explore** the `./RustPlusApi/Examples/` folder to see how to **use** the API.
+Feel free to **explore** the `samples/` folder to see how to **use** the API.
 
-## 🖊️ Versions 
+## 🖊️ Versions
 
 ![skills](https://skillicons.dev/icons?i=cs,dotnet)
 
@@ -32,8 +32,16 @@ Feel free to **explore** the `./RustPlusApi/Examples/` folder to see how to **us
 
 ## 📚 Sumary
 
-- [RustPlusApi](#RustPlusApi)
-- [RustPlusApi.Fcm](#RustPlusApi.Fcm)
+- [RustPlusApi](#rustplusapi)
+  - [📊 Features](#-features)
+  - [🖊️ Versions](#️-versions)
+  - [📚 Sumary](#-sumary)
+  - [📍 NuGet](#-nuget)
+  - [⚙️ Usage](#️-usage)
+    - [RustPlusApi](#rustplusapi-1)
+    - [RustPlusApi.Fcm](#rustplusapifcm)
+  - [Credentials](#credentials)
+  - [🖼️ Credits](#️-credits)
 
 The library provides 4 classes to interact with the Rust+ API: `RustPlusLegacy`, `RustPlus`, `RustPlusFcmListenerClient` & `RustPlusFcmListener`.
 
@@ -91,10 +99,13 @@ There are plenty of methods to interact with the Rust+ server such as:
 uint entityId = 123456789;
 var response = await rustPlus.GetEntityInfoLegacyAsync(entityId);
 ```
+
 or
+
 ```csharp
 var response = await rustPlus.GetInfoLegacyAsync();
 ```
+
 you can also make your own request:
 
 ```csharp
@@ -104,7 +115,6 @@ var request = new AppRequest
 };
 await rustPlus.SendRequestAsync(request);
 ```
-
 
 The response with be an **AppMessage** that is a direct representation of `./Protobuf/RustPlus.proto` file.
 
@@ -128,20 +138,21 @@ rustPlusApi.Disconnected += (sender, _) => { /* handle disconnected event */ };
 rustPlusApi.ErrorOccurred += (sender, ex) => { /* handle error event */ };
 ```
 
---- 
+---
 
 Remember to dispose the `RustPlusLegacy` instance when you're done:
 
 ```csharp
 rustPlusApi.DisconnectAsync(); 
 ```
+
 </details>
 
 ---
 
 <details><summary> RustPlus </summary>
 
-The `RustPlus` classe inherit from `RustPlusLegacy` and provide a more user-friendly interface to interact with the Rust+ API.	That means you can use all methods from `RustPlusLegacy` and also the new ones from `RustPlus`.
+The `RustPlus` classe inherit from `RustPlusLegacy` and provide a more user-friendly interface to interact with the Rust+ API. That means you can use all methods from `RustPlusLegacy` and also the new ones from `RustPlus`.
 
 Such as the `RustPlusLegacy`, you need to instantiate the `RustPlus` class with the necessary parameters:
 
@@ -217,6 +228,7 @@ Remember to dispose the `RustPlus` instance when you're done (such as `RustPlusL
 ```csharp
 rustPlusApi.DisconnectAsync(); 
 ```
+
 </details>
 
 ---
@@ -236,7 +248,7 @@ Parameters:
 - `credentials`: The FCM credentials\*.
 - `notificationIds`: The notification ids to mark as read.
 
-\* See the [Credentials](#Credentials) section for more information.
+\* See the [Credentials](#credentials) section for more information.
 
 Then, connect to the FCM server:
 
@@ -262,6 +274,7 @@ Don't forget to disconnect from the FCM server when you're done:
 ```csharp
 rustPlusFcmListenerClient.Disconnect();
 ```
+
 </details>
 
 ---
@@ -312,6 +325,7 @@ Don't forget to disconnect from the FCM server when you're done:
 ```csharp
 rustPlusFcmListener.Disconnect();
 ```
+
 </details>
 
 ---
@@ -332,4 +346,4 @@ I'm sorry for the inconvenience but since the API is not fully complete it's the
 
 Special thanks to [**Versette**](https://github.com/Versette) for her work on the `RustPlusApi.Fcm` socket.
 
-* Author: [**HandyS11**](https://github.com/HandyS11)
+- Author: [**HandyS11**](https://github.com/HandyS11)
