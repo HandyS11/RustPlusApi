@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\RustPlusApi.Fcm\RustPlusApi.Fcm.csproj" />
+        <ProjectReference Include="..\..\__Constants\__Constants.csproj" />
+    </ItemGroup>
+
+</Project>
