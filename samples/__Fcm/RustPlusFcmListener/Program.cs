@@ -1,8 +1,8 @@
 using Newtonsoft.Json;
 
 using RustPlusApi.Fcm;
-using RustPlusApi.Fcm.Configuration;
 using RustPlusApi.Fcm.Data;
+using RustPlusApi.Fcm.Services;
 
 using static __Constants.ExamplesConst;
 
@@ -13,7 +13,7 @@ Credentials credentials;
 try
 {
     // Read credentials from JavaScript output AND register with Rust+ API (exactly like JS)
-    credentials = await FcmConfigurationReader.ReadAndRegisterFromJavaScriptConfig(configPath);
+    credentials = await RustPlusRegistrationService.ReadAndRegisterFromJavaScriptConfigAsync(configPath);
     Console.WriteLine($"Loaded credentials - AndroidId: {credentials.Gcm.AndroidId}");
 }
 catch (FileNotFoundException)

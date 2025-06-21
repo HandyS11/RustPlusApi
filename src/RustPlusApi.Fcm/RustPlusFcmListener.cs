@@ -38,32 +38,32 @@ public class RustPlusFcmListener(Credentials credentials, ICollection<string>? p
 
         Console.WriteLine($"🚀 Raw message received: {message}");
 
-        // For now, just trigger a fake pairing event to show something works
-        Console.WriteLine($"🚀 TRIGGERING FAKE SERVER PAIRING EVENT!");
-        OnServerPairing?.Invoke(this, new Notification<ServerEvent>
+        // The message is in the format: {"channelId":"pairing","body":{...}}
+        var directMessage = JsonConvert.DeserializeObject<MessageData>(message);
+        if (directMessage is null)
         {
-            NotificationId = Guid.NewGuid(),
-            Data = null!
-        });
-
-        var msg = JsonConvert.DeserializeObject<FcmMessage>(message);
-        if (msg is null)
-        {
-            Console.WriteLine($"🚀 Failed to deserialize to FcmMessage");
+            Console.WriteLine($"🚀 Failed to deserialize MessageData");
             return;
         }
 
-        switch (msg.Data.ChannelId)
+        // Create an FcmMessage wrapper for compatibility
+        var msg = new FcmMessage
+        {
+            FcmMessageId = Guid.NewGuid(),
+            Data = directMessage
+        };
+
+        switch (directMessage.ChannelId)
         {
             case "pairing":
                 OnParing?.Invoke(this, msg);
-                ParsePairing(msg.FcmMessageId, msg.Data.Body);
+                ParsePairing(msg.FcmMessageId, directMessage.Body);
                 break;
             case "alarm":
-                OnAlarmTriggered?.Invoke(this, msg.Data.ToAlarmEvent(msg.FcmMessageId));
+                OnAlarmTriggered?.Invoke(this, directMessage.ToAlarmEvent(msg.FcmMessageId));
                 break;
             default:
-                Debug.WriteLine($"Unknown channel: {msg.Data.ChannelId}");
+                Debug.WriteLine($"Unknown channel: {directMessage.ChannelId}");
                 break;
         }
     }

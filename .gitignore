@@ -406,3 +406,6 @@ FodyWeavers.xsd
 *.db-wal
 
 appsettings.*.json
+
+
+External
