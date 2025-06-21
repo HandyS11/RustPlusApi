@@ -9,10 +9,10 @@ public static class FcmConfigurationReader
     {
         var configContent = File.ReadAllText(configFilePath);
         var config = JsonConvert.DeserializeObject<JavaScriptConfig>(configContent);
-        
+
         if (config?.FcmCredentials?.Gcm == null)
             throw new InvalidOperationException("Invalid JavaScript config file - missing FCM credentials");
-        
+
         return config;
     }
 
@@ -27,7 +27,7 @@ public static class FcmConfigurationReader
             Keys = new Keys
             {
                 PrivateKey = "dummy-not-used",
-                PublicKey = "dummy-not-used", 
+                PublicKey = "dummy-not-used",
                 AuthSecret = "dummy-not-used"
             },
             Gcm = new Gcm

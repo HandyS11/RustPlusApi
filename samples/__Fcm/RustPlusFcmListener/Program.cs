@@ -3,7 +3,6 @@ using Newtonsoft.Json;
 using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Configuration;
 using RustPlusApi.Fcm.Data;
-using RustPlusApi.Fcm.Services;
 
 using static __Constants.ExamplesConst;
 
@@ -33,23 +32,6 @@ catch (Exception ex)
     Console.WriteLine($"Failed to load config: {ex.Message}");
     return;
 }
-
-//// Step 3: Optionally register with Rust+ API (separate from credential loading)
-//if (!string.IsNullOrEmpty(jsConfig.RustplusAuthToken))
-//{
-//    var registrationSuccessful = await RustPlusRegistrationService.RegisterWithRustPlusApiAsync(
-//        jsConfig.RustplusAuthToken,
-//        jsConfig.ExpoPushToken);
-
-//    if (!registrationSuccessful)
-//    {
-//        Console.WriteLine("Registration failed, but continuing with existing credentials...");
-//    }
-//}
-//else
-//{
-//    Console.WriteLine("No Rust+ auth token found - using pre-registered credentials");
-//}
 
 var listener = new RustPlusFcmListener(credentials);
 
