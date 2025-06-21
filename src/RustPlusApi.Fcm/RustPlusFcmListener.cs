@@ -29,41 +29,41 @@ public class RustPlusFcmListener(Credentials credentials, ICollection<string>? p
 
     public event EventHandler<AlarmEvent?>? OnAlarmTriggered;
 
-    protected override void ParseNotification(string? message)
+    protected override void ParseNotification(FcmMessage? message)
     {
-        Console.WriteLine($"🚀 PARSE NOTIFICATION CALLED!");
-        Console.WriteLine($"🚀 Message is null: {message is null}");
-
         if (message is null) return;
 
-        Console.WriteLine($"🚀 Raw message received: {message}");
+        //// The message is in the format: {"channelId":"pairing","body":{...}}
+        //var directMessage = JsonConvert.DeserializeObject<MessageData>(message);
+        //if (directMessage is null)
+        //{
+        //    Console.WriteLine($"🚀 Failed to deserialize MessageData");
+        //    return;
+        //}
 
-        // The message is in the format: {"channelId":"pairing","body":{...}}
-        var directMessage = JsonConvert.DeserializeObject<MessageData>(message);
-        if (directMessage is null)
-        {
-            Console.WriteLine($"🚀 Failed to deserialize MessageData");
-            return;
-        }
+        //// Create an FcmMessage wrapper for compatibility
+        //var msg = new FcmMessage
+        //{
+        //    FcmMessageId = Guid.NewGuid(),
+        //    Data = directMessage
+        //};
 
-        // Create an FcmMessage wrapper for compatibility
-        var msg = new FcmMessage
-        {
-            FcmMessageId = Guid.NewGuid(),
-            Data = directMessage
-        };
-
-        switch (directMessage.ChannelId)
+        switch (message.Data.ChannelId)
         {
             case "pairing":
-                OnParing?.Invoke(this, msg);
-                ParsePairing(msg.FcmMessageId, directMessage.Body);
+                OnParing?.Invoke(this, message);
+                var body = JsonConvert.DeserializeObject<Body>(message.Data.Body);
+                if (body is null)
+                {
+                    return;
+                }
+                ParsePairing(message.FcmMessageId, body);
                 break;
             case "alarm":
-                OnAlarmTriggered?.Invoke(this, directMessage.ToAlarmEvent(msg.FcmMessageId));
+                OnAlarmTriggered?.Invoke(this, message.Data.ToAlarmEvent(message.FcmMessageId));
                 break;
             default:
-                Debug.WriteLine($"Unknown channel: {directMessage.ChannelId}");
+                Debug.WriteLine($"Unknown channel: {message.Data.ChannelId}");
                 break;
         }
     }
