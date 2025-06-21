@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 
 using Newtonsoft.Json;
 
@@ -31,10 +31,27 @@ public class RustPlusFcmListener(Credentials credentials, ICollection<string>? p
 
     protected override void ParseNotification(string? message)
     {
+        Console.WriteLine($"🚀 PARSE NOTIFICATION CALLED!");
+        Console.WriteLine($"🚀 Message is null: {message is null}");
+
         if (message is null) return;
 
+        Console.WriteLine($"🚀 Raw message received: {message}");
+
+        // For now, just trigger a fake pairing event to show something works
+        Console.WriteLine($"🚀 TRIGGERING FAKE SERVER PAIRING EVENT!");
+        OnServerPairing?.Invoke(this, new Notification<ServerEvent>
+        {
+            NotificationId = Guid.NewGuid(),
+            Data = null!
+        });
+
         var msg = JsonConvert.DeserializeObject<FcmMessage>(message);
-        if (msg is null) return;
+        if (msg is null)
+        {
+            Console.WriteLine($"🚀 Failed to deserialize to FcmMessage");
+            return;
+        }
 
         switch (msg.Data.ChannelId)
         {

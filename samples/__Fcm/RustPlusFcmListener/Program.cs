@@ -1,24 +1,32 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 
 using RustPlusApi.Fcm;
+using RustPlusApi.Fcm.Configuration;
 using RustPlusApi.Fcm.Data;
 
 using static __Constants.ExamplesConst;
 
-var credentials = new Credentials
+// Path to the JavaScript config file
+var configPath = @"C:\XGitPrivate\DeveHomeAssistantRustPlugin\RustHomeAssistantBridge\bin\Debug\net9.0\rustplus.config.json";
+
+Credentials credentials;
+try
 {
-    Keys = new Keys
-    {
-        PrivateKey = "",
-        PublicKey = "",
-        AuthSecret = "",
-    },
-    Gcm = new Gcm
-    {
-        AndroidId = 0,
-        SecurityToken = 0,
-    }
-};
+    // Read credentials from JavaScript output AND register with Rust+ API (exactly like JS)
+    credentials = await FcmConfigurationReader.ReadAndRegisterFromJavaScriptConfig(configPath);
+    Console.WriteLine($"Loaded credentials - AndroidId: {credentials.Gcm.AndroidId}");
+}
+catch (FileNotFoundException)
+{
+    Console.WriteLine($"Config file not found at: {configPath}");
+    Console.WriteLine("Please run 'node External/rustplus.js/cli/index.js fcm-register' first and update the path above.");
+    return;
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Failed to load config: {ex.Message}");
+    return;
+}
 
 var listener = new RustPlusFcmListener(credentials);
 

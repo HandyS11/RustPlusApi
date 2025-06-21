@@ -1,0 +1,13 @@
+{
+  "fcm_credentials": {
+    "gcm": {
+      "androidId": "1234567890123456",
+      "securityToken": "9876543210987654"
+    },
+    "fcm": {
+      "token": "sample-fcm-token-here"
+    }
+  },
+  "expo_push_token": "ExponentPushToken[SAMPLE-TOKEN-HERE]",
+  "rustplus_auth_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.sample-token"
+}

@@ -2,18 +2,14 @@ using System.Diagnostics;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Numerics;
-
 using McsProto;
-
+using Newtonsoft.Json;
 using ProtoBuf;
-
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
-using RustPlusApi.Fcm.Utils;
-
+using static System.GC;
 using static RustPlusApi.Fcm.Data.Tags;
 using static RustPlusApi.Fcm.Utils.Utils;
-using static System.GC;
 
 namespace RustPlusApi.Fcm;
 
@@ -49,6 +45,9 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     public async Task ConnectAsync()
     {
         Connecting?.Invoke(this, EventArgs.Empty);
+
+        // Skip check-in for now - JavaScript already did it during registration
+        Console.WriteLine("Using pre-registered FCM credentials...");
 
         _tcpClient = new TcpClient();
         await _tcpClient.ConnectAsync(Host, Port, CancellationToken);
@@ -88,6 +87,107 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
             Debug.WriteLine($"Exception occured on ConnectAsync: {ex}");
             ErrorOccurred?.Invoke(this, ex);
         }
+    }
+
+    private async Task CheckInAsync()
+    {
+        using var httpClient = new HttpClient();
+
+        // Build proper check-in protobuf (based on JavaScript implementation)
+        var checkinData = BuildProperCheckinRequest();
+
+        var response = await httpClient.PostAsync(
+            "https://android.clients.google.com/checkin",
+            new ByteArrayContent(checkinData)
+            {
+                Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-protobuf") }
+            }
+        );
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Google FCM check-in failed: {response.StatusCode} - {errorContent}");
+        }
+
+        Console.WriteLine($"✅ Google check-in successful: {response.StatusCode}");
+    }
+
+    private byte[] BuildProperCheckinRequest()
+    {
+        // Based on JavaScript push-receiver checkin.proto structure
+        var data = new List<byte>();
+
+        // Required fields for Android check-in (mimicking JavaScript implementation)
+
+        // Field 2: androidId (int64)
+        AppendField(data, 2, 0, credentials.Gcm.AndroidId);
+
+        // Field 3: securityToken (int64) 
+        AppendField(data, 3, 0, credentials.Gcm.SecurityToken);
+
+        // Field 4: version (int32) - Chrome version
+        AppendField(data, 4, 0, 3);
+
+        // Field 9: chrome_build (message)
+        var chromeBuild = new List<byte>();
+        AppendStringField(chromeBuild, 1, "chrome"); // platform
+        AppendStringField(chromeBuild, 2, "63.0.3234.0"); // chrome_version  
+        AppendStringField(chromeBuild, 3, "x86_64"); // channel
+        AppendField(data, 9, 2, chromeBuild.ToArray());
+
+        // Field 12: macAddress (repeated string) - fake MAC addresses
+        AppendStringField(data, 12, "02:00:00:00:00:00");
+
+        // Field 13: meid (string) - fake MEID
+        AppendStringField(data, 13, "A100000123456789");
+
+        // Field 15: timeZone (string)
+        AppendStringField(data, 15, "GMT");
+
+        return data.ToArray();
+    }
+
+    private static void AppendField(List<byte> data, int fieldNumber, int wireType, ulong value)
+    {
+        // Field header
+        data.Add((byte)((fieldNumber << 3) | wireType));
+
+        // Encode value as varint
+        while (value >= 0x80)
+        {
+            data.Add((byte)((value & 0x7F) | 0x80));
+            value >>= 7;
+        }
+        data.Add((byte)(value & 0x7F));
+    }
+
+    private static void AppendField(List<byte> data, int fieldNumber, int wireType, byte[] value)
+    {
+        // Field header
+        data.Add((byte)((fieldNumber << 3) | wireType));
+
+        // Length-delimited: first encode length
+        AppendVarint(data, (ulong)value.Length);
+
+        // Then the data
+        data.AddRange(value);
+    }
+
+    private static void AppendStringField(List<byte> data, int fieldNumber, string value)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(value);
+        AppendField(data, fieldNumber, 2, bytes); // Wire type 2 = length-delimited
+    }
+
+    private static void AppendVarint(List<byte> data, ulong value)
+    {
+        while (value >= 0x80)
+        {
+            data.Add((byte)((value & 0x7F) | 0x80));
+            value >>= 7;
+        }
+        data.Add((byte)(value & 0x7F));
     }
 
     /// <summary>
@@ -280,33 +380,80 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     /// <param name="dataMessage">The data message stanza.</param>
     private void OnDataMessage(DataMessageStanza? dataMessage)
     {
+        Console.WriteLine($"🔔 FCM MESSAGE RECEIVED! PersistentId: {dataMessage?.PersistentId}");
+        Console.WriteLine($"🔔 RawData Length: {dataMessage?.RawData?.Length ?? 0} bytes");
+        // Debug: Let's see what fields are populated
+        Console.WriteLine($"🔍 DEBUG - Message fields:");
+        Console.WriteLine($"   Category: {dataMessage?.Category}");
+        Console.WriteLine($"   From: {dataMessage?.From}");
+        Console.WriteLine($"   To: {dataMessage?.To}");
+        Console.WriteLine($"   Token: {dataMessage?.Token}");
+        Console.WriteLine($"   AppDatas Count: {dataMessage?.AppDatas?.Count ?? 0}");
+
+        if (dataMessage?.AppDatas != null && dataMessage.AppDatas.Count > 0)
+        {
+            Console.WriteLine($"🔍 AppData contents:");
+            foreach (var item in dataMessage.AppDatas)
+            {
+                Console.WriteLine($"   Key: '{item.Key}' = Value: '{item.Value}'");
+            }
+        }
         if (dataMessage?.PersistentId != null
             && persistentIds != null
             && persistentIds!.Contains(dataMessage?.PersistentId!))
+        {
+            Console.WriteLine("🔔 Message already processed, skipping...");
             return;
-
-        var message = string.Empty;
-        try
-        {
-            message = DecryptionUtility.Decrypt(dataMessage!, credentials.Keys);
         }
-        catch (Exception ex)
+
+        // Extract notification data from AppData (Rust+ notifications come as AppData, not encrypted RawData)
+        string? message = null;
+        if (dataMessage?.AppDatas != null && dataMessage.AppDatas.Count > 0)
         {
-            if (ex.Message.Contains("Unsupported state or unable to authenticate data") ||
-                ex.Message.Contains("crypto-key is missing") ||
-                ex.Message.Contains("salt is missing"))
+            // Convert AppData to dictionary for easier access
+            var appDataDict = dataMessage.AppDatas.ToDictionary(x => x.Key, x => x.Value);
+
+            // Check if this is a Rust+ notification
+            if (appDataDict.TryGetValue("channelId", out var channelId) &&
+                appDataDict.TryGetValue("body", out var bodyJson))
             {
-                Debug.WriteLine($"Message dropped as it could not be decrypted: {ex.Message}");
-                return;
+                Console.WriteLine($"🎯 Found Rust+ notification! Channel: {channelId}");
+
+                // Build the expected FcmMessage format
+                var fcmMessage = new
+                {
+                    channelId = channelId,
+                    body = JsonConvert.DeserializeObject(bodyJson) // Parse the JSON body
+                };
+
+                message = JsonConvert.SerializeObject(fcmMessage);
+                Console.WriteLine($"✅ Converted to FCM format: {message}");
+            }
+            else
+            {
+                Console.WriteLine("⚠️ Not a Rust+ notification - missing channelId or body"); return;
             }
         }
-        finally
+        else
         {
-            persistentIds?.Add(dataMessage!.PersistentId);
-        }
+            Console.WriteLine("⚠️ No AppData found in message");
+            return;
+        }        // Add to persistent IDs to avoid reprocessing
+        persistentIds?.Add(dataMessage!.PersistentId);
 
-        ParseNotification(message);
-        NotificationReceived?.Invoke(this, message);
+        Console.WriteLine($"🎯 ABOUT TO PARSE NOTIFICATION:");
+        Console.WriteLine($"🎯 Message: {message}");
+        Console.WriteLine($"🎯 Message Length: {message?.Length ?? 0}");
+
+        if (!string.IsNullOrEmpty(message))
+        {
+            ParseNotification(message);
+            NotificationReceived?.Invoke(this, message);
+        }
+        else
+        {
+            Console.WriteLine("⚠️ Message is null or empty, skipping notification parsing");
+        }
     }
 
     /// <summary>
