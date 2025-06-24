@@ -7,7 +7,7 @@ using RustPlusApi.Fcm.Data;
 using static __Constants.ExamplesConst;
 
 // Path to the JavaScript config file
-var configPath = @"C:\XGitPrivate\DeveHomeAssistantRustPlugin\RustHomeAssistantBridge\bin\Debug\net9.0\rustplus.config.json";
+var configPath = @"<path of rustplus.js config file>\rustplus.config.json";
 
 Credentials credentials;
 JavaScriptConfig jsConfig;
@@ -24,7 +24,7 @@ try
 catch (FileNotFoundException)
 {
     Console.WriteLine($"Config file not found at: {configPath}");
-    Console.WriteLine("Please run 'node External/rustplus.js/cli/index.js fcm-register' first and update the path above.");
+    Console.WriteLine("Please run 'npx @liamcottle/rustplus.js fcm-register' first and update the path above.");
     return;
 }
 catch (Exception ex)

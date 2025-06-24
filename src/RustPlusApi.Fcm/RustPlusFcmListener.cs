@@ -33,21 +33,6 @@ public class RustPlusFcmListener(Credentials credentials, ICollection<string>? p
     {
         if (message is null) return;
 
-        //// The message is in the format: {"channelId":"pairing","body":{...}}
-        //var directMessage = JsonConvert.DeserializeObject<MessageData>(message);
-        //if (directMessage is null)
-        //{
-        //    Console.WriteLine($"🚀 Failed to deserialize MessageData");
-        //    return;
-        //}
-
-        //// Create an FcmMessage wrapper for compatibility
-        //var msg = new FcmMessage
-        //{
-        //    FcmMessageId = Guid.NewGuid(),
-        //    Data = directMessage
-        //};
-
         switch (message.Data.ChannelId)
         {
             case "pairing":

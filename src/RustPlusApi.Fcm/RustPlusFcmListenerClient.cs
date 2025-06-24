@@ -46,9 +46,6 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     {
         Connecting?.Invoke(this, EventArgs.Empty);
 
-        // Skip check-in for now - JavaScript already did it during registration
-        Console.WriteLine("Using pre-registered FCM credentials...");
-
         _tcpClient = new TcpClient();
         await _tcpClient.ConnectAsync(Host, Port, CancellationToken);
 
