@@ -6,7 +6,8 @@ using RustPlusApi.Fcm.Data;
 
 using static __Constants.ExamplesConst;
 
-// Path to the JavaScript config file
+// Path to the JavaScript config file, see sample-config.json for an example.
+// Make sure to run 'npx @liamcottle/rustplus.js fcm-register' first to generate this file.
 var configPath = @"<path of rustplus.js config file>\rustplus.config.json";
 
 Credentials credentials;
