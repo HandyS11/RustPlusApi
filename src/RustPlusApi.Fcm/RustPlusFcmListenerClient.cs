@@ -2,8 +2,9 @@ using System.Diagnostics;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Numerics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using McsProto;
-using Newtonsoft.Json;
 using ProtoBuf;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
@@ -14,10 +15,10 @@ using static RustPlusApi.Fcm.Utils.Utils;
 namespace RustPlusApi.Fcm;
 
 /// <summary>
-/// Represents a RustPlus FCM listener.
+/// Represents a RustPlus FCM listener client for handling FCM connections and notifications.
 /// </summary>
-/// <param name="credentials">The credentials used for authentication.</param>
-/// <param name="persistentIds">The collection of persistent IDs.</param>
+/// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
+/// <param name="persistentIds">The collection of persistent IDs as <see cref="ICollection{T}"/> of <see cref="string"/>.</param>
 public class RustPlusFcmListenerClient(Credentials credentials, ICollection<string>? persistentIds = null) : IDisposable
 {
     private const string Host = "mtalk.google.com";
@@ -31,15 +32,51 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
+    private readonly JsonSerializerOptions _parsingOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    /// <summary>
+    /// Occurs when the client is starting to connect to the FCM server.
+    /// </summary>
     public event EventHandler? Connecting;
+
+    /// <summary>
+    /// Occurs when the client has successfully connected to the FCM server.
+    /// </summary>
     public event EventHandler? Connected;
 
+    /// <summary>
+    /// Occurs when a notification is received.
+    /// </summary>
+    /// <remarks>
+    /// The event data is the notification as a <see cref="string"/>.
+    /// </remarks>
     public event EventHandler<string>? NotificationReceived;
 
+    /// <summary>
+    /// Occurs when the client is disconnecting from the FCM server.
+    /// </summary>
     public event EventHandler? Disconnecting;
+
+    /// <summary>
+    /// Occurs when the client has disconnected from the FCM server.
+    /// </summary>
     public event EventHandler? Disconnected;
 
+    /// <summary>
+    /// Occurs when the socket is closed.
+    /// </summary>
     public event EventHandler? SocketClosed;
+
+    /// <summary>
+    /// Occurs when an error is encountered.
+    /// </summary>
+    /// <remarks>
+    /// The event data is the <see cref="Exception"/> that was thrown.
+    /// </remarks>
     public event EventHandler<Exception>? ErrorOccurred;
 
     public async Task ConnectAsync()
@@ -66,9 +103,8 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
                 Resource = credentials.Gcm.AndroidId.ToString(),
                 User = credentials.Gcm.AndroidId.ToString(),
                 UseRmq2 = true,
-                Settings = { new Setting() { Name = "new_vc", Value = "1" } },
+                Settings = { new Setting { Name = "new_vc", Value = "1" } },
                 ClientEvents = { new ClientEvent() },
-                ReceivedPersistentIds = { },
             };
 
             if (persistentIds != null) loginRequest.ReceivedPersistentIds.AddRange(persistentIds);
@@ -87,9 +123,11 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     }
 
     /// <summary>
-    /// Disconnects the FCM listener client asynchronously.
+    /// Disconnects the client from the FCM server and releases associated resources.
     /// </summary>
-    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// Invokes the <see cref="Disconnecting"/> and <see cref="Disconnected"/> events.
+    /// </remarks>
     public void Disconnect()
     {
         Disconnecting?.Invoke(this, EventArgs.Empty);
@@ -103,13 +141,20 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     }
 
     /// <summary>
-    /// Disposes the FCM listener client.
+    /// Releases resources used by the <see cref="RustPlusFcmListenerClient"/>.
     /// </summary>
     public void Dispose() => SuppressFinalize(this);
 
     /// <summary>
-    /// Receives messages from the FCM listener.
+    /// Continuously receives and processes messages from the FCM server over the SSL stream.
+    /// Validates the protocol version and login response, then enters a loop to handle incoming messages.
     /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if the protocol version is unsupported.
+    /// </exception>
+    /// <exception cref="Exception">
+    /// Thrown if the initial response is not a <see cref="LoginResponse"/>.
+    /// </exception>
     private void ReceiveMessages()
     {
         // Read the header
@@ -125,7 +170,9 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
         var type = BuildProtobufFromTag((McsProtoTag)tag);
 
         if (type != typeof(LoginResponse))
+#pragma warning disable CA2201
             throw new Exception($"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
+#pragma warning restore CA2201
 
         OnGotMessageBytes(payload, type);
 
@@ -142,10 +189,10 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     }
 
     /// <summary>
-    /// Handles the received message bytes.
+    /// Deserializes a protobuf message from the given byte array and dispatches it to the message handler.
     /// </summary>
     /// <param name="data">The message bytes.</param>
-    /// <param name="type">The type of the message.</param>
+    /// <param name="type">The type of the protobuf message.</param>
     private void OnGotMessageBytes(byte[] data, Type type)
     {
         try
@@ -159,7 +206,6 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
             }
 
             var buffer = data.Take(data.Length).ToArray();
-            data = data.Skip(data.Length).ToArray();
 
             using var stream = new MemoryStream(buffer);
             var message = Serializer.NonGeneric.Deserialize(type, stream);
@@ -176,7 +222,7 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     /// Reads the specified number of bytes from the SSL stream.
     /// </summary>
     /// <param name="size">The number of bytes to read.</param>
-    /// <returns>An array of bytes read from the stream.</returns>
+    /// <returns>A byte array containing the data read from the stream.</returns>
     private byte[] Read(int size)
     {
         var buffer = new byte[size];
@@ -187,11 +233,11 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
         }
         return buffer;
     }
-
+    
     /// <summary>
     /// Reads a variable-length 32-bit integer from the SSL stream.
     /// </summary>
-    /// <returns>The 32-bit integer read from the stream.</returns>
+    /// <returns>The decoded 32-bit integer.</returns>
     private int ReadVarInt32()
     {
         var result = 0;
@@ -207,9 +253,9 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     }
 
     /// <summary>
-    /// Sends a packet over the SSL stream.
+    /// Serializes and sends a protobuf packet over the SSL stream.
     /// </summary>
-    /// <param name="packet">The packet to send.</param>
+    /// <param name="packet">The packet object to serialize and send.</param>
     private void SendPacket(object packet)
     {
         var tagEnum = GetTagFromProtobufType(packet.GetType());
@@ -223,9 +269,9 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     }
 
     /// <summary>
-    /// Handles a ping message by sending a ping response.
+    /// Handles an incoming FCM heartbeat ping by sending a corresponding heartbeat acknowledgment.
     /// </summary>
-    /// <param name="ping">The ping message to handle.</param>
+    /// <param name="ping">The <see cref="HeartbeatPing"/> message received from the server.</param>
     private void HandlePing(HeartbeatPing? ping)
     {
         if (ping == null) return;
@@ -242,9 +288,12 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
     }
 
     /// <summary>
-    /// Handles a message received event.
+    /// Handles incoming protocol messages by dispatching them based on their tag.
     /// </summary>
-    /// <param name="e">The message event arguments.</param>
+    /// <param name="e">The <see cref="MessageEventArgs"/> containing the message tag and object.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown if the message tag is unrecognized.
+    /// </exception>
     private void OnMessage(MessageEventArgs e)
     {
         // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
@@ -264,88 +313,77 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
                 Disconnect();
                 break;
             case McsProtoTag.KIqStanzaTag:
-                break; // I'm not sure about what this message does, and it arrives partially empty, so I will just leave it like this for now
+                break;  // To investigate further, if needed
             default:
                 throw new ArgumentOutOfRangeException($"Unrecognized tag: {e.Tag}");
         }
     }
 
     /// <summary>
-    /// Handles a data message received event.
+    /// Processes an incoming <see cref="DataMessageStanza"/> by extracting Rust+ notification data,
+    /// building an <see cref="FcmMessage"/>, and dispatching it. Skips messages already processed,
+    /// and invokes <see cref="ParseNotification"/> and <see cref="NotificationReceived"/>.
     /// </summary>
-    /// <param name="dataMessage">The data message stanza.</param>
+    /// <param name="dataMessage">The <see cref="DataMessageStanza"/> to process.</param>
     private void OnDataMessage(DataMessageStanza? dataMessage)
     {
-        if (dataMessage?.PersistentId != null
-            && persistentIds != null
-            && persistentIds!.Contains(dataMessage?.PersistentId!))
+        if (dataMessage?.PersistentId != null &&
+            persistentIds != null &&
+            persistentIds.Contains(dataMessage.PersistentId))
         {
             return;
         }
 
-        // Extract notification data from AppData (Rust+ notifications come as AppData, not encrypted RawData)
-        FcmMessage? fcmMessage = null;
-        if (dataMessage?.AppDatas != null && dataMessage.AppDatas.Count > 0)
-        {
-            // Convert AppData to dictionary for easier access
-            var appDataDict = dataMessage.AppDatas.ToDictionary(x => x.Key, x => x.Value);
-
-            // Check if this is a Rust+ notification
-            if (appDataDict.TryGetValue("channelId", out var channelId) &&
-                appDataDict.TryGetValue("body", out var body))
-            {
-                appDataDict.TryGetValue("title", out var title);
-                appDataDict.TryGetValue("projectId", out var projectId);
-                appDataDict.TryGetValue("experienceId", out var experienceId);
-                appDataDict.TryGetValue("scopeKey", out var scopeKey);
-                appDataDict.TryGetValue("message", out var message);
-
-                // Build the expected FcmMessage format
-                fcmMessage = new FcmMessage
-                {
-                    FcmMessageId = Guid.NewGuid(), //Not sure but I see no Guid in the dataMessage
-                    From = long.Parse(dataMessage.From),
-                    //Priority = ?
-                    Data = new MessageData()
-                    {
-                        ChannelId = channelId,
-                        Body = body,
-                        Title = title ?? string.Empty,
-                        Message = message ?? string.Empty,
-                        ExperienceId = experienceId ?? string.Empty,
-                        ScopeKey = scopeKey ?? string.Empty,
-                    }
-                };
-            }
-            else
-            {
-                Console.WriteLine("⚠️ Not a Rust+ notification - missing channelId or body");
-                return;
-            }
-        }
-        else
+        if (dataMessage?.AppDatas is not { Count: > 0 })
         {
             Console.WriteLine("⚠️ No AppData found in message");
             return;
         }
 
-        // Add to persistent IDs to avoid reprocessing
-        persistentIds?.Add(dataMessage!.PersistentId);
+        var appDataDict = dataMessage.AppDatas.ToDictionary(x => x.Key, x => x.Value);
 
-        if (fcmMessage is not null)
+        if (!appDataDict.TryGetValue("channelId", out var channelId) ||
+            !appDataDict.TryGetValue("body", out var body))
         {
-            ParseNotification(fcmMessage);
-            NotificationReceived?.Invoke(this, JsonConvert.SerializeObject(fcmMessage));
+            Console.WriteLine("⚠️ Not a Rust+ notification - missing channelId or body");
+            return;
         }
-        else
+
+        appDataDict.TryGetValue("title", out var title);
+        appDataDict.TryGetValue("projectId", out var projectId);
+        appDataDict.TryGetValue("experienceId", out var experienceId);
+        appDataDict.TryGetValue("scopeKey", out var scopeKey);
+        appDataDict.TryGetValue("message", out var message);
+        
+        var bodyData = JsonSerializer.Deserialize<Body>(body, _parsingOptions);
+
+        var fcmMessage = new FcmMessage
         {
-            Console.WriteLine("⚠️ Message is null or empty, skipping notification parsing");
-        }
+            PersistantId = dataMessage.PersistentId,
+            From = long.Parse(dataMessage.From),
+            SentAt = DateTimeOffset.FromUnixTimeMilliseconds(dataMessage.Sent).UtcDateTime,
+            Data = new MessageData
+            {
+                ChannelId = channelId,
+                ProjectId = Guid.Parse(projectId ?? Guid.Empty.ToString()),
+                Body = bodyData!,
+                Title = title ?? string.Empty,
+                Message = message ?? string.Empty,
+                ExperienceId = experienceId ?? string.Empty,
+                ScopeKey = scopeKey ?? string.Empty,
+            }
+        };
+
+        persistentIds?.Add(dataMessage.PersistentId);
+
+        ParseNotification(fcmMessage);
+        NotificationReceived?.Invoke(this, JsonSerializer.Serialize(fcmMessage));
     }
 
     /// <summary>
-    /// Parses the notification message.
+    /// Parses an incoming <see cref="FcmMessage"/> notification.
+    /// Override this method in a derived class to handle specific notification logic.
     /// </summary>
-    /// <param name="message">The notification message to parse.</param>
-    protected virtual void ParseNotification(FcmMessage? message) { }
+    /// <param name="message">The <see cref="FcmMessage"/> to parse.</param>
+    protected virtual void ParseNotification(FcmMessage message) { }
 }

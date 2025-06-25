@@ -25,7 +25,7 @@ public static class BodyToEventModel
         return new ServerEvent
         {
             Id = body.Id,
-            Name = body.EntityName,
+            Name = body.EntityName ?? string.Empty,
             Ip = body.Ip,
             Port = body.Port,
             Desc = body.Desc,

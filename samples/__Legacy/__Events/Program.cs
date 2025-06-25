@@ -1,10 +1,8 @@
-﻿using Newtonsoft.Json;
-
+﻿using System.Text.Json;
 using RustPlusApi;
-
 using RustPlusContracts;
 
-using static __Constants.ExamplesConst;
+using static Constants.ExamplesConst;
 
 var rustPlus = new RustPlusLegacy(Ip, Port, PlayerId, PlayerToken);
 
@@ -12,13 +10,13 @@ rustPlus.Connecting += (_, _) => Console.WriteLine("Connecting...");
 rustPlus.Connected += (_, _) => Console.WriteLine("Connected...");
 
 rustPlus.SendingRequest += (_, _) => Console.WriteLine("Sending request...");
-rustPlus.RequestSent += (_, message) => Console.WriteLine($"Request:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+rustPlus.RequestSent += (_, message) => Console.WriteLine($"Request:\n{JsonSerializer.Serialize(message, JsonOptions)}");
 
 // Message is always triggered (notification + response)
-rustPlus.MessageReceived += (_, message) => Console.WriteLine($"Message:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+rustPlus.MessageReceived += (_, message) => Console.WriteLine($"Message:\n{JsonSerializer.Serialize(message, JsonOptions)}");
 
-rustPlus.NotificationReceived += (_, message) => Console.WriteLine($"Notification:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
-rustPlus.ResponseReceived += (_, message) => Console.WriteLine($"Response:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+rustPlus.NotificationReceived += (_, message) => Console.WriteLine($"Notification:\n{JsonSerializer.Serialize(message, JsonOptions)}");
+rustPlus.ResponseReceived += (_, message) => Console.WriteLine($"Response:\n{JsonSerializer.Serialize(message, JsonOptions)}");
 
 rustPlus.Disconnecting += (_, _) => Console.WriteLine("Disconnecting...");
 rustPlus.Disconnected += (_, _) => Console.WriteLine("Disconnected...");

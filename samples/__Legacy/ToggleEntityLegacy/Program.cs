@@ -1,6 +1,6 @@
 ﻿using RustPlusApi;
 
-using static __Constants.ExamplesConst;
+using static Constants.ExamplesConst;
 
 var rustPlus = new RustPlusLegacy(Ip, Port, PlayerId, PlayerToken);
 const uint entityId = 0;

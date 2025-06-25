@@ -7,11 +7,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusApi", "src\RustPlus
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusApi.Fcm", "src\RustPlusApi.Fcm\RustPlusApi.Fcm.csproj", "{A9A43CD8-5CE4-4121-91C4-A45972DA0F90}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{0B23F464-4021-46B2-9AD7-04C16FA9B6F1}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{0B23F464-4021-46B2-9AD7-04C16FA9B6F1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "__Constants", "samples\__Constants\__Constants.csproj", "{8A6AB2DB-2FEA-4A7E-9EB3-116AC223C51A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Constants", "samples\Constants\Constants.csproj", "{8A6AB2DB-2FEA-4A7E-9EB3-116AC223C51A}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "fcm", "fcm", "{717D6CCB-266B-483A-B4C7-2C2DC3A06C33}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Fcm", "Fcm", "{717D6CCB-266B-483A-B4C7-2C2DC3A06C33}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CheckSubscription", "samples\CheckSubscription\CheckSubscription.csproj", "{89A6839B-FCD8-4201-A3F4-568AB3FD647D}"
 EndProject
@@ -50,10 +50,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrobeSmartSwitch", "samples\StrobeSmartSwitch\StrobeSmartSwitch.csproj", "{1DFF39BB-7909-426F-BAC7-A22CE1A229C6}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ToggleSmartSwitch", "samples\ToggleSmartSwitch\ToggleSmartSwitch.csproj", "{BC52D22E-8AF6-445A-ADBF-8750505F7F48}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusFcmListener", "samples\__Fcm\RustPlusFcmListener\RustPlusFcmListener.csproj", "{B325CFF2-EB28-49A2-BA2B-011D6EBED4A8}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusFcmListenerClient", "samples\__Fcm\RustPlusFcmListenerClient\RustPlusFcmListenerClient.csproj", "{CE811FE4-539A-4AFF-A400-656861B5C08C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "legacy", "legacy", "{7290ED2D-80B8-4A4D-B5F5-7E93E638593C}"
 EndProject
@@ -98,6 +94,20 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StrobeEntityLegacy", "samples\__Legacy\StrobeEntityLegacy\StrobeEntityLegacy.csproj", "{BA4E20E4-3913-4416-926A-4D46098BEF92}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ToggleEntityLegacy", "samples\__Legacy\ToggleEntityLegacy\ToggleEntityLegacy.csproj", "{A1700B94-4A30-4ADB-8F17-1CAB39001A0D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F6035E36-5204-4DE7-9CF8-BB304E0ADF7E}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		Directory.Build.props = Directory.Build.props
+		Directory.Packages.props = Directory.Packages.props
+		Nuget.config = Nuget.config
+		README.md = README.md
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusFcmListener", "samples\Fcm\RustPlusFcmListener\RustPlusFcmListener.csproj", "{9DB87D2C-DD9D-4FD5-B24B-A902AD0AB49D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusFcmListenerClient", "samples\Fcm\RustPlusFcmListenerClient\RustPlusFcmListenerClient.csproj", "{55456876-FEE4-4053-9CFA-C65281AADBDA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -193,14 +203,6 @@ Global
 		{BC52D22E-8AF6-445A-ADBF-8750505F7F48}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BC52D22E-8AF6-445A-ADBF-8750505F7F48}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BC52D22E-8AF6-445A-ADBF-8750505F7F48}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B325CFF2-EB28-49A2-BA2B-011D6EBED4A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B325CFF2-EB28-49A2-BA2B-011D6EBED4A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B325CFF2-EB28-49A2-BA2B-011D6EBED4A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B325CFF2-EB28-49A2-BA2B-011D6EBED4A8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CE811FE4-539A-4AFF-A400-656861B5C08C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CE811FE4-539A-4AFF-A400-656861B5C08C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CE811FE4-539A-4AFF-A400-656861B5C08C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CE811FE4-539A-4AFF-A400-656861B5C08C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{976DE721-8A92-440E-A941-8468AC692AB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{976DE721-8A92-440E-A941-8468AC692AB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{976DE721-8A92-440E-A941-8468AC692AB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -285,6 +287,14 @@ Global
 		{A1700B94-4A30-4ADB-8F17-1CAB39001A0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1700B94-4A30-4ADB-8F17-1CAB39001A0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1700B94-4A30-4ADB-8F17-1CAB39001A0D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9DB87D2C-DD9D-4FD5-B24B-A902AD0AB49D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DB87D2C-DD9D-4FD5-B24B-A902AD0AB49D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9DB87D2C-DD9D-4FD5-B24B-A902AD0AB49D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9DB87D2C-DD9D-4FD5-B24B-A902AD0AB49D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55456876-FEE4-4053-9CFA-C65281AADBDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55456876-FEE4-4053-9CFA-C65281AADBDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55456876-FEE4-4053-9CFA-C65281AADBDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55456876-FEE4-4053-9CFA-C65281AADBDA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -311,8 +321,6 @@ Global
 		{B57DE425-4B1A-4491-BF40-08800978C7F8} = {0B23F464-4021-46B2-9AD7-04C16FA9B6F1}
 		{1DFF39BB-7909-426F-BAC7-A22CE1A229C6} = {0B23F464-4021-46B2-9AD7-04C16FA9B6F1}
 		{BC52D22E-8AF6-445A-ADBF-8750505F7F48} = {0B23F464-4021-46B2-9AD7-04C16FA9B6F1}
-		{B325CFF2-EB28-49A2-BA2B-011D6EBED4A8} = {717D6CCB-266B-483A-B4C7-2C2DC3A06C33}
-		{CE811FE4-539A-4AFF-A400-656861B5C08C} = {717D6CCB-266B-483A-B4C7-2C2DC3A06C33}
 		{7290ED2D-80B8-4A4D-B5F5-7E93E638593C} = {0B23F464-4021-46B2-9AD7-04C16FA9B6F1}
 		{976DE721-8A92-440E-A941-8468AC692AB8} = {7290ED2D-80B8-4A4D-B5F5-7E93E638593C}
 		{D722FF03-B348-451B-A569-FF252BAC8387} = {7290ED2D-80B8-4A4D-B5F5-7E93E638593C}
@@ -335,6 +343,8 @@ Global
 		{110D6CBB-8FC9-4CA0-9463-E9F94B030E83} = {7290ED2D-80B8-4A4D-B5F5-7E93E638593C}
 		{BA4E20E4-3913-4416-926A-4D46098BEF92} = {7290ED2D-80B8-4A4D-B5F5-7E93E638593C}
 		{A1700B94-4A30-4ADB-8F17-1CAB39001A0D} = {7290ED2D-80B8-4A4D-B5F5-7E93E638593C}
+		{9DB87D2C-DD9D-4FD5-B24B-A902AD0AB49D} = {717D6CCB-266B-483A-B4C7-2C2DC3A06C33}
+		{55456876-FEE4-4053-9CFA-C65281AADBDA} = {717D6CCB-266B-483A-B4C7-2C2DC3A06C33}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A4B4251F-ADA4-418D-95B5-27BA99A307A3}

@@ -1,20 +1,15 @@
-﻿using RustPlusApi.Fcm;
+﻿using System.Text.Json;
+using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Data;
-using RustPlusApi.Fcm.Extensions;
+using static Constants.ExamplesConst;
 
 // See RustPlusFcmListener/Program.cs for an example where the credentials are read from a JavaScript config file.
 var credentials = new Credentials
 {
-    Keys = new Keys
-    {
-        PrivateKey = "",
-        PublicKey = "",
-        AuthSecret = "",
-    },
     Gcm = new Gcm
     {
-        AndroidId = 0,
-        SecurityToken = 0,
+        AndroidId = 5688303636103341924,
+        SecurityToken = 2231918422921550740,
     }
 };
 
@@ -32,7 +27,9 @@ listener.Connected += (_, _) =>
 
 listener.NotificationReceived += (_, message) =>
 {
-    Console.WriteLine($"[NOTIFICATION]: {DateTime.Now}:\n{message.ToFcmMessageString()}");
+    using var doc = JsonDocument.Parse(message);
+    var indentedJson = JsonSerializer.Serialize(doc.RootElement, JsonOptions);
+    Console.WriteLine($"[NOTIFICATION]: {DateTime.Now}:\n{indentedJson}");
 };
 
 listener.SocketClosed += (_, _) =>

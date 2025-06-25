@@ -2,7 +2,7 @@
 
 namespace RustPlusApi.Fcm.Data.Events;
 
-internal class MessageEventArgs : EventArgs
+internal sealed class MessageEventArgs : EventArgs
 {
     public McsProtoTag Tag { get; set; }
     public object? Object { get; set; }

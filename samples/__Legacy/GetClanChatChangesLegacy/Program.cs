@@ -1,8 +1,7 @@
-﻿using Newtonsoft.Json;
-
+﻿using System.Text.Json;
 using RustPlusApi;
 
-using static __Constants.ExamplesConst;
+using static Constants.ExamplesConst;
 
 var rustPlus = new RustPlusLegacy(Ip, Port, PlayerId, PlayerToken);
 
@@ -10,14 +9,14 @@ rustPlus.NotificationReceived += (_, message) =>
 {
     if (message.Broadcast is not { ClanChanged: not null }) return;
 
-    Console.WriteLine($"Message:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+    Console.WriteLine($"Message:\n{JsonSerializer.Serialize(message, JsonOptions)}");
 };
 
 await rustPlus.ConnectAsync();
 
 // This method is not fully integrated in Rust, so it will not work until the Clan update is released.
 var message = await rustPlus.GetClanChatLegacyAsync();
-Console.WriteLine($"Infos:\n{JsonConvert.SerializeObject(message, JsonSettings)}");
+Console.WriteLine($"Infos:\n{JsonSerializer.Serialize(message, JsonOptions)}");
 
 Console.ReadLine();
 await rustPlus.DisconnectAsync();

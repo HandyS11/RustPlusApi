@@ -5,11 +5,10 @@ namespace RustPlusApi.Fcm.Extensions;
 
 public static class MessageDataToEventModel
 {
-    public static AlarmEvent ToAlarmEvent(this MessageData data, Guid notificationId)
+    public static AlarmEvent ToAlarmEvent(this MessageData data)
     {
         return new AlarmEvent
         {
-            NotificationId = notificationId,
             Title = data.Title,
             Message = data.Message
         };

@@ -2,15 +2,10 @@
 
 This is a C# client for the Rust+ websocket. It allows you to receive notification via FCM.
 
-## Prerequisites
-
-- **.NET 8** or later
-
-## Sumary
+## Summary
 
 - [RustPlusApi.Fcm](#rustplusapifcm)
-  - [Prerequisites](#prerequisites)
-  - [Sumary](#sumary)
+  - [Summary](#summary)
     - [RustPlusFcmListenerClient](#rustplusfcmlistenerclient)
     - [RustPlusFcmListener](#rustplusfcmlistener)
   - [Credentials](#credentials)

@@ -6,6 +6,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\..\src\RustPlusApi.Fcm\RustPlusApi.Fcm.csproj" />
+        <ProjectReference Include="..\..\Constants\Constants.csproj" />
     </ItemGroup>
 
 </Project>

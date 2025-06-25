@@ -6,7 +6,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\RustPlusApi\RustPlusApi.csproj" />
-        <ProjectReference Include="..\__Constants\__Constants.csproj" />
+        <ProjectReference Include="..\Constants\Constants.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,21 +1,18 @@
-using Newtonsoft.Json;
-
+using System.Text.Json;
 using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Configuration;
 using RustPlusApi.Fcm.Data;
-
-using static __Constants.ExamplesConst;
+using static Constants.ExamplesConst;
 
 // Path to the JavaScript config file, see sample-config.json for an example.
 // Make sure to run 'npx @liamcottle/rustplus.js fcm-register' first to generate this file.
-var configPath = @"<path of rustplus.js config file>\rustplus.config.json";
+const string configPath = @"C:\Users\handys11\Dev\rustplus.js\rustplus.config.json";
 
 Credentials credentials;
-JavaScriptConfig jsConfig;
 try
 {
     // Step 1: Read the JavaScript config file
-    jsConfig = FcmConfigurationReader.ReadJavaScriptConfig(configPath);
+    var jsConfig = FcmConfigurationReader.ReadJavaScriptConfig(configPath);
 
     // Step 2: Convert to credentials format
     credentials = FcmConfigurationReader.ConvertToCredentials(jsConfig);
@@ -70,17 +67,17 @@ listener.Disconnected += (_, _) =>
 
 listener.OnServerPairing += (_, pairing) =>
 {
-    Console.WriteLine($"[SERVER PAIRING]:\n{JsonConvert.SerializeObject(pairing, JsonSettings)}");
+    Console.WriteLine($"[SERVER PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonOptions)}");
 };
 
 listener.OnEntityParing += (_, pairing) =>
 {
-    Console.WriteLine($"[ENTITY PAIRING]:\n{JsonConvert.SerializeObject(pairing, JsonSettings)}");
+    Console.WriteLine($"[ENTITY PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonOptions)}");
 };
 
 listener.OnAlarmTriggered += (_, alarm) =>
 {
-    Console.WriteLine($"[ALARM TRIGGERED]:\n{JsonConvert.SerializeObject(alarm, JsonSettings)}");
+    Console.WriteLine($"[ALARM TRIGGERED]:\n{JsonSerializer.Serialize(alarm, JsonOptions)}");
 };
 
 await listener.ConnectAsync();
