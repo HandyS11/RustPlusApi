@@ -1,24 +1,38 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 
 using RustPlusApi.Fcm;
+using RustPlusApi.Fcm.Configuration;
 using RustPlusApi.Fcm.Data;
 
 using static __Constants.ExamplesConst;
 
-var credentials = new Credentials
+// Path to the JavaScript config file, see sample-config.json for an example.
+// Make sure to run 'npx @liamcottle/rustplus.js fcm-register' first to generate this file.
+var configPath = @"<path of rustplus.js config file>\rustplus.config.json";
+
+Credentials credentials;
+JavaScriptConfig jsConfig;
+try
 {
-    Keys = new Keys
-    {
-        PrivateKey = "",
-        PublicKey = "",
-        AuthSecret = "",
-    },
-    Gcm = new Gcm
-    {
-        AndroidId = 0,
-        SecurityToken = 0,
-    }
-};
+    // Step 1: Read the JavaScript config file
+    jsConfig = FcmConfigurationReader.ReadJavaScriptConfig(configPath);
+
+    // Step 2: Convert to credentials format
+    credentials = FcmConfigurationReader.ConvertToCredentials(jsConfig);
+
+    Console.WriteLine($"Loaded credentials - AndroidId: {credentials.Gcm.AndroidId}");
+}
+catch (FileNotFoundException)
+{
+    Console.WriteLine($"Config file not found at: {configPath}");
+    Console.WriteLine("Please run 'npx @liamcottle/rustplus.js fcm-register' first and update the path above.");
+    return;
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Failed to load config: {ex.Message}");
+    return;
+}
 
 var listener = new RustPlusFcmListener(credentials);
 

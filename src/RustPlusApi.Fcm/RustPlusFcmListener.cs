@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 
 using Newtonsoft.Json;
 
@@ -29,24 +29,26 @@ public class RustPlusFcmListener(Credentials credentials, ICollection<string>? p
 
     public event EventHandler<AlarmEvent?>? OnAlarmTriggered;
 
-    protected override void ParseNotification(string? message)
+    protected override void ParseNotification(FcmMessage? message)
     {
         if (message is null) return;
 
-        var msg = JsonConvert.DeserializeObject<FcmMessage>(message);
-        if (msg is null) return;
-
-        switch (msg.Data.ChannelId)
+        switch (message.Data.ChannelId)
         {
             case "pairing":
-                OnParing?.Invoke(this, msg);
-                ParsePairing(msg.FcmMessageId, msg.Data.Body);
+                OnParing?.Invoke(this, message);
+                var body = JsonConvert.DeserializeObject<Body>(message.Data.Body);
+                if (body is null)
+                {
+                    return;
+                }
+                ParsePairing(message.FcmMessageId, body);
                 break;
             case "alarm":
-                OnAlarmTriggered?.Invoke(this, msg.Data.ToAlarmEvent(msg.FcmMessageId));
+                OnAlarmTriggered?.Invoke(this, message.Data.ToAlarmEvent(message.FcmMessageId));
                 break;
             default:
-                Debug.WriteLine($"Unknown channel: {msg.Data.ChannelId}");
+                Debug.WriteLine($"Unknown channel: {message.Data.ChannelId}");
                 break;
         }
     }

@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 
 using RustPlusApi.Fcm.Converters;
 // ReSharper disable ClassNeverInstantiated.Global
@@ -21,8 +21,8 @@ public class MessageData
     public string Message { get; set; } = null!;
     public string ExperienceId { get; set; } = null!;
     public string ScopeKey { get; set; } = null!;
-    [JsonConverter(typeof(BodyConverter))]
-    public Body Body { get; set; } = null!;
+
+    public string Body { get; set; } = null!;
 }
 
 public class Body

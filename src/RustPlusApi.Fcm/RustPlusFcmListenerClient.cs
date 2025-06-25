@@ -2,18 +2,14 @@ using System.Diagnostics;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Numerics;
-
 using McsProto;
-
+using Newtonsoft.Json;
 using ProtoBuf;
-
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
-using RustPlusApi.Fcm.Utils;
-
+using static System.GC;
 using static RustPlusApi.Fcm.Data.Tags;
 using static RustPlusApi.Fcm.Utils.Utils;
-using static System.GC;
 
 namespace RustPlusApi.Fcm;
 
@@ -283,35 +279,73 @@ public class RustPlusFcmListenerClient(Credentials credentials, ICollection<stri
         if (dataMessage?.PersistentId != null
             && persistentIds != null
             && persistentIds!.Contains(dataMessage?.PersistentId!))
+        {
             return;
-
-        var message = string.Empty;
-        try
-        {
-            message = DecryptionUtility.Decrypt(dataMessage!, credentials.Keys);
         }
-        catch (Exception ex)
+
+        // Extract notification data from AppData (Rust+ notifications come as AppData, not encrypted RawData)
+        FcmMessage? fcmMessage = null;
+        if (dataMessage?.AppDatas != null && dataMessage.AppDatas.Count > 0)
         {
-            if (ex.Message.Contains("Unsupported state or unable to authenticate data") ||
-                ex.Message.Contains("crypto-key is missing") ||
-                ex.Message.Contains("salt is missing"))
+            // Convert AppData to dictionary for easier access
+            var appDataDict = dataMessage.AppDatas.ToDictionary(x => x.Key, x => x.Value);
+
+            // Check if this is a Rust+ notification
+            if (appDataDict.TryGetValue("channelId", out var channelId) &&
+                appDataDict.TryGetValue("body", out var body))
             {
-                Debug.WriteLine($"Message dropped as it could not be decrypted: {ex.Message}");
+                appDataDict.TryGetValue("title", out var title);
+                appDataDict.TryGetValue("projectId", out var projectId);
+                appDataDict.TryGetValue("experienceId", out var experienceId);
+                appDataDict.TryGetValue("scopeKey", out var scopeKey);
+                appDataDict.TryGetValue("message", out var message);
+
+                // Build the expected FcmMessage format
+                fcmMessage = new FcmMessage
+                {
+                    FcmMessageId = Guid.NewGuid(), //Not sure but I see no Guid in the dataMessage
+                    From = long.Parse(dataMessage.From),
+                    //Priority = ?
+                    Data = new MessageData()
+                    {
+                        ChannelId = channelId,
+                        Body = body,
+                        Title = title ?? string.Empty,
+                        Message = message ?? string.Empty,
+                        ExperienceId = experienceId ?? string.Empty,
+                        ScopeKey = scopeKey ?? string.Empty,
+                    }
+                };
+            }
+            else
+            {
+                Console.WriteLine("⚠️ Not a Rust+ notification - missing channelId or body");
                 return;
             }
         }
-        finally
+        else
         {
-            persistentIds?.Add(dataMessage!.PersistentId);
+            Console.WriteLine("⚠️ No AppData found in message");
+            return;
         }
 
-        ParseNotification(message);
-        NotificationReceived?.Invoke(this, message);
+        // Add to persistent IDs to avoid reprocessing
+        persistentIds?.Add(dataMessage!.PersistentId);
+
+        if (fcmMessage is not null)
+        {
+            ParseNotification(fcmMessage);
+            NotificationReceived?.Invoke(this, JsonConvert.SerializeObject(fcmMessage));
+        }
+        else
+        {
+            Console.WriteLine("⚠️ Message is null or empty, skipping notification parsing");
+        }
     }
 
     /// <summary>
     /// Parses the notification message.
     /// </summary>
     /// <param name="message">The notification message to parse.</param>
-    protected virtual void ParseNotification(string message) { }
+    protected virtual void ParseNotification(FcmMessage? message) { }
 }

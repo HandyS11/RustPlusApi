@@ -2,6 +2,7 @@
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Extensions;
 
+// See RustPlusFcmListener/Program.cs for an example where the credentials are read from a JavaScript config file.
 var credentials = new Credentials
 {
     Keys = new Keys
