@@ -5,7 +5,7 @@ using static Constants.ExamplesConst;
 
 // Path to the JavaScript config file, see sample-config.json for an example.
 // Make sure to run 'npx @liamcottle/rustplus.js fcm-register' first to generate this file.
-const string configPath = @"C:\Users\handys11\Dev\rustplus.js\rustplus.config.json";
+const string configPath = @"<path>\rustplus.config.json";
 
 Credentials credentials;
 try

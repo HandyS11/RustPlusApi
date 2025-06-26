@@ -8,8 +8,8 @@ var credentials = new Credentials
 {
     Gcm = new Gcm
     {
-        AndroidId = 5688303636103341924,
-        SecurityToken = 2231918422921550740,
+        AndroidId = 0,
+        SecurityToken = 0,
     }
 };
 
