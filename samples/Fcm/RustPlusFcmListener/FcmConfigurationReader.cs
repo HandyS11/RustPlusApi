@@ -2,11 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using RustPlusApi.Fcm.Data;
 
-// ReSharper disable ClassNeverInstantiated.Global
-
-namespace RustPlusFcmListener;
-
-public static class FcmConfigurationReader
+internal static class FcmConfigurationReader
 {
     public static JavaScriptConfig ReadJavaScriptConfig(string configFilePath)
     {

@@ -1,11 +1,11 @@
 using System.Text.Json;
+using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Data;
-using RustPlusFcmListener;
 using static Constants.ExamplesConst;
 
 // Path to the JavaScript config file, see sample-config.json for an example.
 // Make sure to run 'npx @liamcottle/rustplus.js fcm-register' first to generate this file.
-const string configPath = @"<path>\rustplus.config.json";
+const string configPath = @"<path of rustplus.js config file>\rustplus.config.json";
 
 Credentials credentials;
 try
@@ -30,7 +30,7 @@ catch (Exception ex)
     return;
 }
 
-var listener = new RustPlusApi.Fcm.RustPlusFcmListener(credentials);
+var listener = new RustPlusFcmListener(credentials);
 
 listener.Connecting += (_, _) =>
 {
