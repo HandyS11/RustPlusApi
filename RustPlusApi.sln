@@ -109,6 +109,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusFcmListener", "samp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusFcmListenerClient", "samples\Fcm\RustPlusFcmListenerClient\RustPlusFcmListenerClient.csproj", "{55456876-FEE4-4053-9CFA-C65281AADBDA}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Pipelines", "Pipelines", "{9F155070-0797-41DB-A152-26EF4199A777}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\CD.yml = .github\workflows\CD.yml
+		.github\workflows\CI.yml = .github\workflows\CI.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -345,6 +351,7 @@ Global
 		{A1700B94-4A30-4ADB-8F17-1CAB39001A0D} = {7290ED2D-80B8-4A4D-B5F5-7E93E638593C}
 		{9DB87D2C-DD9D-4FD5-B24B-A902AD0AB49D} = {717D6CCB-266B-483A-B4C7-2C2DC3A06C33}
 		{55456876-FEE4-4053-9CFA-C65281AADBDA} = {717D6CCB-266B-483A-B4C7-2C2DC3A06C33}
+		{9F155070-0797-41DB-A152-26EF4199A777} = {F6035E36-5204-4DE7-9CF8-BB304E0ADF7E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A4B4251F-ADA4-418D-95B5-27BA99A307A3}
