@@ -17,7 +17,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="BouncyCastle.Cryptography" />
         <PackageReference Include="protobuf-net" />
     </ItemGroup>
 

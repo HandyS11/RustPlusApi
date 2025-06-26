@@ -2,7 +2,7 @@ using RustPlusApi.Data.Entities;
 
 namespace RustPlusApi.Data.Events;
 
-public class SmartSwitchEventArg : SmartSwitchInfo
+public sealed record SmartSwitchEventArg : SmartSwitchInfo
 {
-    public uint Id { get; set; }
+    public uint Id { get; init; }
 }

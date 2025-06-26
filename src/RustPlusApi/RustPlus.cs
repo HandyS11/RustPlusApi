@@ -1,30 +1,40 @@
 using System.Diagnostics;
-
 using RustPlusApi.Data;
 using RustPlusApi.Data.Entities;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Extensions;
 using RustPlusApi.Utils;
-
 using RustPlusContracts;
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi;
 
 /// <summary>
-/// A Rust+ API client made in C#.
+/// Initializes a new instance of the <see cref="RustPlus"/> class,
+/// connecting to a Rust+ server using the specified parameters.
 /// </summary>
 /// <param name="server">The IP address of the Rust+ server.</param>
 /// <param name="port">The port dedicated for the Rust+ companion app (not the one used to connect in-game).</param>
 /// <param name="playerId">Your Steam ID.</param>
 /// <param name="playerToken">Your player token acquired with FCM.</param>
 /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
+/// <seealso cref="RustPlusSocket"/>
 public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false)
-    : RustPlusLegacy(server, port, playerId, playerToken, useFacepunchProxy)
+    : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy)
 {
-    public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered; // Alarm will also be triggered since there is no physical difference between them
+    /// <summary>
+    /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or alarm.
+    /// </summary>
+    public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered;
+
+    /// <summary>
+    /// Occurs when a <see cref="StorageMonitorEventArg"/> is triggered by a storage monitor.
+    /// </summary>
     public event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 
+    /// <summary>
+    /// Occurs when a team chat message is received, providing a <see cref="TeamMessageEventArg"/>.
+    /// </summary>
     public event EventHandler<TeamMessageEventArg>? OnTeamChatReceived;
 
     /// <summary>
@@ -60,7 +70,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="request">The request to be processed.</param>
     /// <param name="successSelector">The function to select the result from the response.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
-    public async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
+    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
     {
         var response = await SendRequestAsync(request);
 
@@ -76,7 +86,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="entityId">The ID of the entity.</param>
     /// <param name="selector">The function to select the entity information from the response.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the entity information.</returns>
-    public async Task<Response<T?>> GetEntityInfoAsync<T>(uint entityId, Func<AppMessage, T> selector)
+    protected async Task<Response<T?>> GetEntityInfoAsync<T>(uint entityId, Func<AppMessage, T> selector)
     {
         var request = new AppRequest
         {

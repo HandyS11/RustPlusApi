@@ -1,8 +1,8 @@
 namespace RustPlusApi.Data.Markers;
 
-public class VendingMachineMarker : Marker
+public sealed record VendingMachineMarker : Marker
 {
-    public string? Name { get; set; }
-    public bool? IsOutOfStock { get; set; }
-    public IEnumerable<VendingMachineItem>? VendingMachineItems { get; set; }
+    public string? Name { get; init; }
+    public bool? IsOutOfStock { get; init; }
+    public IEnumerable<VendingMachineItem>? VendingMachineItems { get; init; }
 }

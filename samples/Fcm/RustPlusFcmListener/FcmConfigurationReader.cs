@@ -2,7 +2,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using RustPlusApi.Fcm.Data;
 
-namespace RustPlusApi.Fcm.Configuration;
+// ReSharper disable ClassNeverInstantiated.Global
+
+namespace RustPlusFcmListener;
 
 public static class FcmConfigurationReader
 {

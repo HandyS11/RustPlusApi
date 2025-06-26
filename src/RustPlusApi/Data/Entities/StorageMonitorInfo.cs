@@ -1,9 +1,9 @@
 namespace RustPlusApi.Data.Entities;
 
-public class StorageMonitorInfo
+public record StorageMonitorInfo
 {
-    public int? Capacity { get; set; }
-    public bool? HasProtection { get; set; }
-    public DateTime ProtectionExpiry { get; set; }
-    public IEnumerable<StorageMonitorItemInfo>? Items { get; set; }
+    public int? Capacity { get; init; }
+    public bool? HasProtection { get; init; }
+    public DateTime ProtectionExpiry { get; init; }
+    public IEnumerable<StorageMonitorItemInfo>? Items { get; init; }
 }

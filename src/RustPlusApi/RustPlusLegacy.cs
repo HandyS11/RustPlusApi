@@ -1,16 +1,18 @@
 using RustPlusContracts;
-// ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi;
 
 /// <summary>
-/// A Rust+ API client made in C#.
+/// Initializes a new instance of the <see cref="RustPlusLegacy"/> class,
+/// connecting to a Rust+ server using the specified parameters.
 /// </summary>
 /// <param name="server">The IP address of the Rust+ server.</param>
 /// <param name="port">The port dedicated for the Rust+ companion app (not the one used to connect in-game).</param>
 /// <param name="playerId">Your Steam ID.</param>
 /// <param name="playerToken">Your player token acquired with FCM.</param>
 /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
+/// <seealso cref="RustPlusSocket"/>
+[Obsolete("This class is deprecated and will be removed in a future version. Use RustPlus instead.")]
 public class RustPlusLegacy(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false)
     : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy)
 {

@@ -6,17 +6,6 @@ namespace RustPlusApi.Extensions;
 
 public static class AppEntityInfoToModel
 {
-    public static object ToEntityInfo(this AppEntityInfo entity)
-    {
-        return entity.Type switch
-        {
-            AppEntityType.Switch => entity.ToSmartSwitchInfo(),
-            AppEntityType.Alarm => entity.ToAlarmInfo(),
-            AppEntityType.StorageMonitor => entity.ToStorageMonitorInfo(),
-            _ => throw new ArgumentException($"The given type is not possible: {entity.Type}")
-        };
-    }
-
     public static SmartSwitchInfo ToSmartSwitchInfo(this AppEntityInfo entity)
     {
         return new SmartSwitchInfo

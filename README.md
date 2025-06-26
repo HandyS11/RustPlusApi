@@ -11,7 +11,7 @@ Some of the features that the **RustPlusApi** provides:
 - `GetInfo` Get info about the Rust Server
 - `GetMap` Fetch map info, which inclues a jpg image
 - `GetMapMarkers` Get map markers
-- `GetTeamInfo` Get list of team members and positions on map
+- `GetTeamInfo` Get a list of team members and positions on the map
 - `GetTime` Get the current in game time
 - `SendTeamMessage` Send messages to Team Chat
 - `SetEntityValue` Set the value of a Smart Device
@@ -30,12 +30,12 @@ Feel free to **explore** the `samples/` folder to see how to **use** the API.
 
 - [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8) or later
 
-## 📚 Sumary
+## 📚 Summary
 
 - [RustPlusApi](#rustplusapi)
   - [📊 Features](#-features)
   - [🖊️ Versions](#️-versions)
-  - [📚 Sumary](#-sumary)
+  - [📚 Summary](#-summary)
   - [📍 NuGet](#-nuget)
   - [⚙️ Usage](#️-usage)
     - [RustPlusApi](#rustplusapi-1)
@@ -43,19 +43,20 @@ Feel free to **explore** the `samples/` folder to see how to **use** the API.
   - [Credentials](#credentials)
   - [🖼️ Credits](#️-credits)
 
-The library provides 4 classes to interact with the Rust+ API: `RustPlusLegacy`, `RustPlus`, `RustPlusFcmListenerClient` & `RustPlusFcmListener`.
+The library provides four classes to interact with the Rust+ API:
+`RustPlusLegacy`, `RustPlus`, `RustPlusFcmListenerClient` & `RustPlusFcmListener`.
 
 - `RustPlusLegacy` is the original implementation based on the `./Protobuf/RustPlus.proto` file.
-- `RustPlus` is a new implementation that return a response based on `./Data/Response.cs` object.
+- `RustPlus` is a new implementation that returns a response based on `./Data/Response.cs` object.
 
 Since `RustPlus` inherit from `RustPlusLegacy`, you can use both classes to interact with the Rust+ API. The `RustPlus` class is recommended for new projects, as it provides a more user-friendly interface and better error handling.
 
 - `RustPlusListener` is a class to listen to the FCM socket and handle notifications.
-- `RustPlusFcmListener` is a new implementation that own more events.
+- `RustPlusFcmListener` is a new implementation that owns more events.
 
 ## 📍 NuGet
 
-Simply use this library in your project by running the following commands:
+Use this library in your project by running the following commands:
 
 ```bash
 dotnet add package RustPlusApi
@@ -118,7 +119,7 @@ await rustPlus.SendRequestAsync(request);
 
 The response with be an **AppMessage** that is a direct representation of `./Protobuf/RustPlus.proto` file.
 
-Feel free to explore the `RustPlusLegacy` class to find all convinient methods to use.
+Feel free to explore the `RustPlusLegacy` class to find all convenient methods to use.
 
 ---
 
@@ -151,8 +152,6 @@ rustPlusApi.DisconnectAsync();
 ---
 
 <details><summary> RustPlus </summary>
-
-The `RustPlus` classe inherit from `RustPlusLegacy` and provide a more user-friendly interface to interact with the Rust+ API. That means you can use all methods from `RustPlusLegacy` and also the new ones from `RustPlus`.
 
 Such as the `RustPlusLegacy`, you need to instantiate the `RustPlus` class with the necessary parameters:
 
@@ -196,7 +195,7 @@ public class SmartSwitchInfo
 
 ---
 
-You can olso subscribe to more events to handle specific actions:
+You can also subscribe to more events to handle specific actions:
 
 ```csharp
 rustPlusApi.OnSmartSwitchTriggered += (sender, smartSwitch) => { /* handle smart switch triggered event */ };
@@ -205,7 +204,7 @@ rustPlusApi.OnStorageMonitorTriggered += (sender, storageMonitor) => { /* handle
 rustPlusApi.OnTeamChatReceived += (sender, message) => { /* handle team chat received event */ };
 ```
 
-To be able to receive theses events, you need to previously make a request on the given entity or chat.
+To be able to receive these events, you need to previously make a request on the given entity or chat.
 
 For example, to receive the smart switch triggered event, you need to make a request on the smart switch entity:
 
@@ -269,7 +268,7 @@ rustPlusFcmListenerClient.OnNotificationReceived += (sender, e) =>
 
 ---
 
-Don't forget to disconnect from the FCM server when you're done:
+Remember to disconnect from the FCM server when you're done:
 
 ```csharp
 rustPlusFcmListenerClient.Disconnect();
@@ -320,7 +319,7 @@ rustPlusFcmListener.OnAlarmTriggered += (sender, e) =>
 
 ---
 
-Don't forget to disconnect from the FCM server when you're done:
+Remember to disconnect from the FCM server when you're done:
 
 ```csharp
 rustPlusFcmListener.Disconnect();
@@ -332,13 +331,18 @@ rustPlusFcmListener.Disconnect();
 
 ## Credentials
 
-Currenlty, there is not simple way to get the FCM & GCM credentials using **.NET**.
-I've planned to implement a solution but it's not ready yet.
+Currently, there is no simple way to get the FCM credentials using .NET.
 
-To use this library, you need to get the FCM & GCM credentials manually.
-To do so I recommand you to use [this project](https://github.com/liamcottle/rustplus.js) to get the credentials.
+To use this library, you need to get the FCM credentials manually.
+To do, so I recommend you to use [this project](https://github.com/liamcottle/rustplus.js) to get the credentials.
 
-I'm sorry for the inconvenience but since the API is not fully complete it's the easiest way.
+1. Clone the repository.
+2. Install the dependencies using `npm install`.
+3. Run `npm run cli/index.js fcm-register`
+4. Proceed to log in with your Steam account.
+5. The credentials will be in a file named `rustplus.config.json`.
+
+I'm sorry for the inconvenience, but since the API is not fully complete, it's the easiest way.
 
 ## 🖼️ Credits
 

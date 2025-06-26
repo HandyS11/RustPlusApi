@@ -1,6 +1,6 @@
 namespace RustPlusApi.Data.Entities;
 
-public class AlarmInfo
+public record AlarmInfo
 {
-    public bool IsActive { get; set; }
+    public bool IsActive { get; init; }
 }

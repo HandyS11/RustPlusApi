@@ -13,7 +13,7 @@ This is a C# client for the Rust+ websocket. It allows you to receive notificati
 The library provides two classes to interact with the Rust+ API: `RustPlusFcmListenerClient` and `RustPlusFcmListener`.
 
 - `RustPlusFcmListenerClient` is the base client to interact with FCM.
-- `RustPlusFcmListener` is a new implementation that own more events.
+- `RustPlusFcmListener` is a new implementation that owns more events.
 
 Since `RustPlusFcmListener` inherit from `RustPlusFcmListenerClient`, you can use both classes to interact with FCM. The `RustPlus` class is recommended for new projects, as it provides more events.
 
@@ -51,7 +51,7 @@ rustPlusFcmListenerClient.OnNotificationReceived += (sender, e) =>
 
 ---
 
-Don't forget to disconnect from the FCM server when you're done:
+Remember to disconnect from the FCM server when you're done:
 
 ```csharp
 rustPlusFcmListenerClient.Disconnect();
@@ -98,7 +98,7 @@ rustPlusFcmListener.OnAlarmTriggered += (sender, e) =>
 
 ---
 
-Don't forget to disconnect from the FCM server when you're done:
+Remember to disconnect from the FCM server when you're done:
 
 ```csharp
 rustPlusFcmListener.Disconnect();
@@ -106,10 +106,15 @@ rustPlusFcmListener.Disconnect();
 
 ## Credentials
 
-Currenlty, there is not simple way to get the FCM credentials & keys using .NET.
-I've planned to implement a solution but it's not ready yet.
+Currently, there is no simple way to get the FCM credentials using .NET.
 
 To use this library, you need to get the FCM credentials manually.
-To do so I recommand you to use [this project](https://github.com/liamcottle/rustplus.js) to get the credentials.
+To do, so I recommend you to use [this project](https://github.com/liamcottle/rustplus.js) to get the credentials.
 
-I'm sorry for the inconvenience but since the API is not fully complete it's the easiest way.
+1. Clone the repository.
+2. Install the dependencies using `npm install`.
+3. Run `npm run cli/index.js fcm-register`
+4. Proceed to log in with your Steam account.
+5. The credentials will be in a file named `rustplus.config.json`.
+
+I'm sorry for the inconvenience, but since the API is not fully complete, it's the easiest way.

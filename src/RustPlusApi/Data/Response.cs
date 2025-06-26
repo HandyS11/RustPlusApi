@@ -1,13 +1,13 @@
 namespace RustPlusApi.Data;
 
-public class Response<T>
+public sealed record Response<T>
 {
-    public bool IsSuccess { get; set; }
-    public ErrorMessage? Error { get; set; }
-    public T? Data { get; set; }
+    public bool IsSuccess { get; init; }
+    public ErrorMessage? Error { get; init; }
+    public T? Data { get; init; }
 }
 
-public class ErrorMessage
+public sealed record ErrorMessage
 {
-    public string? Message { get; set; }
+    public string? Message { get; init; }
 }

@@ -12,7 +12,6 @@ var message = await rustPlus.GetMapAsync();
 if (!message.IsSuccess) return;
 File.WriteAllBytes("map.jpg", message.Data?.JpgImage!);
 
-message.Data!.JpgImage = null;
 Console.WriteLine($"Infos:\n{JsonSerializer.Serialize(message, JsonOptions)}");
 Console.WriteLine($"Image saved under: {Directory.GetCurrentDirectory()}");
 

@@ -1,3 +1,3 @@
 namespace RustPlusApi.Data.Notes;
 
-public class DeathNote : Note { }
+public sealed record DeathNote : Note;

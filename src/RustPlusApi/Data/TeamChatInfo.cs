@@ -1,6 +1,6 @@
 namespace RustPlusApi.Data;
 
-public class TeamChatInfo
+public sealed record TeamChatInfo
 {
-    public IEnumerable<TeamMessage>? Messages { get; set; }
+    public IEnumerable<TeamMessage>? Messages { get; init; }
 }
