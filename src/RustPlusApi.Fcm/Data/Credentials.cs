@@ -2,11 +2,11 @@
 
 public sealed record Credentials
 {
-    public Gcm Gcm { get; set; } = null!;
+    public Gcm Gcm { get; init; } = null!;
 }
 
 public sealed record Gcm
 {
-    public ulong AndroidId { get; set; }
-    public ulong SecurityToken { get; set; }
+    public ulong AndroidId { get; init; }
+    public ulong SecurityToken { get; init; }
 }

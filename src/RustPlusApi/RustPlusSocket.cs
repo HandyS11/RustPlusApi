@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.WebSockets;
 using Google.Protobuf;
+using RustPlusApi.Interfaces;
 using RustPlusContracts;
 using static System.GC;
 // ReSharper disable MemberCanBeProtected.Global
@@ -23,7 +24,7 @@ public abstract class RustPlusSocket(
     ulong playerId,
     int playerToken,
     bool useFacepunchProxy = false)
-    : IDisposable
+    : IDisposable, IRustPlusSocket
 {
     /// <summary>
     /// Occurs when the client is about to connect to the Rust+ server.

@@ -3,6 +3,7 @@ using RustPlusApi.Data;
 using RustPlusApi.Data.Entities;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Extensions;
+using RustPlusApi.Interfaces;
 using RustPlusApi.Utils;
 using RustPlusContracts;
 // ReSharper disable MemberCanBePrivate.Global
@@ -20,7 +21,7 @@ namespace RustPlusApi;
 /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
 /// <seealso cref="RustPlusSocket"/>
 public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false)
-    : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy)
+    : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy), IRustPlus
 {
     /// <summary>
     /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or alarm.
@@ -259,7 +260,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="smartSwitchId">The ID of the smart switch entity.</param>
     /// <param name="smartSwitchValue">The value to set for the smart switch.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
-    public async Task<Response<SmartSwitchInfo?>> SetSmartSwitchValue(uint smartSwitchId, bool smartSwitchValue)
+    public async Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(uint smartSwitchId, bool smartSwitchValue)
     {
         var request = new AppRequest
         {
@@ -300,12 +301,12 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
     public async Task<Response<SmartSwitchInfo?>> StrobeSmartSwitchAsync(uint entityId, int timeoutMilliseconds = 1000, bool value = true)
     {
-        var response = await SetSmartSwitchValue(entityId, value);
+        var response = await SetSmartSwitchValueAsync(entityId, value);
 
         if (!response.IsSuccess) return response;
 
         await Task.Delay(timeoutMilliseconds);
-        return await SetSmartSwitchValue(entityId, !value);
+        return await SetSmartSwitchValueAsync(entityId, !value);
     }
 
     /// <summary>
@@ -320,6 +321,6 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         if (!entityInfo.IsSuccess) return entityInfo;
 
         var value = entityInfo.Data!.IsActive;
-        return await SetSmartSwitchValue(entityId, !value);
+        return await SetSmartSwitchValueAsync(entityId, !value);
     }
 }
