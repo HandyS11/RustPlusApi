@@ -3,7 +3,7 @@ using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class SentTeamMessage(IRustPlus rustPlus)
+public class SendTeamMessage(IRustPlus rustPlus)
 {
     public async Task SendTeamMessageAsync(string message)
     {

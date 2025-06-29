@@ -64,6 +64,7 @@ listener.Disconnected += (_, _) =>
 
 listener.OnParing += (_, pairing) =>
 {
+    // Not display in console to not spam the output.
     Debug.WriteLine($"[PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
 };
 
@@ -74,6 +75,7 @@ listener.OnServerPairing += (_, pairing) =>
 
 listener.OnEntityParing += (_, pairing) =>
 {
+    // Not display in console to not spam the output.
     Debug.WriteLine($"[ENTITY PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
 };
 

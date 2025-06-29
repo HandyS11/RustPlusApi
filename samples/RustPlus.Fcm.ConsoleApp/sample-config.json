@@ -5,9 +5,9 @@
       "securityToken": "123456789"
     },
     "fcm": {
-      "token": "sample-fcm-token-here"
+      "token": "sample-token-token-here"
     }
   },
-  "expo_push_token": "ExponentPushToken[SAMPLE-TOKEN-HERE]",
-  "rustplus_auth_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.sample-token"
+  "expo_push_token": "expo_push_token[SAMPLE-TOKEN-HERE]",
+  "rustplus_auth_token": "rustplus_auth_token.sample-token"
 }
