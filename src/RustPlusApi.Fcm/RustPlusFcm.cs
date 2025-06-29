@@ -2,6 +2,7 @@ using System.Diagnostics;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Extensions;
+using RustPlusApi.Fcm.Interfaces;
 using static RustPlusApi.Fcm.Utils.ResponseHelper;
 
 namespace RustPlusApi.Fcm;
@@ -13,7 +14,7 @@ namespace RustPlusApi.Fcm;
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
 /// <param name="persistentIds">The collection of persistent IDs as <see cref="ICollection{T}"/> of <see cref="string"/>.</param>
 public class RustPlusFcm(Credentials credentials, ICollection<string>? persistentIds = null)
-    : RustPlusFcmSocket(credentials, persistentIds)
+    : RustPlusFcmSocket(credentials, persistentIds), IRustPlusFcm
 {
     /// <summary>
     /// Occurs when a pairing <see cref="FcmMessage"/> is received.

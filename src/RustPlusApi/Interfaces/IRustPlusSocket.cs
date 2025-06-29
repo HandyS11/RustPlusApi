@@ -4,7 +4,7 @@ namespace RustPlusApi.Interfaces;
 
 public interface IRustPlusSocket
 {
-    public interface IRustPlusSocket : IDisposable
+    public interface IRustPlusSocket
     {
         event EventHandler? Connecting;
         event EventHandler? Connected;

@@ -24,7 +24,7 @@ public abstract class RustPlusSocket(
     ulong playerId,
     int playerToken,
     bool useFacepunchProxy = false)
-    : IDisposable, IRustPlusSocket
+    : IRustPlusSocket, IDisposable
 {
     /// <summary>
     /// Occurs when the client is about to connect to the Rust+ server.

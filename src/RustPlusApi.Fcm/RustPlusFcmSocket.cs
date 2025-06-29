@@ -8,6 +8,7 @@ using McsProto;
 using ProtoBuf;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
+using RustPlusApi.Fcm.Interfaces;
 using static System.GC;
 using static RustPlusApi.Fcm.Data.Tags;
 using static RustPlusApi.Fcm.Utils.Utils;
@@ -20,7 +21,7 @@ namespace RustPlusApi.Fcm;
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
 /// <param name="persistentIds">The collection of persistent IDs as <see cref="ICollection{T}"/> of <see cref="string"/>.</param>
 public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<string>? persistentIds = null)
-    : IDisposable
+    : IRustPlusFcmSocket, IDisposable
 {
     private const string Host = "mtalk.google.com";
     private const int Port = 5228;
@@ -277,7 +278,9 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     {
         if (ping == null) return;
 
-        Debug.WriteLine($"Responding to ping: Stream ID: {ping.StreamId}, Last: {ping.LastStreamIdReceived}, Status: {ping.Status}");
+        Debug.WriteLine($"Responding to ping: Stream ID: {ping.StreamId}," +
+                        $"Last: {ping.LastStreamIdReceived}," +
+                        $"Status: {ping.Status}");
         var pingResponse = new HeartbeatAck
         {
             StreamId = ping.StreamId + 1,

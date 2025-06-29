@@ -9,7 +9,7 @@ Some of the features that the **RustPlusApi** provides:
 
 - `GetEntityInfo` Get current state of a Smart Device
 - `GetInfo` Get info about the Rust Server
-- `GetMap` Fetch map info, which inclues a jpg image
+- `GetMap` Fetch map info, which includes a jpg image
 - `GetMapMarkers` Get map markers
 - `GetTeamInfo` Get a list of team members and positions on the map
 - `GetTime` Get the current in game time
@@ -38,10 +38,12 @@ Feel free to **explore** the `samples/` folder to see how to **use** the API.
   - [📚 Summary](#-summary)
   - [📍 NuGet](#-nuget)
   - [⚙️ Usage](#️-usage)
-    - [RustPlusApi](#rustplusapi-1)
+    - [RustPlusApi](#rustplusapi)
+      - [RustPlusLegacy](#rustpluslegacy)
+      - [RustPlus](#rustplus)
     - [RustPlusApi.Fcm](#rustplusapifcm)
   - [Credentials](#credentials)
-  - [🖼️ Credits](#️-credits)
+  - [🏆 Credits](#️-credits)
 
 The library provides four classes to interact with the Rust+ API:
 `RustPlusLegacy`, `RustPlus`, `RustPlusFcmListenerClient` & `RustPlusFcmListener`.
@@ -70,7 +72,9 @@ dotnet add package RustPlusApi.Fcm
 
 ### RustPlusApi
 
-<details><summary> RustPlusLegacy </summary>
+#### RustPlusLegacy
+
+[!WARNING] Obsolete: This class is marked as obsolete and will be removed in the future. Use `RustPlus` instead.
 
 First, instantiate the `RustPlusLegacy` class with the necessary parameters:
 
@@ -147,11 +151,7 @@ Remember to dispose the `RustPlusLegacy` instance when you're done:
 rustPlusApi.DisconnectAsync(); 
 ```
 
-</details>
-
----
-
-<details><summary> RustPlus </summary>
+### RustPlus
 
 Such as the `RustPlusLegacy`, you need to instantiate the `RustPlus` class with the necessary parameters:
 
@@ -228,18 +228,16 @@ Remember to dispose the `RustPlus` instance when you're done (such as `RustPlusL
 rustPlusApi.DisconnectAsync(); 
 ```
 
-</details>
-
 ---
 
 ### RustPlusApi.Fcm
 
-<details><summary> RustPlusFcmListenerClient </summary>
+#### RustPlusFcm
 
-First, instantiate the `RustPlusFcmListenerClient` class with the necessary parameters:
+First, instantiate the `RustPlusFcm` class with the necessary parameters:
 
 ```csharp
-var rustPlusFcmListenerClient = new RustPlusFcmListenerClient(credentials, notificationIds);
+var listener = new RustPlusFcm(credentials, notificationIds);
 ```
 
 Parameters:
@@ -247,53 +245,14 @@ Parameters:
 - `credentials`: The FCM credentials\*.
 - `notificationIds`: The notification ids to mark as read.
 
-\* See the [Credentials](#credentials) section for more information.
-
-Then, connect to the FCM server:
-
-```csharp
-await rustPlusFcmListenerClient.ConnectAsync();
-```
-
----
-
-To listen to the FCM notifications, you can use the `OnNotificationReceived` event:
-
-```csharp
-rustPlusFcmListenerClient.OnNotificationReceived += (sender, e) =>
-{
-    Console.WriteLine($"Notification received: {e.Notification}");
-};
-```
-
----
-
-Remember to disconnect from the FCM server when you're done:
-
-```csharp
-rustPlusFcmListenerClient.Disconnect();
-```
-
-</details>
-
----
-
-<details><summary> RustPlusFcmListener </summary>
-
-The `RustPlusFcmListener` inherits from `RustPlusFcmListenerClient` and provides more events.
-
-Such as `RustPlusFcmListenerClient` you need to instantiate the `RustPlusFcmListener` class with the necessary parameters:
-
-```csharp
-var rustPlusFcmListener = new RustPlusFcmListener(credentials, notificationIds);
-```
+\* See the [Credentials](#credentials) section below for how to obtain these.
 
 ---
 
 Then you can connect to the FCM server:
 
 ```csharp
-await rustPlusFcmListener.ConnectAsync();
+await listener.ConnectAsync();
 ```
 
 ---
@@ -301,17 +260,17 @@ await rustPlusFcmListener.ConnectAsync();
 You can subscribe to events to handle specific actions:
 
 ```csharp
-rustPlusFcmListener.OnServerPairing += (sender, e) =>
+listener.OnServerPairing += (sender, e) =>
 {
     Console.WriteLine($"Server pairing: {e.ServerPairing}");
 };
 
-rustPlusFcmListener.OnEntityParing += (sender, e) =>
+listener.OnEntityParing += (sender, e) =>
 {
     Console.WriteLine($"Entity pairing: {e.EntityPairing}");
 };
 
-rustPlusFcmListener.OnAlarmTriggered += (sender, e) =>
+listener.OnAlarmTriggered += (sender, e) =>
 {
     Console.WriteLine($"Alarm triggered: {e.Alarm}");
 };
@@ -322,10 +281,8 @@ rustPlusFcmListener.OnAlarmTriggered += (sender, e) =>
 Remember to disconnect from the FCM server when you're done:
 
 ```csharp
-rustPlusFcmListener.Disconnect();
+listener.Disconnect();
 ```
-
-</details>
 
 ---
 
@@ -344,7 +301,7 @@ To do, so I recommend you to use [this project](https://github.com/liamcottle/ru
 
 I'm sorry for the inconvenience, but since the API is not fully complete, it's the easiest way.
 
-## 🖼️ Credits
+## 🏆 Credits
 
 *This project is grandly inspired by [liamcottle/rustplus.js](https://github.com/liamcottle/rustplus.js).*
 

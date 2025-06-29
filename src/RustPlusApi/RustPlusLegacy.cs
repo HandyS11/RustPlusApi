@@ -1,4 +1,5 @@
 using RustPlusContracts;
+// ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi;
 
