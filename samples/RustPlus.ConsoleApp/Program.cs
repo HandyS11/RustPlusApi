@@ -1,14 +1,9 @@
-﻿using RustPlus.ConsoleApp.Events;
-using RustPlus.ConsoleApp.Features;
+﻿using RustPlus.ConsoleApp.Features;
 using static RustPlus.ConsoleApp.Credentials;
 
 var rustPlus = new RustPlusApi.RustPlus(Ip, Port, PlayerId, PlayerToken);
 
-//await rustPlus.ConnectAsync();
-
-//new SmartSwitchChanges(rustPlus).Setup();
-//new StorageMonitorChanges(rustPlus).Setup();
-//new TeamChatChanges(rustPlus).Setup();
+await rustPlus.ConnectAsync();
 
 var isRunning = true;
 while (isRunning)
@@ -17,6 +12,8 @@ while (isRunning)
     Console.WriteLine("Choose an option:");
     Console.WriteLine("0. Exit");
     Console.WriteLine("1. Common Features");
+    Console.WriteLine("2. Team Features");
+    Console.WriteLine("3. Electricity Features");
 
     Console.Write("\nPlease enter your choice: ");
     var choice = Console.ReadLine();
@@ -32,6 +29,9 @@ while (isRunning)
         case "2":
             await TeamFeatureMenu();
             break;
+        case "3":
+            await ElectricityFeatureMenu();
+            break;
         default:
             Console.WriteLine("Invalid choice, please try again.");
             break;
@@ -46,8 +46,7 @@ return;
 
 async Task CommonFeatureMenu()
 {
-    var isInCommon = true;
-    while (isInCommon)
+    while (true)
     {
         Console.Clear();
         Console.WriteLine("Common Menu:");
@@ -63,8 +62,7 @@ async Task CommonFeatureMenu()
         switch (choice)
         {
             case "0":
-                isInCommon = false;
-                break;
+                return;
             case "1":
                 await new GetInfo(rustPlus).GetInfoAsync();
                 break;
@@ -89,8 +87,7 @@ async Task CommonFeatureMenu()
 
 async Task TeamFeatureMenu()
 {
-    var isInTeam = true;
-    while (isInTeam)
+    while (true)
     {
         Console.Clear();
         Console.WriteLine("Team Menu:");
@@ -106,8 +103,7 @@ async Task TeamFeatureMenu()
         switch (choice)
         {
             case "0":
-                isInTeam = false;
-                break;
+                return;
             case "1":
                 await new GetTeamInfo(rustPlus).GetTeamInfoAsync();
                 break;
@@ -142,4 +138,75 @@ async Task TeamFeatureMenu()
         Console.WriteLine("\nPress any key to continue...");
         Console.ReadLine();
     }
+}
+
+async Task ElectricityFeatureMenu()
+{
+    while (true)
+    {
+        Console.Clear();
+        Console.WriteLine("Electricity Menu:");
+        Console.WriteLine("0. Back to main menu");
+        Console.WriteLine("1. Get Alarm Info");
+        Console.WriteLine("2. Check Subscription");
+        Console.WriteLine("3. Set Subscription");
+        Console.WriteLine("4. Get Storage Monitor Info");
+        Console.WriteLine("5. Get Smart Switch Info");
+        Console.WriteLine("6. Set Smart Switch Value");
+        Console.WriteLine("7. Strobe Smart Switch");
+        Console.WriteLine("8. Toggle Smart Switch");
+        
+        Console.Write("\nPlease enter your choice: ");
+        var choice = Console.ReadLine();
+
+        switch (choice)
+        {
+            case "0":
+                return;
+            case "1":
+                await new GetAlarmInfo(rustPlus).GetAlarmInfoAsync(GetEntityId("alarmId"));
+                break;
+            case "2":
+                await new CheckSubscription(rustPlus).CheckSubscriptionAsync(GetEntityId("alarmId"));
+                break;
+            case "3":
+                Console.Write("\nType 'y' to activate the alarm, any other key to deactivate: ");
+                var input = Console.ReadLine();
+                var doSubscribe = string.Equals(input?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
+                await new SetSubscription(rustPlus).SetSubscriptionAsync(GetEntityId("alarmId"), doSubscribe);
+                break;
+            case "4":
+                await new GetStorageMonitorInfo(rustPlus).GetStorageMonitorInfoAsync(GetEntityId("storageMonitorId"));
+                break;
+            case "5":
+                await new GetSmartSwitchInfo(rustPlus).GetSmartSwitchInfoAsync(GetEntityId("smartSwitchId"));
+                break;
+            case "6":
+                Console.Write("\nType 'y' to activate the smart switch, any other key to deactivate: ");
+                input = Console.ReadLine();
+                var smartSwitchValue = string.Equals(input?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
+                await new SetSmartSwitchValue(rustPlus).SetSmartSwitchValueAsync(GetEntityId("smartSwitchId"), smartSwitchValue);
+                break;
+            case "7":
+                await new StrobeSmartSwitch(rustPlus).StrobeSmartSwitchAsync(GetEntityId("smartSwitchId"));
+                break;
+            case "8":
+                await new ToggleSmartSwitch(rustPlus).ToggleSmartSwitchAsync(GetEntityId("smartSwitchId"));
+                break;
+        }
+        
+        Console.WriteLine("\nPress any key to continue...");
+        Console.ReadLine();
+    }
+}
+
+uint GetEntityId(string type)
+{
+    Console.Write($"\nType the {type}: ");
+    var input = Console.ReadLine();
+    if (!uint.TryParse(input, out var entityId))
+    {
+        Console.WriteLine("Invalid input, please try again.");
+    }
+    return entityId;
 }

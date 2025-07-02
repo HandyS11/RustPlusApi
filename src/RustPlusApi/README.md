@@ -4,7 +4,7 @@ This is a C# client for the Rust+ API. It allows you to interact with the Rust+ 
 
 The library provides two classes to interact with the Rust+ API: `RustPlusLegacy` and `RustPlus`.
 
-- `RustPlusLegacy` is the original implementation based on the `./Protobuf/RustPlus.proto` file.
+- `RustPlusLegacy` is the original implementation based on the `.RustPlus.proto` file.
 - `RustPlus` is a new implementation that returns a response based on `./Data/Response.cs` object.
 
 `RustPlusLegacy` is mark as obsolete and will be removed in the future.
@@ -12,7 +12,7 @@ It is recommended to use `RustPlus` for new projects.
 
 ## RustPlusLegacy
 
-[!WARNING] Obsolete: This class is marked as obsolete and will be removed in the future. Use `RustPlus` instead.
+![WARNING] Obsolete: This class is marked as obsolete and will be removed in the future. Use `RustPlus` instead.
 
 First, instantiate the `RustPlusLegacy` class with the necessary parameters:
 

@@ -76,7 +76,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         var response = await SendRequestAsync(request);
 
         return IsError(response)
-            ? ResponseHelper.BuildGenericOutput<T>(false, default!, response.Response.Error.Error)
+            ? ResponseHelper.BuildGenericOutput<T>(false, default!, GetErrorMessage(response))
             : ResponseHelper.BuildGenericOutput(true, successSelector(response));
     }
 

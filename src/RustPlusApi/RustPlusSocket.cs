@@ -219,8 +219,24 @@ public abstract class RustPlusSocket(
     /// <returns>True if the response contains an error; otherwise, false.</returns>
     protected static bool IsError(AppMessage response)
     {
-        if (response.Response is null && response.Broadcast is not null) return false;
-        return response.Response!.Error is not null;
+        if (response.Broadcast is not null) return false;
+        if (response.Response.Success is not null) return true;
+        return response.Response.Error is not null;
+    }
+    
+    /// <summary>
+    /// Retrieves the error message from the specified <see cref="AppMessage"/> response.
+    /// </summary>
+    /// <param name="response">The <see cref="AppMessage"/> containing the response data.</param>
+    /// <returns>
+    /// A string representing the error message if the response contains an error; 
+    /// otherwise, returns "value-already-set".
+    /// </returns>
+    protected static string GetErrorMessage(AppMessage response)
+    {
+        return response.Response.Error is not null
+            ? response.Response.Error.Error
+            : "value-already-set";
     }
     
     /// <summary>

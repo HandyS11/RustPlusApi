@@ -21,9 +21,4 @@ public static class DisplayUtilities
     {
         Console.WriteLine($"Smart switch: {smartSwitchId} is now {(smartSwitchValue ? "enable" : "disable")}!");
     }
-
-    public static void DisplaySmartSwitchNotificationStatus(uint smartSwitchId, bool smartSwitchValue)
-    {
-        Console.WriteLine($"Smart switch: {smartSwitchId} have its notifications {(smartSwitchValue ? "enable" : "disable")}!");
-    }
 }

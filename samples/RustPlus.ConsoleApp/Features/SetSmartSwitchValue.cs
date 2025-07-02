@@ -10,7 +10,7 @@ public class SetSmartSwitchValue(IRustPlus rustPlus)
         var response = await rustPlus.SetSmartSwitchValueAsync(smartSwitchId, smartSwitchValue);
 
         DisplayUtilities.DisplayJson("SetSmartSwitchValue", response);
-        if (!response.IsSuccess) DisplayUtilities.DisplaySmartSwitchValue(smartSwitchId, smartSwitchValue);
+        if (response.IsSuccess) DisplayUtilities.DisplaySmartSwitchValue(smartSwitchId, smartSwitchValue);
         
     }
 }

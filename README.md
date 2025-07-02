@@ -3,7 +3,7 @@
 ![CI](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml/badge.svg)
 ![CD](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg)
 
-## 📊 Features
+## Features
 
 Some of the features that the **RustPlusApi** provides:
 
@@ -24,39 +24,39 @@ Some of the features that the **RustPlusApi.Fcm** provides:
 
 Feel free to **explore** the `samples/` folder to see how to **use** the API.
 
-## 🖊️ Versions
+## Versions
 
 ![skills](https://skillicons.dev/icons?i=cs,dotnet)
 
 - [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8) or later
 
-## 📚 Summary
+## Summary
 
 - [RustPlusApi](#rustplusapi)
-  - [📊 Features](#-features)
-  - [🖊️ Versions](#️-versions)
-  - [📚 Summary](#-summary)
-  - [📍 NuGet](#-nuget)
-  - [⚙️ Usage](#️-usage)
-    - [RustPlusApi](#rustplusapi)
+  - [Features](#features)
+  - [Versions](#versions)
+  - [Summary](#summary)
+  - [NuGet](#nuget)
+  - [Usage](#usage)
+    - [RustPlusApi](#rustplusapi-1)
       - [RustPlusLegacy](#rustpluslegacy)
       - [RustPlus](#rustplus)
     - [RustPlusApi.Fcm](#rustplusapifcm)
   - [Credentials](#credentials)
-  - [🏆 Credits](#️-credits)
+  - [Credits](#credits)
 
-The library provides four classes to interact with the Rust+ API:
-`RustPlusLegacy`, `RustPlus`, `RustPlusFcmListenerClient` & `RustPlusFcmListener`.
+The library provides several classes to interact with the Rust+ API:
+`RustPlusLegacy`, `RustPlus`, & `RustPlusFcm`.
 
-- `RustPlusLegacy` is the original implementation based on the `./Protobuf/RustPlus.proto` file.
+- `RustPlusLegacy` is the original implementation based on the `RustPlus.proto` file.
 - `RustPlus` is a new implementation that returns a response based on `./Data/Response.cs` object.
 
-Since `RustPlus` inherit from `RustPlusLegacy`, you can use both classes to interact with the Rust+ API. The `RustPlus` class is recommended for new projects, as it provides a more user-friendly interface and better error handling.
+`RustPlusLegacy` is mark as obsolete and will be removed in the future.
+It is recommended to use `RustPlus` for new projects.
 
-- `RustPlusListener` is a class to listen to the FCM socket and handle notifications.
-- `RustPlusFcmListener` is a new implementation that owns more events.
+- `RustPlusFcm`  is the listener to the FCM socket and handle **paring** and **alarm** notifications.
 
-## 📍 NuGet
+## NuGet
 
 Use this library in your project by running the following commands:
 
@@ -68,13 +68,13 @@ dotnet add package RustPlusApi
 dotnet add package RustPlusApi.Fcm
 ```
 
-## ⚙️ Usage
+## ️Usage
 
 ### RustPlusApi
 
 #### RustPlusLegacy
 
-[!WARNING] Obsolete: This class is marked as obsolete and will be removed in the future. Use `RustPlus` instead.
+![WARNING] Obsolete: This class is marked as obsolete and will be removed in the future. Use `RustPlus` instead.
 
 First, instantiate the `RustPlusLegacy` class with the necessary parameters:
 
@@ -301,7 +301,7 @@ To do, so I recommend you to use [this project](https://github.com/liamcottle/ru
 
 I'm sorry for the inconvenience, but since the API is not fully complete, it's the easiest way.
 
-## 🏆 Credits
+## Credits
 
 *This project is grandly inspired by [liamcottle/rustplus.js](https://github.com/liamcottle/rustplus.js).*
 
