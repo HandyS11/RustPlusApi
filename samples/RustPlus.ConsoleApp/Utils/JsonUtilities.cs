@@ -10,4 +10,9 @@ public static class JsonUtilities
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         WriteIndented = true
     };
+
+    public static readonly JsonSerializerOptions JsonConfigOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 }

@@ -1,7 +1,10 @@
 ﻿using RustPlus.ConsoleApp.Features;
-using static RustPlus.ConsoleApp.Credentials;
+using RustPlus.ConsoleApp.Utils;
 
-var rustPlus = new RustPlusApi.RustPlus(Ip, Port, PlayerId, PlayerToken);
+const string configFilePath = @"<path to your config file>\credentials.json";
+
+var credentials = configFilePath.GetConfig();
+var rustPlus = new RustPlusApi.RustPlus(credentials.Ip, credentials.Port, credentials.PlayerId, credentials.PlayerToken);
 
 await rustPlus.ConnectAsync();
 
