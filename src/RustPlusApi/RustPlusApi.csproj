@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <PackageId>RustPlusApi</PackageId>
-        <Version>1.2.2</Version>
+        <Version>1.3.0</Version>
         <Authors>HandyS11</Authors>
         <Owners>HandyS11</Owners>
         <Product>A Rust+ API made in C#.</Product>
