@@ -6,19 +6,12 @@ namespace RustPlusApi.Extensions;
 
 public static class AppEntityInfoToModel
 {
-    public static object ToEntityInfo(this AppEntityInfo entity)
-    {
-        return entity.Type switch
-        {
-            AppEntityType.Switch => entity.ToSmartSwitchInfo(),
-            AppEntityType.Alarm => entity.ToAlarmInfo(),
-            AppEntityType.StorageMonitor => entity.ToStorageMonitorInfo(),
-            _ => throw new ArgumentException($"The given type is not possible: {entity.Type}")
-        };
-    }
-
     public static SmartSwitchInfo ToSmartSwitchInfo(this AppEntityInfo entity)
     {
+        if (entity.Type is not AppEntityType.Switch)
+        {
+            throw new InvalidOperationException("Entity type is not a SmartSwitch.");
+        }
         return new SmartSwitchInfo
         {
             IsActive = entity.Payload.Value
@@ -27,6 +20,10 @@ public static class AppEntityInfoToModel
 
     public static AlarmInfo ToAlarmInfo(this AppEntityInfo entity)
     {
+        if (entity.Type is not AppEntityType.Alarm)
+        {
+            throw new InvalidOperationException("Entity type is not an Alarm.");
+        }
         return new AlarmInfo
         {
             IsActive = entity.Payload.Value
@@ -35,6 +32,10 @@ public static class AppEntityInfoToModel
 
     public static StorageMonitorInfo ToStorageMonitorInfo(this AppEntityInfo entity)
     {
+        if (entity.Type is not AppEntityType.StorageMonitor)
+        {
+            throw new InvalidOperationException("Entity type is not a StorageMonitor.");
+        }
         return new StorageMonitorInfo
         {
             Capacity = entity.Payload.Capacity,

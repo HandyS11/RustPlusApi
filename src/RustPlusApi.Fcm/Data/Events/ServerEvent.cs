@@ -1,6 +1,6 @@
 ﻿namespace RustPlusApi.Fcm.Data.Events;
 
-public class ServerEvent
+public sealed record ServerEvent
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = null!;

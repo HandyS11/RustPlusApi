@@ -1,8 +1,8 @@
 namespace RustPlusApi.Data.Entities;
 
-public class StorageMonitorItemInfo
+public sealed record StorageMonitorItemInfo
 {
-    public int Id { get; set; }
-    public int? Quantity { get; set; }
-    public bool? IsItemBlueprint { get; set; }
+    public int Id { get; init; }
+    public int? Quantity { get; init; }
+    public bool? IsItemBlueprint { get; init; }
 }

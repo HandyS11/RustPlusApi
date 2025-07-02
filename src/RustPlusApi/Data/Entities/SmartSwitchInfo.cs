@@ -1,6 +1,6 @@
 namespace RustPlusApi.Data.Entities;
 
-public class SmartSwitchInfo
+public record SmartSwitchInfo
 {
-    public bool IsActive { get; set; }
+    public bool IsActive { get; init; }
 }

@@ -1,3 +1,3 @@
 namespace RustPlusApi.Data.Markers;
 
-public class Ch47Marker : Marker { }
+public sealed record Ch47Marker : Marker;

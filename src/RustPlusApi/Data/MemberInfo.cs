@@ -1,13 +1,13 @@
 namespace RustPlusApi.Data;
 
-public class MemberInfo
+public sealed record MemberInfo
 {
-    public ulong SteamId { get; set; }
-    public string? Name { get; set; }
-    public float X { get; set; }
-    public float Y { get; set; }
-    public bool IsOnline { get; set; }
-    public DateTime LastSpawnTime { get; set; }
-    public bool IsAlive { get; set; }
-    public DateTime LastDeathTime { get; set; }
+    public ulong SteamId { get; init; }
+    public string? Name { get; init; }
+    public float X { get; init; }
+    public float Y { get; init; }
+    public bool IsOnline { get; init; }
+    public DateTime LastSpawnTime { get; init; }
+    public bool IsAlive { get; init; }
+    public DateTime LastDeathTime { get; init; }
 }

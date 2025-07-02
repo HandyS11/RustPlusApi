@@ -1,8 +1,8 @@
 namespace RustPlusApi.Data.Notes;
 
-public class PlayerNote : Note
+public sealed record PlayerNote : Note
 {
-    public NoteIcons Icon { get; set; }
-    public NoteColors Color { get; set; }
-    public string? Text { get; set; }
+    public NoteIcons Icon { get; init; }
+    public NoteColors Color { get; init; }
+    public string? Text { get; init; }
 }

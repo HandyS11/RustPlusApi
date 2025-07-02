@@ -1,8 +1,8 @@
 namespace RustPlusApi.Data;
 
-public class ServerMapMonument
+public sealed record ServerMapMonument
 {
-    public string? Name { get; set; }
-    public float? X { get; set; }
-    public float? Y { get; set; }
+    public string? Name { get; init; }
+    public float? X { get; init; }
+    public float? Y { get; init; }
 }

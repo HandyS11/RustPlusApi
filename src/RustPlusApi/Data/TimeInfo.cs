@@ -1,10 +1,10 @@
 namespace RustPlusApi.Data;
 
-public class TimeInfo
+public sealed record TimeInfo
 {
-    public float DayLengthMinutes { get; set; }
-    public float TimeScale { get; set; }
-    public float Sunrise { get; set; }
-    public float Sunset { get; set; }
-    public float Time { get; set; }
+    public float DayLengthMinutes { get; init; }
+    public float TimeScale { get; init; }
+    public float Sunrise { get; init; }
+    public float Sunset { get; init; }
+    public float Time { get; init; }
 }

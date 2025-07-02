@@ -1,8 +1,8 @@
 namespace RustPlusApi.Data.Markers;
 
-public class Marker
+public record Marker
 {
-    public uint? Id { get; set; }
-    public float? X { get; set; }
-    public float? Y { get; set; }
+    public uint? Id { get; init; }
+    public float? X { get; init; }
+    public float? Y { get; init; }
 }

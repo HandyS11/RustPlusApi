@@ -59,12 +59,12 @@ public static class AppMapMarkerToModel
 
         return new MapMarkers
         {
-            UnknownMarkers = unknownMarkers.Count > 0 ? unknownMarkers : null,
-            PlayerMarkers = playerMarkers.Count > 0 ? playerMarkers : null,
-            VendingMachineMarkers = vendingMachineMarkers.Count > 0 ? vendingMachineMarkers : null,
-            Ch47Markers = ch47Markers.Count > 0 ? ch47Markers : null,
-            CargoShipMarkers = cargoShipMarkers.Count > 0 ? cargoShipMarkers : null,
-            PatrolHelicopterMarkers = patrolHelicopterMarkers.Count > 0 ? patrolHelicopterMarkers : null,
+            UnknownMarkers = unknownMarkers,
+            PlayerMarkers = playerMarkers,
+            VendingMachineMarkers = vendingMachineMarkers,
+            Ch47Markers = ch47Markers,
+            CargoShipMarkers = cargoShipMarkers,
+            PatrolHelicopterMarkers = patrolHelicopterMarkers,
         };
     }
 }

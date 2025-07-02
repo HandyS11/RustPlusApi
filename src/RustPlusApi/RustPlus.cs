@@ -1,30 +1,41 @@
 using System.Diagnostics;
-
 using RustPlusApi.Data;
 using RustPlusApi.Data.Entities;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Extensions;
+using RustPlusApi.Interfaces;
 using RustPlusApi.Utils;
-
 using RustPlusContracts;
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi;
 
 /// <summary>
-/// A Rust+ API client made in C#.
+/// Initializes a new instance of the <see cref="RustPlus"/> class,
+/// connecting to a Rust+ server using the specified parameters.
 /// </summary>
 /// <param name="server">The IP address of the Rust+ server.</param>
 /// <param name="port">The port dedicated for the Rust+ companion app (not the one used to connect in-game).</param>
 /// <param name="playerId">Your Steam ID.</param>
 /// <param name="playerToken">Your player token acquired with FCM.</param>
 /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
+/// <seealso cref="RustPlusSocket"/>
 public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false)
-    : RustPlusLegacy(server, port, playerId, playerToken, useFacepunchProxy)
+    : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy), IRustPlus
 {
-    public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered; // Alarm will also be triggered since there is no physical difference between them
+    /// <summary>
+    /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or alarm.
+    /// </summary>
+    public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered;
+
+    /// <summary>
+    /// Occurs when a <see cref="StorageMonitorEventArg"/> is triggered by a storage monitor.
+    /// </summary>
     public event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 
+    /// <summary>
+    /// Occurs when a team chat message is received, providing a <see cref="TeamMessageEventArg"/>.
+    /// </summary>
     public event EventHandler<TeamMessageEventArg>? OnTeamChatReceived;
 
     /// <summary>
@@ -60,12 +71,12 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="request">The request to be processed.</param>
     /// <param name="successSelector">The function to select the result from the response.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
-    public async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
+    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
     {
         var response = await SendRequestAsync(request);
 
         return IsError(response)
-            ? ResponseHelper.BuildGenericOutput<T>(false, default!, response.Response.Error.Error)
+            ? ResponseHelper.BuildGenericOutput<T>(false, default!, GetErrorMessage(response))
             : ResponseHelper.BuildGenericOutput(true, successSelector(response));
     }
 
@@ -76,7 +87,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="entityId">The ID of the entity.</param>
     /// <param name="selector">The function to select the entity information from the response.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the entity information.</returns>
-    public async Task<Response<T?>> GetEntityInfoAsync<T>(uint entityId, Func<AppMessage, T> selector)
+    protected async Task<Response<T?>> GetEntityInfoAsync<T>(uint entityId, Func<AppMessage, T> selector)
     {
         var request = new AppRequest
         {
@@ -98,7 +109,9 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
             CheckSubscription = new AppEmpty(),
             EntityId = alarmId
         };
-        return await ProcessRequestAsync<SubscriptionInfo?>(request, r => r.Response.Flag.ToSubscriptionInfo());
+        return await ProcessRequestAsync<SubscriptionInfo?>(
+            request,
+            r =>r.Response.Flag.ToSubscriptionInfo());
     }
 
     /// <summary>
@@ -157,7 +170,9 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
     public async Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(uint entityId)
     {
-        return await GetEntityInfoAsync<SmartSwitchInfo?>(entityId, r => r.Response.EntityInfo.ToSmartSwitchInfo());
+        return await GetEntityInfoAsync<SmartSwitchInfo?>(
+            entityId,
+            r => r.Response.EntityInfo.ToSmartSwitchInfo());
     }
 
     /// <summary>
@@ -167,7 +182,9 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the storage monitor information.</returns>
     public async Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(uint entityId)
     {
-        return await GetEntityInfoAsync<StorageMonitorInfo?>(entityId, r => r.Response.EntityInfo.ToStorageMonitorInfo());
+        return await GetEntityInfoAsync<StorageMonitorInfo?>(
+            entityId,
+            r => r.Response.EntityInfo.ToStorageMonitorInfo());
     }
 
     /// <summary>
@@ -180,7 +197,9 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         {
             GetTeamChat = new AppEmpty()
         };
-        return await ProcessRequestAsync<TeamChatInfo?>(request, r => r.Response.TeamChat.ToTeamChatInfo());
+        return await ProcessRequestAsync<TeamChatInfo?>(
+            request,
+            r => r.Response.TeamChat.ToTeamChatInfo());
     }
 
     /// <summary>
@@ -240,7 +259,9 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
                 Message = message
             }
         };
-        return await ProcessRequestAsync<TeamMessage?>(request, r => r.Broadcast.TeamMessage.Message.ToTeamMessage());
+        return await ProcessRequestAsync<TeamMessage?>(
+            request,
+            r => r.Broadcast.TeamMessage.Message.ToTeamMessage());
     }
 
     /// <summary>
@@ -249,7 +270,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="smartSwitchId">The ID of the smart switch entity.</param>
     /// <param name="smartSwitchValue">The value to set for the smart switch.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
-    public async Task<Response<SmartSwitchInfo?>> SetSmartSwitchValue(uint smartSwitchId, bool smartSwitchValue)
+    public async Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(uint smartSwitchId, bool smartSwitchValue)
     {
         var request = new AppRequest
         {
@@ -259,7 +280,9 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
                 Value = smartSwitchValue
             },
         };
-        return await ProcessRequestAsync<SmartSwitchInfo?>(request, r => r.Broadcast.EntityChanged.ToSmartSwitchEvent());
+        return await ProcessRequestAsync<SmartSwitchInfo?>(
+            request,
+            r => r.Broadcast.EntityChanged.ToSmartSwitchEvent());
     }
 
     /// <summary>
@@ -288,14 +311,17 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="timeoutMilliseconds">The duration of each state in milliseconds.</param>
     /// <param name="value">The initial value of the smart switch.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
-    public async Task<Response<SmartSwitchInfo?>> StrobeSmartSwitchAsync(uint entityId, int timeoutMilliseconds = 1000, bool value = true)
+    public async Task<Response<SmartSwitchInfo?>> StrobeSmartSwitchAsync(
+        uint entityId,
+        int timeoutMilliseconds = 1000,
+        bool value = true)
     {
-        var response = await SetSmartSwitchValue(entityId, value);
+        var response = await SetSmartSwitchValueAsync(entityId, value);
 
         if (!response.IsSuccess) return response;
 
         await Task.Delay(timeoutMilliseconds);
-        return await SetSmartSwitchValue(entityId, !value);
+        return await SetSmartSwitchValueAsync(entityId, !value);
     }
 
     /// <summary>
@@ -310,6 +336,6 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         if (!entityInfo.IsSuccess) return entityInfo;
 
         var value = entityInfo.Data!.IsActive;
-        return await SetSmartSwitchValue(entityId, !value);
+        return await SetSmartSwitchValueAsync(entityId, !value);
     }
 }

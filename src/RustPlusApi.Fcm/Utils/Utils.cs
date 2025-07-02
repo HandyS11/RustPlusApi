@@ -1,5 +1,4 @@
 ﻿using McsProto;
-
 using static RustPlusApi.Fcm.Data.Tags;
 
 namespace RustPlusApi.Fcm.Utils;
@@ -22,18 +21,19 @@ public static class Utils
     public static McsProtoTag GetTagFromProtobufType(Type type)
     {
         if (type == typeof(HeartbeatPing)) return McsProtoTag.KHeartbeatPingTag;
-        else if (type == typeof(HeartbeatAck)) return McsProtoTag.KHeartbeatAckTag;
-        else if (type == typeof(LoginRequest)) return McsProtoTag.KLoginRequestTag;
-        else if (type == typeof(LoginResponse)) return McsProtoTag.KLoginResponseTag;
-        else if (type == typeof(Close)) return McsProtoTag.KCloseTag;
-        else if (type == typeof(IqStanza)) return McsProtoTag.KIqStanzaTag;
-        else if (type == typeof(DataMessageStanza)) return McsProtoTag.KDataMessageStanzaTag;
-        else if (type == typeof(StreamErrorStanza)) return McsProtoTag.KStreamErrorStanzaTag;
-        else throw new ArgumentOutOfRangeException(nameof(type), type, null);
+        if (type == typeof(HeartbeatAck)) return McsProtoTag.KHeartbeatAckTag;
+        if (type == typeof(LoginRequest)) return McsProtoTag.KLoginRequestTag;
+        if (type == typeof(LoginResponse)) return McsProtoTag.KLoginResponseTag;
+        if (type == typeof(Close)) return McsProtoTag.KCloseTag;
+        if (type == typeof(IqStanza)) return McsProtoTag.KIqStanzaTag;
+        if (type == typeof(DataMessageStanza)) return McsProtoTag.KDataMessageStanzaTag;
+        if (type == typeof(StreamErrorStanza)) return McsProtoTag.KStreamErrorStanzaTag;
+        throw new ArgumentOutOfRangeException(nameof(type), type, null);
     }
 
     public static Type BuildProtobufFromTag(McsProtoTag tag)
     {
+        // ReSharper disable once SwitchExpressionHandlesSomeKnownEnumValuesWithExceptionInDefault
         return tag switch
         {
             McsProtoTag.KHeartbeatPingTag => typeof(HeartbeatPing),

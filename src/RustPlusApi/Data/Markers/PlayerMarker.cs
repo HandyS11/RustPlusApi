@@ -1,7 +1,7 @@
 namespace RustPlusApi.Data.Markers;
 
-public class PlayerMarker : Marker
+public sealed record PlayerMarker : Marker
 {
-    public string? Name { get; set; }
-    public ulong? SteamId { get; set; }
+    public string? Name { get; init; }
+    public ulong? SteamId { get; init; }
 }

@@ -1,44 +1,45 @@
-using Newtonsoft.Json;
-
+using System.Text.Json.Serialization;
 using RustPlusApi.Fcm.Converters;
-// ReSharper disable ClassNeverInstantiated.Global
 
 namespace RustPlusApi.Fcm.Data;
 
-public class FcmMessage
+public sealed record FcmMessage
 {
-    public Guid FcmMessageId { get; set; }
-    public string Priority { get; set; } = null!;
-    public long From { get; set; }
-    public MessageData Data { get; set; } = null!;
+    public string PersistantId { get; init; } = null!;
+    public long From { get; init; }
+    public DateTime SentAt { get; init; }
+    public MessageData Data { get; init; } = null!;
 }
 
-public class MessageData
+public sealed record MessageData
 {
-    public Guid ProjectId { get; set; }
-    public string ChannelId { get; set; } = null!;
-    public string Title { get; set; } = null!;
-    public string Message { get; set; } = null!;
-    public string ExperienceId { get; set; } = null!;
-    public string ScopeKey { get; set; } = null!;
-
-    public string Body { get; set; } = null!;
+    public Guid ProjectId { get; init; }
+    public string ChannelId { get; init; } = null!;
+    public string Title { get; init; } = null!;
+    public string Message { get; init; } = null!;
+    public string ExperienceId { get; init; } = null!;
+    public string ScopeKey { get; init; } = null!;
+    public Body Body { get; init; } = null!;
 }
 
-public class Body
+public sealed record Body
 {
-    public Guid Id { get; set; }
-    public string Ip { get; set; } = null!;
-    public int Port { get; set; }
-    public string Name { get; set; } = null!;
-    public string? Desc { get; set; }
-    public string? Logo { get; set; }
-    public string? Img { get; set; }
-    public string? Url { get; set; }
-    public ulong PlayerId { get; set; }
-    public string PlayerToken { get; set; } = null!;
-    public string Type { get; set; } = null!;
-    public int? EntityType { get; set; }
-    public int? EntityId { get; set; }
-    public string EntityName { get; set; } = null!;
+    public Guid Id { get; init; }
+    public string Ip { get; init; } = null!;
+    [JsonConverter(typeof(Int32StringConverter))]
+    public int Port { get; init; }
+    public string Name { get; init; } = null!;
+    public string? Desc { get; init; }
+    public string? Logo { get; init; }
+    public string? Img { get; init; }
+    public string? Url { get; init; }
+    [JsonConverter(typeof(StringToUInt64Converter))]
+    public ulong PlayerId { get; init; }
+    public string PlayerToken { get; init; } = null!;
+    public string Type { get; init; } = null!;
+    [JsonConverter(typeof(Int32StringConverter))]
+    public int? EntityType { get; init; }
+    [JsonConverter(typeof(Int32StringConverter))]
+    public int? EntityId { get; init; }
+    public string? EntityName { get; init; }
 }

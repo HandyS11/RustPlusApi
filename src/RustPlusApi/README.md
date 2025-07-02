@@ -2,26 +2,17 @@
 
 This is a C# client for the Rust+ API. It allows you to interact with the Rust+ server.
 
-## Prerequisites
-
-- **.NET 8** or later
-
-## Sumary
-
-- [RustPlusApi](#rustplusapi)
-  - [Prerequisites](#prerequisites)
-  - [Sumary](#sumary)
-    - [RustPlusLegacy](#rustpluslegacy)
-    - [RustPlus](#rustplus)
-
 The library provides two classes to interact with the Rust+ API: `RustPlusLegacy` and `RustPlus`.
 
-- `RustPlusLegacy` is the original implementation based on the `./Protobuf/RustPlus.proto` file.
-- `RustPlus` is a new implementation that return a response based on `./Data/Response.cs` object.
+- `RustPlusLegacy` is the original implementation based on the `.RustPlus.proto` file.
+- `RustPlus` is a new implementation that returns a response based on `./Data/Response.cs` object.
 
-Since `RustPlus` inherit from `RustPlusLegacy`, you can use both classes to interact with the Rust+ API. The `RustPlus` class is recommended for new projects, as it provides a more user-friendly interface and better error handling.
+`RustPlusLegacy` is mark as obsolete and will be removed in the future.
+It is recommended to use `RustPlus` for new projects.
 
-### RustPlusLegacy
+## RustPlusLegacy
+
+![WARNING] Obsolete: This class is marked as obsolete and will be removed in the future. Use `RustPlus` instead.
 
 First, instantiate the `RustPlusLegacy` class with the necessary parameters:
 
@@ -70,7 +61,7 @@ await rustPlus.SendRequestAsync(request);
 
 The response with be an **AppMessage** that is a direct representation of `./Protobuf/RustPlus.proto` file.
 
-Feel free to explore the `RustPlusLegacy` class to find all convinient methods to use.
+Feel free to explore the `RustPlusLegacy` class to find all convenient methods to use.
 
 ---
 
@@ -98,9 +89,7 @@ Remember to dispose the `RustPlusLegacy` instance when you're done:
 rustPlusApi.DisconnectAsync(); 
 ```
 
-### RustPlus
-
-The `RustPlus` classe inherit from `RustPlusLegacy` and provide a more user-friendly interface to interact with the Rust+ API. That means you can use all methods from `RustPlusLegacy` and also the new ones from `RustPlus`.
+## RustPlus
 
 Such as the `RustPlusLegacy`, you need to instantiate the `RustPlus` class with the necessary parameters:
 
@@ -144,7 +133,7 @@ public class SmartSwitchInfo
 
 ---
 
-You can olso subscribe to more events to handle specific actions:
+You can also subscribe to more events to handle specific actions:
 
 ```csharp
 rustPlusApi.OnSmartSwitchTriggered += (sender, smartSwitch) => { /* handle smart switch triggered event */ };
@@ -153,7 +142,7 @@ rustPlusApi.OnStorageMonitorTriggered += (sender, storageMonitor) => { /* handle
 rustPlusApi.OnTeamChatReceived += (sender, message) => { /* handle team chat received event */ };
 ```
 
-To be able to receive theses events, you need to previously make a request on the given entity or chat.
+To be able to receive these events, you need to previously make a request on the given entity or chat.
 
 For example, to receive the smart switch triggered event, you need to make a request on the smart switch entity:
 

@@ -1,3 +1,3 @@
 namespace RustPlusApi.Data.Markers;
 
-public class UnknownMarker : Marker { }
+public sealed record UnknownMarker : Marker;

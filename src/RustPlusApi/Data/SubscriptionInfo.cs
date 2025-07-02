@@ -1,6 +1,6 @@
 namespace RustPlusApi.Data;
 
-public class SubscriptionInfo
+public sealed record SubscriptionInfo
 {
-    public bool IsSubscribed { get; set; }
+    public bool IsSubscribed { get; init; }
 }

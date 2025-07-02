@@ -1,3 +1,3 @@
 namespace RustPlusApi.Data.Events;
 
-public class TeamMessageEventArg : TeamMessage { }
+public sealed record TeamMessageEventArg : TeamMessage;

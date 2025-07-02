@@ -1,14 +1,14 @@
 namespace RustPlusApi.Data;
 
-public class VendingMachineItem
+public sealed record VendingMachineItem
 {
-    public int Id { get; set; }
-    public int StackSize { get; set; }
-    public int CurrencyId { get; set; }
-    public int CostPerStack { get; set; }
-    public int StackSizeAmount { get; set; }
-    public bool IsItemBlueprint { get; set; }
-    public bool IsCurrencyBlueprint { get; set; }
-    public float ItemLife { get; set; }
-    public float ItemMaxLife { get; set; }
+    public int Id { get; init; }
+    public int StackSize { get; init; }
+    public int CurrencyId { get; init; }
+    public int CostPerStack { get; init; }
+    public int StackSizeAmount { get; init; }
+    public bool IsItemBlueprint { get; init; }
+    public bool IsCurrencyBlueprint { get; init; }
+    public float ItemLife { get; init; }
+    public float ItemMaxLife { get; init; }
 }

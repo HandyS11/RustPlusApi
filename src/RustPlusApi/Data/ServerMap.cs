@@ -2,12 +2,12 @@ using System.Drawing;
 
 namespace RustPlusApi.Data;
 
-public class ServerMap
+public sealed record ServerMap
 {
-    public uint? Height { get; set; }
-    public uint? Width { get; set; }
-    public int? OceanMargin { get; set; }
-    public Color Background { get; set; }
-    public List<ServerMapMonument>? Monuments { get; set; }
-    public byte[]? JpgImage { get; set; }
+    public uint? Height { get; init; }
+    public uint? Width { get; init; }
+    public int? OceanMargin { get; init; }
+    public Color Background { get; init; }
+    public List<ServerMapMonument>? Monuments { get; init; }
+    public byte[]? JpgImage { get; init; }
 }

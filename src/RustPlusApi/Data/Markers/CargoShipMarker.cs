@@ -1,3 +1,3 @@
 namespace RustPlusApi.Data.Markers;
 
-public class CargoShipMarker : Marker { }
+public sealed record CargoShipMarker : Marker;
