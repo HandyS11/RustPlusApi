@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <PackageVersion Include="Google.Protobuf" Version="3.31.1" />
-	<PackageVersion Include="protobuf-net" Version="3.2.52" />
+	<PackageVersion Include="protobuf-net" Version="3.2.55" />
   </ItemGroup>
   
 </Project>
