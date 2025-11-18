@@ -2,11 +2,11 @@
 
     <PropertyGroup>
         <PackageId>RustPlusApi.Fcm</PackageId>
-        <Version>1.3.0</Version>
+        <Version>1.4.0</Version>
         <Authors>HandyS11</Authors>
         <Owners>HandyS11</Owners>
-        <Product>A Rust+ API websocket made in C#.</Product>
-        <Description>This is a C# client for the Rust+ websocket. It allows you to receive notification via FCM.</Description>
+        <Product>A Rust+ API websocket.</Product>
+        <Description>A client for the Rust+ websocket. It allows you to receive notification via FCM.</Description>
         <PackageTags>rust rustplus rustplusapi</PackageTags>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <LicenseUrl>https://github.com/HandyS11/RustPlusApi/blob/main/LICENSE</LicenseUrl>
