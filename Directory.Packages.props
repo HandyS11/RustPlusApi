@@ -3,7 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Google.Protobuf" Version="3.33.1" />
+    <PackageVersion Include="Google.Protobuf" Version="3.33.2" />
     <PackageVersion Include="protobuf-net" Version="3.2.56" />
   </ItemGroup>
 </Project>
