@@ -5,6 +5,8 @@
   <ItemGroup>
     <PackageVersion Include="protobuf-net" Version="3.2.56" />
     <PackageVersion Include="protobuf-net.BuildTools" Version="3.2.52" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.27.0.140913" />
     <!-- Test stack (v2 §9) -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />

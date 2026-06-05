@@ -1,4 +1,5 @@
 using System.Drawing;
+using RustPlusApi.Utils;
 
 using RustPlusApi.Data;
 using RustPlusApi.Data.Events;
@@ -25,7 +26,7 @@ public static class AppTeamChatToModel
             SteamId = appTeamMessage.SteamId,
             Name = appTeamMessage.Name,
             Message = appTeamMessage.Message,
-            Color = ColorTranslator.FromHtml(appTeamMessage.Color),
+            Color = HtmlColorParser.FromHtml(appTeamMessage.Color),
             Time = DateTimeOffset.FromUnixTimeSeconds(appTeamMessage.Time).UtcDateTime,
         };
     }
@@ -42,7 +43,7 @@ public static class AppTeamChatToModel
             SteamId = appTeamMessage.SteamId,
             Name = appTeamMessage.Name,
             Message = appTeamMessage.Message,
-            Color = ColorTranslator.FromHtml(appTeamMessage.Color),
+            Color = HtmlColorParser.FromHtml(appTeamMessage.Color),
             Time = DateTimeOffset.FromUnixTimeSeconds(appTeamMessage.Time).UtcDateTime,
         };
     }

@@ -1,4 +1,5 @@
 using System.Drawing;
+using RustPlusApi.Utils;
 
 using RustPlusApi.Data;
 
@@ -18,7 +19,7 @@ public static class AppMapToModel
             Height = appMap.Height,
             Width = appMap.Width,
             OceanMargin = appMap.OceanMargin,
-            Background = ColorTranslator.FromHtml(appMap.Background),
+            Background = HtmlColorParser.FromHtml(appMap.Background),
             Monuments = appMap.Monuments.ToServerMapMonuments().ToList(),
             JpgImage = appMap.JpgImage
         };

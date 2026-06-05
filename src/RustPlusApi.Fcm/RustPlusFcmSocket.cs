@@ -86,7 +86,12 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         Connecting?.Invoke(this, EventArgs.Empty);
 
         _tcpClient = new TcpClient();
+#if NET10_0_OR_GREATER
         await _tcpClient.ConnectAsync(Host, Port, CancellationToken);
+#else
+        // netstandard2.0 lacks the CancellationToken overload.
+        await _tcpClient.ConnectAsync(Host, Port);
+#endif
 
         _sslStream = new SslStream(_tcpClient.GetStream(), false);
         await _sslStream.AuthenticateAsClientAsync(Host);

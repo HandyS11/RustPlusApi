@@ -17,7 +17,7 @@ Last updated: 2026-06-05
 | 1 | Feature-parity prep + drop legacy (clan, nexus) | ☑ |
 | 2 | Single Protobuf dependency (protobuf-net) | ☑ |
 | 3 | Code-first protos | ☑ |
-| 4 | Multi-target `netstandard2.0;net10.0` | ☐ |
+| 4 | Multi-target `netstandard2.0;net10.0` | ☑ |
 | 5 | Camera system (protocol + optional rendering) | ☐ |
 | 6 | Native credential acquisition | ☐ |
 | 7 | JSON cleanup | ☐ |
@@ -97,7 +97,7 @@ Last updated: 2026-06-05
 
 - [x] Hand-write MCS `[ProtoContract]` types (`Mcs.cs`, ~230 lines vs 856 generated); deleted `mcs.proto`. Optional scalars → nullable; kept exact public names the FCM socket relies on (incl. `auth_service`/`type` enum-clash cases + pluralized `AppDatas`/`Settings`/`ReceivedPersistentIds`); adjusted 2 nullable consumption sites in `RustPlusFcmSocket`
 - [x] Build-time gen for `RustPlusContracts` via `protobuf-net.BuildTools` — its Roslyn source generator compiles the `.proto` (added as `<AdditionalFiles>`) at build; **deleted the committed `RustPlusContracts.cs`** (generated into `obj/`). The preferred option worked, not the fallback
-- [◐] Verify build clean on both TFMs — net10 ✅; the second TFM (`netstandard2.0`) is verified in Phase 4 (not multi-targeting yet)
+- [x] Verify build clean on both TFMs — confirmed in Phase 4: the build-time proto generation + hand-written MCS both compile under `netstandard2.0` and `net10.0`
 - _Tests: 35 green (added `McsRoundTripTests`: heartbeat/login/data-message round-trips + bidirectional tag mapping)._
 
 ---
@@ -106,11 +106,12 @@ Last updated: 2026-06-05
 
 **Done when:** `dotnet pack` emits `lib/netstandard2.0` + `lib/net10.0`; a net48 smoke app references the package and constructs `RustPlus`.
 
-- [ ] Remove forced global TFM from `Directory.Build.props`; keep neutral settings
-- [ ] Set `<TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>` on shipping libs only
-- [ ] Close ns2.0 BCL gaps (`System.Text.Json`, `ClientWebSocket` if flagged)
-- [ ] Audit runtime-only APIs; guard with `#if NET10_0_OR_GREATER`
-- [ ] net48 smoke app references the package and constructs `RustPlus`
+- [x] Removed forced global TFM from `Directory.Build.props`; added `LangVersion=latest`; non-library projects (samples/tests/mock) pinned to `net10.0`
+- [x] Set `<TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>` on the two shipping libs only
+- [x] Closed ns2.0 BCL gaps: `System.Text.Json` package (FCM, conditional); `IsExternalInit` polyfill for records/`init` (both libs). `ClientWebSocket` was already in the ns2.0 surface — no package needed
+- [x] Audited runtime-only APIs and guarded with `#if`: `TcpClient.ConnectAsync(…, ct)` (net10) vs `(host, port)` (ns2.0); `Interlocked.Increment(ref uint)` → `_seq` changed to `int` + cast; `ColorTranslator.FromHtml` → `HtmlColorParser` (in-box on net10, hand-rolled hex parser on ns2.0, avoiding the Windows-only `System.Drawing.Common`)
+- [x] net48 smoke app (`test/RustPlusApi.NetFrameworkSmoke`) references both libs (via their ns2.0 asset) and constructs `RustPlus` — compiles on Linux CI via `Microsoft.NETFramework.ReferenceAssemblies`
+- _Acceptance: `dotnet pack` emits `lib/netstandard2.0/` + `lib/net10.0/` for both packages; net48 consumer compiles. 35 tests still green._
 
 ---
 

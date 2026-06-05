@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Compile-only smoke test (v2 §1 acceptance): proves a .NET Framework 4.8 consumer can
+      reference the libraries (via their netstandard2.0 asset) and use the public API.
+      Microsoft.NETFramework.ReferenceAssemblies lets this build on non-Windows CI.
+    -->
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net48</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <!-- net48 can't resolve ImplicitUsings the same way; keep it self-contained. -->
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Nullable>disable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="all" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\RustPlusApi\RustPlusApi.csproj" />
+        <ProjectReference Include="..\..\src\RustPlusApi.Fcm\RustPlusApi.Fcm.csproj" />
+    </ItemGroup>
+
+</Project>

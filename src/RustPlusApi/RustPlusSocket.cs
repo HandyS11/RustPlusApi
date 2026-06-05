@@ -88,7 +88,8 @@ public abstract class RustPlusSocket(
     
     private ClientWebSocket? _webSocket;
 
-    private uint _seq;
+    // int (not uint) so Interlocked.Increment works on netstandard2.0, which lacks the uint overload.
+    private int _seq;
 
     private readonly ConcurrentQueue<AppRequest> _sendQueue = new();
     private readonly ConcurrentQueue<TaskCompletionSource<AppMessage>> _responseQueue = new();
@@ -153,7 +154,7 @@ public abstract class RustPlusSocket(
     public async Task<AppMessage> SendRequestAsync(AppRequest request)
     {
         var tcs = new TaskCompletionSource<AppMessage>();
-        var seq = Interlocked.Increment(ref _seq);
+        var seq = (uint)Interlocked.Increment(ref _seq);
 
         request.Seq = seq;
         request.PlayerId = _playerId;
