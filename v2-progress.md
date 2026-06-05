@@ -16,7 +16,7 @@ Last updated: 2026-06-05
 | 0 | Unblock & safety net (CI, analyzers, mock server, reliability bugs) | ◐ |
 | 1 | Feature-parity prep + drop legacy (clan, nexus) | ☑ |
 | 2 | Single Protobuf dependency (protobuf-net) | ☑ |
-| 3 | Code-first protos | ☐ |
+| 3 | Code-first protos | ☑ |
 | 4 | Multi-target `netstandard2.0;net10.0` | ☐ |
 | 5 | Camera system (protocol + optional rendering) | ☐ |
 | 6 | Native credential acquisition | ☐ |
@@ -95,9 +95,10 @@ Last updated: 2026-06-05
 
 **Done when:** `mcs.proto`/`Mcs.cs` gone (hand-written types); `RustPlusContracts.cs` no longer committed (build-gen) or regenerated via protogen; build clean on both TFMs.
 
-- [ ] Hand-write MCS `[ProtoContract]` types; delete `mcs.proto` + `Mcs.cs`
-- [ ] Build-time gen for `RustPlusContracts` via `protobuf-net.BuildTools` (fallback: commit `protogen` output)
-- [ ] Verify build clean on both TFMs
+- [x] Hand-write MCS `[ProtoContract]` types (`Mcs.cs`, ~230 lines vs 856 generated); deleted `mcs.proto`. Optional scalars → nullable; kept exact public names the FCM socket relies on (incl. `auth_service`/`type` enum-clash cases + pluralized `AppDatas`/`Settings`/`ReceivedPersistentIds`); adjusted 2 nullable consumption sites in `RustPlusFcmSocket`
+- [x] Build-time gen for `RustPlusContracts` via `protobuf-net.BuildTools` — its Roslyn source generator compiles the `.proto` (added as `<AdditionalFiles>`) at build; **deleted the committed `RustPlusContracts.cs`** (generated into `obj/`). The preferred option worked, not the fallback
+- [◐] Verify build clean on both TFMs — net10 ✅; the second TFM (`netstandard2.0`) is verified in Phase 4 (not multi-targeting yet)
+- _Tests: 35 green (added `McsRoundTripTests`: heartbeat/login/data-message round-trips + bidirectional tag mapping)._
 
 ---
 

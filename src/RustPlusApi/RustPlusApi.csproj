@@ -18,7 +18,13 @@
 
     <ItemGroup>
         <PackageReference Include="protobuf-net" />
+        <PackageReference Include="protobuf-net.BuildTools" PrivateAssets="all" />
         <PackageReference Include="SonarAnalyzer.CSharp" PrivateAssets="all" />
+    </ItemGroup>
+
+    <!-- RustPlusContracts is generated from the .proto at build time (v2 §3). -->
+    <ItemGroup>
+        <AdditionalFiles Include="Protobuf/RustPlusContracts.proto" />
     </ItemGroup>
 
     <ItemGroup>

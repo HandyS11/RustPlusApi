@@ -301,7 +301,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
                         $"Status: {ping.Status}");
         var pingResponse = new HeartbeatAck
         {
-            StreamId = ping.StreamId + 1,
+            StreamId = (ping.StreamId ?? 0) + 1,
             LastStreamIdReceived = ping.StreamId,
             Status = ping.Status
         };
@@ -382,7 +382,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         {
             PersistantId = dataMessage.PersistentId,
             From = long.Parse(dataMessage.From),
-            SentAt = DateTimeOffset.FromUnixTimeMilliseconds(dataMessage.Sent).UtcDateTime,
+            SentAt = DateTimeOffset.FromUnixTimeMilliseconds(dataMessage.Sent ?? 0).UtcDateTime,
             Data = new MessageData
             {
                 ChannelId = channelId,
