@@ -18,6 +18,7 @@
 
     <ItemGroup>
         <PackageReference Include="protobuf-net" />
+        <PackageReference Include="SonarAnalyzer.CSharp" PrivateAssets="all" />
     </ItemGroup>
 
     <ItemGroup>

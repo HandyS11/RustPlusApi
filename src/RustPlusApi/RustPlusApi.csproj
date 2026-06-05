@@ -18,6 +18,7 @@
 
     <ItemGroup>
         <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="SonarAnalyzer.CSharp" PrivateAssets="all" />
     </ItemGroup>
 
     <ItemGroup>

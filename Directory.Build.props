@@ -5,5 +5,12 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
-    
+
+	<!-- Code quality (v2 §10). Analyzers run as warnings for now; a curated
+	     WarningsAsErrors set is promoted once the Phase 0 reliability bugs are fixed. -->
+	<PropertyGroup>
+		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+		<AnalysisLevel>latest-Recommended</AnalysisLevel>
+	</PropertyGroup>
+
 </Project>
