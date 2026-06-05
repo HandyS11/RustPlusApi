@@ -1,4 +1,5 @@
 ﻿using RustPlusApi.Data;
+using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Clans;
 using RustPlusApi.Data.Entities;
 using RustPlusApi.Data.Events;
@@ -12,6 +13,7 @@ public interface IRustPlus : IRustPlusSocket
     event EventHandler<TeamMessageEventArg>? OnTeamChatReceived;
     event EventHandler<ClanMessageEventArg>? OnClanChatReceived;
     event EventHandler<ClanChangedEventArg>? OnClanChanged;
+    event EventHandler<CameraRaysEventArg>? OnCameraRaysReceived;
 
     Task<Response<SubscriptionInfo?>> CheckSubscriptionAsync(uint alarmId);
     Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId);
@@ -20,6 +22,9 @@ public interface IRustPlus : IRustPlusSocket
     Task<Response<ClanChatInfo?>> GetClanChatAsync();
     Task<Response<bool?>> SendClanMessageAsync(string message);
     Task<Response<NexusAuth?>> GetNexusAuthAsync(string appKey);
+    Task<Response<CameraInfo?>> SubscribeToCameraAsync(string cameraId);
+    Task<Response<bool?>> SendCameraInputAsync(CameraButtons buttons, float mouseDeltaX = 0, float mouseDeltaY = 0);
+    Task<Response<bool?>> UnsubscribeFromCameraAsync();
     Task<Response<ServerInfo?>> GetInfoAsync();
     Task<Response<ServerMap?>> GetMapAsync();
     Task<Response<MapMarkers?>> GetMapMarkersAsync();

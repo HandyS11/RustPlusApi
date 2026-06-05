@@ -39,6 +39,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusApi.Tests", "test\R
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusApi.NetFrameworkSmoke", "test\RustPlusApi.NetFrameworkSmoke\RustPlusApi.NetFrameworkSmoke.csproj", "{57FD7A2C-50C7-4524-9F59-5B63EBFB4BA2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusApi.Camera", "src\RustPlusApi.Camera\RustPlusApi.Camera.csproj", "{CD3D88F7-B30B-4E73-8176-E02B20D4216D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -133,6 +135,18 @@ Global
 		{57FD7A2C-50C7-4524-9F59-5B63EBFB4BA2}.Release|x64.Build.0 = Release|Any CPU
 		{57FD7A2C-50C7-4524-9F59-5B63EBFB4BA2}.Release|x86.ActiveCfg = Release|Any CPU
 		{57FD7A2C-50C7-4524-9F59-5B63EBFB4BA2}.Release|x86.Build.0 = Release|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Debug|x64.Build.0 = Debug|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Debug|x86.Build.0 = Debug|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Release|x64.ActiveCfg = Release|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Release|x64.Build.0 = Release|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Release|x86.ActiveCfg = Release|Any CPU
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -146,6 +160,7 @@ Global
 		{BB36B691-AB83-4839-94F3-F1960C3E57CD} = {0C88DD14-F956-CE84-757C-A364CCF449FC}
 		{B6DFFF9A-667B-4820-91A1-8BC0B8E82F34} = {0C88DD14-F956-CE84-757C-A364CCF449FC}
 		{57FD7A2C-50C7-4524-9F59-5B63EBFB4BA2} = {0C88DD14-F956-CE84-757C-A364CCF449FC}
+		{CD3D88F7-B30B-4E73-8176-E02B20D4216D} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A4B4251F-ADA4-418D-95B5-27BA99A307A3}

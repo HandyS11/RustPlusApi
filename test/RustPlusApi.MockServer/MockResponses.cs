@@ -25,6 +25,7 @@ public static class MockResponses
         else if (request.GetClanInfo is not null) response.ClanInfo = SampleClanInfo();
         else if (request.GetClanChat is not null) response.ClanChat = SampleClanChat();
         else if (request.GetNexusAuth is not null) response.NexusAuth = SampleNexusAuth();
+        else if (request.CameraSubscribe is not null) response.CameraSubscribeInfo = SampleCameraInfo();
         else response.Success = new AppSuccess();
 
         return new AppMessage { Response = response };
@@ -86,6 +87,31 @@ public static class MockResponses
     /// <summary>A clan-changed broadcast, for testing <c>OnClanChanged</c>.</summary>
     public static AppBroadcast ClanChangedBroadcast() =>
         new() { ClanChanged = new AppClanChanged { ClanInfo = SampleClan() } };
+
+    /// <summary>A camera-rays broadcast, for testing <c>OnCameraRaysReceived</c>.</summary>
+    public static AppBroadcast CameraRaysBroadcast() =>
+        new()
+        {
+            CameraRays = new AppCameraRays
+            {
+                VerticalFov = 65f,
+                SampleOffset = 0,
+                RayData = [0, 1, 2, 3, 4],
+                Distance = 100f,
+                Entities =
+                {
+                    new AppCameraRays.Entity
+                    {
+                        EntityId = 99,
+                        Type = AppCameraRays.EntityType.Player,
+                        Position = new Vector3 { X = 1, Y = 2, Z = 3 },
+                        Rotation = new Vector3 { X = 0, Y = 90, Z = 0 },
+                        Size = new Vector3 { X = 1, Y = 1, Z = 1 },
+                        Name = "Survivor"
+                    }
+                }
+            }
+        };
 
     public static AppInfo SampleInfo() => new()
     {
@@ -173,5 +199,15 @@ public static class MockResponses
     {
         ServerId = "mock-server-id",
         PlayerToken = 987654321
+    };
+
+    public static AppCameraInfo SampleCameraInfo() => new()
+    {
+        Width = 640,
+        Height = 480,
+        NearPlane = 0.1f,
+        FarPlane = 1000f,
+        // Movement | Mouse | Fire
+        ControlFlags = 1 | 2 | 8
     };
 }

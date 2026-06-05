@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using RustPlusApi.Data;
+using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Clans;
 using RustPlusApi.Data.Entities;
 using RustPlusApi.Data.Events;
@@ -51,6 +52,11 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     public event EventHandler<ClanChangedEventArg>? OnClanChanged;
 
     /// <summary>
+    /// Occurs when a camera frame is received for the subscribed camera, providing a <see cref="CameraRaysEventArg"/>.
+    /// </summary>
+    public event EventHandler<CameraRaysEventArg>? OnCameraRaysReceived;
+
+    /// <summary>
     /// Parses the notification received from the Rust+ server.
     /// </summary>
     /// <param name="broadcast">The broadcast received from the server.</param>
@@ -81,6 +87,11 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         if (broadcast.ClanChanged is not null)
         {
             OnClanChanged?.Invoke(this, broadcast.ClanChanged.ToClanChangedEvent());
+            return;
+        }
+        if (broadcast.CameraRays is not null)
+        {
+            OnCameraRaysReceived?.Invoke(this, broadcast.CameraRays.ToCameraRaysEvent());
             return;
         }
         Debug.WriteLine($"Unknown broadcast:\n{broadcast}");
@@ -221,6 +232,62 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
             }
         };
         return await ProcessRequestAsync<NexusAuth?>(request, r => r.Response.NexusAuth.ToNexusAuth());
+    }
+
+    /// <summary>
+    /// Subscribes to a camera asynchronously, starting the <see cref="OnCameraRaysReceived"/> stream.
+    /// </summary>
+    /// <param name="cameraId">The identifier of the camera/CCTV entity to subscribe to.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the camera information.</returns>
+    public async Task<Response<CameraInfo?>> SubscribeToCameraAsync(string cameraId)
+    {
+        var request = new AppRequest
+        {
+            CameraSubscribe = new AppCameraSubscribe
+            {
+                CameraId = cameraId
+            }
+        };
+        return await ProcessRequestAsync<CameraInfo?>(
+            request,
+            r => r.Response.CameraSubscribeInfo.ToCameraInfo());
+    }
+
+    /// <summary>
+    /// Sends input (movement/mouse/buttons) to the subscribed camera asynchronously.
+    /// </summary>
+    /// <param name="buttons">The pressed <see cref="CameraButtons"/> bitmask.</param>
+    /// <param name="mouseDeltaX">The horizontal mouse delta.</param>
+    /// <param name="mouseDeltaY">The vertical mouse delta.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> indicating the success of the operation.</returns>
+    public async Task<Response<bool?>> SendCameraInputAsync(CameraButtons buttons, float mouseDeltaX = 0, float mouseDeltaY = 0)
+    {
+        var request = new AppRequest
+        {
+            CameraInput = new AppCameraInput
+            {
+                Buttons = (int)buttons,
+                MouseDelta = new Vector2
+                {
+                    X = mouseDeltaX,
+                    Y = mouseDeltaY
+                }
+            }
+        };
+        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+    }
+
+    /// <summary>
+    /// Unsubscribes from the currently subscribed camera asynchronously.
+    /// </summary>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> indicating the success of the operation.</returns>
+    public async Task<Response<bool?>> UnsubscribeFromCameraAsync()
+    {
+        var request = new AppRequest
+        {
+            CameraUnsubscribe = new AppEmpty()
+        };
+        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
     }
 
     /// <summary>

@@ -18,7 +18,7 @@ Last updated: 2026-06-05
 | 2 | Single Protobuf dependency (protobuf-net) | ☑ |
 | 3 | Code-first protos | ☑ |
 | 4 | Multi-target `netstandard2.0;net10.0` | ☑ |
-| 5 | Camera system (protocol + optional rendering) | ☐ |
+| 5 | Camera system (protocol + optional rendering) | ☑ |
 | 6 | Native credential acquisition | ☐ |
 | 7 | JSON cleanup | ☐ |
 | 8 | Docs & release (`2.0.0`) | ☐ |
@@ -121,16 +121,18 @@ Last updated: 2026-06-05
 
 ### Protocol layer (core, must-have)
 
-- [ ] `SubscribeToCameraAsync` / `SendCameraInputAsync` / `UnsubscribeFromCameraAsync`
-- [ ] `OnCameraRaysReceived` event carrying typed `CameraFrame`
-- [ ] `controlFlags`/`buttons` modeled as `[Flags]` enum
-- [ ] `CameraFrame` / `CameraEntity` models (reuse rustplus-desktop shape)
+- [x] `SubscribeToCameraAsync` / `SendCameraInputAsync` / `UnsubscribeFromCameraAsync` on `RustPlus` + `IRustPlus`
+- [x] `OnCameraRaysReceived` event carrying typed `CameraFrame` (wired into `ParseNotification`)
+- [x] `CameraButtons` + `CameraControlFlags` `[Flags]` enums — exact wire values fetched from liamcottle/rustplus.js
+- [x] `CameraFrame` / `CameraEntity` / `CameraInfo` / `Vector3` models + `AppCameraToModel` mapper
+- _Tests: +5 (2 camera mapper, 3 mock-backed integration: subscribe/input/unsubscribe + rays broadcast)._
 
 ### Rendering layer (stretch — separate package)
 
-- [ ] `RustPlusApi.Camera` package depending on `SixLabors.ImageSharp`
-- [ ] `rayData` RLE decode → image (port from rustplus.js `Camera.js` / olijeffers0n `camera_manager.py`)
-- [ ] Develop test-first against a captured `AppCameraRays` fixture
+- [x] `RustPlusApi.Camera` package (ns2.0;net10, ImageSharp 2.1.x, `2.0.0`) — separate so core stays image-free
+- [x] `rayData` decode → image: faithful verbatim port of rustplus.js (`IndexGenerator` xorshift PRNG + seeded Fisher-Yates shuffle, the VLE+lookback ray decode, the 8-colour material palette + sky sentinel + Y-flip) in `CameraRenderer`
+- [◐] Test-first against a captured fixture — **no real `AppCameraRays` capture exists yet (§15.4)**, so tests use _synthetic_ full-ray buffers to lock the decode math, sky sentinel, and material colouring (terrain ray → exact pixel). **End-to-end fidelity vs. a real server frame is unvalidated** and flagged experimental in the package README/XML docs
+- [ ] Sample feature file (`samples/.../Features/`) — deferred to Phase 8 docs, added with clan/nexus samples together
 
 ---
 
