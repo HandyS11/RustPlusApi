@@ -239,7 +239,6 @@ public abstract class RustPlusSocket(
     protected static bool IsError(AppMessage response)
     {
         if (response.Broadcast is not null) return false;
-        if (response.Response.Success is not null) return true;
         return response.Response.Error is not null;
     }
     

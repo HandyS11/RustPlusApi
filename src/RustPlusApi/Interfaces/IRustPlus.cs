@@ -1,4 +1,5 @@
 ﻿using RustPlusApi.Data;
+using RustPlusApi.Data.Clans;
 using RustPlusApi.Data.Entities;
 using RustPlusApi.Data.Events;
 
@@ -9,9 +10,16 @@ public interface IRustPlus : IRustPlusSocket
     event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered;
     event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
     event EventHandler<TeamMessageEventArg>? OnTeamChatReceived;
+    event EventHandler<ClanMessageEventArg>? OnClanChatReceived;
+    event EventHandler<ClanChangedEventArg>? OnClanChanged;
 
     Task<Response<SubscriptionInfo?>> CheckSubscriptionAsync(uint alarmId);
     Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId);
+    Task<Response<ClanInfo?>> GetClanInfoAsync();
+    Task<Response<bool?>> SetClanMotdAsync(string message);
+    Task<Response<ClanChatInfo?>> GetClanChatAsync();
+    Task<Response<bool?>> SendClanMessageAsync(string message);
+    Task<Response<NexusAuth?>> GetNexusAuthAsync(string appKey);
     Task<Response<ServerInfo?>> GetInfoAsync();
     Task<Response<ServerMap?>> GetMapAsync();
     Task<Response<MapMarkers?>> GetMapMarkersAsync();

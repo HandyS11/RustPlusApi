@@ -14,7 +14,7 @@ Last updated: 2026-06-05
 | Phase | Theme | Status |
 |---|---|---|
 | 0 | Unblock & safety net (CI, analyzers, mock server, reliability bugs) | ◐ |
-| 1 | Feature-parity prep + drop legacy (clan, nexus) | ☐ |
+| 1 | Feature-parity prep + drop legacy (clan, nexus) | ☑ |
 | 2 | Single Protobuf dependency (protobuf-net) | ☐ |
 | 3 | Code-first protos | ☐ |
 | 4 | Multi-target `netstandard2.0;net10.0` | ☐ |
@@ -45,7 +45,7 @@ Last updated: 2026-06-05
 
 - [x] `test/RustPlusApi.MockServer` — `HttpListener`/WebSocket server speaking the real wire protocol; shares the contract assembly so request/response stay in lockstep
 - [x] Scripted scenarios / canned `AppMessage` responses (`MockResponses`: info/time/map/entity/error builders + custom responder hook)
-- [◐] Broadcast injection — `BroadcastAsync` + team-chat & smart-switch builders done; clan/camera builders come with Phases 1/5
+- [◐] Broadcast injection — `BroadcastAsync` + team-chat, smart-switch, and clan (chat/changed) builders done; camera builders come with Phase 5
 - [ ] Optional mock FCM data-message emitter — not done (explicitly optional)
 - [x] `test/RustPlusApi.Tests` (xUnit) — MCS varint framing + `Extensions/*` mapper units (14 tests green)
 - [x] Integration test: real `RustPlus` client against `ws://localhost` — GetInfo/GetTime, error path, and a team-chat broadcast event
@@ -65,13 +65,15 @@ Last updated: 2026-06-05
 
 **Done when:** clan + nexus exposed as `Response<T>`; `RustPlusLegacy.cs` deleted; `grep -ri legacy src samples` empty; no public API returns raw `AppMessage`.
 
-- [ ] Port clan (`getClanInfo`, `setClanMotd`, `getClanChat`, `sendClanMessage`) to typed `RustPlus`
-- [ ] Add `OnClanChatReceived` / `OnClanChanged` events + models
-- [ ] Add `GetNexusAuthAsync` → `Response<NexusAuth>`
-- [ ] Map each legacy method to a modern equivalent (lift before drop)
-- [ ] Delete `RustPlusLegacy.cs`
-- [ ] Clean all `*Legacy*` call sites; verify no public method returns raw `AppMessage`
-- [ ] Strip legacy sections from READMEs
+- [x] Port clan (`GetClanInfoAsync`, `SetClanMotdAsync`, `GetClanChatAsync`, `SendClanMessageAsync`) to typed `RustPlus` + `IRustPlus`
+- [x] Add `OnClanChatReceived` / `OnClanChanged` events + models (`Data/Clans/*`, `ClanMessageEventArg`, `ClanChangedEventArg`) + mappers (`AppClanInfoToModel`, `AppClanChatToModel`)
+- [x] Add `GetNexusAuthAsync` → `Response<NexusAuth?>` (`Data/NexusAuth.cs`, `AppNexusAuthToModel`)
+- [x] Map each legacy method to a modern equivalent (lift before drop) — clan/nexus lifted; all other legacy methods already had typed equivalents
+- [x] Delete `RustPlusLegacy.cs`
+- [x] Clean all `*Legacy*` call sites; `grep -ri legacy src samples` is clean. Only `SendRequestAsync` returns raw `AppMessage` — the intentional low-level send primitive (custom-request escape hatch), not a legacy wrapper
+- [x] Strip legacy sections from both READMEs (root + `src/RustPlusApi`); added clan events to the examples
+- [x] **Bonus:** fixed the `IsError` success-inversion bug — `Response.Success` was treated as an error, so `PromoteToLeaderAsync`/`SetSubscriptionAsync`/`SetClanMotdAsync`/`SendClanMessageAsync` never reported success. Covered by a regression test
+- _Tests: +5 clan mapper units, +7 clan/nexus integration (incl. broadcast events & the IsError guard) → 26 total green_
 
 ---
 
@@ -195,3 +197,4 @@ Last updated: 2026-06-05
 - [ ] Item 7 — correlate responses by `seq`, not FIFO order
 - [ ] Item 9 — add `ConfigureAwait(false)` to library awaits
 - [ ] Item 10 — rename `Utils` type; remove commented-out code / TODO blocks
+- [x] **(extra) `IsError` success-inversion** — `Response.Success` was wrongly treated as an error; fixed in Phase 1 ([RustPlusSocket.cs](src/RustPlusApi/RustPlusSocket.cs)) with a regression test

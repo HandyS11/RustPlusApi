@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using RustPlusApi.Data;
+using RustPlusApi.Data.Clans;
 using RustPlusApi.Data.Entities;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Extensions;
 using RustPlusApi.Interfaces;
 using RustPlusApi.Utils;
 using RustPlusContracts;
+using ClanInfo = RustPlusApi.Data.Clans.ClanInfo;
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi;
@@ -39,6 +41,16 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     public event EventHandler<TeamMessageEventArg>? OnTeamChatReceived;
 
     /// <summary>
+    /// Occurs when a clan chat message is received, providing a <see cref="ClanMessageEventArg"/>.
+    /// </summary>
+    public event EventHandler<ClanMessageEventArg>? OnClanChatReceived;
+
+    /// <summary>
+    /// Occurs when the clan changes (roles, members, MOTD, …), providing a <see cref="ClanChangedEventArg"/>.
+    /// </summary>
+    public event EventHandler<ClanChangedEventArg>? OnClanChanged;
+
+    /// <summary>
     /// Parses the notification received from the Rust+ server.
     /// </summary>
     /// <param name="broadcast">The broadcast received from the server.</param>
@@ -59,6 +71,16 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         if (broadcast.TeamMessage is not null)
         {
             OnTeamChatReceived?.Invoke(this, broadcast.TeamMessage.Message.ToTeamMessageEvent());
+            return;
+        }
+        if (broadcast.ClanMessage is not null)
+        {
+            OnClanChatReceived?.Invoke(this, broadcast.ClanMessage.ToClanMessageEvent());
+            return;
+        }
+        if (broadcast.ClanChanged is not null)
+        {
+            OnClanChanged?.Invoke(this, broadcast.ClanChanged.ToClanChangedEvent());
             return;
         }
         Debug.WriteLine($"Unknown broadcast:\n{broadcast}");
@@ -122,6 +144,83 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     public async Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId)
     {
         return await GetEntityInfoAsync<AlarmInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo());
+    }
+
+    /// <summary>
+    /// Retrieves the clan information asynchronously.
+    /// </summary>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the clan information.</returns>
+    public async Task<Response<ClanInfo?>> GetClanInfoAsync()
+    {
+        var request = new AppRequest
+        {
+            GetClanInfo = new AppEmpty()
+        };
+        return await ProcessRequestAsync<ClanInfo?>(request, r => r.Response.ClanInfo.ToClanInfo());
+    }
+
+    /// <summary>
+    /// Sets the clan message of the day (MOTD) asynchronously.
+    /// </summary>
+    /// <param name="message">The message to set as the clan MOTD.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> indicating the success of the operation.</returns>
+    public async Task<Response<bool?>> SetClanMotdAsync(string message)
+    {
+        var request = new AppRequest
+        {
+            SetClanMotd = new AppSendMessage
+            {
+                Message = message
+            }
+        };
+        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+    }
+
+    /// <summary>
+    /// Retrieves the clan chat asynchronously.
+    /// </summary>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the clan chat information.</returns>
+    public async Task<Response<ClanChatInfo?>> GetClanChatAsync()
+    {
+        var request = new AppRequest
+        {
+            GetClanChat = new AppEmpty()
+        };
+        return await ProcessRequestAsync<ClanChatInfo?>(request, r => r.Response.ClanChat.ToClanChatInfo());
+    }
+
+    /// <summary>
+    /// Sends a clan message asynchronously.
+    /// </summary>
+    /// <param name="message">The message to send.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> indicating the success of the operation.</returns>
+    public async Task<Response<bool?>> SendClanMessageAsync(string message)
+    {
+        var request = new AppRequest
+        {
+            SendClanMessage = new AppSendMessage
+            {
+                Message = message
+            }
+        };
+        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+    }
+
+    /// <summary>
+    /// Retrieves the Nexus authentication asynchronously.
+    /// </summary>
+    /// <param name="appKey">The app key for Nexus authentication.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the Nexus authentication.</returns>
+    public async Task<Response<NexusAuth?>> GetNexusAuthAsync(string appKey)
+    {
+        var request = new AppRequest
+        {
+            GetNexusAuth = new AppGetNexusAuth
+            {
+                AppKey = appKey
+            }
+        };
+        return await ProcessRequestAsync<NexusAuth?>(request, r => r.Response.NexusAuth.ToNexusAuth());
     }
 
     /// <summary>

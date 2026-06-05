@@ -39,22 +39,16 @@ Feel free to **explore** the `samples/` folder to see how to **use** the API.
   - [NuGet](#nuget)
   - [Usage](#usage)
     - [RustPlusApi](#rustplusapi-1)
-      - [RustPlusLegacy](#rustpluslegacy)
       - [RustPlus](#rustplus)
     - [RustPlusApi.Fcm](#rustplusapifcm)
   - [Credentials](#credentials)
   - [Credits](#credits)
 
 The library provides several classes to interact with the Rust+ API:
-`RustPlusLegacy`, `RustPlus`, & `RustPlusFcm`.
+`RustPlus` & `RustPlusFcm`.
 
-- `RustPlusLegacy` is the original implementation based on the `RustPlus.proto` file.
-- `RustPlus` is a new implementation that returns a response based on `./Data/Response.cs` object.
-
-`RustPlusLegacy` is mark as obsolete and will be removed in the future.
-It is recommended to use `RustPlus` for new projects.
-
-- `RustPlusFcm`  is the listener to the FCM socket and handle **paring** and **alarm** notifications.
+- `RustPlus` is the client that returns a typed response based on the `./Data/Response.cs` object.
+- `RustPlusFcm` is the listener to the FCM socket and handles **pairing** and **alarm** notifications.
 
 ## NuGet
 
@@ -72,14 +66,12 @@ dotnet add package RustPlusApi.Fcm
 
 ### RustPlusApi
 
-#### RustPlusLegacy
+#### RustPlus
 
-![WARNING] Obsolete: This class is marked as obsolete and will be removed in the future. Use `RustPlus` instead.
-
-First, instantiate the `RustPlusLegacy` class with the necessary parameters:
+First, instantiate the `RustPlus` class with the necessary parameters:
 
 ```csharp
-var rustPlusApi = new RustPlusLegacy(server, port, playerId, playerToken, useFacepunchProxy);
+var rustPlusApi = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy);
 ```
 
 Parameters:
@@ -98,36 +90,7 @@ await rustPlusApi.ConnectAsync();
 
 ---
 
-There are plenty of methods to interact with the Rust+ server such as:
-
-```csharp
-uint entityId = 123456789;
-var response = await rustPlus.GetEntityInfoLegacyAsync(entityId);
-```
-
-or
-
-```csharp
-var response = await rustPlus.GetInfoLegacyAsync();
-```
-
-you can also make your own request:
-
-```csharp
-var request = new AppRequest
-{
-    GetTime = new AppEmpty()
-};
-await rustPlus.SendRequestAsync(request);
-```
-
-The response with be an **AppMessage** that is a direct representation of `./Protobuf/RustPlus.proto` file.
-
-Feel free to explore the `RustPlusLegacy` class to find all convenient methods to use.
-
----
-
-You can subscribe to events to handle specific actions:
+You can subscribe to the socket lifecycle events to handle specific actions:
 
 ```csharp
 rustPlusApi.Connecting += (sender, _) => { /* handle connecting event */ };
@@ -145,23 +108,7 @@ rustPlusApi.ErrorOccurred += (sender, ex) => { /* handle error event */ };
 
 ---
 
-Remember to dispose the `RustPlusLegacy` instance when you're done:
-
-```csharp
-rustPlusApi.DisconnectAsync(); 
-```
-
-### RustPlus
-
-Such as the `RustPlusLegacy`, you need to instantiate the `RustPlus` class with the necessary parameters:
-
-```csharp
-var rustPlusApi = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy);
-```
-
----
-
-There are quite the same methods as `RustPlusLegacy` but the response is a direct representation of `./Data/Response.cs` object.
+Every request returns a typed response that is a direct representation of the `./Data/Response.cs` object.
 
 ```csharp
 public class Response<T>
@@ -202,6 +149,8 @@ rustPlusApi.OnSmartSwitchTriggered += (sender, smartSwitch) => { /* handle smart
 rustPlusApi.OnStorageMonitorTriggered += (sender, storageMonitor) => { /* handle storage monitor triggered event */ };
 
 rustPlusApi.OnTeamChatReceived += (sender, message) => { /* handle team chat received event */ };
+rustPlusApi.OnClanChatReceived += (sender, message) => { /* handle clan chat received event */ };
+rustPlusApi.OnClanChanged += (sender, clan) => { /* handle clan changed event */ };
 ```
 
 To be able to receive these events, you need to previously make a request on the given entity or chat.
@@ -222,7 +171,7 @@ Each time the smart switch is triggered, the event will be fired.
 
 ---
 
-Remember to dispose the `RustPlus` instance when you're done (such as `RustPlusLegacy`):
+Remember to dispose the `RustPlus` instance when you're done:
 
 ```csharp
 rustPlusApi.DisconnectAsync(); 
