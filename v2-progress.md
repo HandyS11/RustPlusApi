@@ -15,7 +15,7 @@ Last updated: 2026-06-05
 |---|---|---|
 | 0 | Unblock & safety net (CI, analyzers, mock server, reliability bugs) | ◐ |
 | 1 | Feature-parity prep + drop legacy (clan, nexus) | ☑ |
-| 2 | Single Protobuf dependency (protobuf-net) | ☐ |
+| 2 | Single Protobuf dependency (protobuf-net) | ☑ |
 | 3 | Code-first protos | ☐ |
 | 4 | Multi-target `netstandard2.0;net10.0` | ☐ |
 | 5 | Camera system (protocol + optional rendering) | ☐ |
@@ -81,11 +81,13 @@ Last updated: 2026-06-05
 
 **Done when:** `Google.Protobuf` removed from `Directory.Packages.props`; all round-trip fixtures green; every former `is null` presence check re-verified.
 
-- [ ] Convert `RustPlusContracts.proto` → protobuf-net classes via `protogen`
-- [ ] Swap serializer calls in `RustPlusSocket.cs` (parse/serialize)
-- [ ] Re-validate every presence check (`IsError`, `Extensions/*` mappers, `ShouldSerialize*`)
-- [ ] Remove `Google.Protobuf`; add `protobuf-net` to core csproj + `Directory.Packages.props`
-- [ ] Regression-test wire format against captured fixtures
+- [x] Convert `RustPlusContracts.proto` → protobuf-net classes via `protogen` (committed `RustPlusContracts.cs`: 20.3k → 1.3k lines)
+- [x] **Proto field names → snake_case** (camelCase→snake, field numbers preserved → wire-identical) so `protogen` emits uniform PascalCase matching the existing C# API; matches the repo's `mcs.proto` convention. _(decision: §14)_
+- [x] Swap serializer calls in `RustPlusSocket.cs` (`Serializer.Deserialize`/`Serializer.Serialize` over `MemoryStream`)
+- [x] Re-validate every presence check — message fields stay null-when-unset (`IsError`, `ParseNotification`, `Success is not null`, `ClanInfo` null); optional scalars moved from Google `HasX` → protobuf-net `ShouldSerializeX()` (clan mapper); `.Types.` nesting → direct; `ByteString`→`byte[]`
+- [x] Remove `Google.Protobuf`; `protobuf-net` on core csproj + `Directory.Packages.props`
+- [◐] Regression-test wire format — 4 protobuf round-trip unit tests + the full integration suite (client↔mock, both protobuf-net) green. **Real-server capture still pending** (§15.4 golden payloads) — field numbers are preserved so the wire is unchanged, but a captured-payload check is the belt-and-suspenders guard
+- _Tests: 30 green (added `ProtobufRoundTripTests`)._
 
 ---
 

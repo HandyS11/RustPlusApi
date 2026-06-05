@@ -25,17 +25,17 @@ public static class AppClanInfoToModel
             Name = clanInfo.Name,
             Created = DateTimeOffset.FromUnixTimeSeconds(clanInfo.Created).UtcDateTime,
             Creator = clanInfo.Creator,
-            Motd = clanInfo.HasMotd ? clanInfo.Motd : null,
-            MotdTimestamp = clanInfo.HasMotdTimestamp
+            Motd = clanInfo.ShouldSerializeMotd() ? clanInfo.Motd : null,
+            MotdTimestamp = clanInfo.ShouldSerializeMotdTimestamp()
                 ? DateTimeOffset.FromUnixTimeSeconds(clanInfo.MotdTimestamp).UtcDateTime
                 : null,
-            MotdAuthor = clanInfo.HasMotdAuthor ? clanInfo.MotdAuthor : null,
-            Logo = clanInfo.HasLogo ? clanInfo.Logo.ToByteArray() : null,
-            Color = clanInfo.HasColor ? clanInfo.Color : null,
+            MotdAuthor = clanInfo.ShouldSerializeMotdAuthor() ? clanInfo.MotdAuthor : null,
+            Logo = clanInfo.ShouldSerializeLogo() ? clanInfo.Logo : null,
+            Color = clanInfo.ShouldSerializeColor() ? clanInfo.Color : null,
             Roles = clanInfo.Roles.ToClanRoles(),
             Members = clanInfo.Members.ToClanMembers(),
             Invites = clanInfo.Invites.ToClanInvites(),
-            MaxMemberCount = clanInfo.HasMaxMemberCount ? clanInfo.MaxMemberCount : null
+            MaxMemberCount = clanInfo.ShouldSerializeMaxMemberCount() ? clanInfo.MaxMemberCount : null
         };
     }
 
@@ -47,7 +47,7 @@ public static class AppClanInfoToModel
         };
     }
 
-    public static ClanRole ToClanRole(this ProtoClanInfo.Types.Role role)
+    public static ClanRole ToClanRole(this ProtoClanInfo.Role role)
     {
         return new ClanRole
         {
@@ -65,12 +65,12 @@ public static class AppClanInfoToModel
         };
     }
 
-    public static IEnumerable<ClanRole> ToClanRoles(this IEnumerable<ProtoClanInfo.Types.Role> roles)
+    public static IEnumerable<ClanRole> ToClanRoles(this IEnumerable<ProtoClanInfo.Role> roles)
     {
         return roles.Select(ToClanRole);
     }
 
-    public static ClanMember ToClanMember(this ProtoClanInfo.Types.Member member)
+    public static ClanMember ToClanMember(this ProtoClanInfo.Member member)
     {
         return new ClanMember
         {
@@ -78,17 +78,17 @@ public static class AppClanInfoToModel
             RoleId = member.RoleId,
             Joined = DateTimeOffset.FromUnixTimeSeconds(member.Joined).UtcDateTime,
             LastSeen = DateTimeOffset.FromUnixTimeSeconds(member.LastSeen).UtcDateTime,
-            Notes = member.HasNotes ? member.Notes : null,
-            Online = member.HasOnline ? member.Online : null
+            Notes = member.ShouldSerializeNotes() ? member.Notes : null,
+            Online = member.ShouldSerializeOnline() ? member.Online : null
         };
     }
 
-    public static IEnumerable<ClanMember> ToClanMembers(this IEnumerable<ProtoClanInfo.Types.Member> members)
+    public static IEnumerable<ClanMember> ToClanMembers(this IEnumerable<ProtoClanInfo.Member> members)
     {
         return members.Select(ToClanMember);
     }
 
-    public static ClanInvite ToClanInvite(this ProtoClanInfo.Types.Invite invite)
+    public static ClanInvite ToClanInvite(this ProtoClanInfo.Invite invite)
     {
         return new ClanInvite
         {
@@ -98,7 +98,7 @@ public static class AppClanInfoToModel
         };
     }
 
-    public static IEnumerable<ClanInvite> ToClanInvites(this IEnumerable<ProtoClanInfo.Types.Invite> invites)
+    public static IEnumerable<ClanInvite> ToClanInvites(this IEnumerable<ProtoClanInfo.Invite> invites)
     {
         return invites.Select(ToClanInvite);
     }

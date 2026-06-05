@@ -1,4 +1,3 @@
-using Google.Protobuf;
 using RustPlusContracts;
 
 namespace RustPlusApi.MockServer;
@@ -119,7 +118,7 @@ public static class MockResponses
     {
         Width = 2000,
         Height = 2000,
-        JpgImage = ByteString.CopyFrom(1, 2, 3, 4),
+        JpgImage = [1, 2, 3, 4],
         OceanMargin = 500,
         Background = "#000000"
     };
@@ -145,7 +144,7 @@ public static class MockResponses
         MaxMemberCount = 50,
         Members =
         {
-            new ClanInfo.Types.Member
+            new ClanInfo.Member
             {
                 SteamId = 76561198000000001,
                 RoleId = 0,

@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
-using Google.Protobuf;
+using ProtoBuf;
 using RustPlusContracts;
 
 namespace RustPlusApi.MockServer;
@@ -112,7 +112,8 @@ public sealed class MockRustPlusServer : IAsyncDisposable
                 return;
             }
 
-            var request = AppRequest.Parser.ParseFrom(message.ToArray());
+            message.Position = 0;
+            var request = Serializer.Deserialize<AppRequest>(message);
             var response = _responder(request);
             if (response is null) continue;
 
@@ -122,7 +123,9 @@ public sealed class MockRustPlusServer : IAsyncDisposable
 
     private async Task SendAsync(WebSocket socket, AppMessage message, CancellationToken ct)
     {
-        var bytes = message.ToByteArray();
+        using var buffer = new MemoryStream();
+        Serializer.Serialize(buffer, message);
+        var bytes = buffer.ToArray();
         await _sendLock.WaitAsync(ct);
         try
         {

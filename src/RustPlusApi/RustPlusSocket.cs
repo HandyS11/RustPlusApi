@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.WebSockets;
-using Google.Protobuf;
+using ProtoBuf;
 using RustPlusApi.Interfaces;
 using RustPlusContracts;
 using static System.GC;
@@ -268,7 +268,9 @@ public abstract class RustPlusSocket(
         {
             if (_sendQueue.TryDequeue(out var request))
             {
-                var buffer = request.ToByteArray();
+                using var ms = new MemoryStream();
+                Serializer.Serialize(ms, request);
+                var buffer = ms.ToArray();
                 await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true, CancellationToken.None);
             }
             await Task.Delay(100, CancellationToken.None);
@@ -308,7 +310,8 @@ public abstract class RustPlusSocket(
                 } while (!result.EndOfMessage);
 
                 var messageData = receiveBuffer.ToArray();
-                var message = AppMessage.Parser.ParseFrom(messageData);
+                using var messageStream = new MemoryStream(messageData);
+                var message = Serializer.Deserialize<AppMessage>(messageStream);
 
                 Debug.WriteLine($"Received message:\n{message}");
                 MessageReceived?.Invoke(this, message);

@@ -3,7 +3,7 @@ using RustPlusApi.Data.Markers;
 
 using RustPlusContracts;
 
-using static RustPlusContracts.AppMarker.Types;
+using static RustPlusContracts.AppMarker;
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;

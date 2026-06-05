@@ -3,7 +3,7 @@ using RustPlusApi.Data.Notes;
 
 using RustPlusContracts;
 
-using static RustPlusContracts.AppTeamInfo.Types;
+using static RustPlusContracts.AppTeamInfo;
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;
@@ -60,7 +60,7 @@ public static class AppTeamInfoToModel
         return members.Select(ToMemberInfo);
     }
 
-    public static DeathNote ToDeathNote(this AppTeamInfo.Types.Note note)
+    public static DeathNote ToDeathNote(this AppTeamInfo.Note note)
     {
         return new DeathNote
         {
@@ -69,7 +69,7 @@ public static class AppTeamInfoToModel
         };
     }
 
-    public static PlayerNote ToPlayerNote(this AppTeamInfo.Types.Note note)
+    public static PlayerNote ToPlayerNote(this AppTeamInfo.Note note)
     {
         return new PlayerNote
         {
@@ -81,7 +81,7 @@ public static class AppTeamInfoToModel
         };
     }
 
-    public static IEnumerable<PlayerNote> ToPlayerNotes(this IEnumerable<AppTeamInfo.Types.Note> notes)
+    public static IEnumerable<PlayerNote> ToPlayerNotes(this IEnumerable<AppTeamInfo.Note> notes)
     {
         return notes.Select(ToPlayerNote);
     }

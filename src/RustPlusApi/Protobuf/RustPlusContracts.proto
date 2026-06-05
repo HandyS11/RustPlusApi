@@ -38,64 +38,64 @@ message Ray {
 }
 
 message ClanActionResult {
-	required int32 requestId = 1;
+	required int32 request_id = 1;
 	required int32 result = 2;
-	required bool hasClanInfo = 3;
-	optional ClanInfo clanInfo = 4;
+	required bool has_clan_info = 3;
+	optional ClanInfo clan_info = 4;
 }
 
 message ClanInfo {
-	required int64 clanId = 1;
+	required int64 clan_id = 1;
 	required string name = 2;
 	required int64 created = 3;
 	required uint64 creator = 4;
 	optional string motd = 5;
-	optional int64 motdTimestamp = 6;
-	optional uint64 motdAuthor = 7;
+	optional int64 motd_timestamp = 6;
+	optional uint64 motd_author = 7;
 	optional bytes logo = 8;
 	optional sint32 color = 9;
 	repeated ClanInfo.Role roles = 10;
 	repeated ClanInfo.Member members = 11;
 	repeated ClanInfo.Invite invites = 12;
-	optional int32 maxMemberCount = 13;
+	optional int32 max_member_count = 13;
 
 	message Role {
-		required int32 roleId = 1;
+		required int32 role_id = 1;
 		required int32 rank = 2;
 		required string name = 3;
-		required bool canSetMotd = 4;
-		required bool canSetLogo = 5;
-		required bool canInvite = 6;
-		required bool canKick = 7;
-		required bool canPromote = 8;
-		required bool canDemote = 9;
-		required bool canSetPlayerNotes = 10;
-		required bool canAccessLogs = 11;
+		required bool can_set_motd = 4;
+		required bool can_set_logo = 5;
+		required bool can_invite = 6;
+		required bool can_kick = 7;
+		required bool can_promote = 8;
+		required bool can_demote = 9;
+		required bool can_set_player_notes = 10;
+		required bool can_access_logs = 11;
 	}
 
 	message Member {
-		required uint64 steamId = 1;
-		required int32 roleId = 2;
+		required uint64 steam_id = 1;
+		required int32 role_id = 2;
 		required int64 joined = 3;
-		required int64 lastSeen = 4;
+		required int64 last_seen = 4;
 		optional string notes = 5;
 		optional bool online = 6;
 	}
 
 	message Invite {
-		required uint64 steamId = 1;
+		required uint64 steam_id = 1;
 		required uint64 recruiter = 2;
 		required int64 timestamp = 3;
 	}
 }
 
 message ClanLog {
-	required int64 clanId = 1;
-	repeated ClanLog.Entry logEntries = 2;
+	required int64 clan_id = 1;
+	repeated ClanLog.Entry log_entries = 2;
 
 	message Entry {
 		required int64 timestamp = 1;
-		required string eventKey = 2;
+		required string event_key = 2;
 		optional string arg1 = 3;
 		optional string arg2 = 4;
 		optional string arg3 = 5;
@@ -107,7 +107,7 @@ message ClanInvitations {
 	repeated ClanInvitations.Invitation invitations = 1;
 
 	message Invitation {
-		required int64 clanId = 1;
+		required int64 clan_id = 1;
 		required uint64 recruiter = 2;
 		required int64 timestamp = 3;
 	}
@@ -121,29 +121,29 @@ enum AppEntityType {
 
 message AppRequest {
 	required uint32 seq = 1;
-	required uint64 playerId = 2;
-	required int32 playerToken = 3;
-	optional uint32 entityId = 4;
-	optional AppEmpty getInfo = 8;
-	optional AppEmpty getTime = 9;
-	optional AppEmpty getMap = 10;
-	optional AppEmpty getTeamInfo = 11;
-	optional AppEmpty getTeamChat = 12;
-	optional AppSendMessage sendTeamMessage = 13;
-	optional AppEmpty getEntityInfo = 14;
-	optional AppSetEntityValue setEntityValue = 15;
-	optional AppEmpty checkSubscription = 16;
-	optional AppFlag setSubscription = 17;
-	optional AppEmpty getMapMarkers = 18;
-	optional AppPromoteToLeader promoteToLeader = 20;
-	optional AppEmpty getClanInfo = 21;
-	optional AppSendMessage setClanMotd = 22;
-	optional AppEmpty getClanChat = 23;
-	optional AppSendMessage sendClanMessage = 24;
-	optional AppGetNexusAuth getNexusAuth = 25;
-	optional AppCameraSubscribe cameraSubscribe = 30;
-	optional AppEmpty cameraUnsubscribe = 31;
-	optional AppCameraInput cameraInput = 32;
+	required uint64 player_id = 2;
+	required int32 player_token = 3;
+	optional uint32 entity_id = 4;
+	optional AppEmpty get_info = 8;
+	optional AppEmpty get_time = 9;
+	optional AppEmpty get_map = 10;
+	optional AppEmpty get_team_info = 11;
+	optional AppEmpty get_team_chat = 12;
+	optional AppSendMessage send_team_message = 13;
+	optional AppEmpty get_entity_info = 14;
+	optional AppSetEntityValue set_entity_value = 15;
+	optional AppEmpty check_subscription = 16;
+	optional AppFlag set_subscription = 17;
+	optional AppEmpty get_map_markers = 18;
+	optional AppPromoteToLeader promote_to_leader = 20;
+	optional AppEmpty get_clan_info = 21;
+	optional AppSendMessage set_clan_motd = 22;
+	optional AppEmpty get_clan_chat = 23;
+	optional AppSendMessage send_clan_message = 24;
+	optional AppGetNexusAuth get_nexus_auth = 25;
+	optional AppCameraSubscribe camera_subscribe = 30;
+	optional AppEmpty camera_unsubscribe = 31;
+	optional AppCameraInput camera_input = 32;
 }
 
 message AppMessage {
@@ -158,24 +158,24 @@ message AppResponse {
 	optional AppInfo info = 6;
 	optional AppTime time = 7;
 	optional AppMap map = 8;
-	optional AppTeamInfo teamInfo = 9;
-	optional AppTeamChat teamChat = 10;
-	optional AppEntityInfo entityInfo = 11;
+	optional AppTeamInfo team_info = 9;
+	optional AppTeamChat team_chat = 10;
+	optional AppEntityInfo entity_info = 11;
 	optional AppFlag flag = 12;
-	optional AppMapMarkers mapMarkers = 13;
-	optional AppClanInfo clanInfo = 15;
-	optional AppClanChat clanChat = 16;
-	optional AppNexusAuth nexusAuth = 17;
-	optional AppCameraInfo cameraSubscribeInfo = 20;
+	optional AppMapMarkers map_markers = 13;
+	optional AppClanInfo clan_info = 15;
+	optional AppClanChat clan_chat = 16;
+	optional AppNexusAuth nexus_auth = 17;
+	optional AppCameraInfo camera_subscribe_info = 20;
 }
 
 message AppBroadcast {
-	optional AppTeamChanged teamChanged = 4;
-	optional AppNewTeamMessage teamMessage = 5;
-	optional AppEntityChanged entityChanged = 6;
-	optional AppClanChanged clanChanged = 7;
-	optional AppNewClanMessage clanMessage = 8;
-	optional AppCameraRays cameraRays = 10;
+	optional AppTeamChanged team_changed = 4;
+	optional AppNewTeamMessage team_message = 5;
+	optional AppEntityChanged entity_changed = 6;
+	optional AppClanChanged clan_changed = 7;
+	optional AppNewClanMessage clan_message = 8;
+	optional AppCameraRays camera_rays = 10;
 }
 
 message AppEmpty {
@@ -190,11 +190,11 @@ message AppSetEntityValue {
 }
 
 message AppPromoteToLeader {
-	required uint64 steamId = 1;
+	required uint64 steam_id = 1;
 }
 
 message AppGetNexusAuth {
-	required string appKey = 1;
+	required string app_key = 1;
 }
 
 message AppSuccess {
@@ -210,25 +210,25 @@ message AppFlag {
 
 message AppInfo {
 	required string name = 1;
-	required string headerImage = 2;
+	required string header_image = 2;
 	required string url = 3;
 	required string map = 4;
-	required uint32 mapSize = 5;
-	required uint32 wipeTime = 6;
+	required uint32 map_size = 5;
+	required uint32 wipe_time = 6;
 	required uint32 players = 7;
-	required uint32 maxPlayers = 8;
-	required uint32 queuedPlayers = 9;
+	required uint32 max_players = 8;
+	required uint32 queued_players = 9;
 	optional uint32 seed = 10;
 	optional uint32 salt = 11;
-	optional string logoImage = 12;
+	optional string logo_image = 12;
 	optional string nexus = 13;
-	optional int32 nexusId = 14;
-	optional string nexusZone = 15;
+	optional int32 nexus_id = 14;
+	optional string nexus_zone = 15;
 }
 
 message AppTime {
-	required float dayLengthMinutes = 1;
-	required float timeScale = 2;
+	required float day_length_minutes = 1;
+	required float time_scale = 2;
 	required float sunrise = 3;
 	required float sunset = 4;
 	required float time = 5;
@@ -237,8 +237,8 @@ message AppTime {
 message AppMap {
 	required uint32 width = 1;
 	required uint32 height = 2;
-	required bytes jpgImage = 3;
-	required int32 oceanMargin = 4;
+	required bytes jpg_image = 3;
+	required int32 ocean_margin = 4;
 	repeated AppMap.Monument monuments = 5;
 	optional string background = 6;
 
@@ -258,31 +258,31 @@ message AppEntityPayload {
 	optional bool value = 1;
 	repeated AppEntityPayload.Item items = 2;
 	optional int32 capacity = 3;
-	optional bool hasProtection = 4;
-	optional uint32 protectionExpiry = 5;
+	optional bool has_protection = 4;
+	optional uint32 protection_expiry = 5;
 
 	message Item {
-		required int32 itemId = 1;
+		required int32 item_id = 1;
 		required int32 quantity = 2;
-		required bool itemIsBlueprint = 3;
+		required bool item_is_blueprint = 3;
 	}
 }
 
 message AppTeamInfo {
-	required uint64 leaderSteamId = 1;
+	required uint64 leader_steam_id = 1;
 	repeated AppTeamInfo.Member members = 2;
-	repeated AppTeamInfo.Note mapNotes = 3;
-	repeated AppTeamInfo.Note leaderMapNotes = 4;
+	repeated AppTeamInfo.Note map_notes = 3;
+	repeated AppTeamInfo.Note leader_map_notes = 4;
 
 	message Member {
-		required uint64 steamId = 1;
+		required uint64 steam_id = 1;
 		required string name = 2;
 		required float x = 3;
 		required float y = 4;
-		required bool isOnline = 5;
-		required uint32 spawnTime = 6;
-		required bool isAlive = 7;
-		required uint32 deathTime = 8;
+		required bool is_online = 5;
+		required uint32 spawn_time = 6;
+		required bool is_alive = 7;
+		required uint32 death_time = 8;
 	}
 
 	message Note {
@@ -320,7 +320,7 @@ enum IconColor {
 }
 
 message AppTeamMessage {
-	required uint64 steamId = 1;
+	required uint64 steam_id = 1;
 	required string name = 2;
 	required string message = 3;
 	required string color = 4;
@@ -336,26 +336,26 @@ message AppMarker {
 	required AppMarkerType type = 2;
 	required float x = 3;
 	required float y = 4;
-	optional uint64 steamId = 5;
+	optional uint64 steam_id = 5;
 	optional float rotation = 6;
 	optional float radius = 7;
 	optional Vector4 color1 = 8;
 	optional Vector4 color2 = 9;
 	optional float alpha = 10;
 	optional string name = 11;
-	optional bool outOfStock = 12;
-	repeated AppMarker.SellOrder sellOrders = 13;
+	optional bool out_of_stock = 12;
+	repeated AppMarker.SellOrder sell_orders = 13;
 
 	message SellOrder {
-		required int32 itemId = 1;
+		required int32 item_id = 1;
 		required int32 quantity = 2;
-		required int32 currencyId = 3;
-		required int32 costPerItem = 4;
-		required int32 amountInStock = 5;
-		required bool itemIsBlueprint = 6;
-		required bool currencyIsBlueprint = 7;
-		optional float itemCondition = 8;
-		optional float itemConditionMax = 9;
+		required int32 currency_id = 3;
+		required int32 cost_per_item = 4;
+		required int32 amount_in_stock = 5;
+		required bool item_is_blueprint = 6;
+		required bool currency_is_blueprint = 7;
+		optional float item_condition = 8;
+		optional float item_condition_max = 9;
 	}
 }
 
@@ -376,11 +376,11 @@ message AppMapMarkers {
 }
 
 message AppClanInfo {
-	optional ClanInfo clanInfo = 1;
+	optional ClanInfo clan_info = 1;
 }
 
 message AppClanMessage {
-	required uint64 steamId = 1;
+	required uint64 steam_id = 1;
 	required string name = 2;
 	required string message = 3;
 	required int64 time = 4;
@@ -391,13 +391,13 @@ message AppClanChat {
 }
 
 message AppNexusAuth {
-	required string serverId = 1;
-	required int32 playerToken = 2;
+	required string server_id = 1;
+	required int32 player_token = 2;
 }
 
 message AppTeamChanged {
-	required uint64 playerId = 1;
-	required AppTeamInfo teamInfo = 2;
+	required uint64 player_id = 1;
+	required AppTeamInfo team_info = 2;
 }
 
 message AppNewTeamMessage {
@@ -405,40 +405,40 @@ message AppNewTeamMessage {
 }
 
 message AppEntityChanged {
-	required uint32 entityId = 1;
+	required uint32 entity_id = 1;
 	required AppEntityPayload payload = 2;
 }
 
 message AppClanChanged {
-	optional ClanInfo clanInfo = 1;
+	optional ClanInfo clan_info = 1;
 }
 
 message AppNewClanMessage {
-	required int64 clanId = 1;
+	required int64 clan_id = 1;
 	required AppClanMessage message = 2;
 }
 
 message AppCameraSubscribe {
-	required string cameraId = 1;
+	required string camera_id = 1;
 }
 
 message AppCameraInput {
 	required int32 buttons = 1;
-	required Vector2 mouseDelta = 2;
+	required Vector2 mouse_delta = 2;
 }
 
 message AppCameraInfo {
 	required int32 width = 1;
 	required int32 height = 2;
-	required float nearPlane = 3;
-	required float farPlane = 4;
-	required int32 controlFlags = 5;
+	required float near_plane = 3;
+	required float far_plane = 4;
+	required int32 control_flags = 5;
 }
 
 message AppCameraRays {
-	required float verticalFov = 1;
-	required int32 sampleOffset = 2;
-	required bytes rayData = 3;
+	required float vertical_fov = 1;
+	required int32 sample_offset = 2;
+	required bytes ray_data = 3;
 	required float distance = 4;
 	repeated AppCameraRays.Entity entities = 5;
 
@@ -448,7 +448,7 @@ message AppCameraRays {
 	}
 
 	message Entity {
-		required uint32 entityId = 1;
+		required uint32 entity_id = 1;
 		required EntityType type = 2;
 		required Vector3 position = 3;
 		required Vector3 rotation = 4;

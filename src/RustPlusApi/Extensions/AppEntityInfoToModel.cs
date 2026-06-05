@@ -45,7 +45,7 @@ public static class AppEntityInfoToModel
         };
     }
 
-    public static StorageMonitorItemInfo ToStorageMonitorItemInfo(this AppEntityPayload.Types.Item item)
+    public static StorageMonitorItemInfo ToStorageMonitorItemInfo(this AppEntityPayload.Item item)
     {
         return new StorageMonitorItemInfo
         {
@@ -55,7 +55,7 @@ public static class AppEntityInfoToModel
         };
     }
 
-    public static IEnumerable<StorageMonitorItemInfo> ToStorageMonitorItemsInfo(this IEnumerable<AppEntityPayload.Types.Item> items)
+    public static IEnumerable<StorageMonitorItemInfo> ToStorageMonitorItemsInfo(this IEnumerable<AppEntityPayload.Item> items)
     {
         return items.Select(ToStorageMonitorItemInfo);
     }

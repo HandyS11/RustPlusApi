@@ -4,7 +4,7 @@ using RustPlusApi.Data;
 
 using RustPlusContracts;
 
-using static RustPlusContracts.AppMap.Types;
+using static RustPlusContracts.AppMap;
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;
@@ -20,7 +20,7 @@ public static class AppMapToModel
             OceanMargin = appMap.OceanMargin,
             Background = ColorTranslator.FromHtml(appMap.Background),
             Monuments = appMap.Monuments.ToServerMapMonuments().ToList(),
-            JpgImage = appMap.JpgImage.ToByteArray()
+            JpgImage = appMap.JpgImage
         };
     }
 

@@ -3,7 +3,6 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Google.Protobuf" Version="3.35.0" />
     <PackageVersion Include="protobuf-net" Version="3.2.56" />
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.27.0.140913" />
     <!-- Test stack (v2 §9) -->
