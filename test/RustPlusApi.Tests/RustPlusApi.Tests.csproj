@@ -22,6 +22,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\RustPlusApi\RustPlusApi.csproj" />
         <ProjectReference Include="..\..\src\RustPlusApi.Fcm\RustPlusApi.Fcm.csproj" />
+        <ProjectReference Include="..\..\src\RustPlusApi.Fcm.Registration\RustPlusApi.Fcm.Registration.csproj" />
         <ProjectReference Include="..\..\src\RustPlusApi.Camera\RustPlusApi.Camera.csproj" />
         <ProjectReference Include="..\RustPlusApi.MockServer\RustPlusApi.MockServer.csproj" />
     </ItemGroup>

@@ -19,7 +19,7 @@ Last updated: 2026-06-05
 | 3 | Code-first protos | ☑ |
 | 4 | Multi-target `netstandard2.0;net10.0` | ☑ |
 | 5 | Camera system (protocol + optional rendering) | ☑ |
-| 6 | Native credential acquisition | ☐ |
+| 6 | Native credential acquisition | ☑ |
 | 7 | JSON cleanup | ☐ |
 | 8 | Docs & release (`2.0.0`) | ☐ |
 | ✶ | Proto-refresh tooling (`tools/update-proto/`) | ☐ |
@@ -140,16 +140,17 @@ Last updated: 2026-06-05
 
 **Done when:** `RustPlus.Register.ConsoleApp` takes a user from zero → `rustplus.config.json` → a live `RustPlus` connection, once, by hand.
 
-- [ ] New package `RustPlusApi.Fcm.Registration`
-- [ ] Step 1–3: GCM check-in, FIS, FCM register (mirror current `@liamcottle/push-receiver`)
-- [ ] Step 4: Expo push token
-- [ ] Step 5: Steam OpenID login via local `HttpListener` + browser
-- [ ] Step 6: register device with Rust Companion
-- [ ] Step 7: persist `Credentials` via `System.Text.Json`
-- [ ] Convenience `PairingListener` (event surface modeled on rustplus-desktop `IPairingListener`)
-- [ ] `samples/RustPlus.Register.ConsoleApp`
-- [ ] Opt-in registration "canary" integration test (separate from default CI gate)
-- [ ] Centralize Firebase/Expo constants in one `RustPlusConstants` file
+- [x] New package `RustPlusApi.Fcm.Registration` (ns2.0;net10, `2.0.0`)
+- [x] Step 1–3: GCM check-in (code-first checkin protobuf), FIS, FCM register (`AndroidFcmRegister`, ported from `@liamcottle/push-receiver`)
+- [x] Step 4: Expo push token (`ExpoPushClient`)
+- [x] Step 5: Steam login (`SteamLoginService`) — launches Chrome/Chromium with the **DevTools protocol** and injects the `ReactNativeWebView.postMessage` shim via `Page.addScriptToEvaluateOnNewDocument` (Puppeteer's mechanism). Popup/opener injection and `--load-extension` are both blocked on modern Chrome (137+); CDP injection runs in the page's own context and **is validated working on real Chrome 149** by an opt-in canary. Native + Flatpak auto-detected; `CHROME_PATH` override
+- [x] Step 6: register device with Rust Companion (`RustCompanionClient`)
+- [x] Step 7: persist `Credentials` via `System.Text.Json` (`CredentialsStore`); `Credentials` extended (in `.Fcm`) with `Fcm`/`ExpoPushToken`
+- [x] Convenience `PairingListener` — `Listening`/`Paired`/`Stopped`/`Failed` (modeled on rustplus-desktop's `IPairingListener`), `WaitForServerPairingAsync` → `ServerPairing`
+- [x] `samples/RustPlus.Register.ConsoleApp` — orchestrates the full flow + writes `rustplus.config.json` + prints the `RustPlus(...)` args
+- [x] Opt-in registration "canary" tests (`Canary/`, `[Fact(Skip)]` — not in the default gate; check-in canary validates the protobuf against the real Google endpoint when run manually)
+- [x] Centralized Firebase/Expo constants in `RegistrationConstants` (read from rustplus.js, with the drift warning §15.3 mandates)
+- [◐] **Live validation status:** steps 1–4 (check-in → Firebase → FCM → Expo) **verified against the real Google/Expo endpoints** by running the canary (returned valid androidId/securityToken/FCM/Expo tokens) — the fragile protobuf + constants are correct. Steps 5–8 (Chrome Steam login → Companion register → in-game pairing) are interactive and still need a manual run to confirm. Deterministic parts also unit-tested (checkin round-trip, FID, persistence, pairing mapping → 6 tests)
 
 ---
 
