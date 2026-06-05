@@ -33,31 +33,31 @@ Last updated: 2026-06-05
 
 ### CI/CD & analyzers
 
-- [x] Bump `actions/setup-dotnet` to `10.0.x` in `CI.yml` and `CD.yml`
-- [ ] Add a `dotnet test` step to CI (CI.yml already has one; needs a test project to run against)
+- [x] Bump `actions/setup-dotnet` to `10.0.x` in `CI.yml` and `CD.yml` (also added it to `Sonar.yml`, which had no SDK step)
+- [x] Add a `dotnet test` step to CI — CI.yml's existing step now runs against the new test project
 - [x] Enable `EnableNETAnalyzers` + `AnalysisLevel=latest-Recommended` in `Directory.Build.props`
 - [x] Add `SonarAnalyzer.CSharp` package (PrivateAssets=all) — referenced from both libraries
-- [ ] Curated `WarningsAsErrors` (e.g. CA2213, CA2007, S2931, S3881, S2221) — **deferred until reliability bugs fixed** (would break build now)
+- [◐] Curated `WarningsAsErrors` promoted: `S2930;S2931;S3881;S112;CA2201;CA2213` (dispose pattern + exception hygiene). `CA2007` left out until §10 item-9 (ConfigureAwait) lands; `S2221` left out (would block top-level catch handlers)
 - [◐] Add `pull_request` trigger to `Sonar.yml` (done); make the Quality Gate a required check (GitHub branch-protection setting, not in-repo)
-- [ ] Wire coverage (`dotnet test --collect:"XPlat Code Coverage"` → `sonar.cs.opencover.reportsPaths`) — needs the test project
+- [x] Wire coverage — `Sonar.yml` now runs `dotnet test --collect:"XPlat Code Coverage;Format=opencover"` → `sonar.cs.opencover.reportsPaths` (verified the opencover file is produced locally)
 
 ### Mock server & test project (§9)
 
-- [ ] `test/RustPlusApi.MockServer` — WebSocket server speaking the real wire protocol
-- [ ] Scripted scenarios / canned `AppMessage` responses
-- [ ] Broadcast injection (smart switch, team chat, clan chat, camera streams)
-- [ ] Optional mock FCM data-message emitter
-- [ ] `test/RustPlusApi.Tests` (xUnit) — protobuf round-trip + MCS framing + mapper units
-- [ ] Integration test: real `RustPlus` client against `ws://localhost`
+- [x] `test/RustPlusApi.MockServer` — `HttpListener`/WebSocket server speaking the real wire protocol; shares the contract assembly so request/response stay in lockstep
+- [x] Scripted scenarios / canned `AppMessage` responses (`MockResponses`: info/time/map/entity/error builders + custom responder hook)
+- [◐] Broadcast injection — `BroadcastAsync` + team-chat & smart-switch builders done; clan/camera builders come with Phases 1/5
+- [ ] Optional mock FCM data-message emitter — not done (explicitly optional)
+- [x] `test/RustPlusApi.Tests` (xUnit) — MCS varint framing + `Extensions/*` mapper units (14 tests green)
+- [x] Integration test: real `RustPlus` client against `ws://localhost` — GetInfo/GetTime, error path, and a team-chat broadcast event
 
 ### Reliability hardening (§10 items 1–5, 8)
 
-- [ ] 1 — Implement real `Dispose()` (socket, `SslStream`, `TcpClient`, `ClientWebSocket`, CTS) in both sockets
-- [ ] 2 — Remove fire-and-forget async in `RustPlusSocket.DisconnectAsync`
-- [ ] 3 — Replace library `Console.WriteLine` with event/log in `RustPlusFcmSocket.OnDataMessage`
-- [ ] 4 — Stop throwing base `Exception` in `RustPlusFcmSocket.ReceiveMessages`
-- [ ] 5 — Don't throw on unknown tag in `RustPlusFcmSocket.OnMessage` (degrade instead)
-- [ ] 8 — Fix `EncodeVarInt32(0)` returning an empty array (`Fcm/Utils/Utils.cs`)
+- [x] 1 — Implement real `Dispose()` (socket, `SslStream`, `TcpClient`, `ClientWebSocket`, CTS) in both sockets — proper `Dispose(bool)` pattern
+- [x] 2 — Remove fire-and-forget async in `RustPlusSocket.DisconnectAsync` (awaited the delay + close directly)
+- [x] 3 — Replace library `Console.WriteLine` with `Debug.WriteLine` in `RustPlusFcmSocket.OnDataMessage`
+- [x] 4 — Stop throwing base `Exception` in `RustPlusFcmSocket.ReceiveMessages` (→ `InvalidOperationException`; dropped the `CA2201` pragma)
+- [x] 5 — Don't throw on unknown tag in `RustPlusFcmSocket.OnMessage` (now logs + degrades)
+- [x] 8 — Fix `EncodeVarInt32(0)` returning an empty array (`while` → `do/while`)
 
 ---
 

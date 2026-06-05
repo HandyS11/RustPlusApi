@@ -145,17 +145,37 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// <summary>
     /// Releases resources used by the <see cref="RustPlusFcmSocket"/>.
     /// </summary>
-    public void Dispose() => SuppressFinalize(this);
+    public void Dispose()
+    {
+        Dispose(true);
+        SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases the resources used by the <see cref="RustPlusFcmSocket"/>.
+    /// </summary>
+    /// <param name="disposing">
+    /// <see langword="true"/> to release both managed and unmanaged resources;
+    /// <see langword="false"/> to release only unmanaged resources.
+    /// </param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing) return;
+
+        if (!_cancellationTokenSource.IsCancellationRequested)
+            _cancellationTokenSource.Cancel();
+
+        _sslStream?.Dispose();
+        _tcpClient?.Dispose();
+        _cancellationTokenSource.Dispose();
+    }
 
     /// <summary>
     /// Continuously receives and processes messages from the FCM server over the SSL stream.
     /// Validates the protocol version and login response, then enters a loop to handle incoming messages.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// Thrown if the protocol version is unsupported.
-    /// </exception>
-    /// <exception cref="Exception">
-    /// Thrown if the initial response is not a <see cref="LoginResponse"/>.
+    /// Thrown if the protocol version is unsupported, or if the initial response is not a <see cref="LoginResponse"/>.
     /// </exception>
     private void ReceiveMessages()
     {
@@ -172,9 +192,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         var type = BuildProtobufFromTag((McsProtoTag)tag);
 
         if (type != typeof(LoginResponse))
-#pragma warning disable CA2201
-            throw new Exception($"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
-#pragma warning restore CA2201
+            throw new InvalidOperationException($"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
 
         OnGotMessageBytes(payload, type);
 
@@ -293,11 +311,9 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
     /// <summary>
     /// Handles incoming protocol messages by dispatching them based on their tag.
+    /// Unrecognized tags are ignored so the receive loop keeps running.
     /// </summary>
     /// <param name="e">The <see cref="MessageEventArgs"/> containing the message tag and object.</param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown if the message tag is unrecognized.
-    /// </exception>
     private void OnMessage(MessageEventArgs e)
     {
         // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
@@ -319,7 +335,8 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
             case McsProtoTag.KIqStanzaTag:
                 break;  // To investigate further, if needed
             default:
-                throw new ArgumentOutOfRangeException($"Unrecognized tag: {e.Tag}");
+                Debug.WriteLine($"Ignoring unrecognized tag: {e.Tag}");
+                break;
         }
     }
 
@@ -340,7 +357,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
         if (dataMessage?.AppDatas is not { Count: > 0 })
         {
-            Console.WriteLine("⚠️ No AppData found in message");
+            Debug.WriteLine("⚠️ No AppData found in message");
             return;
         }
 
@@ -349,7 +366,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         if (!appDataDict.TryGetValue("channelId", out var channelId) ||
             !appDataDict.TryGetValue("body", out var body))
         {
-            Console.WriteLine("⚠️ Not a Rust+ notification - missing channelId or body");
+            Debug.WriteLine("⚠️ Not a Rust+ notification - missing channelId or body");
             return;
         }
 

@@ -179,25 +179,44 @@ public abstract class RustPlusSocket(
 
         Disconnecting?.Invoke(this, EventArgs.Empty);
 
-        // Not sure about that
         while (!_responseQueue.IsEmpty && !forceClose)
         {
             await Task.Delay(50, CancellationToken.None);
         }
 
-        // For some reason, I have to wait
-        await Task.Delay(1000, CancellationToken.None).ContinueWith(async _ =>
-        {
-            await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-        }, CancellationToken.None);
+        // Give the server a moment to flush any in-flight responses before closing.
+        await Task.Delay(1000, CancellationToken.None);
+        await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
 
         Disconnected?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
-    /// Disposes the Rust+ API client and disconnects from the Rust+ server.
+    /// Disposes the Rust+ API client, cancelling background work and releasing the underlying WebSocket.
     /// </summary>
-    public void Dispose() => SuppressFinalize(this);
+    public void Dispose()
+    {
+        Dispose(true);
+        SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases the resources used by the <see cref="RustPlusSocket"/>.
+    /// </summary>
+    /// <param name="disposing">
+    /// <see langword="true"/> to release both managed and unmanaged resources;
+    /// <see langword="false"/> to release only unmanaged resources.
+    /// </param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing) return;
+
+        if (!_cancellationTokenSource.IsCancellationRequested)
+            _cancellationTokenSource.Cancel();
+
+        _webSocket?.Dispose();
+        _cancellationTokenSource.Dispose();
+    }
 
     /// <summary>
     /// Determines whether the client is currently connected to the Rust+ socket.

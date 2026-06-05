@@ -6,11 +6,14 @@
 		<Nullable>enable</Nullable>
 	</PropertyGroup>
 
-	<!-- Code quality (v2 §10). Analyzers run as warnings for now; a curated
-	     WarningsAsErrors set is promoted once the Phase 0 reliability bugs are fixed. -->
+	<!-- Code quality (v2 §10). Analyzers run as warnings; a curated set of reliability
+	     rules (dispose pattern + exception hygiene) is promoted to errors so the Phase 0
+	     fixes can't silently regress. CA2007 (ConfigureAwait) is intentionally left out
+	     until the §10 item-9 pass lands. -->
 	<PropertyGroup>
 		<EnableNETAnalyzers>true</EnableNETAnalyzers>
 		<AnalysisLevel>latest-Recommended</AnalysisLevel>
+		<WarningsAsErrors>$(WarningsAsErrors);S2930;S2931;S3881;S112;CA2201;CA2213</WarningsAsErrors>
 	</PropertyGroup>
 
 </Project>

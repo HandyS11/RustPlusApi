@@ -8,13 +8,13 @@ public static class Utils
     public static byte[] EncodeVarInt32(int value)
     {
         List<byte> result = [];
-        while (value != 0)
+        do
         {
             var b = (byte)(value & 0x7F);
             value >>= 7;
             if (value != 0) b |= 0x80;
             result.Add(b);
-        }
+        } while (value != 0);
         return [.. result];
     }
 
