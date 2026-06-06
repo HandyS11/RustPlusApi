@@ -414,3 +414,8 @@ appsettings.*.json
 credentials.json
 rustplus.config.json
 config.json
+
+# DocFX generated output
+docs/_site/
+docs/api/
+docs/obj/

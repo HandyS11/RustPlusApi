@@ -1,19 +1,34 @@
 <Project>
+
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
+
   <ItemGroup>
+    <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
     <PackageVersion Include="protobuf-net" Version="3.2.56" />
     <PackageVersion Include="protobuf-net.BuildTools" Version="3.2.52" />
     <PackageVersion Include="System.Text.Json" Version="10.0.8" />
     <!-- ImageSharp 2.1.x is the last line supporting netstandard2.0 (3.x requires net6+). -->
     <PackageVersion Include="SixLabors.ImageSharp" Version="2.1.13" />
-    <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
+
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Analyzers -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.300"/>
+    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15"/>
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.27.0.140913" />
-    <!-- Test stack (v2 §9) -->
+    <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0"/>
+    <PackageVersion Include="Roslynator.Formatting.Analyzers" Version="4.15.0"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Test stack -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
   </ItemGroup>
+
 </Project>

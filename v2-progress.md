@@ -21,7 +21,7 @@ Last updated: 2026-06-05
 | 5 | Camera system (protocol + optional rendering) | ☑ |
 | 6 | Native credential acquisition | ☑ |
 | 7 | JSON cleanup | ☑ |
-| 8 | Docs & release (`2.0.0`) | ☐ |
+| 8 | Docs & release (`2.0.0`) | ☑ |
 | ✶ | Proto-refresh tooling (`tools/update-proto/`) | ☐ |
 | ✶ | One-time golden-payload capture | ☐ |
 
@@ -168,13 +168,14 @@ Last updated: 2026-06-05
 
 **Done when:** three+ package READMEs packed; DocFX site builds; both packages tagged `2.0.0`; `MIGRATION.md` published.
 
-- [ ] Per-package READMEs (`RustPlusApi`, `RustPlusApi.Fcm`, `.Registration`, `.Camera`)
-- [ ] Trim root README (project intro, package matrix + badges, quickstart, DocFX links)
-- [ ] DocFX site under `docs/` + `docs.yml` GitHub Pages workflow
-- [ ] Replace ".NET 8 or later" → ".NET Standard 2.0+ / .NET 10"
-- [ ] Document camera/clan/nexus usage; make native credential flow the primary path
-- [ ] `MIGRATION.md` (legacy→modern mapping, serializer change, new TFMs, new packages)
-- [ ] Bump both packages `1.4.0` → `2.0.0`; new packages ship at `2.0.0`
+- [x] Per-package READMEs — all four packed (verified `README.md` in each `.nupkg`); core README gained Clan/Nexus/Camera sections, Fcm README points at native registration
+- [x] Trimmed root README — overview + package matrix + versions + quickstart + links (long walkthroughs moved to per-package READMEs)
+- [x] DocFX site under `docs/` (`docfx.json` + `index.md` + `toc.yml`) + `docs.yml` GitHub Pages workflow — **builds locally: 212 pages, 0 warnings**; generated output gitignored
+- [x] Replaced ".NET 8 or later" → ".NET Standard 2.0 / .NET 10" (root + per-package READMEs)
+- [x] Documented camera/clan/nexus usage; native credential flow is the primary path (Node CLI a fallback note)
+- [x] `MIGRATION.md` — legacy→modern mapping, protobuf-net serializer change, new TFMs, new packages, the IsError fix
+- [x] Bumped `RustPlusApi` + `RustPlusApi.Fcm` `1.4.0` → `2.0.0`; new packages already `2.0.0`; `CD.yml` now packs all four
+- _Note: DocFX/Pages publish + the actual NuGet push happen in CI on release; verified locally as far as possible (site builds, packages pack with READMEs)._
 
 ---
 

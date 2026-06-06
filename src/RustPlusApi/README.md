@@ -1,117 +1,40 @@
 # RustPlusApi
 
-This is a C# client for the Rust+ API. It allows you to interact with the Rust+ server.
+The core [Rust+](https://rust.facepunch.com/companion) companion client. Connect to a server and
+use a typed `Response<T>` API for server info, time, map and markers, team & **clan** chat,
+**nexus** auth, entities (smart switch / alarm / storage monitor) and the **camera** protocol.
 
-The library exposes the `RustPlus` client to interact with the Rust+ API. Every request
-returns a typed response based on the `./Data/Response.cs` object.
+Targets **.NET Standard 2.0** and **.NET 10**.
 
-## RustPlus
+## Install
 
-First, instantiate the `RustPlus` class with the necessary parameters:
-
-```csharp
-var rustPlusApi = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy);
+```bash
+dotnet add package RustPlusApi
 ```
 
-Parameters:
-
-- `server`: The IP address of the Rust+ server.
-- `port`: The port dedicated for the Rust+ companion app (not the one used to connect in-game).
-- `playerId`: Your Steam ID.
-- `playerToken`: Your player token acquired with FCM.
-- `useFacepunchProxy`: Specifies whether to use the Facepunch proxy. Default is false.
-
-Then, connect to the Rust+ server:
+## Usage
 
 ```csharp
-await rustPlusApi.ConnectAsync();
+using RustPlusApi;
+
+using var rustPlus = new RustPlus(server, port, playerId, playerToken);
+await rustPlus.ConnectAsync();
+
+var info = await rustPlus.GetInfoAsync();          // Response<ServerInfo?>
+if (info.IsSuccess)
+    Console.WriteLine($"{info.Data!.Name} — {info.Data.PlayerCount} players");
+
+rustPlus.OnSmartSwitchTriggered += (_, e) => { /* react to a smart switch */ };
 ```
 
----
+Every request returns a `Response<T>` (`IsSuccess` / `Error` / `Data`). Need credentials? Use the
+[`RustPlusApi.Fcm.Registration`](https://www.nuget.org/packages/RustPlusApi.Fcm.Registration)
+package.
 
-You can subscribe to the socket lifecycle events to handle specific actions:
+## Documentation
 
-```csharp
-rustPlusApi.Connecting += (sender, _) => { /* handle connecting event */ };
-rustPlusApi.Connected += (sender, _) => { /* handle connected event */ };
-
-rustPlusApi.MessageReceived += (sender, message) => { /* handle every message receive from the socket */ };
-rustPlusApi.NotificationReceived += (sender, message) => { /* handle every notification (no direct request) from the socket */ };
-rustPlusApi.ResponseReceived += (sender, message) => { /* handle every response (answer to a request) from the socket */ };
-
-rustPlusApi.Disconnecting += (sender, _) => { /* handle disconnecting event */ };
-rustPlusApi.Disconnected += (sender, _) => { /* handle disconnected event */ };
-
-rustPlusApi.ErrorOccurred += (sender, ex) => { /* handle error event */ };
-```
-
----
-
-Every request returns a typed response that is a direct representation of the `./Data/Response.cs` object.
-
-```csharp
-public class Response<T>
-{
-    public bool IsSuccess { get; set; }
-    public Error? Error { get; set; }
-    public T? Data { get; set; }
-}
-
-public class Error
-{
-    public string? Message { get; set; }
-}
-```
-
-For example, to get the entity info:
-
-```csharp
-uint smartSwitchId = 123456789;
-var response = await rustPlus.GetSmartSwitchInfoAsync(smartSwitchId);
-```
-
-Response will be a `Response<SmartSwitchInfo>` object.
-
-```csharp
-public class SmartSwitchInfo
-{
-    public bool IsActive { get; set; }
-}
-```
-
----
-
-You can also subscribe to more events to handle specific actions:
-
-```csharp
-rustPlusApi.OnSmartSwitchTriggered += (sender, smartSwitch) => { /* handle smart switch triggered event */ };
-rustPlusApi.OnStorageMonitorTriggered += (sender, storageMonitor) => { /* handle storage monitor triggered event */ };
-
-rustPlusApi.OnTeamChatReceived += (sender, message) => { /* handle team chat received event */ };
-rustPlusApi.OnClanChatReceived += (sender, message) => { /* handle clan chat received event */ };
-rustPlusApi.OnClanChanged += (sender, clan) => { /* handle clan changed event */ };
-```
-
-To be able to receive these events, you need to previously make a request on the given entity or chat.
-
-For example, to receive the smart switch triggered event, you need to make a request on the smart switch entity:
-
-```csharp
-rustPlus.OnSmartSwitchTriggered += (_, message) =>
-{
-    // ...
-};
-
-const uint entityId = 123456789;
-var message = await rustPlus.GetSmartSwitchInfoAsync(entityId);
-```
-
-Each time the smart switch is triggered, the event will be fired.
-
----
-
-Remember to dispose the `RustPlus` instance when you're done:
-
-```csharp
-rustPlusApi.DisconnectAsync(); 
-```
+- [RustPlus client guide](https://handys11.github.io/RustPlusApi/articles/rustplus-client.html)
+- [Clan & Nexus](https://handys11.github.io/RustPlusApi/articles/clan-and-nexus.html) ·
+  [Cameras](https://handys11.github.io/RustPlusApi/articles/cameras.html)
+- [API reference](https://handys11.github.io/RustPlusApi/) ·
+  [source & samples](https://github.com/HandyS11/RustPlusApi)

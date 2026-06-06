@@ -2,22 +2,14 @@ name: Continuous Integration
 
 permissions:
     contents: read
-    
+
 on:
   push:
-    branches:
-      - "develop"
-      - "feature/*"
-      - "fix/*"
-      - "refacto/*"
-      - "refactor/*"
+    branches-ignore:
+      - "main"
   pull_request:
-    branches:
-      - "develop"
-      - "feature/*"
-      - "fix/*"
-      - "refacto/*"
-      - "refactor/*"
+    branches-ignore:
+      - "main"
 
 jobs:
   build-and-deploy:

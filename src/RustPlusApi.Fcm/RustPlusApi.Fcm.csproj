@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
+        <TargetFrameworks>netstandard2.0; net10.0</TargetFrameworks>
         <PackageId>RustPlusApi.Fcm</PackageId>
-        <Version>1.4.0</Version>
+        <IsPackable>true</IsPackable>
         <Authors>HandyS11</Authors>
         <Owners>HandyS11</Owners>
         <Product>A Rust+ API websocket.</Product>
@@ -15,11 +15,13 @@
         <RepositoryUrl>https://github.com/HandyS11/RustPlusApi</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="protobuf-net" />
-        <PackageReference Include="SonarAnalyzer.CSharp" PrivateAssets="all" />
     </ItemGroup>
 
     <!-- netstandard2.0 BCL gap: System.Text.Json (in-box on net10) (v2 §1). -->
@@ -29,6 +31,7 @@
 
     <ItemGroup>
         <None Include="README.md" Pack="true" PackagePath="\" />
+        <None Include="../../icon.png" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
 </Project>

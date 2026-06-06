@@ -1,20 +1,34 @@
 name: Continuous Deployment
 
 permissions:
-    contents: read
-    
+    contents: write
+    packages: write
+
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
 
-jobs:  
+jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Verify Tag is on main
+      run: |
+        git fetch origin main
+        if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+          echo "::error::Tag $GITHUB_REF_NAME does not point to a commit on main."
+          exit 1
+        fi
+
+    - name: Resolve Version from Tag
+      run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -22,15 +36,32 @@ jobs:
         dotnet-version: 10.0.x
 
     - name: Pack NuGet Package RustPlusApi
-      run: cd ./src/RustPlusApi/ && dotnet pack --configuration Release
+      run: cd ./src/RustPlusApi/ && dotnet pack --configuration Release -p:Version=$VERSION
 
     - name: Pack NuGet Package RustPlusApi.Fcm
-      run: cd ./src/RustPlusApi.Fcm/ && dotnet pack --configuration Release
+      run: cd ./src/RustPlusApi.Fcm/ && dotnet pack --configuration Release -p:Version=$VERSION
+
+    - name: Pack NuGet Package RustPlusApi.Fcm.Registration
+      run: cd ./src/RustPlusApi.Fcm.Registration/ && dotnet pack --configuration Release -p:Version=$VERSION
+
+    - name: Pack NuGet Package RustPlusApi.Camera
+      run: cd ./src/RustPlusApi.Camera/ && dotnet pack --configuration Release -p:Version=$VERSION
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
       with:
         path: ./**/*.nupkg
 
-    - name: Publish NuGet Package
-      run: dotnet nuget push ./**/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+    - name: Publish NuGet Package to NuGet.org
+      run: dotnet nuget push ./**/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+    - name: Publish NuGet Package to GitHub Packages
+      run: dotnet nuget push ./**/*.nupkg --api-key ${{ secrets.GITHUB_TOKEN }} --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json --skip-duplicate
+
+    - name: Create GitHub Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
+      run: |
+        shopt -s globstar
+        gh release create "$GITHUB_REF_NAME" ./**/*.nupkg ./**/*.snupkg --generate-notes

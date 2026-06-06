@@ -1,33 +1,42 @@
 # RustPlusApi.Camera
 
-Renders Rust+ camera frames into images. It is a **separate package** so the core
-`RustPlusApi` stays image-free — only take this dependency if you need rendered frames.
+Renders Rust+ camera frames (`AppCameraRays`) into images. A **separate package** so the core
+[`RustPlusApi`](https://www.nuget.org/packages/RustPlusApi) stays image-free — take this dependency
+only if you need rendered frames. Depends on
+[SixLabors.ImageSharp](https://github.com/SixLabors/ImageSharp) (the 2.1.x line, which supports
+`netstandard2.0`).
 
-It depends on [SixLabors.ImageSharp](https://github.com/SixLabors/ImageSharp) (the 2.1.x
-line, which supports `netstandard2.0`).
+Targets **.NET Standard 2.0** and **.NET 10**.
+
+## Install
+
+```bash
+dotnet add package RustPlusApi.Camera
+```
 
 ## Usage
 
 ```csharp
-// 1. Subscribe with the core client and keep the returned CameraInfo (width/height).
-var info = (await rustPlus.SubscribeToCameraAsync("CAM01")).Data!;
+using RustPlusApi.Camera;
 
-// 2. Create a renderer sized from the camera.
+var info = (await rustPlus.SubscribeToCameraAsync("CAM01")).Data!;
 var renderer = new CameraRenderer(info.Width, info.Height);
 
-// 3. Feed each frame, then render whenever you want the current image.
 rustPlus.OnCameraRaysReceived += (_, frame) =>
 {
     renderer.AddRays(frame);
-    byte[] png = renderer.Render();
-    // save / display the PNG bytes
+    byte[] png = renderer.Render();   // save / display
 };
 ```
 
-Frames accumulate: each `AddRays` fills in more of the image, so it sharpens over
-successive frames.
+Frames accumulate — each `AddRays` fills in more samples, so the image sharpens over time.
 
-> **Experimental.** The ray-decode, sample shuffle and colouring are ported faithfully from
-> [liamcottle/rustplus.js](https://github.com/liamcottle/rustplus.js) but have **not yet been
-> validated against a real captured frame** (pending the v2 golden-payload capture). Treat
-> image fidelity as experimental until that validation lands.
+> **Experimental.** The ray decode, sample shuffle and colouring are ported faithfully from
+> rustplus.js but have not yet been validated against a captured real frame. Treat image fidelity
+> as experimental until that validation lands.
+
+## Documentation
+
+- [Cameras guide](https://handys11.github.io/RustPlusApi/articles/cameras.html)
+- [API reference](https://handys11.github.io/RustPlusApi/) ·
+  [source & samples](https://github.com/HandyS11/RustPlusApi)
