@@ -1,12 +1,11 @@
 using System.Diagnostics;
 using System.Net;
-using System.Net.Http;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
-namespace RustPlusApi.Fcm.Registration;
+namespace RustPlusApi.Fcm.Registration.Steps;
 
 /// <summary>
 /// Step 5 — interactive Steam login. Launches Chrome/Chromium with the DevTools protocol enabled,
@@ -23,15 +22,8 @@ namespace RustPlusApi.Fcm.Registration;
 /// is required</b> (native or Flatpak are auto-detected; <c>CHROME_PATH</c> overrides discovery).
 /// This step is interactive and only validatable by a real run.
 /// </remarks>
-public sealed class SteamLoginService
+public sealed class SteamLoginService(int port = 3000)
 {
-    private readonly int _port;
-
-    public SteamLoginService(int port = 3000)
-    {
-        _port = port;
-    }
-
     public Task<string> LoginAsync(CancellationToken cancellationToken = default) =>
         LoginAsync(RegistrationConstants.SteamLoginUrl, cancellationToken);
 
@@ -39,7 +31,7 @@ public sealed class SteamLoginService
     internal async Task<string> LoginAsync(string startUrl, CancellationToken cancellationToken = default)
     {
         using var listener = new HttpListener();
-        listener.Prefixes.Add($"http://localhost:{_port}/");
+        listener.Prefixes.Add($"http://localhost:{port}/");
         listener.Start();
 
         var workDir = Path.Combine(Path.GetTempPath(), "rustplusapi-" + Guid.NewGuid().ToString("N"));
@@ -86,7 +78,7 @@ public sealed class SteamLoginService
 
         var shim =
             "window.ReactNativeWebView = { postMessage: function (m) { try { var a = JSON.parse(m); " +
-            $"if (a && a.Token) {{ window.location.href = 'http://localhost:{_port}/callback?token=' + encodeURIComponent(a.Token); }} }} catch (e) {{}} }} }};";
+            $"if (a && a.Token) {{ window.location.href = 'http://localhost:{port}/callback?token=' + encodeURIComponent(a.Token); }} }} catch (e) {{}} }} }};";
 
         await SendAsync(socket, 1, "Page.enable", new { }, cancellationToken).ConfigureAwait(false);
         await SendAsync(socket, 2, "Page.addScriptToEvaluateOnNewDocument", new { source = shim }, cancellationToken).ConfigureAwait(false);

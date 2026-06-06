@@ -1,4 +1,5 @@
 using RustPlusApi.Fcm.Registration;
+using RustPlusApi.Fcm.Registration.Steps;
 
 using Xunit;
 

@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
 
-using RustPlusApi.Fcm.Registration;
+using RustPlusApi.Fcm.Registration.Steps;
 
 using Xunit;
 

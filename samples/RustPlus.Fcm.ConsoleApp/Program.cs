@@ -4,22 +4,24 @@ using RustPlus.Fcm.ConsoleApp.Utils;
 using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Data;
 
-// Path to the JavaScript config file, see sample-config.json for an example.
-// Make sure to run 'npx @liamcottle/rustplus.js fcm-register' first to generate this file.
-const string configPath = @"<path of rustplus.js config file>\rustplus.config.json";
+// Credentials come from the RustPlus.Register.ConsoleApp sample (recommended) or from
+// 'npx @liamcottle/rustplus.js fcm-register'. Put the resulting file next to this project as
+// 'rustplus.config.json' (gitignored), or pass its path as the first argument.
+var configPath = args.Length > 0
+    ? args[0]
+    : Path.Combine(AppContext.BaseDirectory, "rustplus.config.json");
 
 Credentials credentials;
 try
 {
-    var jsConfig = configPath.ReadJavaScriptConfig();
-    credentials = jsConfig.ConvertToCredentials();
-
+    credentials = configPath.LoadCredentials();
     Console.WriteLine($"Loaded credentials - AndroidId: {credentials.Gcm.AndroidId}");
 }
 catch (FileNotFoundException)
 {
     Console.WriteLine($"Config file not found at: {configPath}");
-    Console.WriteLine("Please run 'npx @liamcottle/rustplus.js fcm-register' first and update the path above.");
+    Console.WriteLine("Run the RustPlus.Register.ConsoleApp sample first (or 'npx @liamcottle/rustplus.js fcm-register'),");
+    Console.WriteLine("then copy the resulting rustplus.config.json next to this project (or pass its path as an argument).");
     return;
 }
 catch (Exception ex)

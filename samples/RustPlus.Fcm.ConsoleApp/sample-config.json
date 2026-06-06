@@ -8,6 +8,5 @@
       "token": "sample-token-token-here"
     }
   },
-  "expo_push_token": "expo_push_token[SAMPLE-TOKEN-HERE]",
-  "rustplus_auth_token": "rustplus_auth_token.sample-token"
+  "expo_push_token": "expo_push_token[SAMPLE-TOKEN-HERE]"
 }

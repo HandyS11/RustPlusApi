@@ -3,6 +3,7 @@ using ProtoBuf;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Registration;
+using RustPlusApi.Fcm.Registration.Steps;
 using RustPlusApi.Fcm.Registration.Protobuf;
 
 using Xunit;

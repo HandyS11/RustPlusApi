@@ -1,6 +1,5 @@
-using System.Net.Http;
-
 using RustPlusApi.Fcm.Data;
+using RustPlusApi.Fcm.Registration.Steps;
 
 namespace RustPlusApi.Fcm.Registration;
 
@@ -11,20 +10,12 @@ namespace RustPlusApi.Fcm.Registration;
 /// Every network step hits live Google / Expo / Facepunch services and is upstream-fragile;
 /// it cannot be validated offline. See <see cref="RegistrationConstants"/>.
 /// </remarks>
-public sealed class FcmRegistration
+public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLoginPort = 3000)
 {
-    private readonly AndroidFcmRegister _androidFcmRegister;
-    private readonly ExpoPushClient _expoPushClient;
-    private readonly RustCompanionClient _rustCompanionClient;
-    private readonly SteamLoginService _steamLoginService;
-
-    public FcmRegistration(HttpClient? httpClient = null, int steamLoginPort = 3000)
-    {
-        _androidFcmRegister = new AndroidFcmRegister(httpClient);
-        _expoPushClient = new ExpoPushClient(httpClient);
-        _rustCompanionClient = new RustCompanionClient(httpClient);
-        _steamLoginService = new SteamLoginService(steamLoginPort);
-    }
+    private readonly AndroidFcmRegister _androidFcmRegister = new(httpClient);
+    private readonly ExpoPushClient _expoPushClient = new(httpClient);
+    private readonly RustCompanionClient _rustCompanionClient = new(httpClient);
+    private readonly SteamLoginService _steamLoginService = new(steamLoginPort);
 
     /// <summary>
     /// Steps 1–4: GCM check-in, Firebase install, FCM register and Expo token. Returns the

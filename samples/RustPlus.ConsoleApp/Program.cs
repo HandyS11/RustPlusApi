@@ -1,9 +1,30 @@
 ﻿using RustPlus.ConsoleApp.Features;
 using RustPlus.ConsoleApp.Utils;
 
-const string configFilePath = @"<path to your config file>\credentials.json";
+// Fill credentials.json (copy credentials.sample.json) with the ip/port/playerId/playerToken
+// printed by the RustPlus.Register.ConsoleApp sample when you "Pair with Server" in game.
+// Put it next to this project (gitignored), or pass its path as the first argument.
+var configFilePath = args.Length > 0
+    ? args[0]
+    : Path.Combine(AppContext.BaseDirectory, "credentials.json");
 
-var credentials = configFilePath.GetConfig();
+CredentialsReaderUtility.Credentials credentials;
+try
+{
+    credentials = configFilePath.GetConfig();
+}
+catch (FileNotFoundException)
+{
+    Console.WriteLine($"Config file not found at: {configFilePath}");
+    Console.WriteLine("Copy credentials.sample.json to credentials.json and fill in your server details.");
+    return;
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Failed to load config: {ex.Message}");
+    return;
+}
+
 var rustPlus = new RustPlusApi.RustPlus(credentials.Ip, credentials.Port, credentials.PlayerId, credentials.PlayerToken);
 
 await rustPlus.ConnectAsync();

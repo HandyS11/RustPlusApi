@@ -8,6 +8,35 @@ namespace RustPlus.Fcm.ConsoleApp.Utils;
 
 public static class CredentialsReaderUtilities
 {
+    private static readonly JsonSerializerOptions NativeOptions = new() { PropertyNameCaseInsensitive = true };
+
+    /// <summary>
+    /// Loads credentials from either the native format written by
+    /// <c>RustPlusApi.Fcm.Registration</c> (the recommended path) or the legacy
+    /// <c>rustplus.js</c> config format.
+    /// </summary>
+    public static Credentials LoadCredentials(this string configFilePath)
+    {
+        var json = File.ReadAllText(configFilePath);
+
+        // Preferred: the native format produced by the Register sample / CredentialsStore.
+        try
+        {
+            var native = JsonSerializer.Deserialize<Credentials>(json, NativeOptions);
+            if (native?.Gcm is { AndroidId: not 0 }) return native;
+        }
+        catch (JsonException)
+        {
+            // Not the native format — fall through to the rustplus.js format.
+        }
+
+        // Fallback: the rustplus.js `fcm-register` output.
+        var config = JsonSerializer.Deserialize<JavaScriptConfig>(json);
+        if (config?.FcmCredentials?.Gcm == null)
+            throw new InvalidOperationException("Invalid config file - missing FCM credentials");
+        return config.ConvertToCredentials();
+    }
+
     public static JavaScriptConfig ReadJavaScriptConfig(this string configFilePath)
     {
         var configContent = File.ReadAllText(configFilePath);
@@ -42,9 +71,6 @@ public sealed record JavaScriptConfig
 
     [JsonPropertyName("expo_push_token")]
     public string? ExpoPushToken { get; init; }
-
-    [JsonPropertyName("rustplus_auth_token")]
-    public string? RustplusAuthToken { get; init; }
 }
 
 public sealed record FcmCredentialsSection

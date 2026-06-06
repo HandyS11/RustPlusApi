@@ -2,18 +2,13 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 
-namespace RustPlusApi.Fcm.Registration;
+namespace RustPlusApi.Fcm.Registration.Steps;
 
 /// <summary>Step 4 — exchanges the FCM token for an Expo push token (<c>ExponentPushToken[...]</c>).</summary>
 /// <remarks>Hits the live Expo service; cannot be validated offline.</remarks>
-public sealed class ExpoPushClient
+public sealed class ExpoPushClient(HttpClient? httpClient = null)
 {
-    private readonly HttpClient _httpClient;
-
-    public ExpoPushClient(HttpClient? httpClient = null)
-    {
-        _httpClient = httpClient ?? new HttpClient();
-    }
+    private readonly HttpClient _httpClient = httpClient ?? new HttpClient();
 
     public async Task<string> GetTokenAsync(string fcmToken, CancellationToken cancellationToken = default)
     {

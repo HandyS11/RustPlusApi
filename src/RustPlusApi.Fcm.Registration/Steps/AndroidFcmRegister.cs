@@ -9,7 +9,7 @@ using ProtoBuf;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Registration.Protobuf;
 
-namespace RustPlusApi.Fcm.Registration;
+namespace RustPlusApi.Fcm.Registration.Steps;
 
 /// <summary>
 /// Steps 1–3 of the credential flow: GCM check-in → Firebase installation (FIS) → FCM register.
@@ -18,14 +18,9 @@ namespace RustPlusApi.Fcm.Registration;
 /// <remarks>
 /// Hits live Google endpoints; cannot be validated offline. See <see cref="RegistrationConstants"/>.
 /// </remarks>
-public sealed class AndroidFcmRegister
+public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
 {
-    private readonly HttpClient _httpClient;
-
-    public AndroidFcmRegister(HttpClient? httpClient = null)
-    {
-        _httpClient = httpClient ?? new HttpClient();
-    }
+    private readonly HttpClient _httpClient = httpClient ?? new HttpClient();
 
     /// <summary>Runs check-in + FIS + FCM register and returns the GCM identity and FCM token.</summary>
     public async Task<(Gcm Gcm, string FcmToken)> RegisterAsync(CancellationToken cancellationToken = default)

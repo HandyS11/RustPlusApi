@@ -5,7 +5,7 @@ using RustPlusApi.Fcm.Registration;
 //
 // NOTE: every step below hits live Google/Expo/Facepunch services and is upstream-fragile.
 
-const string configPath = "rustplus.config.json";
+var configPath = Path.GetFullPath("rustplus.config.json");
 
 var registration = new FcmRegistration();
 

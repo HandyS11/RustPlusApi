@@ -2,18 +2,13 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 
-namespace RustPlusApi.Fcm.Registration;
+namespace RustPlusApi.Fcm.Registration.Steps;
 
 /// <summary>Step 6 — registers the device (its Expo push token) with the Rust Companion API.</summary>
 /// <remarks>Hits the live Facepunch service; cannot be validated offline.</remarks>
-public sealed class RustCompanionClient
+public sealed class RustCompanionClient(HttpClient? httpClient = null)
 {
-    private readonly HttpClient _httpClient;
-
-    public RustCompanionClient(HttpClient? httpClient = null)
-    {
-        _httpClient = httpClient ?? new HttpClient();
-    }
+    private readonly HttpClient _httpClient = httpClient ?? new HttpClient();
 
     /// <summary>
     /// Subscribes the device to pairing pushes.

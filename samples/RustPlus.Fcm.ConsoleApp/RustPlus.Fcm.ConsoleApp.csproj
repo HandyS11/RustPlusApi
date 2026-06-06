@@ -9,4 +9,9 @@
       <ProjectReference Include="..\..\src\RustPlusApi.Fcm\RustPlusApi.Fcm.csproj" />
     </ItemGroup>
 
+    <!-- Copy your (gitignored) real credentials next to the built sample so it can find them. -->
+    <ItemGroup Condition="Exists('rustplus.config.json')">
+      <None Include="rustplus.config.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
 </Project>

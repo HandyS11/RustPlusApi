@@ -1,4 +1,3 @@
-using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 
@@ -14,14 +13,10 @@ namespace RustPlusApi.Fcm.Registration;
 /// <see cref="Failed"/>) is modelled on Pronwan/rustplus-desktop's <c>IPairingListener</c> so
 /// it can drop in as a replacement for that project's Node-process listener.
 /// </remarks>
-public sealed class PairingListener : IDisposable
+public sealed class PairingListener(Credentials credentials, ICollection<string>? persistentIds = null)
+    : IDisposable
 {
-    private readonly RustPlusFcm _fcm;
-
-    public PairingListener(Credentials credentials, ICollection<string>? persistentIds = null)
-    {
-        _fcm = new RustPlusFcm(credentials, persistentIds);
-    }
+    private readonly RustPlusFcm _fcm = new(credentials, persistentIds);
 
     /// <summary>Raised once the listener is connected and waiting for pairing notifications.</summary>
     public event EventHandler? Listening;

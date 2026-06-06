@@ -410,3 +410,7 @@ FodyWeavers.xsd
 *.db-wal
 
 appsettings.*.json
+# Sample app credentials — never commit real ones (use the *.sample.json templates)
+credentials.json
+rustplus.config.json
+config.json
