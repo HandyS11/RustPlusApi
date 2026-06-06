@@ -20,7 +20,7 @@ Last updated: 2026-06-05
 | 4 | Multi-target `netstandard2.0;net10.0` | ☑ |
 | 5 | Camera system (protocol + optional rendering) | ☑ |
 | 6 | Native credential acquisition | ☑ |
-| 7 | JSON cleanup | ☐ |
+| 7 | JSON cleanup | ☑ |
 | 8 | Docs & release (`2.0.0`) | ☐ |
 | ✶ | Proto-refresh tooling (`tools/update-proto/`) | ☐ |
 | ✶ | One-time golden-payload capture | ☐ |
@@ -158,9 +158,9 @@ Last updated: 2026-06-05
 
 **Done when:** no bespoke converters remain except justified ones; all (de)serialization via STJ.
 
-- [ ] Inventory all serialization; standardize on `System.Text.Json`
-- [ ] Delete converters STJ handles natively (`Int32StringConverter`, `StringToUInt64Converter`); keep only needed
-- [ ] Isolate credential model behind the registration package
+- [x] Inventory all serialization; standardize on `System.Text.Json` (the only bespoke converters were the two below; library is now STJ-only)
+- [x] Deleted `Int32StringConverter` + `StringToUInt64Converter` (and the `Converters/` folder) — replaced by STJ's native `[JsonNumberHandling(AllowReadingFromString | WriteAsString)]` on `Body`. Covered by `FcmJsonTests` (read-from-string, write-as-string round-trip, numeric-json tolerance)
+- [x] Credential model: stays in `.Fcm` (the listener needs it) with `.Registration` producing it — per the §15.2 decision; `CredentialsStore` (persistence) lives in `.Registration`
 
 ---
 
