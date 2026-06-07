@@ -2,7 +2,7 @@
 
 namespace RustPlus.ConsoleApp.Utils;
 
-public static class CredentialsReaderUtility
+internal static class CredentialsReaderUtility
 {
     public static Credentials GetConfig(this string configFilePath)
     {
@@ -10,16 +10,19 @@ public static class CredentialsReaderUtility
         var config = JsonSerializer.Deserialize<Credentials>(configContent, JsonUtilities.JsonConfigOptions);
 
         if (config == null) throw new InvalidOperationException("Invalid config file - unable to deserialize");
-        if (config.Ip == "" ||
+        if (string.IsNullOrEmpty(config.Ip) ||
             config.Port <= 0 ||
             config.PlayerId <= 0 ||
             config.PlayerToken == 0)
+        {
             throw new InvalidOperationException("Invalid config file - missing or invalid credentials");
+        }
 
         return config;
     }
-    
-    public record Credentials
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Instantiated by JSON deserialization.")]
+    internal sealed record Credentials
     {
         public required string Ip { get; init; }
         public int Port { get; init; }

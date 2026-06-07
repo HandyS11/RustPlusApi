@@ -8,6 +8,8 @@ namespace RustPlusApi.Fcm.Registration;
 /// "Pair with Server" notification as a strongly-typed <see cref="ServerPairing"/>, so the
 /// whole pairing flow is one <c>await</c>.
 /// </summary>
+/// <param name="credentials">FCM credentials used to connect and authenticate.</param>
+/// <param name="persistentIds">Already-seen message IDs the FCM listener should skip on reconnect.</param>
 /// <remarks>
 /// The event surface (<see cref="Listening"/>, <see cref="Paired"/>, <see cref="Stopped"/>,
 /// <see cref="Failed"/>) is modelled on Pronwan/rustplus-desktop's <c>IPairingListener</c> so
@@ -33,24 +35,27 @@ public sealed class PairingListener(Credentials credentials, ICollection<string>
     /// <summary>
     /// Connects, then completes with the first server-pairing notification received.
     /// </summary>
+    /// <param name="cancellationToken">Token to cancel the wait.</param>
     public async Task<ServerPairing> WaitForServerPairingAsync(CancellationToken cancellationToken = default)
     {
         var completion = new TaskCompletionSource<ServerPairing>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        void OnServerPairing(object? sender, Notification<ServerEvent?> notification)
+        void OnServerPairing(object? _, Notification<ServerEvent?> notification)
         {
             var pairing = ToServerPairing(notification);
             Paired?.Invoke(this, pairing);
             completion.TrySetResult(pairing);
         }
 
-        void OnError(object? sender, Exception ex)
+        void OnError(object? _, Exception ex)
         {
             Failed?.Invoke(this, ex);
             completion.TrySetException(ex);
         }
 
+#pragma warning disable RCS1261 // CancellationTokenRegistration.DisposeAsync not available in netstandard2.0
         using var registration = cancellationToken.Register(() => completion.TrySetCanceled(cancellationToken));
+#pragma warning restore RCS1261
 
         _fcm.OnServerPairing += OnServerPairing;
         _fcm.ErrorOccurred += OnError;

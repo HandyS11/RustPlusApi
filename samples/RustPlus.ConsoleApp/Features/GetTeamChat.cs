@@ -3,7 +3,7 @@ using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class GetTeamChat(IRustPlus rustPlus)
+internal sealed class GetTeamChat(IRustPlus rustPlus)
 {
     public async Task GetTeamChatAsync()
     {

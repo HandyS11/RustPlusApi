@@ -14,10 +14,10 @@ namespace RustPlusApi.Data.Cameras;
 public enum CameraControlFlags
 {
     None = 0,
-    Movement = 1,
-    Mouse = 2,
-    SprintAndDuck = 4,
-    Fire = 8,
-    Reload = 16,
-    Crosshair = 32,
+    Movement = 1 << 0,
+    Mouse = 1 << 1,
+    SprintAndDuck = 1 << 2,
+    Fire = 1 << 3,
+    Reload = 1 << 4,
+    Crosshair = 1 << 5,
 }

@@ -9,10 +9,15 @@ namespace RustPlusApi.MockServer;
 /// </summary>
 public static class MockResponses
 {
+#pragma warning disable S1075 // Mock test data uses a well-known reserved domain, not a real hardcoded URI.
+    private const string ExampleBaseUrl = "https://example.invalid";
+#pragma warning restore S1075
+
     /// <summary>
     /// The default responder: matches on which request field is set and replies with a
     /// canned response carrying the same <c>seq</c>. Unknown requests get a bare success.
     /// </summary>
+    /// <param name="request">The incoming request to respond to.</param>
     public static AppMessage Default(AppRequest request)
     {
         var response = new AppResponse { Seq = request.Seq };
@@ -32,14 +37,20 @@ public static class MockResponses
     }
 
     /// <summary>Builds an error <see cref="AppMessage"/> carrying the given error string.</summary>
+    /// <param name="seq">The sequence number to echo back in the response.</param>
+    /// <param name="error">The error string to embed.</param>
     public static AppMessage Error(uint seq, string error) =>
         new() { Response = new AppResponse { Seq = seq, Error = new AppError { Error = error } } };
 
     /// <summary>Wraps a broadcast in an <see cref="AppMessage"/> for injection.</summary>
+    /// <param name="broadcast">The broadcast payload to wrap.</param>
     public static AppMessage Broadcast(AppBroadcast broadcast) =>
         new() { Broadcast = broadcast };
 
     /// <summary>A team-chat broadcast, for testing <c>OnTeamChatReceived</c>.</summary>
+    /// <param name="steamId">Sender's Steam 64-bit ID.</param>
+    /// <param name="name">Sender's display name.</param>
+    /// <param name="message">Chat message text.</param>
     public static AppBroadcast TeamMessageBroadcast(ulong steamId, string name, string message) =>
         new()
         {
@@ -57,6 +68,8 @@ public static class MockResponses
         };
 
     /// <summary>An entity-changed broadcast (smart switch), for testing <c>OnSmartSwitchTriggered</c>.</summary>
+    /// <param name="entityId">The entity to report as changed.</param>
+    /// <param name="value">The new switch state.</param>
     public static AppBroadcast SmartSwitchBroadcast(uint entityId, bool value) =>
         new()
         {
@@ -68,6 +81,10 @@ public static class MockResponses
         };
 
     /// <summary>A clan-chat broadcast, for testing <c>OnClanChatReceived</c>.</summary>
+    /// <param name="clanId">The clan's numeric ID.</param>
+    /// <param name="steamId">Sender's Steam 64-bit ID.</param>
+    /// <param name="name">Sender's display name.</param>
+    /// <param name="message">Chat message text.</param>
     public static AppBroadcast ClanMessageBroadcast(long clanId, ulong steamId, string name, string message) =>
         new()
         {
@@ -116,8 +133,8 @@ public static class MockResponses
     public static AppInfo SampleInfo() => new()
     {
         Name = "Mock Rust Server",
-        HeaderImage = "https://example.invalid/header.png",
-        Url = "https://example.invalid",
+        HeaderImage = ExampleBaseUrl + "/header.png",
+        Url = ExampleBaseUrl,
         Map = "Procedural Map",
         MapSize = 4000,
         WipeTime = 1_700_000_000,
@@ -126,7 +143,7 @@ public static class MockResponses
         QueuedPlayers = 3,
         Seed = 1337,
         Salt = 7331,
-        LogoImage = "https://example.invalid/logo.png",
+        LogoImage = ExampleBaseUrl + "/logo.png",
         Nexus = "",
         NexusZone = ""
     };

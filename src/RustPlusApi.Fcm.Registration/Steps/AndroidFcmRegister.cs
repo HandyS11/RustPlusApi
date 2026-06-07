@@ -15,6 +15,7 @@ namespace RustPlusApi.Fcm.Registration.Steps;
 /// Steps 1–3 of the credential flow: GCM check-in → Firebase installation (FIS) → FCM register.
 /// Ported from <c>@liamcottle/push-receiver</c>.
 /// </summary>
+/// <param name="httpClient">Optional <see cref="HttpClient"/> to use for all HTTP requests; a new instance is created if <see langword="null"/>.</param>
 /// <remarks>
 /// Hits live Google endpoints; cannot be validated offline. See <see cref="RegistrationConstants"/>.
 /// </remarks>
@@ -23,6 +24,7 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
     private readonly HttpClient _httpClient = httpClient ?? new HttpClient();
 
     /// <summary>Runs check-in + FIS + FCM register and returns the GCM identity and FCM token.</summary>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public async Task<(Gcm Gcm, string FcmToken)> RegisterAsync(CancellationToken cancellationToken = default)
     {
         var gcm = await CheckInAsync(cancellationToken).ConfigureAwait(false);
@@ -32,6 +34,7 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
     }
 
     /// <summary>Step 1 — GCM check-in (protobuf) to obtain the Android id + security token.</summary>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     public async Task<Gcm> CheckInAsync(CancellationToken cancellationToken = default)
     {
         var request = new AndroidCheckinRequest
@@ -50,14 +53,16 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
             }
         };
 
+#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
         using var ms = new MemoryStream();
+#pragma warning restore RCS1261
         Serializer.Serialize(ms, request);
 
         using var content = new ByteArrayContent(ms.ToArray());
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-protobuf");
 
         using var httpResponse = await _httpClient
-            .PostAsync(RegistrationConstants.CheckinUrl, content, cancellationToken)
+            .PostAsync(new Uri(RegistrationConstants.CheckinUrl), content, cancellationToken)
             .ConfigureAwait(false);
         httpResponse.EnsureSuccessStatusCode();
 
@@ -76,9 +81,11 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
     }
 
     /// <summary>Step 2 — Firebase installation, returning the installation auth token.</summary>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the Firebase installation response does not contain an auth token.</exception>
     public async Task<string> InstallAsync(CancellationToken cancellationToken = default)
     {
-        var url = RegistrationConstants.FirebaseInstallationsUrl;
+        const string url = RegistrationConstants.FirebaseInstallationsUrl;
 
         var body = JsonSerializer.Serialize(new
         {
@@ -108,6 +115,10 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
     }
 
     /// <summary>Step 3 — FCM register (c2dm/register3), returning the FCM token.</summary>
+    /// <param name="gcm">GCM identity obtained from <see cref="CheckInAsync"/>.</param>
+    /// <param name="firebaseInstallationToken">Firebase installation auth token from <see cref="InstallAsync"/>.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <exception cref="InvalidOperationException">Thrown when FCM registration fails after multiple attempts.</exception>
     public async Task<string> RegisterFcmAsync(Gcm gcm, string firebaseInstallationToken, CancellationToken cancellationToken = default)
     {
         var form = new Dictionary<string, string>
@@ -149,7 +160,7 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
             var responseText = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 #endif
 
-            if (!responseText.Contains("Error"))
+            if (!responseText.Contains("Error", StringComparison.Ordinal))
                 return responseText.Split('=')[1];
 
             await Task.Delay(1000, cancellationToken).ConfigureAwait(false);

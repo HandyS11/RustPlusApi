@@ -85,10 +85,10 @@ public abstract class RustPlusSocket(
     /// </summary>
     /// <seealso cref="Exception"/>
     public event EventHandler<Exception>? ErrorOccurred;
-    
+
     private ClientWebSocket? _webSocket;
 
-    // int (not uint) so Interlocked.Increment works on netstandard2.0, which lacks the uint overload.
+    /// <summary>int (not uint) so Interlocked.Increment works on netstandard2.0, which lacks the uint overload.</summary>
     private int _seq;
 
     private readonly ConcurrentQueue<AppRequest> _sendQueue = new();
@@ -119,7 +119,7 @@ public abstract class RustPlusSocket(
 
         try
         {
-            await _webSocket.ConnectAsync(uri, CancellationToken.None);
+            await _webSocket.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
 
             _ = Task.Run(ReceiveAsync, CancellationToken.None);
             _ = Task.Run(ProcessSendQueueAsync, CancellationToken.None);
@@ -154,9 +154,8 @@ public abstract class RustPlusSocket(
     public async Task<AppMessage> SendRequestAsync(AppRequest request)
     {
         var tcs = new TaskCompletionSource<AppMessage>();
-        var seq = (uint)Interlocked.Increment(ref _seq);
 
-        request.Seq = seq;
+        request.Seq = (uint)Interlocked.Increment(ref _seq);
         request.PlayerId = _playerId;
         request.PlayerToken = _playerToken;
 
@@ -167,13 +166,14 @@ public abstract class RustPlusSocket(
 
         RequestSent?.Invoke(this, request);
 
-        return await tcs.Task;
+        return await tcs.Task.ConfigureAwait(false);
     }
 
     /// <summary>
     /// Asynchronously disconnects from the Rust+ server, waiting for pending responses unless <paramref name="forceClose"/> is true.
     /// Raises <c>Disconnecting</c> before disconnecting and <c>Disconnected</c> after.
     /// </summary>
+    /// <param name="forceClose">When <see langword="true"/>, skips draining the pending-response queue.</param>
     public async Task DisconnectAsync(bool forceClose = false)
     {
         if (!IsConnected()) return;
@@ -182,12 +182,12 @@ public abstract class RustPlusSocket(
 
         while (!_responseQueue.IsEmpty && !forceClose)
         {
-            await Task.Delay(50, CancellationToken.None);
+            await Task.Delay(50, CancellationToken.None).ConfigureAwait(false);
         }
 
         // Give the server a moment to flush any in-flight responses before closing.
-        await Task.Delay(1000, CancellationToken.None);
-        await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+        await Task.Delay(1000, CancellationToken.None).ConfigureAwait(false);
+        await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None).ConfigureAwait(false);
 
         Disconnected?.Invoke(this, EventArgs.Empty);
     }
@@ -229,6 +229,7 @@ public abstract class RustPlusSocket(
     /// Parses and handles a broadcast notification received from the Rust+ server.
     /// Intended to be overridden in derived classes to implement custom notification handling logic.
     /// </summary>
+    /// <param name="broadcast">The <see cref="AppBroadcast"/> received from the server.</param>
     protected virtual void ParseNotification(AppBroadcast? broadcast) { }
 
     /// <summary>
@@ -242,13 +243,13 @@ public abstract class RustPlusSocket(
         if (response.Broadcast is not null) return false;
         return response.Response.Error is not null;
     }
-    
+
     /// <summary>
     /// Retrieves the error message from the specified <see cref="AppMessage"/> response.
     /// </summary>
     /// <param name="response">The <see cref="AppMessage"/> containing the response data.</param>
     /// <returns>
-    /// A string representing the error message if the response contains an error; 
+    /// A string representing the error message if the response contains an error;
     /// otherwise, returns "value-already-set".
     /// </returns>
     protected static string GetErrorMessage(AppMessage response)
@@ -257,7 +258,7 @@ public abstract class RustPlusSocket(
             ? response.Response.Error.Error
             : "value-already-set";
     }
-    
+
     /// <summary>
     /// Continuously processes the sent queue by dequeuing requests and sending them to the Rust+ server
     /// via the WebSocket connection as binary messages.
@@ -269,12 +270,14 @@ public abstract class RustPlusSocket(
         {
             if (_sendQueue.TryDequeue(out var request))
             {
+#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
                 using var ms = new MemoryStream();
+#pragma warning restore RCS1261
                 Serializer.Serialize(ms, request);
                 var buffer = ms.ToArray();
-                await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+                await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true, CancellationToken.None).ConfigureAwait(false);
             }
-            await Task.Delay(100, CancellationToken.None);
+            await Task.Delay(100, CancellationToken.None).ConfigureAwait(false);
         }
     }
 
@@ -306,12 +309,14 @@ public abstract class RustPlusSocket(
 
                 do
                 {
-                    result = await _webSocket!.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                    result = await _webSocket!.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None).ConfigureAwait(false);
                     receiveBuffer.AddRange(buffer.Take(result.Count));
                 } while (!result.EndOfMessage);
 
                 var messageData = receiveBuffer.ToArray();
+#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
                 using var messageStream = new MemoryStream(messageData);
+#pragma warning restore RCS1261
                 var message = Serializer.Deserialize<AppMessage>(messageStream);
 
                 Debug.WriteLine($"Received message:\n{message}");
@@ -321,8 +326,7 @@ public abstract class RustPlusSocket(
                 {
                     Debug.WriteLine($"Received notification:\n{message}");
                     NotificationReceived?.Invoke(this, message);
-                    // TODO: Check for a refactor to incorporate the entity type
-                    // message.Response.EntityInfo.Type.
+                    // Entity type from message.Response.EntityInfo.Type is not yet used.
                     ParseNotification(message.Broadcast);
                 }
                 else

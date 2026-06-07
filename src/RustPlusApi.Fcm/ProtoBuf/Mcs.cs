@@ -2,8 +2,8 @@ using ProtoBuf;
 
 // Code-first contracts for the MCS (Mobile Connection Server) protocol used by the FCM
 // listener. Hand-authored from the frozen Chromium `mcs.proto` (proto2). protobuf-net
-// serializes by field number, so the [ProtoMember] numbers below are the wire contract;
-// optional scalars are modelled as nullable, required fields carry IsRequired = true.
+// serializes by field number, so the [ProtoMember] numbers below are the wire contract.
+// Optional scalars are modelled as nullable, required fields carry IsRequired = true.
 namespace McsProto;
 
 /// <summary>TAG: 0</summary>
@@ -67,7 +67,7 @@ public sealed class ClientEvent
         SuccessfulConnection = 3,
     }
 
-    // Lowercase to avoid clashing with the nested Type enum.
+    /// <summary>Lowercase to avoid clashing with the nested <see cref="Type"/> enum.</summary>
     [ProtoMember(1)] public Type? type { get; set; }
     [ProtoMember(100)] public uint? NumberDiscardedEvents { get; set; }
     [ProtoMember(200)] public int? NetworkType { get; set; }
@@ -99,7 +99,7 @@ public sealed class LoginRequest
     [ProtoMember(13)] public HeartbeatStat? HeartbeatStat { get; set; }
     [ProtoMember(14)] public bool? UseRmq2 { get; set; }
     [ProtoMember(15)] public long? AccountId { get; set; }
-    // Lowercase to avoid clashing with the nested AuthService enum.
+    /// <summary>Lowercase to avoid clashing with the nested <see cref="AuthService"/> enum.</summary>
     [ProtoMember(16)] public AuthService? auth_service { get; set; }
     [ProtoMember(17)] public int? NetworkType { get; set; }
     [ProtoMember(18)] public long? Status { get; set; }
@@ -129,9 +129,7 @@ public sealed class StreamErrorStanza
 
 /// <summary>TAG: 4</summary>
 [ProtoContract]
-public sealed class Close
-{
-}
+public sealed class Close;
 
 [ProtoContract]
 public sealed class Extension
@@ -198,9 +196,7 @@ public sealed class DataMessageStanza
 }
 
 [ProtoContract]
-public sealed class StreamAck
-{
-}
+public sealed class StreamAck;
 
 [ProtoContract]
 public sealed class SelectiveAck

@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace RustPlus.ConsoleApp.Utils;
 
-public static class JsonUtilities
+internal static class JsonUtilities
 {
     public static readonly JsonSerializerOptions JsonOptions = new()
     {

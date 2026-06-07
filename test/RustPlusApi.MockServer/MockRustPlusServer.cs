@@ -26,7 +26,7 @@ public sealed class MockRustPlusServer : IAsyncDisposable
     public int Port { get; }
 
     /// <summary>The host the client should connect to (always loopback).</summary>
-    public string Host => "localhost";
+    public static string Host => "localhost";
 
     /// <summary>
     /// Creates a server on a free loopback port.
@@ -52,6 +52,8 @@ public sealed class MockRustPlusServer : IAsyncDisposable
     /// <summary>
     /// Pushes a broadcast to the connected client. Throws if no client is connected.
     /// </summary>
+    /// <param name="broadcast">The broadcast payload to push.</param>
+    /// <exception cref="InvalidOperationException">Thrown when no client is connected.</exception>
     public Task BroadcastAsync(AppBroadcast broadcast)
     {
         var socket = _activeSocket
@@ -92,7 +94,7 @@ public sealed class MockRustPlusServer : IAsyncDisposable
 
         while (socket.State == WebSocketState.Open && !ct.IsCancellationRequested)
         {
-            using var message = new MemoryStream();
+            await using var message = new MemoryStream();
             WebSocketReceiveResult result;
             try
             {
@@ -104,7 +106,7 @@ public sealed class MockRustPlusServer : IAsyncDisposable
                         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, ct);
                         return;
                     }
-                    message.Write(buffer, 0, result.Count);
+                    await message.WriteAsync(buffer.AsMemory(0, result.Count), ct);
                 } while (!result.EndOfMessage);
             }
             catch (Exception) when (ct.IsCancellationRequested || socket.State != WebSocketState.Open)
@@ -123,7 +125,7 @@ public sealed class MockRustPlusServer : IAsyncDisposable
 
     private async Task SendAsync(WebSocket socket, AppMessage message, CancellationToken ct)
     {
-        using var buffer = new MemoryStream();
+        await using var buffer = new MemoryStream();
         Serializer.Serialize(buffer, message);
         var bytes = buffer.ToArray();
         await _sendLock.WaitAsync(ct);
@@ -143,16 +145,9 @@ public sealed class MockRustPlusServer : IAsyncDisposable
 
     private static int GetFreePort()
     {
-        var listener = new TcpListener(IPAddress.Loopback, 0);
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
-        try
-        {
-            return ((IPEndPoint)listener.LocalEndpoint).Port;
-        }
-        finally
-        {
-            listener.Stop();
-        }
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 
     public async ValueTask DisposeAsync()

@@ -21,8 +21,10 @@ public sealed record MessageData
     public Body Body { get; init; } = null!;
 }
 
-// Rust+ encodes the numeric fields below as JSON strings; STJ's number handling reads them
-// from strings (and writes them back as strings) natively, so no custom converters are needed.
+/// <summary>
+/// Rust+ encodes the numeric fields below as JSON strings; STJ's number handling reads them
+/// from strings (and writes them back as strings) natively, so no custom converters are needed.
+/// </summary>
 [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
 public sealed record Body
 {

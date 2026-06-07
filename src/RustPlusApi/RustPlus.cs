@@ -106,7 +106,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
     protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
     {
-        var response = await SendRequestAsync(request);
+        var response = await SendRequestAsync(request).ConfigureAwait(false);
 
         return IsError(response)
             ? ResponseHelper.BuildGenericOutput<T>(false, default!, GetErrorMessage(response))
@@ -127,7 +127,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
             EntityId = entityId,
             GetEntityInfo = new AppEmpty()
         };
-        return await ProcessRequestAsync(request, selector);
+        return await ProcessRequestAsync(request, selector).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -144,7 +144,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<SubscriptionInfo?>(
             request,
-            r =>r.Response.Flag.ToSubscriptionInfo());
+            r =>r.Response.Flag.ToSubscriptionInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -154,7 +154,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the alarm information.</returns>
     public async Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId)
     {
-        return await GetEntityInfoAsync<AlarmInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo());
+        return await GetEntityInfoAsync<AlarmInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -167,7 +167,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         {
             GetClanInfo = new AppEmpty()
         };
-        return await ProcessRequestAsync<ClanInfo?>(request, r => r.Response.ClanInfo.ToClanInfo());
+        return await ProcessRequestAsync<ClanInfo?>(request, r => r.Response.ClanInfo.ToClanInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -184,7 +184,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
                 Message = message
             }
         };
-        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -197,7 +197,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         {
             GetClanChat = new AppEmpty()
         };
-        return await ProcessRequestAsync<ClanChatInfo?>(request, r => r.Response.ClanChat.ToClanChatInfo());
+        return await ProcessRequestAsync<ClanChatInfo?>(request, r => r.Response.ClanChat.ToClanChatInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -214,7 +214,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
                 Message = message
             }
         };
-        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -231,7 +231,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
                 AppKey = appKey
             }
         };
-        return await ProcessRequestAsync<NexusAuth?>(request, r => r.Response.NexusAuth.ToNexusAuth());
+        return await ProcessRequestAsync<NexusAuth?>(request, r => r.Response.NexusAuth.ToNexusAuth()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -250,7 +250,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<CameraInfo?>(
             request,
-            r => r.Response.CameraSubscribeInfo.ToCameraInfo());
+            r => r.Response.CameraSubscribeInfo.ToCameraInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -274,7 +274,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
                 }
             }
         };
-        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -287,7 +287,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         {
             CameraUnsubscribe = new AppEmpty()
         };
-        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -300,7 +300,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         {
             GetInfo = new AppEmpty()
         };
-        return await ProcessRequestAsync<ServerInfo?>(request, r => r.Response.Info.ToServerInfo());
+        return await ProcessRequestAsync<ServerInfo?>(request, r => r.Response.Info.ToServerInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -313,7 +313,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         {
             GetMap = new AppEmpty()
         };
-        return await ProcessRequestAsync<ServerMap?>(request, r => r.Response.Map.ToServerMap());
+        return await ProcessRequestAsync<ServerMap?>(request, r => r.Response.Map.ToServerMap()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -326,7 +326,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         {
             GetMapMarkers = new AppEmpty()
         };
-        return await ProcessRequestAsync<MapMarkers?>(request, r => r.Response.MapMarkers.ToMapMarkers());
+        return await ProcessRequestAsync<MapMarkers?>(request, r => r.Response.MapMarkers.ToMapMarkers()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -338,7 +338,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     {
         return await GetEntityInfoAsync<SmartSwitchInfo?>(
             entityId,
-            r => r.Response.EntityInfo.ToSmartSwitchInfo());
+            r => r.Response.EntityInfo.ToSmartSwitchInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -350,7 +350,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     {
         return await GetEntityInfoAsync<StorageMonitorInfo?>(
             entityId,
-            r => r.Response.EntityInfo.ToStorageMonitorInfo());
+            r => r.Response.EntityInfo.ToStorageMonitorInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -365,7 +365,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<TeamChatInfo?>(
             request,
-            r => r.Response.TeamChat.ToTeamChatInfo());
+            r => r.Response.TeamChat.ToTeamChatInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -378,7 +378,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         {
             GetTeamInfo = new AppEmpty()
         };
-        return await ProcessRequestAsync<TeamInfo?>(request, r => r.Response.TeamInfo.ToTeamInfo());
+        return await ProcessRequestAsync<TeamInfo?>(request, r => r.Response.TeamInfo.ToTeamInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -391,7 +391,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         {
             GetTime = new AppEmpty()
         };
-        return await ProcessRequestAsync<TimeInfo?>(request, r => r.Response.Time.ToTimeInfo());
+        return await ProcessRequestAsync<TimeInfo?>(request, r => r.Response.Time.ToTimeInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -408,7 +408,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
                 SteamId = steamId
             }
         };
-        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -427,7 +427,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<TeamMessage?>(
             request,
-            r => r.Broadcast.TeamMessage.Message.ToTeamMessage());
+            r => r.Broadcast.TeamMessage.Message.ToTeamMessage()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -448,7 +448,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<SmartSwitchInfo?>(
             request,
-            r => r.Broadcast.EntityChanged.ToSmartSwitchEvent());
+            r => r.Broadcast.EntityChanged.ToSmartSwitchEvent()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -467,7 +467,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
                 Value = doSubscribe
             }
         };
-        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -482,12 +482,12 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         int timeoutMilliseconds = 1000,
         bool value = true)
     {
-        var response = await SetSmartSwitchValueAsync(entityId, value);
+        var response = await SetSmartSwitchValueAsync(entityId, value).ConfigureAwait(false);
 
         if (!response.IsSuccess) return response;
 
-        await Task.Delay(timeoutMilliseconds);
-        return await SetSmartSwitchValueAsync(entityId, !value);
+        await Task.Delay(timeoutMilliseconds).ConfigureAwait(false);
+        return await SetSmartSwitchValueAsync(entityId, !value).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -497,11 +497,11 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
     public async Task<Response<SmartSwitchInfo?>> ToggleSmartSwitchAsync(uint entityId)
     {
-        var entityInfo = await GetSmartSwitchInfoAsync(entityId);
+        var entityInfo = await GetSmartSwitchInfoAsync(entityId).ConfigureAwait(false);
 
         if (!entityInfo.IsSuccess) return entityInfo;
 
         var value = entityInfo.Data!.IsActive;
-        return await SetSmartSwitchValueAsync(entityId, !value);
+        return await SetSmartSwitchValueAsync(entityId, !value).ConfigureAwait(false);
     }
 }

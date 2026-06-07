@@ -3,7 +3,7 @@ using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class GetStorageMonitorInfo(IRustPlus rustPlus)
+internal sealed class GetStorageMonitorInfo(IRustPlus rustPlus)
 {
     public async Task GetStorageMonitorInfoAsync(uint entityId)
     {

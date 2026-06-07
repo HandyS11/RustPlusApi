@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Numerics;
@@ -11,7 +12,7 @@ using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Interfaces;
 using static System.GC;
 using static RustPlusApi.Fcm.Data.Tags;
-using static RustPlusApi.Fcm.Utils.Utils;
+using static RustPlusApi.Fcm.Utils.McsUtils;
 
 namespace RustPlusApi.Fcm;
 
@@ -87,14 +88,14 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
         _tcpClient = new TcpClient();
 #if NET10_0_OR_GREATER
-        await _tcpClient.ConnectAsync(Host, Port, CancellationToken);
+        await _tcpClient.ConnectAsync(Host, Port, CancellationToken).ConfigureAwait(false);
 #else
         // netstandard2.0 lacks the CancellationToken overload.
-        await _tcpClient.ConnectAsync(Host, Port);
+        await _tcpClient.ConnectAsync(Host, Port).ConfigureAwait(false);
 #endif
 
         _sslStream = new SslStream(_tcpClient.GetStream(), false);
-        await _sslStream.AuthenticateAsClientAsync(Host);
+        await _sslStream.AuthenticateAsClientAsync(Host).ConfigureAwait(false);
 
         try
         {
@@ -102,13 +103,13 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
             {
                 AdaptiveHeartbeat = false,
                 auth_service = LoginRequest.AuthService.AndroidId,
-                AuthToken = credentials.Gcm.SecurityToken.ToString(),
+                AuthToken = credentials.Gcm.SecurityToken.ToString(CultureInfo.InvariantCulture),
                 Id = "chrome-63.0.3234.0",
                 Domain = "mcs.android.com",
-                DeviceId = $"android-{BigInteger.Parse(credentials.Gcm.AndroidId.ToString()):X}",
+                DeviceId = $"android-{BigInteger.Parse(credentials.Gcm.AndroidId.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture):X}",
                 NetworkType = 1,
-                Resource = credentials.Gcm.AndroidId.ToString(),
-                User = credentials.Gcm.AndroidId.ToString(),
+                Resource = credentials.Gcm.AndroidId.ToString(CultureInfo.InvariantCulture),
+                User = credentials.Gcm.AndroidId.ToString(CultureInfo.InvariantCulture),
                 UseRmq2 = true,
                 Settings = { new Setting { Name = "new_vc", Value = "1" } },
                 ClientEvents = { new ClientEvent() },
@@ -258,7 +259,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         }
         return buffer;
     }
-    
+
     /// <summary>
     /// Reads a variable-length 32-bit integer from the SSL stream.
     /// </summary>
@@ -354,8 +355,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     private void OnDataMessage(DataMessageStanza? dataMessage)
     {
         if (dataMessage?.PersistentId != null &&
-            persistentIds != null &&
-            persistentIds.Contains(dataMessage.PersistentId))
+            persistentIds?.Contains(dataMessage.PersistentId) == true)
         {
             return;
         }
@@ -380,13 +380,13 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         appDataDict.TryGetValue("experienceId", out var experienceId);
         appDataDict.TryGetValue("scopeKey", out var scopeKey);
         appDataDict.TryGetValue("message", out var message);
-        
+
         var bodyData = JsonSerializer.Deserialize<Body>(body, _parsingOptions);
 
         var fcmMessage = new FcmMessage
         {
-            PersistantId = dataMessage.PersistentId,
-            From = long.Parse(dataMessage.From),
+            PersistantId = dataMessage.PersistentId ?? string.Empty,
+            From = long.Parse(dataMessage.From, CultureInfo.InvariantCulture),
             SentAt = DateTimeOffset.FromUnixTimeMilliseconds(dataMessage.Sent ?? 0).UtcDateTime,
             Data = new MessageData
             {
@@ -400,7 +400,8 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
             }
         };
 
-        persistentIds?.Add(dataMessage.PersistentId);
+        if (dataMessage.PersistentId is not null)
+            persistentIds?.Add(dataMessage.PersistentId);
 
         ParseNotification(fcmMessage);
         NotificationReceived?.Invoke(this, JsonSerializer.Serialize(fcmMessage));

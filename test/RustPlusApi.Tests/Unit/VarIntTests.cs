@@ -1,5 +1,5 @@
 using Xunit;
-using static RustPlusApi.Fcm.Utils.Utils;
+using static RustPlusApi.Fcm.Utils.McsUtils;
 
 namespace RustPlusApi.Tests.Unit;
 

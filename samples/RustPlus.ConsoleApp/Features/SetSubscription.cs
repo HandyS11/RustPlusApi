@@ -3,7 +3,7 @@ using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class SetSubscription(IRustPlus rustPlus)
+internal sealed class SetSubscription(IRustPlus rustPlus)
 {
     public async Task SetSubscriptionAsync(uint entityId, bool doSubscribe)
     {

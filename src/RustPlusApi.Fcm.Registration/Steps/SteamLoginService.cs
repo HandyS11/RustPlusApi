@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
@@ -13,6 +14,7 @@ namespace RustPlusApi.Fcm.Registration.Steps;
 /// <c>Page.addScriptToEvaluateOnNewDocument</c>, and captures the Rust+ auth token the Facepunch
 /// login page hands to that shim.
 /// </summary>
+/// <param name="port">The loopback port the OAuth callback listener binds to.</param>
 /// <remarks>
 /// The Facepunch login delivers the token to its host through <c>ReactNativeWebView.postMessage</c>.
 /// Older techniques no longer work on modern Chrome: popup/opener injection is blocked by
@@ -28,6 +30,9 @@ public sealed class SteamLoginService(int port = 3000)
         LoginAsync(RegistrationConstants.SteamLoginUrl, cancellationToken);
 
     /// <summary>Drives the login against an arbitrary start URL (the Facepunch login in production).</summary>
+    /// <param name="startUrl">The URL to navigate Chrome to when the session starts.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a token is received.</exception>
     internal async Task<string> LoginAsync(string startUrl, CancellationToken cancellationToken = default)
     {
         using var listener = new HttpListener();
@@ -43,7 +48,9 @@ public sealed class SteamLoginService(int port = 3000)
         try
         {
             chrome = LaunchChrome(workDir, profileDir, debugPort);
+#pragma warning disable CA2000 // socket disposed via TryDisposeSocket in finally
             socket = await ConnectAndInjectAsync(debugPort, startUrl, cancellationToken).ConfigureAwait(false);
+#pragma warning restore CA2000
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -96,9 +103,9 @@ public sealed class SteamLoginService(int port = 3000)
             try
             {
 #if NET10_0_OR_GREATER
-                var json = await http.GetStringAsync($"http://localhost:{debugPort}/json", cancellationToken).ConfigureAwait(false);
+                var json = await http.GetStringAsync(new Uri($"http://localhost:{debugPort}/json"), cancellationToken).ConfigureAwait(false);
 #else
-                var json = await http.GetStringAsync($"http://localhost:{debugPort}/json").ConfigureAwait(false);
+                var json = await http.GetStringAsync(new Uri($"http://localhost:{debugPort}/json")).ConfigureAwait(false);
 #endif
                 using var document = JsonDocument.Parse(json);
                 foreach (var target in document.RootElement.EnumerateArray())
@@ -139,9 +146,9 @@ public sealed class SteamLoginService(int port = 3000)
                 if (result.MessageType == WebSocketMessageType.Close) break;
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Socket closed during shutdown.
+            Debug.WriteLine($"[{nameof(SteamLoginService)}] DevTools socket closed during shutdown: {ex.Message}");
         }
     }
 
@@ -178,7 +185,10 @@ public sealed class SteamLoginService(int port = 3000)
                ?? throw new InvalidOperationException("Failed to launch Chrome/Chromium.");
     }
 
+    private static readonly string[] FlatpakAppIds = ["com.google.Chrome", "org.chromium.Chromium", "com.github.Eloston.UngoogledChromium"];
+
     /// <summary>Resolves a native Chrome/Chromium binary, or a Flatpak launcher, with any prefix args.</summary>
+    /// <param name="workDir">Temporary working directory passed to Flatpak's <c>--filesystem</c> flag when needed.</param>
     private static (string Executable, string[] PrefixArguments)? ResolveChromeLaunch(string workDir)
     {
         var native = FindChrome();
@@ -187,11 +197,9 @@ public sealed class SteamLoginService(int port = 3000)
         var flatpak = ResolveOnPath("flatpak");
         if (flatpak != null)
         {
-            foreach (var appId in new[] { "com.google.Chrome", "org.chromium.Chromium", "com.github.Eloston.UngoogledChromium" })
-            {
-                if (IsFlatpakAppInstalled(appId))
-                    return (flatpak, ["run", $"--filesystem={workDir}", appId]);
-            }
+            var appId = FlatpakAppIds.FirstOrDefault(IsFlatpakAppInstalled);
+            if (appId is not null)
+                return (flatpak, ["run", $"--filesystem={workDir}", appId]);
         }
 
         return null;
@@ -262,7 +270,9 @@ public sealed class SteamLoginService(int port = 3000)
 
     private static int GetFreePort()
     {
+#pragma warning disable CA2000 // TcpListener is not IDisposable; Stop() + Server.Dispose() is the correct cleanup pattern.
         var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+#pragma warning restore CA2000
         listener.Start();
         try
         {
@@ -271,6 +281,7 @@ public sealed class SteamLoginService(int port = 3000)
         finally
         {
             listener.Stop();
+            listener.Server.Dispose();
         }
     }
 
@@ -284,14 +295,18 @@ public sealed class SteamLoginService(int port = 3000)
         var buffer = Encoding.UTF8.GetBytes(html);
         context.Response.ContentType = "text/html";
         context.Response.ContentLength64 = buffer.Length;
+#if NET10_0_OR_GREATER
+        await context.Response.OutputStream.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
+#else
         await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+#endif
         context.Response.Close();
     }
 
     private static void TryDisposeSocket(ClientWebSocket? socket)
     {
         try { socket?.Dispose(); }
-        catch (Exception) { /* best effort */ }
+        catch (Exception ex) { Debug.WriteLine($"[{nameof(SteamLoginService)}] Socket dispose failed: {ex.Message}"); }
     }
 
     private static void TryKill(Process? process)
@@ -307,9 +322,9 @@ public sealed class SteamLoginService(int port = 3000)
 #endif
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Best effort — the user may have already closed the browser.
+            Debug.WriteLine($"[{nameof(SteamLoginService)}] Chrome kill failed: {ex.Message}");
         }
     }
 
@@ -319,9 +334,9 @@ public sealed class SteamLoginService(int port = 3000)
         {
             if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Best effort — a temporary Chrome profile may keep a lock briefly.
+            Debug.WriteLine($"[{nameof(SteamLoginService)}] Profile directory cleanup failed: {ex.Message}");
         }
     }
 }

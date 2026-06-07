@@ -2,7 +2,7 @@ using McsProto;
 using ProtoBuf;
 using RustPlusApi.Fcm.Data;
 using Xunit;
-using static RustPlusApi.Fcm.Utils.Utils;
+using static RustPlusApi.Fcm.Utils.McsUtils;
 
 namespace RustPlusApi.Tests.Unit;
 
@@ -65,7 +65,7 @@ public class McsRoundTripTests
         Assert.True(result.UseRmq2);
         var setting = Assert.Single(result.Settings);
         Assert.Equal("new_vc", setting.Name);
-        Assert.Equal(new[] { "abc", "def" }, result.ReceivedPersistentIds);
+        Assert.Equal((string[])["abc", "def"], result.ReceivedPersistentIds);
     }
 
     [Fact]

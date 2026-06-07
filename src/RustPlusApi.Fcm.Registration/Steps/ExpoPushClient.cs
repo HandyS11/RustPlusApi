@@ -5,6 +5,7 @@ using System.Text.Json;
 namespace RustPlusApi.Fcm.Registration.Steps;
 
 /// <summary>Step 4 — exchanges the FCM token for an Expo push token (<c>ExponentPushToken[...]</c>).</summary>
+/// <param name="httpClient">Optional <see cref="HttpClient"/> to use; a new instance is created if <see langword="null"/>.</param>
 /// <remarks>Hits the live Expo service; cannot be validated offline.</remarks>
 public sealed class ExpoPushClient(HttpClient? httpClient = null)
 {
@@ -24,7 +25,7 @@ public sealed class ExpoPushClient(HttpClient? httpClient = null)
 
         using var content = new StringContent(body, Encoding.UTF8, "application/json");
         using var httpResponse = await _httpClient
-            .PostAsync(RegistrationConstants.ExpoPushTokenUrl, content, cancellationToken)
+            .PostAsync(new Uri(RegistrationConstants.ExpoPushTokenUrl), content, cancellationToken)
             .ConfigureAwait(false);
         httpResponse.EnsureSuccessStatusCode();
 

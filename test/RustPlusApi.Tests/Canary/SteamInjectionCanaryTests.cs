@@ -22,7 +22,9 @@ public class SteamInjectionCanaryTests
         using var pageServer = new HttpListener();
         pageServer.Prefixes.Add($"http://localhost:{pagePort}/");
         pageServer.Start();
-        _ = Task.Run(() => ServeTestPage(pageServer));
+#pragma warning disable CA2025 // pageServer outlives the task; Stop() is called after LoginAsync returns.
+        _ = Task.Run(() => ServeTestPageAsync(pageServer));
+#pragma warning restore CA2025
 
         var steam = new SteamLoginService(GetFreePort());
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
@@ -33,7 +35,7 @@ public class SteamInjectionCanaryTests
         pageServer.Stop();
     }
 
-    private static async Task ServeTestPage(HttpListener server)
+    private static async Task ServeTestPageAsync(HttpListener server)
     {
         try
         {
@@ -48,9 +50,9 @@ public class SteamInjectionCanaryTests
             await context.Response.OutputStream.WriteAsync(buffer);
             context.Response.Close();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Server stopped.
+            System.Diagnostics.Debug.WriteLine($"[SteamInjectionCanaryTests] Test server stopped: {ex.Message}");
         }
     }
 

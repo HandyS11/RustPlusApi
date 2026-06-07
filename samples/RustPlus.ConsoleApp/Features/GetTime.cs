@@ -3,7 +3,7 @@ using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class GetTime(IRustPlus rustPlus)
+internal sealed class GetTime(IRustPlus rustPlus)
 {
     public async Task GetTimeAsync()
     {

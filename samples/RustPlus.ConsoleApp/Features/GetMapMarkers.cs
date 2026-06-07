@@ -3,7 +3,7 @@ using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class GetMapMarkers(IRustPlus rustPlus)
+internal sealed class GetMapMarkers(IRustPlus rustPlus)
 {
     public async Task GetMapMarkersAsync()
     {

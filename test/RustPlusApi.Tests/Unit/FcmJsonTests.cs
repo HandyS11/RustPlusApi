@@ -13,7 +13,7 @@ namespace RustPlusApi.Tests.Unit;
 /// </summary>
 public class FcmJsonTests
 {
-    // Mirrors RustPlusFcmSocket's parsing options (Rust+ sends camelCase keys).
+    /// <summary>Mirrors RustPlusFcmSocket's parsing options (Rust+ sends camelCase keys).</summary>
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
 
     private const string PairingBodyJson = """
@@ -49,8 +49,8 @@ public class FcmJsonTests
 
         var json = JsonSerializer.Serialize(original);
         // WriteAsString: the numbers are emitted as quoted strings, not bare numbers.
-        Assert.Contains("\"28083\"", json);
-        Assert.Contains("\"76561198000000000\"", json);
+        Assert.Contains("\"28083\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"76561198000000000\"", json, StringComparison.Ordinal);
 
         var roundTripped = JsonSerializer.Deserialize<Body>(json, Options)!;
         Assert.Equal(original.Port, roundTripped.Port);

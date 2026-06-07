@@ -3,7 +3,7 @@ using static RustPlusApi.Fcm.Data.Tags;
 
 namespace RustPlusApi.Fcm.Utils;
 
-public static class Utils
+public static class McsUtils
 {
     public static byte[] EncodeVarInt32(int value)
     {

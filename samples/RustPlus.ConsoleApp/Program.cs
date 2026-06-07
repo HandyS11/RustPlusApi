@@ -25,7 +25,7 @@ catch (Exception ex)
     return;
 }
 
-var rustPlus = new RustPlusApi.RustPlus(credentials.Ip, credentials.Port, credentials.PlayerId, credentials.PlayerToken);
+using var rustPlus = new RustPlusApi.RustPlus(credentials.Ip, credentials.Port, credentials.PlayerId, credentials.PlayerToken);
 
 await rustPlus.ConnectAsync();
 
@@ -40,27 +40,25 @@ while (isRunning)
     Console.WriteLine("3. Electricity Features");
 
     Console.Write("\nPlease enter your choice: ");
-    var choice = Console.ReadLine();
-
-    switch (choice)
+    switch (Console.ReadLine())
     {
         case "0":
             isRunning = false;
             break;
         case "1":
-            await CommonFeatureMenu();
+            await CommonFeatureMenuAsync();
             break;
         case "2":
-            await TeamFeatureMenu();
+            await TeamFeatureMenuAsync();
             break;
         case "3":
-            await ElectricityFeatureMenu();
+            await ElectricityFeatureMenuAsync();
             break;
         default:
             Console.WriteLine("Invalid choice, please try again.");
             break;
     }
-    
+
     Console.WriteLine("\nPress any key to continue...");
     Console.ReadLine();
 }
@@ -68,7 +66,7 @@ while (isRunning)
 await rustPlus.DisconnectAsync();
 return;
 
-async Task CommonFeatureMenu()
+async Task CommonFeatureMenuAsync()
 {
     while (true)
     {
@@ -81,9 +79,7 @@ async Task CommonFeatureMenu()
         Console.WriteLine("4. Get Time");
 
         Console.Write("\nPlease enter your choice: ");
-        var choice = Console.ReadLine();
-
-        switch (choice)
+        switch (Console.ReadLine())
         {
             case "0":
                 return;
@@ -103,13 +99,13 @@ async Task CommonFeatureMenu()
                 Console.WriteLine("Invalid choice, please try again.");
                 break;
         }
-        
+
         Console.WriteLine("\nPress any key to continue...");
         Console.ReadLine();
     }
 }
 
-async Task TeamFeatureMenu()
+async Task TeamFeatureMenuAsync()
 {
     while (true)
     {
@@ -122,9 +118,7 @@ async Task TeamFeatureMenu()
         Console.WriteLine("4. Send Team Message");
 
         Console.Write("\nPlease enter your choice: ");
-        var choice = Console.ReadLine();
-
-        switch (choice)
+        switch (Console.ReadLine())
         {
             case "0":
                 return;
@@ -158,13 +152,13 @@ async Task TeamFeatureMenu()
                 Console.WriteLine("Invalid choice, please try again.");
                 break;
         }
-        
+
         Console.WriteLine("\nPress any key to continue...");
         Console.ReadLine();
     }
 }
 
-async Task ElectricityFeatureMenu()
+async Task ElectricityFeatureMenuAsync()
 {
     while (true)
     {
@@ -179,11 +173,9 @@ async Task ElectricityFeatureMenu()
         Console.WriteLine("6. Set Smart Switch Value");
         Console.WriteLine("7. Strobe Smart Switch");
         Console.WriteLine("8. Toggle Smart Switch");
-        
-        Console.Write("\nPlease enter your choice: ");
-        var choice = Console.ReadLine();
 
-        switch (choice)
+        Console.Write("\nPlease enter your choice: ");
+        switch (Console.ReadLine())
         {
             case "0":
                 return;
@@ -218,7 +210,7 @@ async Task ElectricityFeatureMenu()
                 await new ToggleSmartSwitch(rustPlus).ToggleSmartSwitchAsync(GetEntityId("smartSwitchId"));
                 break;
         }
-        
+
         Console.WriteLine("\nPress any key to continue...");
         Console.ReadLine();
     }

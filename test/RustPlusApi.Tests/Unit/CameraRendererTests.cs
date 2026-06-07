@@ -15,8 +15,11 @@ namespace RustPlusApi.Tests.Unit;
 /// </summary>
 public class CameraRendererTests
 {
-    // Full ray: 0xFF marker, then 3 bytes encoding distance/alignment/material.
-    // t = (b1 << 2) | (b2 >> 6), alignment = b2 & 0x3F, material = b3.
+    /// <summary>Full ray: 0xFF marker, then 3 bytes encoding distance/alignment/material.</summary>
+    /// <param name="b1">High byte: distance[9:2].</param>
+    /// <param name="b2">Middle byte: distance[1:0] in bits 7-6, alignment in bits 5-0.</param>
+    /// <param name="b3">Material index.</param>
+    /// <remarks>t = (b1 &lt;&lt; 2) | (b2 &gt;&gt; 6), alignment = b2 &amp; 0x3F, material = b3.</remarks>
     private static byte[] FullRay(byte b1, byte b2, byte b3) => [255, b1, b2, b3];
 
     private static Image<Rgba32> Decode(byte[] png) => Image.Load<Rgba32>(png);
@@ -65,9 +68,13 @@ public class CameraRendererTests
     private static bool HasPixel(Image<Rgba32> image, Rgba32 colour)
     {
         for (var y = 0; y < image.Height; y++)
+        {
             for (var x = 0; x < image.Width; x++)
+            {
                 if (image[x, y] == colour)
                     return true;
+            }
+        }
         return false;
     }
 }

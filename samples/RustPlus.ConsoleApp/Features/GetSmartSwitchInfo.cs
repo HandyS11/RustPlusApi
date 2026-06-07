@@ -3,7 +3,7 @@ using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class GetSmartSwitchInfo(IRustPlus rustPlus)
+internal sealed class GetSmartSwitchInfo(IRustPlus rustPlus)
 {
     public async Task GetSmartSwitchInfoAsync(uint entityId)
     {

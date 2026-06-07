@@ -2,10 +2,10 @@ namespace RustPlusApi.Data.Notes;
 
 public enum NoteColors
 {
-    Yellow,
-    Blue,
-    Green,
-    Red,
-    Purple,
-    Cyan
+    Yellow = 0,
+    Blue = 1,
+    Green = 2,
+    Red = 3,
+    Purple = 4,
+    Cyan = 5,
 }

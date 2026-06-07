@@ -3,7 +3,7 @@ using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class GetAlarmInfo(IRustPlus rustPlus)
+internal sealed class GetAlarmInfo(IRustPlus rustPlus)
 {
     public async Task GetAlarmInfoAsync(uint entityId)
     {

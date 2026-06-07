@@ -21,7 +21,7 @@ public class RustPlusClientTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        using var client = new RustPlus(server.Host, server.Port, PlayerId, PlayerToken);
+        using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
         await client.ConnectAsync();
 
         var response = await client.GetInfoAsync().WaitAsync(Timeout);
@@ -38,7 +38,7 @@ public class RustPlusClientTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        using var client = new RustPlus(server.Host, server.Port, PlayerId, PlayerToken);
+        using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
         await client.ConnectAsync();
 
         var response = await client.GetTimeAsync().WaitAsync(Timeout);
@@ -55,7 +55,7 @@ public class RustPlusClientTests
         await using var server = new MockRustPlusServer(
             request => MockResponses.Error(request.Seq, "not_found"));
         server.Start();
-        using var client = new RustPlus(server.Host, server.Port, PlayerId, PlayerToken);
+        using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
         await client.ConnectAsync();
 
         var response = await client.GetInfoAsync().WaitAsync(Timeout);
@@ -70,7 +70,7 @@ public class RustPlusClientTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        using var client = new RustPlus(server.Host, server.Port, PlayerId, PlayerToken);
+        using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
 
         var received = new TaskCompletionSource<TeamMessageEventArg>(
             TaskCreationOptions.RunContinuationsAsynchronously);

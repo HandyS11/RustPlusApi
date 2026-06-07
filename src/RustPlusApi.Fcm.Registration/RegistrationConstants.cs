@@ -18,6 +18,7 @@ namespace RustPlusApi.Fcm.Registration;
 public static class RegistrationConstants
 {
     // --- Rust+ Firebase project (rustplus.js) ---
+
     public const string ApiKey = "AIzaSyB5y2y-Tzqb4-I4Qnlsh_9naYv_TD8pCvY";
     public const string ProjectId = "rust-companion-app";
     public const string GcmSenderId = "976529667804";
@@ -26,9 +27,11 @@ public static class RegistrationConstants
     public const string AndroidPackageCert = "E28D05345FB78A7A1A63D70F4A302DBF426CA5AD";
 
     // --- Expo ---
+
     public const string ExpoProjectId = "49451aca-a822-41e6-ad59-955718d0ff9c";
 
     // --- Endpoints ---
+
     public const string CheckinUrl = "https://android.clients.google.com/checkin";
     public const string FcmRegisterUrl = "https://android.clients.google.com/c2dm/register3";
     public const string FirebaseInstallationsUrl = "https://firebaseinstallations.googleapis.com/v1/projects/" + ProjectId + "/installations";
@@ -36,6 +39,6 @@ public static class RegistrationConstants
     public const string CompanionRegisterUrl = "https://companion-rust.facepunch.com/api/push/register";
     public const string SteamLoginUrl = "https://companion-rust.facepunch.com/login";
 
-    // Chrome identity used for the GCM check-in (mirrors push-receiver).
+    /// <summary>Chrome identity used for the GCM check-in (mirrors push-receiver).</summary>
     public const string ChromeVersion = "63.0.3234.0";
 }

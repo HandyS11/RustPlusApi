@@ -3,7 +3,7 @@ using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class GetMap(IRustPlus rustPlus)
+internal sealed class GetMap(IRustPlus rustPlus)
 {
     public async Task GetMapAsync()
     {
@@ -11,7 +11,7 @@ public class GetMap(IRustPlus rustPlus)
 
         if (!response.IsSuccess) return;
         await File.WriteAllBytesAsync("map.jpg", response.Data?.JpgImage!);
-        
+
         DisplayUtilities.DisplayJson("Map", response);
         Console.WriteLine($"Image saved under: {Directory.GetCurrentDirectory()}");
     }

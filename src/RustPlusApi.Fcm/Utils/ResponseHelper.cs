@@ -1,4 +1,6 @@
-﻿using RustPlusApi.Fcm.Data;
+﻿using System.Globalization;
+
+using RustPlusApi.Fcm.Data;
 
 namespace RustPlusApi.Fcm.Utils;
 
@@ -9,7 +11,7 @@ public static class ResponseHelper
         return new Notification<T?>
         {
             PlayerId = body.PlayerId,
-            PlayerToken = int.Parse(body.PlayerToken),
+            PlayerToken = int.Parse(body.PlayerToken, CultureInfo.InvariantCulture),
             ServerId = body.Id,
             Data = data
         };

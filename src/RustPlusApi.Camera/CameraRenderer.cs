@@ -28,7 +28,7 @@ public sealed class CameraRenderer
     private readonly int _width;
     private readonly int _height;
     private readonly short[] _samplePositionBuffer;
-    // Raw decoded samples (distance 0-1023, alignment 0-63, material). Normalised at render time.
+    /// <summary>Raw decoded samples (distance 0-1023, alignment 0-63, material). Normalised at render time.</summary>
     private readonly (int Distance, int Alignment, int Material)?[] _output;
 
     public CameraRenderer(int width, int height)
@@ -40,6 +40,7 @@ public sealed class CameraRenderer
     }
 
     /// <summary>Decodes a frame's ray data and accumulates its samples into the image buffer.</summary>
+    /// <param name="frame">The camera frame whose ray data will be decoded.</param>
     public void AddRays(CameraFrame frame)
     {
         var rayData = frame.RayData;
@@ -64,8 +65,7 @@ public sealed class CameraRenderer
             }
             else
             {
-                var c = 192 & n;
-                switch (c)
+                switch (192 & n)
                 {
                     case 0:
                         Load(lookback[63 & n], out t, out r, out i);
@@ -91,7 +91,7 @@ public sealed class CameraRenderer
             }
 
             sampleOffset %= 2 * _width * _height;
-            var index = _samplePositionBuffer[sampleOffset++] + _samplePositionBuffer[sampleOffset++] * _width;
+            var index = _samplePositionBuffer[sampleOffset++] + (_samplePositionBuffer[sampleOffset++] * _width);
             if (index >= 0 && index < _output.Length)
                 _output[index] = (t, r, i);
         }
@@ -126,7 +126,7 @@ public sealed class CameraRenderer
             }
 
             var x = i % _width;
-            var y = _height - 1 - i / _width;
+            var y = _height - 1 - (i / _width);
             image[x, y] = colour;
         }
 
@@ -137,7 +137,7 @@ public sealed class CameraRenderer
 
     private static void Store(int[][] lookback, int t, int r, int i)
     {
-        var u = (3 * (t / 128) + 5 * (r / 16) + 7 * i) & 63;
+        var u = ((3 * (t / 128)) + (5 * (r / 16)) + (7 * i)) & 63;
         lookback[u][0] = t;
         lookback[u][1] = r;
         lookback[u][2] = i;
@@ -171,7 +171,7 @@ public sealed class CameraRenderer
         }
 
         var generator = new IndexGenerator(1337);
-        for (var rIndex = width * height - 1; rIndex >= 1; rIndex--)
+        for (var rIndex = (width * height) - 1; rIndex >= 1; rIndex--)
         {
             var c = 2 * rIndex;
             var swap = 2 * generator.NextInt(rIndex + 1);

@@ -21,7 +21,7 @@ public class CameraClientTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        using var client = new RustPlus(server.Host, server.Port, PlayerId, PlayerToken);
+        using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
         await client.ConnectAsync();
 
         var response = await client.SubscribeToCameraAsync("CAM01").WaitAsync(Timeout);
@@ -36,7 +36,7 @@ public class CameraClientTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        using var client = new RustPlus(server.Host, server.Port, PlayerId, PlayerToken);
+        using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
         await client.ConnectAsync();
 
         var input = await client.SendCameraInputAsync(CameraButtons.Forward | CameraButtons.FirePrimary)
@@ -52,7 +52,7 @@ public class CameraClientTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        using var client = new RustPlus(server.Host, server.Port, PlayerId, PlayerToken);
+        using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
 
         var received = new TaskCompletionSource<CameraRaysEventArg>(
             TaskCreationOptions.RunContinuationsAsynchronously);
