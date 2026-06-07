@@ -8,13 +8,13 @@ all the required credentials natively — _no Node.js required_.
 
 [![CI](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml/badge.svg)](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml)
 [![CD](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg)](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml)
-[![Docs](https://github.com/HandyS11/RustPlusApi/actions/workflows/docs.yml/badge.svg)](https://handys11.github.io/RustPlusApi/)
+[![Docs](https://github.com/HandyS11/RustPlusApi/actions/workflows/Documentation.yml/badge.svg)](https://handys11.github.io/RustPlusApi/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![.NET](https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4?logo=dotnet)
 
 [**Documentation**](https://handys11.github.io/RustPlusApi/) ·
 [Getting Started](https://handys11.github.io/RustPlusApi/articles/getting-started.html) ·
-[Samples](samples/README.md)
+[Samples](samples/README.md) ·
 
 </div>
 

@@ -1,9 +1,0 @@
-<Project>
-  <!--
-    Isolates the proto-refresh tooling from the repo's shipping build settings.
-    By existing here, this file shadows the root Directory.Build.props (MSBuild uses the
-    nearest one walking up and does not import the parent), so ProtoGen does not inherit
-    TreatWarningsAsErrors, the analyzer pack, or GenerateDocumentationFile. This is a
-    standalone dev tool, not a shipped artifact.
-  -->
-</Project>

@@ -3,7 +3,3 @@ steamcmd/
 rds/
 decompiled/
 out/
-
-# ProtoGen build output
-ProtoGen/bin/
-ProtoGen/obj/

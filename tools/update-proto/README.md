@@ -1,10 +1,9 @@
-# `tools/update-proto` — authoritative proto refresh (§6, Method A)
+# `tools/update-proto` — authoritative proto refresh
 
 Re-derives [`RustPlusContracts.proto`](../../src/RustPlusApi/Protobuf/RustPlusContracts.proto)
 **authoritatively** by decompiling the Rust dedicated server. There is no official Rust+
 schema; the community copies lag the game, so this is the primary, reproducible source of
-truth. See §6 of [v2-plan.md](../../v2-plan.md) and the full breakdown in
-[proto-refresh-plan.md](../../proto-refresh-plan.md).
+truth.
 
 > **Note (build `23601104`):** the server does **not** use protobuf-net — the contracts are
 > **SilentOrbit**-generated `IProto<T>` classes in `Rust.Data.dll` (namespace `ProtoBuf`),

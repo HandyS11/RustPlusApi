@@ -7,9 +7,11 @@ RustPlus.Register.ConsoleApp   ──▶  rustplus.config.json   ──▶  Rust
         (one-time setup)             + RustPlus(...) args   ──▶  RustPlus.ConsoleApp       (query/control the server)
 ```
 
-> **Credentials are never committed.** Each app ships a `*.sample.json` template (placeholders).
-> You create the real file locally — `credentials.json` / `rustplus.config.json` — which is
-> **gitignored**. Don't put real values in the `*.sample.json` files.
+> **Credentials are never committed.** The query and listener apps ship a placeholder template —
+> `RustPlus.ConsoleApp/credentials.sample.json` and `RustPlus.Fcm.ConsoleApp/sample-config.json`.
+> Copy it to the real file locally (`credentials.json` / `rustplus.config.json`), which is
+> **gitignored**; don't put real values in the template. The Register app needs no template — it
+> generates `rustplus.config.json` for you.
 
 ## 1. RustPlus.Register.ConsoleApp — get your credentials (start here)
 

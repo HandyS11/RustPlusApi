@@ -1,7 +1,0 @@
-<Project>
-  <!-- Shadow the root central-package-management file: the tool pins its own versions
-       inline, so it never touches the shipping Directory.Packages.props. -->
-  <PropertyGroup>
-    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-  </PropertyGroup>
-</Project>

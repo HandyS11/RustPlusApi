@@ -26,7 +26,7 @@ public sealed class MockRustPlusServer : IAsyncDisposable
     public int Port { get; }
 
     /// <summary>The host the client should connect to (always loopback).</summary>
-    public static string Host => "localhost";
+    public static string Host => "127.0.0.1";
 
     /// <summary>
     /// Creates a server on a free loopback port.
@@ -39,7 +39,7 @@ public sealed class MockRustPlusServer : IAsyncDisposable
     {
         _responder = responder ?? MockResponses.Default;
         Port = GetFreePort();
-        _listener.Prefixes.Add($"http://localhost:{Port}/");
+        _listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
     }
 
     /// <summary>Starts listening and accepting connections.</summary>

@@ -21,7 +21,7 @@ public class ClanNexusClientTests
         var server = new MockRustPlusServer(responder);
         server.Start();
         var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
-        await client.ConnectAsync();
+        await client.ConnectAsync().WaitAsync(Timeout);
         return (server, client);
     }
 

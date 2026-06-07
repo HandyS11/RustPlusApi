@@ -2,7 +2,7 @@
 
 The API documentation site is built with [DocFX](https://dotnet.github.io/docfx/) from the XML
 doc comments in `src/` plus the conceptual pages in this folder. It is published to GitHub Pages
-by [`.github/workflows/docs.yml`](../.github/workflows/docs.yml) on push to `develop`.
+by [`.github/workflows/Documentation.yml`](../.github/workflows/Documentation.yml) on push to `main`.
 
 ## Prerequisites
 
