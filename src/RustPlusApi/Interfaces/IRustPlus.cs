@@ -29,11 +29,11 @@ public interface IRustPlus : IRustPlusSocket
 
     /// <summary>Checks whether the player is subscribed to push notifications from a smart alarm.</summary>
     /// <param name="alarmId">Entity ID of the smart alarm.</param>
-    Task<Response<SubscriptionInfo?>> CheckSubscriptionAsync(uint alarmId);
+    Task<Response<SubscriptionInfo?>> CheckSubscriptionAsync(ulong alarmId);
 
     /// <summary>Returns the current state of a smart alarm entity.</summary>
     /// <param name="entityId">Entity ID of the alarm.</param>
-    Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId);
+    Task<Response<AlarmInfo?>> GetAlarmInfoAsync(ulong entityId);
 
     /// <summary>Returns the full clan snapshot for the authenticated player's clan.</summary>
     Task<Response<ClanInfo?>> GetClanInfoAsync();
@@ -77,11 +77,11 @@ public interface IRustPlus : IRustPlusSocket
 
     /// <summary>Returns the current state of a smart switch entity.</summary>
     /// <param name="entityId">Entity ID of the smart switch.</param>
-    Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(uint entityId);
+    Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(ulong entityId);
 
     /// <summary>Returns the current contents and protection state of a storage monitor.</summary>
     /// <param name="entityId">Entity ID of the storage monitor.</param>
-    Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(uint entityId);
+    Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(ulong entityId);
 
     /// <summary>Returns recent team chat messages.</summary>
     Task<Response<TeamChatInfo?>> GetTeamChatAsync();
@@ -103,12 +103,12 @@ public interface IRustPlus : IRustPlusSocket
     /// <summary>Sets a smart switch to a specific on/off state.</summary>
     /// <param name="smartSwitchId">Entity ID of the smart switch.</param>
     /// <param name="smartSwitchValue"><see langword="true"/> to turn on, <see langword="false"/> to turn off.</param>
-    Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(uint smartSwitchId, bool smartSwitchValue);
+    Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(ulong smartSwitchId, bool smartSwitchValue);
 
     /// <summary>Subscribes or unsubscribes from push notifications for a smart alarm.</summary>
     /// <param name="entityId">Entity ID of the alarm.</param>
     /// <param name="doSubscribe"><see langword="true"/> to subscribe, <see langword="false"/> to unsubscribe.</param>
-    Task<Response<bool?>> SetSubscriptionAsync(uint entityId, bool doSubscribe = true);
+    Task<Response<bool?>> SetSubscriptionAsync(ulong entityId, bool doSubscribe = true);
 
     /// <summary>
     /// Pulses a smart switch on then off (or off then on) with the specified delay, implementing a
@@ -117,9 +117,9 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="entityId">Entity ID of the smart switch.</param>
     /// <param name="timeoutMilliseconds">Duration to hold the initial state before reverting, in milliseconds.</param>
     /// <param name="value">Initial state to pulse the switch to.</param>
-    Task<Response<SmartSwitchInfo?>> StrobeSmartSwitchAsync(uint entityId, int timeoutMilliseconds = 1000, bool value = true);
+    Task<Response<SmartSwitchInfo?>> StrobeSmartSwitchAsync(ulong entityId, int timeoutMilliseconds = 1000, bool value = true);
 
     /// <summary>Toggles a smart switch — turns it on if off, or off if on.</summary>
     /// <param name="entityId">Entity ID of the smart switch.</param>
-    Task<Response<SmartSwitchInfo?>> ToggleSmartSwitchAsync(uint entityId);
+    Task<Response<SmartSwitchInfo?>> ToggleSmartSwitchAsync(ulong entityId);
 }

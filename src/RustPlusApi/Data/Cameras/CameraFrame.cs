@@ -22,4 +22,13 @@ public record CameraFrame
 
     /// <summary>Entities visible in this frame.</summary>
     public IEnumerable<CameraEntity> Entities { get; init; } = [];
+
+    /// <summary>In-game time of day when the frame was captured, if reported.</summary>
+    public float? TimeOfDay { get; init; }
+
+    /// <summary>World-space position of the camera, if reported.</summary>
+    public Vector3? CameraPosition { get; init; }
+
+    /// <summary>World-space rotation of the camera, if reported.</summary>
+    public Vector3? CameraRotation { get; init; }
 }

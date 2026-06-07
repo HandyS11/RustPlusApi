@@ -35,4 +35,7 @@ public sealed record ClanRole
 
     /// <summary><see langword="true"/> if members with this role can view clan audit logs.</summary>
     public bool CanAccessLogs { get; init; }
+
+    /// <summary><see langword="true"/> if members with this role can view clan score events.</summary>
+    public bool CanAccessScoreEvents { get; init; }
 }

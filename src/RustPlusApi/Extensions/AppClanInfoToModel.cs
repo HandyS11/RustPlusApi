@@ -40,7 +40,8 @@ public static class AppClanInfoToModel
             Roles = clanInfo.Roles.ToClanRoles(),
             Members = clanInfo.Members.ToClanMembers(),
             Invites = clanInfo.Invites.ToClanInvites(),
-            MaxMemberCount = clanInfo.ShouldSerializeMaxMemberCount() ? clanInfo.MaxMemberCount : null
+            MaxMemberCount = clanInfo.ShouldSerializeMaxMemberCount() ? clanInfo.MaxMemberCount : null,
+            Score = clanInfo.ShouldSerializeScore() ? clanInfo.Score : null
         };
     }
 
@@ -70,7 +71,8 @@ public static class AppClanInfoToModel
             CanPromote = role.CanPromote,
             CanDemote = role.CanDemote,
             CanSetPlayerNotes = role.CanSetPlayerNotes,
-            CanAccessLogs = role.CanAccessLogs
+            CanAccessLogs = role.CanAccessLogs,
+            CanAccessScoreEvents = role.ShouldSerializeCanAccessScoreEvents() && role.CanAccessScoreEvents
         };
     }
 

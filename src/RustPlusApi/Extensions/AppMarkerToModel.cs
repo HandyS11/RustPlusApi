@@ -66,7 +66,8 @@ public static class AppMarkerToModel
             IsItemBlueprint = sellOrder.ItemIsBlueprint,
             IsCurrencyBlueprint = sellOrder.CurrencyIsBlueprint,
             ItemLife = sellOrder.ItemCondition,
-            ItemMaxLife = sellOrder.ItemConditionMax
+            ItemMaxLife = sellOrder.ItemConditionMax,
+            PriceMultiplier = sellOrder.ShouldSerializePriceMultiplier() ? sellOrder.PriceMultiplier : null
         };
     }
 
@@ -106,6 +107,18 @@ public static class AppMarkerToModel
     public static PatrolHelicopterMarker ToPatrolHelicopterMarker(this AppMarker marker)
     {
         return new PatrolHelicopterMarker
+        {
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y
+        };
+    }
+
+    /// <summary>Maps a marker to a <see cref="TravellingVendorMarker"/>.</summary>
+    /// <param name="marker">The protobuf map marker.</param>
+    public static TravellingVendorMarker ToTravellingVendorMarker(this AppMarker marker)
+    {
+        return new TravellingVendorMarker
         {
             Id = marker.Id,
             X = marker.X,

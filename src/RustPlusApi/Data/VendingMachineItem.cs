@@ -29,4 +29,7 @@ public sealed record VendingMachineItem
 
     /// <summary>Maximum condition value of the item (0–1 scale).</summary>
     public float ItemMaxLife { get; init; }
+
+    /// <summary>Price multiplier applied to the order, if reported.</summary>
+    public float? PriceMultiplier { get; init; }
 }

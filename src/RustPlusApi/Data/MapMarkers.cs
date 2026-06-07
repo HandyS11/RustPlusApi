@@ -10,20 +10,23 @@ namespace RustPlusApi.Data;
 public sealed record MapMarkers
 {
     /// <summary>Markers of unknown or unrecognised type, keyed by marker ID.</summary>
-    public Dictionary<uint, UnknownMarker> UnknownMarkers { get; init; } = [];
+    public Dictionary<ulong, UnknownMarker> UnknownMarkers { get; init; } = [];
 
     /// <summary>Player position markers, keyed by marker ID.</summary>
-    public Dictionary<uint, PlayerMarker> PlayerMarkers { get; init; } = [];
+    public Dictionary<ulong, PlayerMarker> PlayerMarkers { get; init; } = [];
 
     /// <summary>Vending machine markers, keyed by marker ID.</summary>
-    public Dictionary<uint, VendingMachineMarker> VendingMachineMarkers { get; init; } = [];
+    public Dictionary<ulong, VendingMachineMarker> VendingMachineMarkers { get; init; } = [];
 
     /// <summary>CH-47 (Chinook helicopter) markers, keyed by marker ID.</summary>
-    public Dictionary<uint, Ch47Marker> Ch47Markers { get; init; } = [];
+    public Dictionary<ulong, Ch47Marker> Ch47Markers { get; init; } = [];
 
     /// <summary>Cargo ship markers, keyed by marker ID.</summary>
-    public Dictionary<uint, CargoShipMarker> CargoShipMarkers { get; init; } = [];
+    public Dictionary<ulong, CargoShipMarker> CargoShipMarkers { get; init; } = [];
 
     /// <summary>Patrol helicopter markers, keyed by marker ID.</summary>
-    public Dictionary<uint, PatrolHelicopterMarker> PatrolHelicopterMarkers { get; init; } = [];
+    public Dictionary<ulong, PatrolHelicopterMarker> PatrolHelicopterMarkers { get; init; } = [];
+
+    /// <summary>Travelling vendor markers, keyed by marker ID.</summary>
+    public Dictionary<ulong, TravellingVendorMarker> TravellingVendorMarkers { get; init; } = [];
 }

@@ -36,7 +36,10 @@ public static class AppCameraToModel
             SampleOffset = appCameraRays.SampleOffset,
             RayData = appCameraRays.RayData ?? [],
             Distance = appCameraRays.Distance,
-            Entities = appCameraRays.Entities.ToCameraEntities()
+            Entities = appCameraRays.Entities.ToCameraEntities(),
+            TimeOfDay = appCameraRays.ShouldSerializeTimeOfDay() ? appCameraRays.TimeOfDay : null,
+            CameraPosition = appCameraRays.CameraPosition?.ToVector3(),
+            CameraRotation = appCameraRays.CameraRotation?.ToVector3()
         };
     }
 
@@ -50,7 +53,10 @@ public static class AppCameraToModel
             SampleOffset = appCameraRays.SampleOffset,
             RayData = appCameraRays.RayData ?? [],
             Distance = appCameraRays.Distance,
-            Entities = appCameraRays.Entities.ToCameraEntities()
+            Entities = appCameraRays.Entities.ToCameraEntities(),
+            TimeOfDay = appCameraRays.ShouldSerializeTimeOfDay() ? appCameraRays.TimeOfDay : null,
+            CameraPosition = appCameraRays.CameraPosition?.ToVector3(),
+            CameraRotation = appCameraRays.CameraRotation?.ToVector3()
         };
     }
 

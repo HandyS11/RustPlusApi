@@ -41,4 +41,7 @@ public sealed record ClanInfo
 
     /// <summary>Maximum number of members allowed in this clan, if capped.</summary>
     public int? MaxMemberCount { get; init; }
+
+    /// <summary>Clan score, if reported by the server.</summary>
+    public long? Score { get; init; }
 }

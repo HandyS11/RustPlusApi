@@ -22,7 +22,7 @@ Last updated: 2026-06-05
 | 6 | Native credential acquisition | ☑ |
 | 7 | JSON cleanup | ☑ |
 | 8 | Docs & release (`2.0.0`) | ☑ |
-| ✶ | Proto-refresh tooling (`tools/update-proto/`) | ☑ tooling; ◐ apply refresh |
+| ✶ | Proto-refresh tooling (`tools/update-proto/`) + applied refresh | ☑ |
 | ✶ | One-time golden-payload capture | ☐ |
 
 ---
@@ -189,7 +189,7 @@ Last updated: 2026-06-05
 - [x] Decompile contract types with `ilspycmd` — `2-decompile.sh` (auto-installs ilspycmd, `--list` discovery, pipefail-safe). **Run end-to-end.** Target corrected to `Rust.Data.dll`.
 - [x] Regenerate `RustPlusContracts.proto` + diff — **⚠️ premise correction:** the server uses **SilentOrbit**, not protobuf-net (no `[ProtoContract]`, no protobuf-net dll), so `Serializer.GetProto<AppMessage>()` is **not applicable**. Built `ProtoGen` (Roslyn) which **parses the decompiled SilentOrbit C#** (field# from the dual `Deserialize` switch, type from decl + `ProtocolParser.Read*`, nesting from C# nested classes; labels/order/well-known-types preserved from committed). `update-proto.sh` runs the whole pipeline + diff gate. Regen reproduces the committed proto with a **25-line, all-genuine diff** (new fields incl. `time_of_day`; `Monument.name→token`; `entity_id` widening; `Unknow→Undefined`). _See [proto-refresh-plan.md](proto-refresh-plan.md) for the full result._
 - [x] Document monthly (first-Thursday) rerun routine — cadence in `tools/update-proto/README.md`. _(Method D/B backups dropped: Method A is reliable. Optional scheduled Action not added — left as a documented option.)_
-- [ ] **Follow-up:** apply the reviewed diff to `RustPlusContracts.proto` (one-time v2 refresh) + add `Data/*` mappers for any new fields, then PR.
+- [x] **One-time v2 refresh applied** — proto now matches the server byte-for-byte (`update-proto.sh` exits clean). Models/mappers updated: clan `Score` + role `CanAccessScoreEvents`, camera `TimeOfDay`/`CameraPosition`/`CameraRotation`, sell-order `PriceMultiplier`, new `TravellingVendorMarker` (+ dict/case), `Monument.name→token`, `Unknow→Undefined`, entity-id widening `uint→ulong` (models, `MapMarkers` dicts, `RustPlus`/`IRustPlus` params), and `Note` icon/colour adopted server truth (`int32`/`colour_index`/`label`; redundant `IconType`/`IconColor` proto enums dropped — library keeps its own `NoteIcons`/`NoteColors`). **Build clean (0 warnings), 51 tests green.** _(Regression tests for the new fields + the PR itself remain.)_
 
 ### One-time golden-payload capture (§15.4)
 
