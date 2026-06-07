@@ -4,7 +4,7 @@ namespace RustPlusApi.Data.Cameras;
 public sealed record CameraEntity
 {
     /// <summary>Unique entity identifier.</summary>
-    public uint EntityId { get; init; }
+    public ulong EntityId { get; init; }
 
     /// <summary>The kind of entity (player, tree, etc.).</summary>
     public CameraEntityType Type { get; init; }

@@ -73,9 +73,9 @@ authoritative for names/types/numbers/repeated and for new fields/messages/enums
 the committed proto's conventions that the binary does not carry — `required`/`optional` labels,
 declaration order, and hand-maintained well-known types (`Vector2/3/4`, `Color`, `Ray`).
 
-> **Not a drop-in replacement.** Some diffs are deliberate library refinements to keep (e.g.
-> richer `IconType`/`IconColor` enums where the server has plain `int32`). Review, don't blindly
-> overwrite.
+> **Review, don't blindly overwrite.** A diff is the *server's* current truth; decide per change
+> whether to adopt it (e.g. a field rename) or keep a deliberate library convention. With the v2
+> refresh applied, the gate is currently empty.
 
 Working dirs (`steamcmd/`, `rds/`, `decompiled/`, `out/`, `ProtoGen/bin|obj`) are gitignored.
 
@@ -84,3 +84,9 @@ Working dirs (`steamcmd/`, `rds/`, `decompiled/`, `out/`, `ProtoGen/bin|obj`) ar
 Rust force-updates on the **first Thursday of each month (~18:00–20:00 UTC)** — the only
 moment the contracts can change. After the update lands: re-run this pipeline, review the
 diff, ship any delta. We watch the **authoritative server**, never the community libs.
+
+This is automated by [`.github/workflows/ProtoRefresh.yml`](../../.github/workflows/ProtoRefresh.yml):
+every Thursday 21:00 UTC (gated to the first of the month) it runs the full pipeline and, on
+drift, opens/updates a `proto-drift` issue with the diff. It can also be run on demand via
+**workflow_dispatch**. It never auto-applies the proto — new fields usually need matching
+model/mapper changes.

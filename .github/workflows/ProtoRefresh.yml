@@ -1,0 +1,109 @@
+name: Proto Refresh Check
+
+# Authoritatively checks whether the Rust dedicated server's Companion contracts have drifted
+# from the committed RustPlusContracts.proto (§6, Method A — see tools/update-proto/README.md).
+# On drift it opens (or comments on) a tracking issue with the diff; the regenerated proto is
+# NOT auto-applied because new fields usually need matching model/mapper changes by hand.
+
+on:
+  schedule:
+    # Rust force-updates on the first Thursday of each month (~18:00–20:00 UTC). cron can't
+    # express "first Thursday", so run every Thursday at 21:00 UTC and gate on the day-of-month.
+    - cron: "0 21 * * 4"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  proto-refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: First-Thursday gate
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$(date -u +%-d)" -le 7 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Not the first Thursday of the month — skipping."
+          fi
+
+      - name: Checkout
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install SteamCMD runtime deps (32-bit)
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends lib32gcc-s1
+
+      - name: Run proto refresh
+        if: steps.gate.outputs.run == 'true'
+        id: refresh
+        run: |
+          set +e
+          ./tools/update-proto/update-proto.sh
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload diff artifact
+        if: steps.gate.outputs.run == 'true' && steps.refresh.outputs.exit_code == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: proto-diff
+          path: tools/update-proto/out/proto.diff
+
+      - name: Open or update drift issue
+        if: steps.gate.outputs.run == 'true' && steps.refresh.outputs.exit_code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          manifest="tools/update-proto/rds/steamapps/appmanifest_258550.acf"
+          build_id="$(grep -o '"buildid"[^0-9]*[0-9]*' "$manifest" 2>/dev/null | grep -o '[0-9]*' || echo unknown)"
+
+          {
+            echo "The Rust dedicated server's Companion contracts have drifted from the committed"
+            echo "\`src/RustPlusApi/Protobuf/RustPlusContracts.proto\`."
+            echo
+            echo "- **Server build id:** \`${build_id}\`"
+            echo "- **Workflow run:** ${RUN_URL}"
+            echo
+            echo "Review the diff and apply the genuine wire changes (plus any matching \`Data/*\` model"
+            echo "and \`Extensions/*\` mapper updates), then open a PR. See \`tools/update-proto/README.md\`."
+            echo
+            echo "<details><summary>Diff (committed → server)</summary>"
+            echo
+            echo '```diff'
+            cat tools/update-proto/out/proto.diff
+            echo '```'
+            echo
+            echo "</details>"
+          } > /tmp/drift-body.md
+
+          # Ensure the label exists (no-op if it already does).
+          gh label create proto-drift --color FBCA04 \
+            --description "Committed proto drifted from the Rust dedicated server" 2>/dev/null || true
+
+          existing="$(gh issue list --label proto-drift --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file /tmp/drift-body.md
+            echo "::notice::Updated existing drift issue #${existing}."
+          else
+            gh issue create --label proto-drift \
+              --title "Proto drift detected (server build ${build_id})" \
+              --body-file /tmp/drift-body.md
+          fi

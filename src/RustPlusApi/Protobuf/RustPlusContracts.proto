@@ -58,6 +58,7 @@ message ClanInfo {
 	repeated ClanInfo.Member members = 11;
 	repeated ClanInfo.Invite invites = 12;
 	optional int32 max_member_count = 13;
+	optional int64 score = 14;
 
 	message Role {
 		required int32 role_id = 1;
@@ -71,6 +72,7 @@ message ClanInfo {
 		required bool can_demote = 9;
 		required bool can_set_player_notes = 10;
 		required bool can_access_logs = 11;
+		optional bool can_access_score_events = 12;
 	}
 
 	message Member {
@@ -123,7 +125,7 @@ message AppRequest {
 	required uint32 seq = 1;
 	required uint64 player_id = 2;
 	required int32 player_token = 3;
-	optional uint32 entity_id = 4;
+	optional uint64 entity_id = 4;
 	optional AppEmpty get_info = 8;
 	optional AppEmpty get_time = 9;
 	optional AppEmpty get_map = 10;
@@ -243,7 +245,7 @@ message AppMap {
 	optional string background = 6;
 
 	message Monument {
-		required string name = 1;
+		required string token = 1;
 		required float x = 2;
 		required float y = 3;
 	}
@@ -289,34 +291,10 @@ message AppTeamInfo {
 		required int32 type = 2;
 		required float x = 3;
 		required float y = 4;
-		required IconType icon = 5;
-		required IconColor colour = 6;
-		optional string name = 7;
+		required int32 icon = 5;
+		required int32 colour_index = 6;
+		optional string label = 7;
 	}
-}
-
-enum IconType {
-	Default = 0;
-	Money = 1;
-	Home = 2;
-	Drop = 3;
-	Sight = 4;
-	Shield = 5;
-	Skull = 6;
-	Bed = 7;
-	Sleep = 8;
-	Gun = 9;
-	Rock = 10;
-	Chest = 11;
-}
-
-enum IconColor {
-	Yellow = 0;
-	Blue = 1;
-	Green = 2;
-	Red = 3;
-	Purple = 4;
-	Cyan = 5;
 }
 
 message AppTeamMessage {
@@ -332,7 +310,7 @@ message AppTeamChat {
 }
 
 message AppMarker {
-	required uint32 id = 1;
+	required uint64 id = 1;
 	required AppMarkerType type = 2;
 	required float x = 3;
 	required float y = 4;
@@ -356,11 +334,12 @@ message AppMarker {
 		required bool currency_is_blueprint = 7;
 		optional float item_condition = 8;
 		optional float item_condition_max = 9;
+		optional float price_multiplier = 10;
 	}
 }
 
 enum AppMarkerType {
-	Unknow = 0;
+	Undefined = 0;
 	Player = 1;
 	Explosion = 2;
 	VendingMachine = 3;
@@ -369,6 +348,7 @@ enum AppMarkerType {
 	Crate = 6;
 	GenericRadius = 7;
 	PatrolHelicopter = 8;
+	TravellingVendor = 9;
 }
 
 message AppMapMarkers {
@@ -405,7 +385,7 @@ message AppNewTeamMessage {
 }
 
 message AppEntityChanged {
-	required uint32 entity_id = 1;
+	required uint64 entity_id = 1;
 	required AppEntityPayload payload = 2;
 }
 
@@ -441,6 +421,9 @@ message AppCameraRays {
 	required bytes ray_data = 3;
 	required float distance = 4;
 	repeated AppCameraRays.Entity entities = 5;
+	optional float time_of_day = 6;
+	optional Vector3 camera_position = 7;
+	optional Vector3 camera_rotation = 8;
 
 	enum EntityType {
 		Tree = 1;
@@ -448,7 +431,7 @@ message AppCameraRays {
 	}
 
 	message Entity {
-		required uint32 entity_id = 1;
+		required uint64 entity_id = 1;
 		required EntityType type = 2;
 		required Vector3 position = 3;
 		required Vector3 rotation = 4;

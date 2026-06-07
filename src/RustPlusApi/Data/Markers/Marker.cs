@@ -4,7 +4,7 @@ namespace RustPlusApi.Data.Markers;
 public record Marker
 {
     /// <summary>Unique marker identifier assigned by the server.</summary>
-    public uint? Id { get; init; }
+    public ulong? Id { get; init; }
 
     /// <summary>Horizontal map coordinate (west → east).</summary>
     public float? X { get; init; }

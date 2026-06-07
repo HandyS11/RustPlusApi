@@ -88,8 +88,8 @@ public static class AppTeamInfoToModel
             X = note.X,
             Y = note.Y,
             Icon = (NoteIcons)note.Icon,
-            Color = (NoteColors)note.Colour,
-            Text = note.Name
+            Color = (NoteColors)note.ColourIndex,
+            Text = note.Label
         };
     }
 

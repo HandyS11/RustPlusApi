@@ -6,5 +6,5 @@ namespace RustPlusApi.Data.Events;
 public sealed record SmartSwitchEventArg : SmartSwitchInfo
 {
     /// <summary>Entity ID of the smart switch that changed.</summary>
-    public uint Id { get; init; }
+    public ulong Id { get; init; }
 }

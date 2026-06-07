@@ -34,7 +34,8 @@ public static class AppMapToModel
     {
         return new ServerMapMonument
         {
-            Name = appMapMonument.Name,
+            // Server field is `token` (a localization key, e.g. "lighthouse"); exposed as Name.
+            Name = appMapMonument.Token,
             X = appMapMonument.X,
             Y = appMapMonument.Y
         };

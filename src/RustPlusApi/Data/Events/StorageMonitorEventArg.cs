@@ -6,5 +6,5 @@ namespace RustPlusApi.Data.Events;
 public sealed record StorageMonitorEventArg : StorageMonitorInfo
 {
     /// <summary>Entity ID of the storage monitor that changed.</summary>
-    public uint Id { get; init; }
+    public ulong Id { get; init; }
 }
