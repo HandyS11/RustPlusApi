@@ -7,8 +7,12 @@ using RustPlusContracts;
 
 namespace RustPlusApi.Extensions;
 
+/// <summary>Mapping extensions from protobuf map-marker messages to model types.</summary>
 public static class AppMapMarkerToModel
 {
+    /// <summary>Maps an <see cref="AppMapMarkers"/> response to a <see cref="MapMarkers"/> model, routing each marker to its typed dictionary.</summary>
+    /// <param name="appMapMarker">The protobuf map markers response.</param>
+    /// <exception cref="ArgumentException">Thrown when a marker has an unrecognized type.</exception>
     public static MapMarkers ToMapMarkers(this AppMapMarkers appMapMarker)
     {
         Dictionary<uint, UnknownMarker> unknownMarkers = [];

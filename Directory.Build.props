@@ -15,8 +15,7 @@
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
         <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
-        <!-- TODO: temporarily disabled while addressing analyzer warnings -->
-        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
 	</PropertyGroup>
 

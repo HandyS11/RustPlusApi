@@ -10,8 +10,11 @@ using static RustPlusContracts.AppMap;
 
 namespace RustPlusApi.Extensions;
 
+/// <summary>Mapping extensions from protobuf map messages to model types.</summary>
 public static class AppMapToModel
 {
+    /// <summary>Maps an <see cref="AppMap"/> to a <see cref="ServerMap"/>.</summary>
+    /// <param name="appMap">The protobuf map response.</param>
     public static ServerMap ToServerMap(this AppMap appMap)
     {
         return new ServerMap
@@ -25,6 +28,8 @@ public static class AppMapToModel
         };
     }
 
+    /// <summary>Maps a single protobuf monument to a <see cref="ServerMapMonument"/>.</summary>
+    /// <param name="appMapMonument">The protobuf monument.</param>
     public static ServerMapMonument ToServerMapMonument(this Monument appMapMonument)
     {
         return new ServerMapMonument
@@ -35,6 +40,8 @@ public static class AppMapToModel
         };
     }
 
+    /// <summary>Maps a sequence of protobuf monuments to <see cref="ServerMapMonument"/> instances.</summary>
+    /// <param name="appMapMonuments">The protobuf monuments to map.</param>
     public static IEnumerable<ServerMapMonument> ToServerMapMonuments(this IEnumerable<Monument> appMapMonuments)
     {
         return appMapMonuments.Select(ToServerMapMonument);

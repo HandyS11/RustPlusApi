@@ -468,7 +468,7 @@ generated_code = true
 dotnet_diagnostic.CA2007.severity = none # ConfigureAwait not required in console-app entry points
 dotnet_diagnostic.CS1591.severity = none # XML docs not required in sample apps
 
-[test/**]
+[tests/**]
 dotnet_diagnostic.CA2007.severity = none # ConfigureAwait not required in test projects
 dotnet_diagnostic.CS1591.severity = none # XML docs not required in test projects
 dotnet_diagnostic.VSTHRD003.severity = none # Awaiting stored Task fields is acceptable in test infrastructure

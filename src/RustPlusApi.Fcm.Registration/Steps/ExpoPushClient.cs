@@ -11,6 +11,10 @@ public sealed class ExpoPushClient(HttpClient? httpClient = null)
 {
     private readonly HttpClient _httpClient = httpClient ?? new HttpClient();
 
+    /// <summary>Exchanges <paramref name="fcmToken"/> for an Expo push token (<c>ExponentPushToken[...]</c>).</summary>
+    /// <param name="fcmToken">The FCM token obtained from <see cref="AndroidFcmRegister"/>.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the Expo response does not contain a push token.</exception>
     public async Task<string> GetTokenAsync(string fcmToken, CancellationToken cancellationToken = default)
     {
         var body = JsonSerializer.Serialize(new

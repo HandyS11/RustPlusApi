@@ -10,6 +10,8 @@ namespace RustPlusApi.Camera;
 /// (sized from <see cref="CameraInfo"/>), feed each <see cref="CameraFrame"/> via
 /// <see cref="AddRays"/>, then call <see cref="Render"/> for the current image.
 /// </summary>
+/// <param name="width">Camera image width in pixels, from <see cref="CameraInfo.Width"/>.</param>
+/// <param name="height">Camera image height in pixels, from <see cref="CameraInfo.Height"/>.</param>
 /// <remarks>
 /// The ray decode, sample shuffle and colouring are ported from liamcottle/rustplus.js.
 /// They have <b>not yet been validated against a real captured frame</b> (see the v2 plan

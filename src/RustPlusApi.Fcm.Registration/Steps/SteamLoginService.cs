@@ -26,6 +26,9 @@ namespace RustPlusApi.Fcm.Registration.Steps;
 /// </remarks>
 public sealed class SteamLoginService(int port = 3000)
 {
+    /// <summary>Launches Chrome, navigates to the Facepunch Steam login page, and returns the captured auth token.</summary>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a token is received.</exception>
     public Task<string> LoginAsync(CancellationToken cancellationToken = default) =>
         LoginAsync(RegistrationConstants.SteamLoginUrl, cancellationToken);
 

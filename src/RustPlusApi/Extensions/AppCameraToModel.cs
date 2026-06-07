@@ -9,8 +9,11 @@ using ProtoCameraEntity = RustPlusContracts.AppCameraRays.Entity;
 
 namespace RustPlusApi.Extensions;
 
+/// <summary>Mapping extensions from protobuf camera messages to camera model types.</summary>
 public static class AppCameraToModel
 {
+    /// <summary>Maps an <see cref="AppCameraInfo"/> to a <see cref="CameraInfo"/>.</summary>
+    /// <param name="appCameraInfo">The protobuf camera info response.</param>
     public static CameraInfo ToCameraInfo(this AppCameraInfo appCameraInfo)
     {
         return new CameraInfo
@@ -23,6 +26,8 @@ public static class AppCameraToModel
         };
     }
 
+    /// <summary>Maps an <see cref="AppCameraRays"/> broadcast to a <see cref="CameraFrame"/>.</summary>
+    /// <param name="appCameraRays">The protobuf camera rays broadcast.</param>
     public static CameraFrame ToCameraFrame(this AppCameraRays appCameraRays)
     {
         return new CameraFrame
@@ -35,6 +40,8 @@ public static class AppCameraToModel
         };
     }
 
+    /// <summary>Maps an <see cref="AppCameraRays"/> broadcast to a <see cref="CameraRaysEventArg"/>.</summary>
+    /// <param name="appCameraRays">The protobuf camera rays broadcast.</param>
     public static CameraRaysEventArg ToCameraRaysEvent(this AppCameraRays appCameraRays)
     {
         return new CameraRaysEventArg
@@ -47,6 +54,8 @@ public static class AppCameraToModel
         };
     }
 
+    /// <summary>Maps a single protobuf camera entity to a <see cref="CameraEntity"/>.</summary>
+    /// <param name="entity">The protobuf camera entity.</param>
     public static CameraEntity ToCameraEntity(this ProtoCameraEntity entity)
     {
         return new CameraEntity
@@ -60,11 +69,15 @@ public static class AppCameraToModel
         };
     }
 
+    /// <summary>Maps a sequence of protobuf camera entities to <see cref="CameraEntity"/> instances.</summary>
+    /// <param name="entities">The protobuf camera entities to map.</param>
     public static IEnumerable<CameraEntity> ToCameraEntities(this IEnumerable<ProtoCameraEntity> entities)
     {
         return entities.Select(ToCameraEntity);
     }
 
+    /// <summary>Maps a protobuf <see cref="ProtoVector3"/> to a <see cref="Vector3"/>.</summary>
+    /// <param name="vector">The protobuf vector, or <see langword="null"/> to return a zero vector.</param>
     public static Vector3 ToVector3(this ProtoVector3? vector)
     {
         if (vector is null) return new Vector3();

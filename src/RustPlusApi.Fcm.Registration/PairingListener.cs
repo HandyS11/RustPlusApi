@@ -88,5 +88,6 @@ public sealed class PairingListener(Credentials credentials, ICollection<string>
         };
     }
 
+    /// <inheritdoc/>
     public void Dispose() => _fcm.Dispose();
 }

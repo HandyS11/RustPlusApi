@@ -2,6 +2,7 @@ using RustPlusApi.Data;
 
 namespace RustPlusApi.Utils;
 
+/// <summary>Factory helpers for building <see cref="Response{T}"/> objects.</summary>
 public static class ResponseHelper
 {
     /// <summary>

@@ -82,6 +82,10 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// </remarks>
     public event EventHandler<Exception>? ErrorOccurred;
 
+    /// <summary>
+    /// Connects to the FCM MCS server over TLS, performs the MCS login handshake,
+    /// and starts the background message-receive loop.
+    /// </summary>
     public async Task ConnectAsync()
     {
         Connecting?.Invoke(this, EventArgs.Empty);

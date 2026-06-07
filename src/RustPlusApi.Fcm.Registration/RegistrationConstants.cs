@@ -19,24 +19,47 @@ public static class RegistrationConstants
 {
     // --- Rust+ Firebase project (rustplus.js) ---
 
+    /// <summary>Firebase Web API key for the Rust Companion app (public client identifier, not a secret).</summary>
     public const string ApiKey = "AIzaSyB5y2y-Tzqb4-I4Qnlsh_9naYv_TD8pCvY";
+
+    /// <summary>Firebase project identifier for the Rust Companion app.</summary>
     public const string ProjectId = "rust-companion-app";
+
+    /// <summary>GCM sender ID (Firebase project number) for the Rust Companion app.</summary>
     public const string GcmSenderId = "976529667804";
+
+    /// <summary>Google Mobile Services application ID for the Rust Companion Android app.</summary>
     public const string GmsAppId = "1:976529667804:android:d6f1ddeb4403b338fea619";
+
+    /// <summary>Android package name of the Rust Companion app.</summary>
     public const string AndroidPackageName = "com.facepunch.rust.companion";
+
+    /// <summary>SHA-1 certificate fingerprint of the Rust Companion APK.</summary>
     public const string AndroidPackageCert = "E28D05345FB78A7A1A63D70F4A302DBF426CA5AD";
 
     // --- Expo ---
 
+    /// <summary>Expo project ID for the Rust Companion app used when requesting an Expo push token.</summary>
     public const string ExpoProjectId = "49451aca-a822-41e6-ad59-955718d0ff9c";
 
     // --- Endpoints ---
 
+    /// <summary>GCM check-in endpoint (protobuf over HTTPS).</summary>
     public const string CheckinUrl = "https://android.clients.google.com/checkin";
+
+    /// <summary>FCM token registration endpoint.</summary>
     public const string FcmRegisterUrl = "https://android.clients.google.com/c2dm/register3";
+
+    /// <summary>Firebase Installations Service (FIS) endpoint for the Rust Companion project.</summary>
     public const string FirebaseInstallationsUrl = "https://firebaseinstallations.googleapis.com/v1/projects/" + ProjectId + "/installations";
+
+    /// <summary>Expo push token exchange endpoint.</summary>
     public const string ExpoPushTokenUrl = "https://exp.host/--/api/v2/push/getExpoPushToken";
+
+    /// <summary>Rust Companion device registration endpoint.</summary>
     public const string CompanionRegisterUrl = "https://companion-rust.facepunch.com/api/push/register";
+
+    /// <summary>Facepunch Steam login page for the Rust Companion OAuth flow.</summary>
     public const string SteamLoginUrl = "https://companion-rust.facepunch.com/login";
 
     /// <summary>Chrome identity used for the GCM check-in (mirrors push-receiver).</summary>

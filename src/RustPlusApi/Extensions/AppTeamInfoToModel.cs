@@ -8,8 +8,12 @@ using static RustPlusContracts.AppTeamInfo;
 
 namespace RustPlusApi.Extensions;
 
+/// <summary>Mapping extensions from protobuf team-info messages to model types.</summary>
 public static class AppTeamInfoToModel
 {
+    /// <summary>Maps an <see cref="AppTeamInfo"/> to a <see cref="TeamInfo"/>, routing map notes to typed models.</summary>
+    /// <param name="appTeamInfo">The protobuf team info response.</param>
+    /// <exception cref="ArgumentException">Thrown when a map note has an unrecognized type.</exception>
     public static TeamInfo ToTeamInfo(this AppTeamInfo appTeamInfo)
     {
         DeathNote? deathNote = null;
@@ -40,6 +44,8 @@ public static class AppTeamInfoToModel
         };
     }
 
+    /// <summary>Maps a single protobuf team member to a <see cref="MemberInfo"/>.</summary>
+    /// <param name="member">The protobuf team member.</param>
     public static MemberInfo ToMemberInfo(this Member member)
     {
         return new MemberInfo
@@ -55,11 +61,15 @@ public static class AppTeamInfoToModel
         };
     }
 
+    /// <summary>Maps a sequence of protobuf team members to <see cref="MemberInfo"/> instances.</summary>
+    /// <param name="members">The protobuf team members to map.</param>
     public static IEnumerable<MemberInfo> ToMemberInfos(this IEnumerable<Member> members)
     {
         return members.Select(ToMemberInfo);
     }
 
+    /// <summary>Maps a type-0 protobuf note to a <see cref="DeathNote"/>.</summary>
+    /// <param name="note">The protobuf map note.</param>
     public static DeathNote ToDeathNote(this AppTeamInfo.Note note)
     {
         return new DeathNote
@@ -69,6 +79,8 @@ public static class AppTeamInfoToModel
         };
     }
 
+    /// <summary>Maps a type-1 protobuf note to a <see cref="PlayerNote"/>.</summary>
+    /// <param name="note">The protobuf map note.</param>
     public static PlayerNote ToPlayerNote(this AppTeamInfo.Note note)
     {
         return new PlayerNote
@@ -81,6 +93,8 @@ public static class AppTeamInfoToModel
         };
     }
 
+    /// <summary>Maps a sequence of protobuf notes to <see cref="PlayerNote"/> instances.</summary>
+    /// <param name="notes">The protobuf notes to map.</param>
     public static IEnumerable<PlayerNote> ToPlayerNotes(this IEnumerable<AppTeamInfo.Note> notes)
     {
         return notes.Select(ToPlayerNote);

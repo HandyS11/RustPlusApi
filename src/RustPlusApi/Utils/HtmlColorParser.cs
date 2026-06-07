@@ -11,6 +11,8 @@ namespace RustPlusApi.Utils;
 /// </summary>
 public static class HtmlColorParser
 {
+    /// <summary>Parses an HTML colour string (e.g. <c>#RGB</c>, <c>#RRGGBB</c>, <c>#AARRGGBB</c>, or a named colour) into a <see cref="Color"/>.</summary>
+    /// <param name="html">The HTML colour string to parse.</param>
     public static Color FromHtml(string html)
     {
 #if NET10_0_OR_GREATER
