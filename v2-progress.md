@@ -22,7 +22,7 @@ Last updated: 2026-06-05
 | 6 | Native credential acquisition | ☑ |
 | 7 | JSON cleanup | ☑ |
 | 8 | Docs & release (`2.0.0`) | ☑ |
-| ✶ | Proto-refresh tooling (`tools/update-proto/`) | ☐ |
+| ✶ | Proto-refresh tooling (`tools/update-proto/`) | ☑ tooling; ◐ apply refresh |
 | ✶ | One-time golden-payload capture | ☐ |
 
 ---
@@ -183,12 +183,13 @@ Last updated: 2026-06-05
 
 ### Proto-refresh tooling (§6 — Method A)
 
-**Done when:** `tools/update-proto/` runs end-to-end and reproduces the committed proto from a fresh server download.
+**Done when:** `tools/update-proto/` runs end-to-end and reproduces the committed proto from a fresh server download. _Plan: [proto-refresh-plan.md](proto-refresh-plan.md)._
 
-- [ ] SteamCMD fetch of dedicated server (app `258550`)
-- [ ] Decompile contract types with `ilspycmd`
-- [ ] Regenerate `RustPlusContracts.proto` via `Serializer.GetProto<AppMessage>()`; diff & PR
-- [ ] Document monthly (first-Thursday) rerun routine; keep Method D runbook as backup
+- [x] SteamCMD fetch of dedicated server (app `258550`) — `tools/update-proto/1-fetch-server.sh` (auto-installs SteamCMD, build-id capture). **Run end-to-end against server build `23601104`.**
+- [x] Decompile contract types with `ilspycmd` — `2-decompile.sh` (auto-installs ilspycmd, `--list` discovery, pipefail-safe). **Run end-to-end.** Target corrected to `Rust.Data.dll`.
+- [x] Regenerate `RustPlusContracts.proto` + diff — **⚠️ premise correction:** the server uses **SilentOrbit**, not protobuf-net (no `[ProtoContract]`, no protobuf-net dll), so `Serializer.GetProto<AppMessage>()` is **not applicable**. Built `ProtoGen` (Roslyn) which **parses the decompiled SilentOrbit C#** (field# from the dual `Deserialize` switch, type from decl + `ProtocolParser.Read*`, nesting from C# nested classes; labels/order/well-known-types preserved from committed). `update-proto.sh` runs the whole pipeline + diff gate. Regen reproduces the committed proto with a **25-line, all-genuine diff** (new fields incl. `time_of_day`; `Monument.name→token`; `entity_id` widening; `Unknow→Undefined`). _See [proto-refresh-plan.md](proto-refresh-plan.md) for the full result._
+- [x] Document monthly (first-Thursday) rerun routine — cadence in `tools/update-proto/README.md`. _(Method D/B backups dropped: Method A is reliable. Optional scheduled Action not added — left as a documented option.)_
+- [ ] **Follow-up:** apply the reviewed diff to `RustPlusContracts.proto` (one-time v2 refresh) + add `Data/*` mappers for any new fields, then PR.
 
 ### One-time golden-payload capture (§15.4)
 
