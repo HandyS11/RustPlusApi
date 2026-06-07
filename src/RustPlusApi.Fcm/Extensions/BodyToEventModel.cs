@@ -1,15 +1,20 @@
-﻿using RustPlusApi.Fcm.Data;
+using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 
 namespace RustPlusApi.Fcm.Extensions;
 
+/// <summary>Extension methods that project a <see cref="Body"/> into FCM event model types.</summary>
 public static class BodyToEventModel
 {
+    /// <summary>Extracts the entity ID from the notification body.</summary>
+    /// <param name="body">The FCM notification body to read from.</param>
     public static int? ToEntityId(this Body body)
     {
         return body.EntityId;
     }
 
+    /// <summary>Maps the notification body to an <see cref="EntityEvent"/>.</summary>
+    /// <param name="body">The FCM notification body to map.</param>
     public static EntityEvent ToEntityEvent(this Body body)
     {
         return new EntityEvent
@@ -20,6 +25,8 @@ public static class BodyToEventModel
         };
     }
 
+    /// <summary>Maps the notification body to a <see cref="ServerEvent"/>.</summary>
+    /// <param name="body">The FCM notification body to map.</param>
     public static ServerEvent ToServerEvent(this Body body)
     {
         return new ServerEvent

@@ -15,7 +15,7 @@ namespace RustPlusApi.Camera;
 /// They have <b>not yet been validated against a real captured frame</b> (see the v2 plan
 /// §15.4 golden-payload capture); treat image fidelity as experimental until then.
 /// </remarks>
-public sealed class CameraRenderer
+public sealed class CameraRenderer(int width, int height)
 {
     private static readonly float[][] Colours =
     [
@@ -25,19 +25,9 @@ public sealed class CameraRenderer
 
     private static readonly Rgba32 SkyColour = new(208, 230, 252);
 
-    private readonly int _width;
-    private readonly int _height;
-    private readonly short[] _samplePositionBuffer;
+    private readonly short[] _samplePositionBuffer = BuildSamplePositionBuffer(width, height);
     /// <summary>Raw decoded samples (distance 0-1023, alignment 0-63, material). Normalised at render time.</summary>
-    private readonly (int Distance, int Alignment, int Material)?[] _output;
-
-    public CameraRenderer(int width, int height)
-    {
-        _width = width;
-        _height = height;
-        _output = new (int, int, int)?[width * height];
-        _samplePositionBuffer = BuildSamplePositionBuffer(width, height);
-    }
+    private readonly (int Distance, int Alignment, int Material)?[] _output = new (int, int, int)?[width * height];
 
     /// <summary>Decodes a frame's ray data and accumulates its samples into the image buffer.</summary>
     /// <param name="frame">The camera frame whose ray data will be decoded.</param>
@@ -90,8 +80,8 @@ public sealed class CameraRenderer
                 }
             }
 
-            sampleOffset %= 2 * _width * _height;
-            var index = _samplePositionBuffer[sampleOffset++] + (_samplePositionBuffer[sampleOffset++] * _width);
+            sampleOffset %= 2 * width * height;
+            var index = _samplePositionBuffer[sampleOffset++] + (_samplePositionBuffer[sampleOffset++] * width);
             if (index >= 0 && index < _output.Length)
                 _output[index] = (t, r, i);
         }
@@ -100,7 +90,7 @@ public sealed class CameraRenderer
     /// <summary>Renders the accumulated samples to a PNG image.</summary>
     public byte[] Render()
     {
-        using var image = new Image<Rgba32>(_width, _height);
+        using var image = new Image<Rgba32>(width, height);
 
         for (var i = 0; i < _output.Length; i++)
         {
@@ -110,7 +100,7 @@ public sealed class CameraRenderer
             var (distance, alignmentRaw, material) = ray.Value;
 
             Rgba32 colour;
-            // Sky sentinel: distance == 1, alignment == 0, material == 0 (in normalised terms).
+            // Sky sentinel: distance == 1, alignment == 0, material == 0 (in normalized terms).
             if (distance == 1023 && alignmentRaw == 0 && material == 0)
             {
                 colour = SkyColour;
@@ -125,8 +115,8 @@ public sealed class CameraRenderer
                     ToByte(alignment * palette[2] * 255f));
             }
 
-            var x = i % _width;
-            var y = _height - 1 - (i / _width);
+            var x = i % width;
+            var y = height - 1 - (i / width);
             image[x, y] = colour;
         }
 
@@ -153,9 +143,12 @@ public sealed class CameraRenderer
     private static byte ToByte(float value)
     {
         var v = (int)value;
-        if (v < 0) return 0;
-        if (v > 255) return 255;
-        return (byte)v;
+        return v switch
+        {
+            < 0 => 0,
+            > 255 => 255,
+            _ => (byte)v
+        };
     }
 
     private static short[] BuildSamplePositionBuffer(int width, int height)

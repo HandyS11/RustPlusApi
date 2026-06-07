@@ -16,19 +16,19 @@ internal sealed class IndexGenerator
 
     public int NextInt(int max)
     {
-        var t = (int)((NextState() * (long)max) / 4294967295L);
+        var t = (int)((NextState() * max) / 4294967295L);
         if (t < 0) t = max + t - 1;
         return t;
     }
 
-    public long NextState()
+    private long NextState()
     {
         unchecked
         {
             var e = _state;
             var t = e;
             e ^= e << 13;
-            e ^= (int)((uint)e >> 17);
+            e ^= e >>> 17;
             e ^= e << 5;
             _state = e;
             return t >= 0 ? t : 4294967295L + t - 1;
