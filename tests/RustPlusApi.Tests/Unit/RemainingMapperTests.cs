@@ -30,6 +30,21 @@ public class RemainingMapperTests
     }
 
     [Fact]
+    public void ToSmartSwitchEvent_MapsIdAndActiveState()
+    {
+        var changed = new AppEntityChanged
+        {
+            EntityId = 99,
+            Payload = new AppEntityPayload { Value = true }
+        };
+
+        var ev = changed.ToSmartSwitchEvent();
+
+        Assert.Equal(99u, ev.Id);
+        Assert.True(ev.IsActive);
+    }
+
+    [Fact]
     public void ToStorageMonitorEvent_MapsCapacityAndItems()
     {
         var changed = new AppEntityChanged
