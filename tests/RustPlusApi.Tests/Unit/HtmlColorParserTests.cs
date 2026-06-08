@@ -53,4 +53,15 @@ public class HtmlColorParserTests
         // explicitly returns Color.Empty for null/empty. Pin both to the same result.
         Assert.Equal(Color.Empty, HtmlColorParser.FromHtml(string.Empty));
     }
+
+    [Fact]
+    public void HashPrefixedWithUnrecognisedLength_DoesNotThrow()
+    {
+        // A '#'-prefixed string with a hex length other than 3, 6 or 8 falls through the
+        // switch in the netstandard2.0 code path and reaches Color.FromName. Covers the
+        // switch default / fall-through branch. The exact colour value is implementation-
+        // defined (ColorTranslator or Color.FromName), so we only assert no throw.
+        var ex = Record.Exception(() => HtmlColorParser.FromHtml("#FF"));  // 2 hex digits
+        Assert.Null(ex);
+    }
 }

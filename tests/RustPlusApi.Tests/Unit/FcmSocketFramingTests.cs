@@ -542,6 +542,33 @@ public class FcmSocketFramingTests
     }
 
     /// <summary>
+    /// Sends a corrupt payload with NO <see cref="RustPlusFcmSocket.ErrorOccurred"/> subscriber.
+    /// Covers the <c>ErrorOccurred?.Invoke</c> null-conditional no-subscriber false-branch
+    /// in <c>OnGotMessageBytes</c>'s catch block.
+    /// </summary>
+    [Fact]
+    public void OnGotMessageBytes_CorruptPayload_NoErrorSubscriber_DoesNotThrow()
+    {
+        using var socket = NewSocket();
+        // ErrorOccurred intentionally NOT subscribed
+
+        var corruptPayload = new byte[] { 0xFF, 0xFE, 0xFD, 0xFC };
+        var corruptFrame =
+            new byte[] { (byte)(int)McsProtoTag.KDataMessageStanzaTag }
+            .Concat(EncodeVarInt32(corruptPayload.Length))
+            .Concat(corruptPayload);
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            corruptFrame,
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        var ex = Record.Exception(() => socket.RunReceiveLoopOverStream(new ScriptedStream(script)));
+
+        Assert.Null(ex);   // catch absorbs exception; no subscriber → no rethrow
+    }
+
+    /// <summary>
     /// Drives <c>OnDataMessage</c> with a null DataMessageStanza reference (i.e. the
     /// <c>e.Object as DataMessageStanza</c> cast returns null). This covers the
     /// <c>dataMessage?.PersistentId != null</c> outer null-check false-branch and the
