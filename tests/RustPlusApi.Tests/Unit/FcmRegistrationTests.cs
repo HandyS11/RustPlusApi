@@ -1,4 +1,6 @@
 using System.Net;
+using System.Text;
+using System.Text.Json;
 using ProtoBuf;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Registration;
@@ -36,8 +38,20 @@ public class FcmRegistrationTests
         var credentials = await registration.AcquireCredentialsAsync();
 
         Assert.Equal(9UL, credentials.Gcm.AndroidId);
+        Assert.Equal(8UL, credentials.Gcm.SecurityToken);
         Assert.Equal("fcm", credentials.Fcm!.Token);
         Assert.Equal("ExponentPushToken[e]", credentials.ExpoPushToken);
+
+        // The four credential-acquisition steps hit their endpoints in order.
+        Assert.Equal(4, handler.Requests.Count);
+        Assert.Equal(RegistrationConstants.CheckinUrl, handler.Requests[0].RequestUri!.ToString());
+        Assert.Equal(RegistrationConstants.FirebaseInstallationsUrl, handler.Requests[1].RequestUri!.ToString());
+        Assert.Equal(RegistrationConstants.FcmRegisterUrl, handler.Requests[2].RequestUri!.ToString());
+        Assert.Equal(RegistrationConstants.ExpoPushTokenUrl, handler.Requests[3].RequestUri!.ToString());
+
+        // The FCM token produced by step 3 is what step 4 (Expo) sends as its deviceToken.
+        using var expoDoc = JsonDocument.Parse(Encoding.UTF8.GetString(handler.RequestBodies[3]));
+        Assert.Equal("fcm", expoDoc.RootElement.GetProperty("deviceToken").GetString());
     }
 
     [Fact]

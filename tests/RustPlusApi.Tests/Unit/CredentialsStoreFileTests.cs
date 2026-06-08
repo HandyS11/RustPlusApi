@@ -32,4 +32,27 @@ public class CredentialsStoreFileTests
     [Fact]
     public void Deserialize_NullLiteral_Throws() =>
         Assert.Throws<InvalidOperationException>(() => CredentialsStore.Deserialize("null"));
+
+    /// <summary>Asserts that <see cref="CredentialsStore.Serialize"/> uses WriteIndented=true,
+    /// which means the JSON output contains newlines — kills the WriteIndented boolean mutant.</summary>
+    [Fact]
+    public void Serialize_ProducesIndentedJson()
+    {
+        var credentials = new Credentials { Gcm = new Gcm { AndroidId = 7, SecurityToken = 3 } };
+
+        var json = CredentialsStore.Serialize(credentials);
+
+        // WriteIndented = true → output contains a newline; if mutated to false → single-line, no '\n'.
+        Assert.Contains('\n', json);
+    }
+
+    /// <summary>Asserts the exact exception message thrown when JSON deserializes to null —
+    /// kills the String mutation that replaces the message with "".</summary>
+    [Fact]
+    public void Deserialize_NullLiteral_ExceptionMessageIsNonEmpty()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => CredentialsStore.Deserialize("null"));
+        Assert.False(string.IsNullOrEmpty(ex.Message));
+        Assert.Contains("deserialize", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }
