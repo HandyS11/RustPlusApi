@@ -98,4 +98,40 @@ public class RustPlusFcmDispatchTests
         fcm.Feed(Pairing(new Body { Type = "entity", EntityType = 99, PlayerToken = "0" }));
         Assert.False(any);
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Pairing_Entity_NoHandlers_DoesNotRaise(int entityType)
+    {
+        using var fcm = new TestFcm();
+        var raised = false;
+        // Subscribe only OnEntityParing to confirm the entity arm fires, but the typed events are null.
+        fcm.OnEntityParing += (_, _) => raised = true;
+        fcm.Feed(Pairing(new Body { Type = "entity", EntityType = entityType, EntityId = 1, PlayerToken = "0" }));
+        Assert.True(raised);
+    }
+
+    [Fact]
+    public void Alarm_NoHandler_DoesNotRaiseOtherEvents()
+    {
+        using var fcm = new TestFcm();
+        var pairingRaised = false;
+        fcm.OnParing += (_, _) => pairingRaised = true;
+        // OnAlarmTriggered not subscribed — verifies null branch of ?.Invoke.
+        fcm.Feed(new FcmMessage { Data = new MessageData { ChannelId = "alarm", Title = "t", Message = "m" } });
+        Assert.False(pairingRaised);
+    }
+
+    [Fact]
+    public void Pairing_Server_NoServerPairingHandler_OnlyRaisesOnParing()
+    {
+        using var fcm = new TestFcm();
+        var paringRaised = false;
+        fcm.OnParing += (_, _) => paringRaised = true;
+        // OnServerPairing not subscribed — verifies null branch of its ?.Invoke.
+        fcm.Feed(Pairing(new Body { Type = "server", Ip = "1.2.3.4", Port = 1, PlayerToken = "0" }));
+        Assert.True(paringRaised);
+    }
 }
