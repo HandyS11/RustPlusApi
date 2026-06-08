@@ -6,7 +6,7 @@ using ProtoGen;
 
 if (args.Length != 3)
 {
-    Console.Error.WriteLine("usage: ProtoGen <decompiled.cs> <committed.proto> <output.proto>");
+    await Console.Error.WriteLineAsync("usage: ProtoGen <decompiled.cs> <committed.proto> <output.proto>").ConfigureAwait(false);
     return 2;
 }
 
@@ -16,14 +16,14 @@ foreach (var (label, path) in new[] { ("decompiled", decompiledPath), ("committe
 {
     if (!File.Exists(path))
     {
-        Console.Error.WriteLine($"error: {label} not found: {path}");
+        await Console.Error.WriteLineAsync($"error: {label} not found: {path}").ConfigureAwait(false);
         return 2;
     }
 }
 
-Console.Error.WriteLine($">> parsing server contracts: {decompiledPath}");
+await Console.Error.WriteLineAsync($">> parsing server contracts: {decompiledPath}").ConfigureAwait(false);
 var server = ServerParser.Parse(decompiledPath);
-Console.Error.WriteLine($">> parsed {server.Messages.Count} messages, {server.Enums.Count} enums (namespace ProtoBuf)");
+await Console.Error.WriteLineAsync($">> parsed {server.Messages.Count} messages, {server.Enums.Count} enums (namespace ProtoBuf)").ConfigureAwait(false);
 
 var committed = CommittedProto.Parse(committedPath);
 
@@ -31,6 +31,6 @@ var committed = CommittedProto.Parse(committedPath);
 string[] roots = ["AppRequest", "AppMessage"];
 var proto = Emitter.Emit(server, committed, roots);
 
-File.WriteAllText(outputPath, proto);
-Console.Error.WriteLine($">> wrote {outputPath}");
+await File.WriteAllTextAsync(outputPath, proto).ConfigureAwait(false);
+await Console.Error.WriteLineAsync($">> wrote {outputPath}").ConfigureAwait(false);
 return 0;

@@ -83,6 +83,6 @@ Runnable examples are in [`samples/`](samples/README.md).
 
 _This project is grandly inspired by [liamcottle/rustplus.js](https://github.com/liamcottle/rustplus.js)._
 
-Special thanks to [**Versette**](https://github.com/Versette) for her work on the `RustPlusApi.Fcm` socket.
+Special thanks to [**Versette**](https://github.com/Versette) and [**Devedse**](https://github.com/devedse) for their work on the `RustPlusApi.Fcm` socket.
 
 - Author: [**HandyS11**](https://github.com/HandyS11)

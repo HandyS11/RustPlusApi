@@ -14,7 +14,7 @@ internal sealed class ServerParser
 {
     private readonly Dictionary<string, Message> _messages = new(StringComparer.Ordinal);
     private readonly Dictionary<string, EnumDef> _enums = new(StringComparer.Ordinal);
-    // simpleName -> qualified names (for type resolution; a simple name like "Member" can be ambiguous)
+    /// <summary>Maps simple names to their fully-qualified names (a simple name like "Member" can be ambiguous).</summary>
     private readonly Dictionary<string, List<string>> _bySimpleName = new(StringComparer.Ordinal);
 
     public IReadOnlyDictionary<string, Message> Messages => _messages;
@@ -46,13 +46,17 @@ internal sealed class ServerParser
             // class- and struct-based messages (e.g. Half3 is a struct : IProto<Half3>).
             foreach (var type in ns.DescendantNodes().OfType<TypeDeclarationSyntax>()
                                    .Where(t => t is ClassDeclarationSyntax or StructDeclarationSyntax))
+            {
                 parser.FillFields(type);
+            }
         }
 
         return parser;
     }
 
     /// <summary>First pass: register every message/enum and the parent/child structure.</summary>
+    /// <param name="member">The syntax node to register.</param>
+    /// <param name="parentQualified">Qualified name of the enclosing type, or null at file scope.</param>
     private void Discover(MemberDeclarationSyntax member, string? parentQualified)
     {
         switch (member)
@@ -61,8 +65,7 @@ internal sealed class ServerParser
             {
                 var simple = cls.Identifier.Text;
                 var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
-                var msg = new Message { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
-                _messages[qualified] = msg;
+                _messages[qualified] = new Message { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
                 Register(simple, qualified);
 
                 foreach (var inner in cls.Members)
@@ -91,6 +94,7 @@ internal sealed class ServerParser
     }
 
     /// <summary>Second pass: extract fields for one message type (resolves types using the full registry).</summary>
+    /// <param name="cls">The type declaration to process.</param>
     private void FillFields(TypeDeclarationSyntax cls)
     {
         var simple = cls.Identifier.Text;
@@ -112,7 +116,6 @@ internal sealed class ServerParser
                 decls[v.Identifier.Text] = (typeStr, repeated, element);
         }
 
-        // Field numbers + read-method from the static 3-arg Deserialize switch(es).
         var deser = cls.Members.OfType<MethodDeclarationSyntax>().FirstOrDefault(m =>
             m.Identifier.Text == "Deserialize" &&
             m.Modifiers.Any(SyntaxKind.StaticKeyword) &&
@@ -124,7 +127,7 @@ internal sealed class ServerParser
         var seen = new HashSet<int>();
         foreach (var sw in deser.DescendantNodes().OfType<SwitchStatementSyntax>())
         {
-            bool fieldNumberMode = IsKeyFieldSwitch(sw); // switch(key.Field) -> case value IS the field number
+            bool fieldNumberMode = IsKeyFieldSwitch(sw);
             foreach (var section in sw.Sections)
             {
                 var fieldName = FindFieldName(section);
@@ -177,30 +180,42 @@ internal sealed class ServerParser
         return _messages.ContainsKey(qualified) ? qualified : null;
     }
 
-    /// <summary>switch(key.Field) => case labels are field numbers; switch(num) => labels are wire keys.</summary>
+    /// <summary>When the switch expression is <c>key.Field</c>, case labels are field numbers; otherwise they are wire keys.</summary>
+    /// <param name="sw">The switch statement to inspect.</param>
     private static bool IsKeyFieldSwitch(SwitchStatementSyntax sw) =>
         sw.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "Field";
 
     /// <summary>The field assigned in a switch section: prefer assignment / .Add / ref target.</summary>
+    /// <param name="section">The switch section to analyze.</param>
     private static string? FindFieldName(SwitchSectionSyntax section)
     {
         // instance.X = ...
         foreach (var asg in section.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+        {
             if (InstanceMember(asg.Left) is { } n)
                 return n;
+        }
         // instance.X.Add(...)
         foreach (var inv in section.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
             if (inv.Expression is MemberAccessExpressionSyntax { Name.Identifier.Text: "Add" } add &&
                 InstanceMember(add.Expression) is { } n)
+            {
                 return n;
+            }
+        }
         // ... ref instance.X ...
         foreach (var arg in section.DescendantNodes().OfType<ArgumentSyntax>())
+        {
             if (arg.RefKindKeyword.IsKind(SyntaxKind.RefKeyword) && InstanceMember(arg.Expression) is { } n)
                 return n;
+        }
         // fallback: first instance.X anywhere
         foreach (var ma in section.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
+        {
             if (InstanceMember(ma) is { } n)
                 return n;
+        }
         return null;
     }
 
@@ -212,8 +227,10 @@ internal sealed class ServerParser
     private static string? FindReadMethod(SwitchSectionSyntax section)
     {
         foreach (var inv in section.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
             if (inv.Expression is MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "ProtocolParser" } } ma)
                 return ma.Name.Identifier.Text;
+        }
         return null;
     }
 
@@ -270,6 +287,8 @@ internal sealed class ServerParser
 
     /// <summary>Resolve a simple type name to a qualified one, preferring nested types of the
     /// current scope or its ancestors, then top-level.</summary>
+    /// <param name="simple">The unqualified type name to resolve.</param>
+    /// <param name="scopeQualified">Qualified name of the message that contains the reference.</param>
     private string? ResolveTypeName(string simple, string scopeQualified)
     {
         if (!_bySimpleName.TryGetValue(simple, out var candidates))
@@ -293,7 +312,7 @@ internal sealed class ServerParser
                 return nested;
         }
         // prefer a top-level candidate (no dot)
-        return candidates.FirstOrDefault(c => !c.Contains('.')) ?? candidates[0];
+        return candidates.FirstOrDefault(c => !c.Contains('.', StringComparison.Ordinal)) ?? candidates[0];
     }
 
     private static bool TryParseInt(ExpressionSyntax expr, out int value)
@@ -302,10 +321,8 @@ internal sealed class ServerParser
         switch (expr)
         {
             case LiteralExpressionSyntax lit when lit.Token.Value is not null:
-            {
                 var t = lit.Token.Text.TrimEnd('u', 'U', 'l', 'L');
                 return int.TryParse(t, out value);
-            }
             case PrefixUnaryExpressionSyntax { OperatorToken.RawKind: (int)SyntaxKind.MinusToken } neg
                 when TryParseInt(neg.Operand, out var inner):
                 value = -inner;

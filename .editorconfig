@@ -473,20 +473,5 @@ dotnet_diagnostic.CA2007.severity = none # ConfigureAwait not required in test p
 dotnet_diagnostic.CS1591.severity = none # XML docs not required in test projects
 dotnet_diagnostic.VSTHRD003.severity = none # Awaiting stored Task fields is acceptable in test infrastructure
 
-# Internal dev tooling (proto-refresh code generator) — not a shipped artifact, so it is
-# not held to the shipping library's analyzer bar. Only style/perf nags fire here; suppress them.
 [tools/**]
 dotnet_diagnostic.CS1591.severity = none # XML docs not required in internal tooling
-dotnet_diagnostic.CA1307.severity = none # StringComparison not needed parsing ASCII C# source
-dotnet_diagnostic.CA1859.severity = none # Return-type perf micro-opt irrelevant for a one-shot tool
-dotnet_diagnostic.S125.severity = none # Reference comments kept intentionally in the generator
-dotnet_diagnostic.S3267.severity = none # Explicit loops are clearer than LINQ here
-dotnet_diagnostic.S3358.severity = none # Nested ternary acceptable in the generator
-dotnet_diagnostic.S6966.severity = none # Synchronous console I/O is fine for a CLI tool
-dotnet_diagnostic.RCS1001.severity = none # Braces on multi-line statements — style only
-dotnet_diagnostic.RCS1031.severity = none # Unnecessary braces — style only
-dotnet_diagnostic.RCS1124.severity = none # Inline local variable — style only
-dotnet_diagnostic.RCS1141.severity = none # 'param' doc element not required in internal tooling
-dotnet_diagnostic.RCS1181.severity = none # Plain comments need not become doc comments
-dotnet_diagnostic.RCS1201.severity = none # Method chaining — style only
-dotnet_diagnostic.RCS1238.severity = none # Nested ?: acceptable in the generator

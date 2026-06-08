@@ -14,9 +14,9 @@ internal sealed partial class Emitter
     private readonly CommittedProto _committed;
     private readonly HashSet<string> _scopeMessages = new(StringComparer.Ordinal);
     private readonly HashSet<string> _scopeEnums = new(StringComparer.Ordinal);
-    // Committed top-level types that the authoritative closure does NOT cover: external well-known
-    // types (Vector2/3/4) and unreachable/vestigial types (Half3, Color, Ray, ClanActionResult...).
-    // Emitted verbatim from the committed proto — we make no authoritative claim about them.
+    /// <summary>Committed top-level types that the authoritative closure does not cover: external well-known
+    /// types (Vector2/3/4) and unreachable/vestigial types (Half3, Color, Ray, ClanActionResult).
+    /// Emitted verbatim from the committed proto — no authoritative claim is made about them.</summary>
     private readonly HashSet<string> _preserved = new(StringComparer.Ordinal);
 
     private Emitter(ServerParser server, CommittedProto committed)
@@ -34,49 +34,55 @@ internal sealed partial class Emitter
 
     /// <summary>Authoritative scope = transitive closure of messages/enums reachable from the roots.
     /// Everything else the committed proto declares at top level is preserved verbatim.</summary>
+    /// <param name="roots">Root message names (qualified) to start the closure from.</param>
     private void ComputeScope(IEnumerable<string> roots)
     {
         var queue = new Queue<string>();
-        foreach (var r in roots)
-            if (_server.Messages.ContainsKey(r) && _scopeMessages.Add(r))
-                queue.Enqueue(r);
+        foreach (var r in roots.Where(r => _server.Messages.ContainsKey(r) && _scopeMessages.Add(r)))
+            queue.Enqueue(r);
 
         while (queue.Count > 0)
         {
             var msg = _server.Messages[queue.Dequeue()];
-            foreach (var f in msg.Fields)
+            foreach (var protoType in msg.Fields.Select(f => f.ProtoType))
             {
-                if (_server.Messages.ContainsKey(f.ProtoType))
+                if (_server.Messages.ContainsKey(protoType))
                 {
-                    if (_scopeMessages.Add(f.ProtoType))
-                        queue.Enqueue(f.ProtoType);
+                    if (_scopeMessages.Add(protoType))
+                        queue.Enqueue(protoType);
                 }
-                else if (_server.Enums.ContainsKey(f.ProtoType))
+                else if (_server.Enums.ContainsKey(protoType))
                 {
-                    _scopeEnums.Add(f.ProtoType);
+                    _scopeEnums.Add(protoType);
                 }
             }
         }
 
         // Preserve any committed top-level declaration the closure does not authoritatively cover.
-        foreach (var name in _committed.DeclOrder.Where(n => !n.Contains('.')))
-            if (!_scopeMessages.Contains(name) && !_scopeEnums.Contains(name) &&
-                _committed.RawTopLevelBlocks.ContainsKey(name))
-                _preserved.Add(name);
+        foreach (var name in _committed.DeclOrder
+            .Where(n => !n.Contains('.', StringComparison.Ordinal) &&
+                        !_scopeMessages.Contains(n) && !_scopeEnums.Contains(n) &&
+                        _committed.RawTopLevelBlocks.ContainsKey(n)))
+        {
+            _preserved.Add(name);
+        }
     }
 
     private string Render()
     {
-        var sb = new StringBuilder();
-        sb.AppendLine("syntax = \"proto2\";");
-        sb.AppendLine("package RustPlusContracts;");
-        sb.AppendLine();
+        var sb = new StringBuilder()
+            .AppendLine("syntax = \"proto2\";")
+            .AppendLine("package RustPlusContracts;")
+            .AppendLine();
         RenderScope(sb, parentQualified: null, indent: 0);
         return sb.ToString();
     }
 
     /// <summary>Emit the messages/enums directly under <paramref name="parentQualified"/> (null =
     /// file scope), in committed declaration order, with any server-only additions appended.</summary>
+    /// <param name="sb">The string builder to write into.</param>
+    /// <param name="parentQualified">Qualified name of the enclosing message, or null for file scope.</param>
+    /// <param name="indent">Tab indentation depth.</param>
     private void RenderScope(StringBuilder sb, string? parentQualified, int indent)
     {
         bool first = true;
@@ -97,7 +103,7 @@ internal sealed partial class Emitter
         }
     }
 
-    private IEnumerable<string> OrderedChildren(string? parentQualified)
+    private List<string> OrderedChildren(string? parentQualified)
     {
         bool InScope(string qn) =>
             (_server.Messages.ContainsKey(qn) && _scopeMessages.Contains(qn)) ||
@@ -146,6 +152,8 @@ internal sealed partial class Emitter
     /// <summary>How a type reference is written in a field, matching the committed proto's style:
     /// top-level types by simple name; a nested type referenced from a sibling by its simple name;
     /// a nested type referenced from its own parent by the qualified "Parent.Nested" name.</summary>
+    /// <param name="protoType">The fully-qualified proto type to emit.</param>
+    /// <param name="currentQualified">Qualified name of the message that contains the field.</param>
     private static string EmitTypeName(string protoType, string currentQualified)
     {
         var parent = ParentOf(protoType);

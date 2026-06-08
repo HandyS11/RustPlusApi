@@ -10,7 +10,8 @@ namespace ProtoGen;
 /// </summary>
 internal sealed partial class CommittedProto
 {
-    private readonly Dictionary<string, string> _labels = new(StringComparer.Ordinal); // "Qualified#N" -> label
+    /// <summary>Maps "QualifiedName#FieldNumber" to the field label (required/optional/repeated).</summary>
+    private readonly Dictionary<string, string> _labels = new(StringComparer.Ordinal);
 
     /// <summary>Qualified names of every message/enum declaration, in document order.</summary>
     public List<string> DeclOrder { get; } = [];
@@ -20,10 +21,13 @@ internal sealed partial class CommittedProto
     /// helpers rather than as proto messages.</summary>
     public Dictionary<string, string> RawTopLevelBlocks { get; } = new(StringComparer.Ordinal);
 
-    public string LabelFor(string qualified, int number, bool repeated) =>
-        _labels.TryGetValue($"{qualified}#{number}", out var l) ? l
-        : repeated ? "repeated"
-        : "optional"; // new (server-only) scalar/message fields default to optional (proto2-safe)
+    public string LabelFor(string qualified, int number, bool repeated)
+    {
+        if (_labels.TryGetValue($"{qualified}#{number}", out var l))
+            return l;
+        // New (server-only) scalar/message fields default to optional (proto2-safe).
+        return repeated ? "repeated" : "optional";
+    }
 
     public static CommittedProto Parse(string protoPath)
     {
