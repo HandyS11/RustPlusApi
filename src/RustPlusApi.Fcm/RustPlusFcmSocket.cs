@@ -4,6 +4,7 @@ using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Interfaces;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -91,6 +92,9 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// Connects to the FCM MCS server over TLS, performs the MCS login handshake,
     /// and starts the background message-receive loop.
     /// </summary>
+    /// <remarks>Excluded from coverage: live TLS connection to mtalk.google.com:5228;
+    /// the MCS pipeline it drives is exercised offline via the <c>RunReceiveLoopOverStream</c> seam.</remarks>
+    [ExcludeFromCodeCoverage]
     public async Task ConnectAsync()
     {
         Connecting?.Invoke(this, EventArgs.Empty);

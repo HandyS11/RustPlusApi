@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 
@@ -36,6 +37,9 @@ public sealed class PairingListener(Credentials credentials, ICollection<string>
     /// Connects, then completes with the first server-pairing notification received.
     /// </summary>
     /// <param name="cancellationToken">Token to cancel the wait.</param>
+    /// <remarks>Excluded from coverage: requires a live FCM connection to complete;
+    /// the pairing-notification mapping (<see cref="ToServerPairing"/>) is unit-tested independently.</remarks>
+    [ExcludeFromCodeCoverage]
     public async Task<ServerPairing> WaitForServerPairingAsync(CancellationToken cancellationToken = default)
     {
         var completion = new TaskCompletionSource<ServerPairing>(TaskCreationOptions.RunContinuationsAsynchronously);

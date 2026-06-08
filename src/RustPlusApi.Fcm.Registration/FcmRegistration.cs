@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Registration.Steps;
 
@@ -44,6 +45,9 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
     /// <param name="credentials">Credentials obtained from <see cref="AcquireCredentialsAsync"/>.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <exception cref="InvalidOperationException">Thrown when <paramref name="credentials"/> is missing the Expo push token.</exception>
+    /// <remarks>Excluded from coverage: post-guard flow drives live Steam login and Companion
+    /// registration; the guard (missing ExpoPushToken) is unit-tested, the remainder is canary-only.</remarks>
+    [ExcludeFromCodeCoverage]
     public async Task<string> RegisterWithRustPlusAsync(Credentials credentials, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(credentials.ExpoPushToken))
