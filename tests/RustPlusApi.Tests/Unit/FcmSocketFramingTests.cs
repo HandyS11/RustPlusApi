@@ -375,4 +375,223 @@ public class FcmSocketFramingTests
 
         Assert.False(raised);
     }
+
+    // ── OnDataMessage optional-field branches ────────────────────────────────
+
+    /// <summary>
+    /// Sends a DataMessageStanza with ALL optional AppData fields present (title, projectId,
+    /// experienceId, scopeKey, message). Covers the "not-null" arm of every <c>??</c> null-
+    /// coalescing operator in <c>OnDataMessage</c>.
+    /// </summary>
+    [Fact]
+    public void DataMessage_AllOptionalFields_Present_Delivered()
+    {
+        using var socket = NewSocket([]);
+        string? notification = null;
+        socket.NotificationReceived += (_, n) => notification = n;
+
+        var stanza = new DataMessageStanza
+        {
+            From = "123456789",
+            PersistentId = "opt-full",
+            Sent = 1_700_000_000_000,
+            AppDatas =
+            {
+                new AppData { Key = "channelId", Value = "pairing" },
+                new AppData { Key = "body", Value = "{}" },
+                new AppData { Key = "title", Value = "Test Title" },
+                new AppData { Key = "projectId", Value = "00000000-0000-0000-0000-000000000001" },
+                new AppData { Key = "experienceId", Value = "@scope/exp" },
+                new AppData { Key = "scopeKey", Value = "myScope" },
+                new AppData { Key = "message", Value = "hello world" },
+            }
+        };
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, stanza),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.NotNull(notification);
+        // Verify the extra fields were actually captured in the serialized JSON.
+        Assert.Contains("Test Title", notification, StringComparison.Ordinal);
+        Assert.Contains("hello world", notification, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Sends a DataMessageStanza with <c>PersistentId = null</c>. Covers the
+    /// <c>dataMessage.PersistentId is not null</c> false-branch (line 431) and the
+    /// <c>dataMessage?.PersistentId != null</c> short-circuit false-branch (line 385).
+    /// </summary>
+    [Fact]
+    public void DataMessage_NullPersistentId_DeliveredAndNotAddedToDedupeSet()
+    {
+        var ids = new List<string>();
+        using var socket = NewSocket(ids);
+        var count = 0;
+        socket.NotificationReceived += (_, _) => count++;
+
+        // Build a stanza with no PersistentId field set (null).
+        var stanza = new DataMessageStanza
+        {
+            From = "123456789",
+            // PersistentId deliberately left null
+            Sent = 1_700_000_000_000,
+            AppDatas =
+            {
+                new AppData { Key = "channelId", Value = "pairing" },
+                new AppData { Key = "body", Value = "{}" },
+            }
+        };
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, stanza),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.Equal(1, count);           // message was delivered
+        Assert.Empty(ids);                // nothing added to the dedupe set
+    }
+
+    /// <summary>
+    /// Sends a DataMessageStanza with <c>Sent = null</c>.  Covers the
+    /// <c>dataMessage.Sent ?? 0</c> null branch (SentAt falls back to epoch).
+    /// </summary>
+    [Fact]
+    public void DataMessage_NullSent_FallsBackToEpoch()
+    {
+        using var socket = NewSocket([]);
+        string? notification = null;
+        socket.NotificationReceived += (_, n) => notification = n;
+
+        var stanza = new DataMessageStanza
+        {
+            From = "123456789",
+            PersistentId = "sent-null",
+            // Sent deliberately not set (null)
+            AppDatas =
+            {
+                new AppData { Key = "channelId", Value = "pairing" },
+                new AppData { Key = "body", Value = "{}" },
+            }
+        };
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, stanza),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.NotNull(notification);
+        // When Sent is null the SentAt maps to DateTime.UnixEpoch; the serialized JSON
+        // should not contain a large millisecond timestamp.
+        Assert.Contains("1970", notification, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Sends a valid DataMessageStanza with no <see cref="NotificationReceived"/> subscriber.
+    /// Covers the <c>NotificationReceived?.Invoke</c> null-conditional no-subscriber false-branch.
+    /// </summary>
+    [Fact]
+    public void DataMessage_NoNotificationReceivedSubscriber_DoesNotThrow()
+    {
+        using var socket = NewSocket([]);
+        // NotificationReceived intentionally NOT subscribed
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("no-sub")),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        var ex = Record.Exception(() => socket.RunReceiveLoopOverStream(new ScriptedStream(script)));
+        Assert.Null(ex);
+    }
+
+    /// <summary>
+    /// Drives <c>OnGotMessageBytes</c> with an empty payload (data.Length == 0).
+    /// This covers the early-return path that calls <c>Activator.CreateInstance</c>
+    /// instead of deserializing.
+    /// </summary>
+    [Fact]
+    public void EmptyPayload_OnGotMessageBytes_DispatchesDefaultInstance()
+    {
+        // Manually build a HeartbeatAck frame with a zero-length payload (size varint = 0)
+        // after the LoginResponse, then close.
+        using var socket = NewSocket();
+        var raised = false;
+        socket.NotificationReceived += (_, _) => raised = true;
+
+        var emptyFrame =
+            new byte[] { (byte)(int)McsProtoTag.KHeartbeatAckTag }
+            .Concat(EncodeVarInt32(0));   // zero-length payload
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            emptyFrame,
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        var ex = Record.Exception(() => socket.RunReceiveLoopOverStream(new ScriptedStream(script)));
+
+        Assert.Null(ex);
+        Assert.False(raised);   // HeartbeatAck hits the default arm → ignored, no notification
+    }
+
+    /// <summary>
+    /// Drives <c>OnDataMessage</c> with a null DataMessageStanza reference (i.e. the
+    /// <c>e.Object as DataMessageStanza</c> cast returns null). This covers the
+    /// <c>dataMessage?.PersistentId != null</c> outer null-check false-branch and the
+    /// <c>dataMessage?.AppDatas is not { Count: &gt; 0 }</c> null-propagation path.
+    /// </summary>
+    [Fact]
+    public void DataMessage_NullStanza_IsIgnoredWithoutThrow()
+    {
+        // Send a tag that maps to DataMessageStanza but deserializes as an empty/null stanza
+        // by sending a zero-length payload — Serializer produces a default instance with
+        // null AppDatas list, which matches the "no AppDatas" guard.
+        using var socket = NewSocket();
+        var raised = false;
+        socket.NotificationReceived += (_, _) => raised = true;
+
+        var zeroLengthDataFrame =
+            new byte[] { (byte)(int)McsProtoTag.KDataMessageStanzaTag }
+            .Concat(EncodeVarInt32(0));
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            zeroLengthDataFrame,
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.False(raised);
+    }
+
+    /// <summary>
+    /// Covers the <c>persistentIds == null</c> arm of <c>OnDataMessage</c>'s dedupe guard.
+    /// When no <c>persistentIds</c> collection is provided the null-conditional
+    /// <c>persistentIds?.Contains(...)</c> returns null, short-circuiting the condition.
+    /// </summary>
+    [Fact]
+    public void DataMessage_NullPersistentIdsCollection_DeliversSameMessageTwice()
+    {
+        // persistentIds = null means no de-duplication at all.
+        using var socket = NewSocket(persistentIds: null);
+        var count = 0;
+        socket.NotificationReceived += (_, _) => count++;
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("same-id")),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("same-id")),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.Equal(2, count);   // both delivered; no deduplication without the set
+    }
 }

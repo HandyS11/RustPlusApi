@@ -114,4 +114,27 @@ public class RegistrationTests
         Assert.Equal(123456789, pairing.PlayerToken);
         Assert.Equal("My Server", pairing.Name);
     }
+
+    /// <summary>
+    /// Covers the <c>server == null</c> arm of <see cref="PairingListener.ToServerPairing"/>:
+    /// all <c>server?.Property ?? fallback</c> null-conditional false-branches.
+    /// </summary>
+    [Fact]
+    public void PairingListener_NullServerData_FallsBackToDefaults()
+    {
+        var notification = new Notification<ServerEvent?>
+        {
+            PlayerId = 76561198000000000,
+            PlayerToken = 999,
+            Data = null  // server is null → all server?.Xxx produce null → ?? fallbacks used
+        };
+
+        var pairing = PairingListener.ToServerPairing(notification);
+
+        Assert.Equal(string.Empty, pairing.Ip);
+        Assert.Equal(0, pairing.Port);
+        Assert.Equal(76561198000000000UL, pairing.PlayerId);
+        Assert.Equal(999, pairing.PlayerToken);
+        Assert.Null(pairing.Name);
+    }
 }
