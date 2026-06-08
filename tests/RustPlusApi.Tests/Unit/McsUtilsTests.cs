@@ -19,4 +19,20 @@ public class McsUtilsTests
     [Fact]
     public void EncodeVarInt32_Negative_Throws() =>
         Assert.Throws<ArgumentOutOfRangeException>(() => EncodeVarInt32(-1));
+
+    /// <summary>
+    /// Asserts the ArgumentOutOfRangeException message is non-empty and meaningful —
+    /// kills the String mutation that replaces the message literal with "".
+    /// </summary>
+    [Fact]
+    public void EncodeVarInt32_Negative_ExceptionMessageIsNonEmpty()
+    {
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => EncodeVarInt32(-1));
+        Assert.False(string.IsNullOrEmpty(ex.Message));
+        // The message must mention varints or encoding (confirms it's the right throw site).
+        Assert.True(
+            ex.Message.Contains("varint", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("non-negative", StringComparison.OrdinalIgnoreCase),
+            $"Exception message did not contain expected text: {ex.Message}");
+    }
 }

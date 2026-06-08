@@ -133,7 +133,12 @@ public class FcmSocketFramingTests
         socket.RunReceiveLoopOverStream(new ScriptedStream(script));
 
         Assert.NotNull(notification);
-        Assert.Contains("123456789", notification, StringComparison.Ordinal);
+        // The delivered notification is the serialized FcmMessage; assert exact parsed fields.
+        using var doc = System.Text.Json.JsonDocument.Parse(notification!);
+        var root = doc.RootElement;
+        Assert.Equal(123456789L, root.GetProperty("From").GetInt64());
+        Assert.Equal("p1", root.GetProperty("PersistantId").GetString());
+        Assert.Equal("pairing", root.GetProperty("Data").GetProperty("ChannelId").GetString());
     }
 
     [Fact]
@@ -620,5 +625,150 @@ public class FcmSocketFramingTests
         socket.RunReceiveLoopOverStream(new ScriptedStream(script));
 
         Assert.Equal(2, count);   // both delivered; no deduplication without the set
+    }
+
+    /// <summary>
+    /// Asserts that LoginResponse clears the persistentIds collection, so a message whose
+    /// persistent ID was known BEFORE login is redelivered after login — kills the
+    /// Statement mutation that removes <c>persistentIds?.Clear()</c> in the LoginResponse arm.
+    /// </summary>
+    [Fact]
+    public void LoginResponse_ClearsPreSeededPersistentIds()
+    {
+        // Pre-seed the set with a known ID so that, WITHOUT clearing, the second delivery
+        // would be skipped by the dedup check.
+        var ids = new List<string> { "pre-existing-id" };
+        using var socket = NewSocket(ids);
+        var count = 0;
+        socket.NotificationReceived += (_, _) => count++;
+
+        var script = Build(
+            // LoginResponse should clear the set (removing "pre-existing-id").
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            // This message has the same ID — it should be DELIVERED because the set was cleared.
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "pre-existing-id")),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.Equal(1, count);
+    }
+
+    /// <summary>
+    /// Sends a DataMessageStanza whose body JSON uses lowercase property names (matching the live
+    /// FCM format), and asserts that Body fields are correctly deserialized.  The
+    /// <see cref="System.Text.Json.JsonSerializerOptions"/> in <see cref="RustPlusFcmSocket"/> use
+    /// <c>PropertyNameCaseInsensitive = true</c>; this test fails when that flag is mutated to
+    /// <c>false</c>, killing that Boolean mutation survivor.
+    /// </summary>
+    [Fact]
+    public void DataMessage_LowerCaseBodyJson_DeserializesBodyFieldsCorrectly()
+    {
+        using var socket = NewSocket([]);
+        string? notification = null;
+        socket.NotificationReceived += (_, n) => notification = n;
+
+        // Body JSON with lowercase keys — requires PropertyNameCaseInsensitive = true to bind
+        // "ip" → Body.Ip, "port" → Body.Port, "type" → Body.Type, etc.
+        const string lowerCaseBody = """
+            {"ip":"10.0.0.1","port":28082,"type":"server","playerToken":"42","playerId":"7"}
+            """;
+
+        var stanza = new DataMessageStanza
+        {
+            From = "123456789",
+            PersistentId = "case-test",
+            Sent = 1_700_000_000_000,
+            AppDatas =
+            {
+                new AppData { Key = "channelId", Value = "pairing" },
+                new AppData { Key = "body", Value = lowerCaseBody },
+            }
+        };
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, stanza),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.NotNull(notification);
+        using var doc = System.Text.Json.JsonDocument.Parse(notification!);
+        // If PropertyNameCaseInsensitive = false, these deserialized Body fields would be default
+        // (null / 0) even though the JSON contained lowercase keys.
+        var bodyEl = doc.RootElement.GetProperty("Data").GetProperty("Body");
+        Assert.Equal("10.0.0.1", bodyEl.GetProperty("Ip").GetString());
+        // Body has [JsonNumberHandling(AllowReadingFromString|WriteAsString)], so Port is serialized
+        // back as a JSON string "28082" rather than the number 28082.
+        Assert.Equal("28082", bodyEl.GetProperty("Port").GetString());
+        Assert.Equal("server", bodyEl.GetProperty("Type").GetString());
+    }
+
+    /// <summary>
+    /// Asserts that the initial LoginResponse frame IS dispatched via OnGotMessageBytes —
+    /// killing the Statement mutation that removes that call at L219.  The side-effect of
+    /// dispatching LoginResponse is that it clears <c>persistentIds</c>, which is observable.
+    /// </summary>
+    [Fact]
+    public void LoginResponse_DispatchedViaOnGotMessageBytes_ClearsPersistentIds()
+    {
+        var ids = new List<string> { "old-id" };
+        using var socket = NewSocket(ids);
+        var count = 0;
+        socket.NotificationReceived += (_, _) => count++;
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("old-id")),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        // If OnGotMessageBytes was NOT called for LoginResponse, persistentIds would NOT be cleared,
+        // "old-id" would still be in the set, and the DataMessage would be skipped (count == 0).
+        Assert.Equal(1, count);
+    }
+
+    /// <summary>
+    /// Sends an empty-payload HeartbeatPing and asserts exactly ONE HeartbeatAck is written
+    /// back to the stream — kills the Statement mutation that removes the early <c>return;</c>
+    /// after the Activator.CreateInstance dispatch in <c>OnGotMessageBytes</c>.
+    /// </summary>
+    /// <remarks>
+    /// Without the return, the code falls through to <c>Serializer.NonGeneric.Deserialize</c>
+    /// (from an empty stream, producing another default HeartbeatPing), calls <c>OnMessage</c>
+    /// a second time, and <c>HandlePing</c> writes a second HeartbeatAck.
+    /// </remarks>
+    [Fact]
+    public void EmptyPayload_HeartbeatPing_WritesExactlyOneAck()
+    {
+        using var socket = NewSocket();
+
+        // HeartbeatPing with zero-length payload (Activator.CreateInstance returns default instance
+        // with null StreamId).
+        var emptyPingFrame =
+            new byte[] { (byte)(int)McsProtoTag.KHeartbeatPingTag }
+            .Concat(EncodeVarInt32(0));   // zero-length payload
+
+        var stream = new ScriptedStream(Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            emptyPingFrame,
+            NextFrame(McsProtoTag.KCloseTag, new Close())));
+
+        socket.RunReceiveLoopOverStream(stream);
+
+        // Parse writes: [version][tag] varint(size) payload.
+        // If return; is removed, HandlePing is called twice → two HeartbeatAck writes.
+        var written = stream.Writes.ToArray();
+        // Count HeartbeatAck frames: each starts with [KMcsVersion][KHeartbeatAckTag].
+        const byte ackTag = (byte)(int)McsProtoTag.KHeartbeatAckTag;
+        var ackCount = 0;
+        for (var i = 0; i < written.Length - 1; i++)
+        {
+            if (written[i] == KMcsVersion && written[i + 1] == ackTag)
+                ackCount++;
+        }
+        Assert.Equal(1, ackCount);
     }
 }
