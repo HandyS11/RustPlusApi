@@ -85,8 +85,7 @@ public sealed class CameraRenderer(int width, int height)
 
             sampleOffset %= 2 * width * height;
             var index = _samplePositionBuffer[sampleOffset++] + (_samplePositionBuffer[sampleOffset++] * width);
-            if (index >= 0 && index < _output.Length)
-                _output[index] = (t, r, i);
+            _output[index] = (t, r, i);
         }
     }
 

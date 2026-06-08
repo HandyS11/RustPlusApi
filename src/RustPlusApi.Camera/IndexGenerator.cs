@@ -14,13 +14,7 @@ internal sealed class IndexGenerator
         NextState();
     }
 
-    public int NextInt(int max)
-    {
-        var t = (int)((NextState() * max) / 4294967295L);
-        if (t < 0)
-            t = max + t - 1;
-        return t;
-    }
+    public int NextInt(int max) => (int)((NextState() * max) / 4294967295L);
 
     private long NextState()
     {
