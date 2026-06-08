@@ -274,4 +274,105 @@ public class FcmSocketFramingTests
 
         Assert.Equal(1, count);   // first delivered, duplicate skipped
     }
+
+    [Fact]
+    public void ReadVarInt32_MultiByteSize_FrameDelivered()
+    {
+        // Build a DataMessageStanza whose serialized payload length >= 128, so the size varint
+        // requires a continuation byte (multi-byte encoding path in ReadVarInt32).
+        using var socket = NewSocket();
+        string? notification = null;
+        socket.NotificationReceived += (_, n) => notification = n;
+
+        // Pad the body to make payload > 128 bytes.
+        var longBody = "{\"img\":\"\",\"url\":\"\",\"desc\":\"" + new string('x', 120) + "\"}";
+        var bigStanza = new DataMessageStanza
+        {
+            From = "123456789",
+            PersistentId = "big-1",
+            Sent = 1_700_000_000_000,
+            AppDatas =
+            {
+                new AppData { Key = "channelId", Value = "pairing" },
+                new AppData { Key = "body", Value = longBody },
+            }
+        };
+
+        // Confirm the payload actually crosses the 128-byte boundary.
+        var payloadBytes = PayloadOf(bigStanza);
+        Assert.True(payloadBytes.Length >= 128, $"Expected payload >= 128 bytes, got {payloadBytes.Length}");
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, bigStanza),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.NotNull(notification);
+    }
+
+    [Fact]
+    public void OnGotMessageBytes_CorruptPayload_RaisesErrorOccurred()
+    {
+        // After a valid LoginResponse, send a frame whose tag maps to DataMessageStanza but whose
+        // payload is random bytes that protobuf-net cannot deserialize.  OnGotMessageBytes must
+        // catch the exception and fire ErrorOccurred instead of crashing the loop.
+        using var socket = NewSocket();
+        Exception? error = null;
+        socket.ErrorOccurred += (_, ex) => error = ex;
+
+        // Manually build a frame: [tag][varint(size)][corrupt-payload]
+        var corruptPayload = new byte[] { 0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9 };
+        var corruptFrame =
+            new byte[] { (byte)(int)McsProtoTag.KDataMessageStanzaTag }
+            .Concat(EncodeVarInt32(corruptPayload.Length))
+            .Concat(corruptPayload);
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            corruptFrame,
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.NotNull(error);
+    }
+
+    [Fact]
+    public void IqStanza_IsIgnored_NoNotificationAndNoThrow()
+    {
+        // The KIqStanzaTag case in OnMessage just breaks — assert no crash and no notification.
+        using var socket = NewSocket();
+        var raised = false;
+        socket.NotificationReceived += (_, _) => raised = true;
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KIqStanzaTag, new IqStanza()),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.False(raised);
+    }
+
+    [Fact]
+    public void UnrecognizedTag_HeartbeatAck_IsIgnored_NoNotificationAndNoThrow()
+    {
+        // HeartbeatAck is a known protobuf type but has no explicit handling in OnMessage,
+        // so it falls through to the default arm (Debug.WriteLine + ignore).
+        using var socket = NewSocket();
+        var raised = false;
+        socket.NotificationReceived += (_, _) => raised = true;
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KHeartbeatAckTag, new HeartbeatAck()),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+
+        Assert.False(raised);
+    }
 }
