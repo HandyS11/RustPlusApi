@@ -32,6 +32,11 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     private TcpClient? _tcpClient;
     private SslStream? _sslStream;
 
+    /// <summary>The transport stream used for reading and writing MCS frames.
+    /// In production this is set to the authenticated <see cref="SslStream"/> immediately after
+    /// TLS handshake; tests supply an in-memory stream via <see cref="RunReceiveLoopOverStream"/>.</summary>
+    private System.IO.Stream? _transport;
+
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
@@ -100,6 +105,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
         _sslStream = new SslStream(_tcpClient.GetStream(), false);
         await _sslStream.AuthenticateAsClientAsync(Host).ConfigureAwait(false);
+        _transport = _sslStream;
 
         try
         {
@@ -211,7 +217,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         while (!CancellationToken.IsCancellationRequested)
         {
             // Read the tag and size
-            tag = _sslStream!.ReadByte();
+            tag = _transport!.ReadByte();
             size = ReadVarInt32();
             payload = Read(size);
             type = BuildProtobufFromTag((McsProtoTag)tag);
@@ -261,7 +267,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         var bytesRead = 0;
         while (bytesRead < size)
         {
-            bytesRead += _sslStream!.Read(buffer, bytesRead, size - bytesRead);
+            bytesRead += _transport!.Read(buffer, bytesRead, size - bytesRead);
         }
         return buffer;
     }
@@ -276,7 +282,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         var shift = 0;
         while (true)
         {
-            var b = (byte)_sslStream!.ReadByte();
+            var b = (byte)_transport!.ReadByte();
             result |= (b & 0x7F) << shift;
             if ((b & 0x80) == 0)
                 break;
@@ -298,7 +304,17 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         Serializer.Serialize(ms, packet);
 
         var payload = ms.ToArray();
-        _sslStream!.Write([.. header, .. EncodeVarInt32(payload.Length), .. payload]);
+        byte[] frame = [.. header, .. EncodeVarInt32(payload.Length), .. payload];
+        _transport!.Write(frame, 0, frame.Length);
+    }
+
+    /// <summary>Test seam: runs the MCS receive/dispatch loop against an arbitrary stream,
+    /// bypassing the live TLS connect. Internal — visible only to RustPlusApi.Tests.</summary>
+    /// <param name="stream">The stream to read MCS frames from and write responses to.</param>
+    internal void RunReceiveLoopOverStream(Stream stream)
+    {
+        _transport = stream;
+        ReceiveMessages();
     }
 
     /// <summary>
