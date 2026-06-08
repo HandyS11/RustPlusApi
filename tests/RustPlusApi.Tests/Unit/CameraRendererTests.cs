@@ -67,6 +67,27 @@ public class CameraRendererTests
         Assert.True(HasPixel(image, new Rgba32(76, 178, 255)));
     }
 
+    [Fact]
+    public void AddRays_RepeatAndDeltaArms_DecodeWithoutThrowing()
+    {
+        var renderer = new CameraRenderer(16, 16);
+        var rays = new List<byte>();
+        // Seed a full ray (255) so the lookback table has an entry...
+        rays.AddRange(new byte[] { 255, 128, 63, 2 });
+        // ...then a repeat (high bits 00), a small-delta (01 -> +1 extra byte),
+        // and a medium-delta (10 -> +1 extra byte).
+        rays.AddRange(new byte[] { 0b0000_0000 });            // repeat lookback[0]
+        rays.AddRange(new byte[] { 0b0100_0000, 0x88 });      // small delta
+        rays.AddRange(new byte[] { 0b1000_0000, 0x80 });      // medium delta
+        // default arm (11): two extra bytes, material in low 6 bits.
+        rays.AddRange(new byte[] { 0b1100_0001, 0x40, 0x00 });
+
+        renderer.AddRays(new CameraFrame { RayData = rays.ToArray(), SampleOffset = 0 });
+        var png = renderer.Render();
+
+        Assert.NotEmpty(png); // decode exercised all four switch arms without an index throw
+    }
+
     private static bool HasPixel(Image<Rgba32> image, Rgba32 colour)
     {
         for (var y = 0; y < image.Height; y++)
