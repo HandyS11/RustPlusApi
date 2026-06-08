@@ -62,34 +62,34 @@ internal sealed class ServerParser
         switch (member)
         {
             case TypeDeclarationSyntax cls when cls is ClassDeclarationSyntax or StructDeclarationSyntax && IsProtoMessage(cls):
-            {
-                var simple = cls.Identifier.Text;
-                var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
-                _messages[qualified] = new Message { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
-                Register(simple, qualified);
-
-                foreach (var inner in cls.Members)
-                    Discover(inner, qualified);
-                break;
-            }
-            case EnumDeclarationSyntax en:
-            {
-                var simple = en.Identifier.Text;
-                var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
-                var def = new EnumDef { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
-                int next = 0;
-                foreach (var m in en.Members)
                 {
-                    int val = next;
-                    if (m.EqualsValue?.Value is { } v && TryParseInt(v, out var explicitVal))
-                        val = explicitVal;
-                    def.Values.Add((m.Identifier.Text, val));
-                    next = val + 1;
+                    var simple = cls.Identifier.Text;
+                    var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
+                    _messages[qualified] = new Message { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
+                    Register(simple, qualified);
+
+                    foreach (var inner in cls.Members)
+                        Discover(inner, qualified);
+                    break;
                 }
-                _enums[qualified] = def;
-                Register(simple, qualified);
-                break;
-            }
+            case EnumDeclarationSyntax en:
+                {
+                    var simple = en.Identifier.Text;
+                    var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
+                    var def = new EnumDef { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
+                    int next = 0;
+                    foreach (var m in en.Members)
+                    {
+                        int val = next;
+                        if (m.EqualsValue?.Value is { } v && TryParseInt(v, out var explicitVal))
+                            val = explicitVal;
+                        def.Values.Add((m.Identifier.Text, val));
+                        next = val + 1;
+                    }
+                    _enums[qualified] = def;
+                    Register(simple, qualified);
+                    break;
+                }
         }
     }
 
@@ -243,8 +243,10 @@ internal sealed class ServerParser
 
     private string ResolveProtoType(string csType, string? readMethod, string scopeQualified)
     {
-        if (readMethod == "ReadZInt32") return "sint32";
-        if (readMethod == "ReadZInt64") return "sint64";
+        if (readMethod == "ReadZInt32")
+            return "sint32";
+        if (readMethod == "ReadZInt64")
+            return "sint64";
 
         var scalar = csType switch
         {

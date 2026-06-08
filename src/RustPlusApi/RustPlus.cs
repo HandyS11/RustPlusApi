@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using RustPlusApi.Data;
 using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Clans;
@@ -8,6 +7,7 @@ using RustPlusApi.Extensions;
 using RustPlusApi.Interfaces;
 using RustPlusApi.Utils;
 using RustPlusContracts;
+using System.Diagnostics;
 using ClanInfo = RustPlusApi.Data.Clans.ClanInfo;
 // ReSharper disable MemberCanBePrivate.Global
 
@@ -62,7 +62,8 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="broadcast">The broadcast received from the server.</param>
     protected override void ParseNotification(AppBroadcast? broadcast)
     {
-        if (broadcast is null) return;
+        if (broadcast is null)
+            return;
 
         if (broadcast.EntityChanged is not null)
         {
@@ -144,7 +145,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<SubscriptionInfo?>(
             request,
-            r =>r.Response.Flag.ToSubscriptionInfo()).ConfigureAwait(false);
+            r => r.Response.Flag.ToSubscriptionInfo()).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -484,7 +485,8 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     {
         var response = await SetSmartSwitchValueAsync(entityId, value).ConfigureAwait(false);
 
-        if (!response.IsSuccess) return response;
+        if (!response.IsSuccess)
+            return response;
 
         await Task.Delay(timeoutMilliseconds).ConfigureAwait(false);
         return await SetSmartSwitchValueAsync(entityId, !value).ConfigureAwait(false);
@@ -499,7 +501,8 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     {
         var entityInfo = await GetSmartSwitchInfoAsync(entityId).ConfigureAwait(false);
 
-        if (!entityInfo.IsSuccess) return entityInfo;
+        if (!entityInfo.IsSuccess)
+            return entityInfo;
 
         var value = entityInfo.Data!.IsActive;
         return await SetSmartSwitchValueAsync(entityId, !value).ConfigureAwait(false);

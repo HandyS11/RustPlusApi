@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 
 namespace RustPlus.ConsoleApp.Utils;
 
@@ -9,7 +9,8 @@ internal static class CredentialsReaderUtility
         var configContent = File.ReadAllText(configFilePath);
         var config = JsonSerializer.Deserialize<Credentials>(configContent, JsonUtilities.JsonConfigOptions);
 
-        if (config == null) throw new InvalidOperationException("Invalid config file - unable to deserialize");
+        if (config == null)
+            throw new InvalidOperationException("Invalid config file - unable to deserialize");
         if (string.IsNullOrEmpty(config.Ip) ||
             config.Port <= 0 ||
             config.PlayerId <= 0 ||

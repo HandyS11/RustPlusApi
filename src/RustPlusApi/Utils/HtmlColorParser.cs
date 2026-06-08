@@ -18,7 +18,8 @@ public static class HtmlColorParser
 #if NET10_0_OR_GREATER
         return ColorTranslator.FromHtml(html);
 #else
-        if (string.IsNullOrEmpty(html)) return Color.Empty;
+        if (string.IsNullOrEmpty(html))
+            return Color.Empty;
 
         if (html[0] == '#')
         {

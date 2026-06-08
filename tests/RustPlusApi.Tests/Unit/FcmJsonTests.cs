@@ -1,7 +1,5 @@
-using System.Text.Json;
-
 using RustPlusApi.Fcm.Data;
-
+using System.Text.Json;
 using Xunit;
 
 namespace RustPlusApi.Tests.Unit;

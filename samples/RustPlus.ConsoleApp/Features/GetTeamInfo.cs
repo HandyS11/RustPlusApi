@@ -1,4 +1,4 @@
-﻿using RustPlus.ConsoleApp.Utils;
+using RustPlus.ConsoleApp.Utils;
 using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;

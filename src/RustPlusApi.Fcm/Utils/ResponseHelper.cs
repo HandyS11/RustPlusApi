@@ -1,6 +1,5 @@
-using System.Globalization;
-
 using RustPlusApi.Fcm.Data;
+using System.Globalization;
 
 namespace RustPlusApi.Fcm.Utils;
 

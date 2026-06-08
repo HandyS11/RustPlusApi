@@ -1,9 +1,7 @@
-using System.Diagnostics;
-
 using RustPlusApi.Data;
 using RustPlusApi.Data.Markers;
-
 using RustPlusContracts;
+using System.Diagnostics;
 
 namespace RustPlusApi.Extensions;
 

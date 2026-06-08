@@ -1,3 +1,8 @@
+using McsProto;
+using ProtoBuf;
+using RustPlusApi.Fcm.Data;
+using RustPlusApi.Fcm.Data.Events;
+using RustPlusApi.Fcm.Interfaces;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net.Security;
@@ -5,14 +10,9 @@ using System.Net.Sockets;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using McsProto;
-using ProtoBuf;
-using RustPlusApi.Fcm.Data;
-using RustPlusApi.Fcm.Data.Events;
-using RustPlusApi.Fcm.Interfaces;
-using static System.GC;
 using static RustPlusApi.Fcm.Data.Tags;
 using static RustPlusApi.Fcm.Utils.McsUtils;
+using static System.GC;
 
 namespace RustPlusApi.Fcm;
 
@@ -119,7 +119,8 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
                 ClientEvents = { new ClientEvent() },
             };
 
-            if (persistentIds != null) loginRequest.ReceivedPersistentIds.AddRange(persistentIds);
+            if (persistentIds != null)
+                loginRequest.ReceivedPersistentIds.AddRange(persistentIds);
 
             SendPacket(loginRequest);
 
@@ -170,7 +171,8 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// </param>
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposing) return;
+        if (!disposing)
+            return;
 
         if (!_cancellationTokenSource.IsCancellationRequested)
             _cancellationTokenSource.Cancel();
@@ -276,7 +278,8 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         {
             var b = (byte)_sslStream!.ReadByte();
             result |= (b & 0x7F) << shift;
-            if ((b & 0x80) == 0) break;
+            if ((b & 0x80) == 0)
+                break;
             shift += 7;
         }
         return result;
@@ -304,7 +307,8 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// <param name="ping">The <see cref="HeartbeatPing"/> message received from the server.</param>
     private void HandlePing(HeartbeatPing? ping)
     {
-        if (ping == null) return;
+        if (ping == null)
+            return;
 
         Debug.WriteLine($"Responding to ping: Stream ID: {ping.StreamId}," +
                         $"Last: {ping.LastStreamIdReceived}," +

@@ -60,7 +60,8 @@ public sealed class SteamLoginService(int port = 3000)
                 var context = await listener.GetContextAsync().ConfigureAwait(false);
                 var token = context.Request.QueryString["token"];
                 await RespondAsync(context, "<h1>Done. You can close this window.</h1>").ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(token)) return token!;
+                if (!string.IsNullOrEmpty(token))
+                    return token!;
             }
         }
         finally
@@ -146,7 +147,8 @@ public sealed class SteamLoginService(int port = 3000)
             while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken).ConfigureAwait(false);
-                if (result.MessageType == WebSocketMessageType.Close) break;
+                if (result.MessageType == WebSocketMessageType.Close)
+                    break;
             }
         }
         catch (Exception ex)
@@ -195,7 +197,8 @@ public sealed class SteamLoginService(int port = 3000)
     private static (string Executable, string[] PrefixArguments)? ResolveChromeLaunch(string workDir)
     {
         var native = FindChrome();
-        if (native != null) return (native, []);
+        if (native != null)
+            return (native, []);
 
         var flatpak = ResolveOnPath("flatpak");
         if (flatpak != null)
@@ -222,7 +225,8 @@ public sealed class SteamLoginService(int port = 3000)
     private static string? FindChrome()
     {
         var fromEnv = Environment.GetEnvironmentVariable("CHROME_PATH");
-        if (!string.IsNullOrEmpty(fromEnv) && File.Exists(fromEnv)) return fromEnv;
+        if (!string.IsNullOrEmpty(fromEnv) && File.Exists(fromEnv))
+            return fromEnv;
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -251,7 +255,8 @@ public sealed class SteamLoginService(int port = 3000)
                  })
         {
             var resolved = ResolveOnPath(name);
-            if (resolved != null) return resolved;
+            if (resolved != null)
+                return resolved;
         }
 
         return null;
@@ -260,12 +265,14 @@ public sealed class SteamLoginService(int port = 3000)
     private static string? ResolveOnPath(string executable)
     {
         var pathVariable = Environment.GetEnvironmentVariable("PATH");
-        if (string.IsNullOrEmpty(pathVariable)) return null;
+        if (string.IsNullOrEmpty(pathVariable))
+            return null;
 
         foreach (var directory in pathVariable!.Split(Path.PathSeparator))
         {
             var candidate = Path.Combine(directory, executable);
-            if (File.Exists(candidate)) return candidate;
+            if (File.Exists(candidate))
+                return candidate;
         }
 
         return null;
@@ -308,7 +315,8 @@ public sealed class SteamLoginService(int port = 3000)
 
     private static void TryDisposeSocket(ClientWebSocket? socket)
     {
-        try { socket?.Dispose(); }
+        try
+        { socket?.Dispose(); }
         catch (Exception ex) { Debug.WriteLine($"[{nameof(SteamLoginService)}] Socket dispose failed: {ex.Message}"); }
     }
 
@@ -335,7 +343,8 @@ public sealed class SteamLoginService(int port = 3000)
     {
         try
         {
-            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+            if (Directory.Exists(path))
+                Directory.Delete(path, recursive: true);
         }
         catch (Exception ex)
         {

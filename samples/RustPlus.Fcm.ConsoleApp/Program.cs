@@ -1,8 +1,8 @@
-using System.Diagnostics;
-using System.Text.Json;
 using RustPlus.Fcm.ConsoleApp.Utils;
 using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Data;
+using System.Diagnostics;
+using System.Text.Json;
 
 // Credentials come from the RustPlus.Register.ConsoleApp sample (recommended) or from
 // 'npx @liamcottle/rustplus.js fcm-register'. Put the resulting file next to this project as

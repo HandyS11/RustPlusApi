@@ -22,16 +22,26 @@ public static class MockResponses
     {
         var response = new AppResponse { Seq = request.Seq };
 
-        if (request.GetInfo is not null) response.Info = SampleInfo();
-        else if (request.GetTime is not null) response.Time = SampleTime();
-        else if (request.GetMap is not null) response.Map = SampleMap();
-        else if (request.GetEntityInfo is not null) response.EntityInfo = SampleSmartSwitch(true);
-        else if (request.CheckSubscription is not null) response.Flag = new AppFlag { Value = true };
-        else if (request.GetClanInfo is not null) response.ClanInfo = SampleClanInfo();
-        else if (request.GetClanChat is not null) response.ClanChat = SampleClanChat();
-        else if (request.GetNexusAuth is not null) response.NexusAuth = SampleNexusAuth();
-        else if (request.CameraSubscribe is not null) response.CameraSubscribeInfo = SampleCameraInfo();
-        else response.Success = new AppSuccess();
+        if (request.GetInfo is not null)
+            response.Info = SampleInfo();
+        else if (request.GetTime is not null)
+            response.Time = SampleTime();
+        else if (request.GetMap is not null)
+            response.Map = SampleMap();
+        else if (request.GetEntityInfo is not null)
+            response.EntityInfo = SampleSmartSwitch(true);
+        else if (request.CheckSubscription is not null)
+            response.Flag = new AppFlag { Value = true };
+        else if (request.GetClanInfo is not null)
+            response.ClanInfo = SampleClanInfo();
+        else if (request.GetClanChat is not null)
+            response.ClanChat = SampleClanChat();
+        else if (request.GetNexusAuth is not null)
+            response.NexusAuth = SampleNexusAuth();
+        else if (request.CameraSubscribe is not null)
+            response.CameraSubscribeInfo = SampleCameraInfo();
+        else
+            response.Success = new AppSuccess();
 
         return new AppMessage { Response = response };
     }

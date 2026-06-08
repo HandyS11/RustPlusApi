@@ -39,7 +39,8 @@ public sealed class CameraRenderer(int width, int height)
         var sampleOffset = frame.SampleOffset;
 
         var lookback = new int[64][];
-        for (var k = 0; k < lookback.Length; k++) lookback[k] = new int[3];
+        for (var k = 0; k < lookback.Length; k++)
+            lookback[k] = new int[3];
 
         var p = 0;
         while (p < rayData.Length - 1)
@@ -97,7 +98,8 @@ public sealed class CameraRenderer(int width, int height)
         for (var i = 0; i < _output.Length; i++)
         {
             var ray = _output[i];
-            if (ray is null) continue;
+            if (ray is null)
+                continue;
 
             var (distance, alignmentRaw, material) = ray.Value;
 

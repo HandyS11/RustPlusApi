@@ -1,8 +1,6 @@
+using RustPlusApi.Fcm.Registration.Steps;
 using System.Net;
 using System.Text;
-
-using RustPlusApi.Fcm.Registration.Steps;
-
 using Xunit;
 
 namespace RustPlusApi.Tests.Canary;

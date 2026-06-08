@@ -1,9 +1,9 @@
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.Net.WebSockets;
 using ProtoBuf;
 using RustPlusApi.Interfaces;
 using RustPlusContracts;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Net.WebSockets;
 using static System.GC;
 // ReSharper disable MemberCanBeProtected.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -176,7 +176,8 @@ public abstract class RustPlusSocket(
     /// <param name="forceClose">When <see langword="true"/>, skips draining the pending-response queue.</param>
     public async Task DisconnectAsync(bool forceClose = false)
     {
-        if (!IsConnected()) return;
+        if (!IsConnected())
+            return;
 
         Disconnecting?.Invoke(this, EventArgs.Empty);
 
@@ -210,7 +211,8 @@ public abstract class RustPlusSocket(
     /// </param>
     protected virtual void Dispose(bool disposing)
     {
-        if (!disposing) return;
+        if (!disposing)
+            return;
 
         if (!_cancellationTokenSource.IsCancellationRequested)
             _cancellationTokenSource.Cancel();
@@ -240,7 +242,8 @@ public abstract class RustPlusSocket(
     /// <returns>True if the response contains an error; otherwise, false.</returns>
     protected static bool IsError(AppMessage response)
     {
-        if (response.Broadcast is not null) return false;
+        if (response.Broadcast is not null)
+            return false;
         return response.Response.Error is not null;
     }
 

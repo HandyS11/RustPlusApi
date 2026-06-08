@@ -1,8 +1,7 @@
 using RustPlusApi.Data.Clans;
 using RustPlusApi.Data.Events;
-
-using AppClanInfo = RustPlusContracts.AppClanInfo;
 using AppClanChanged = RustPlusContracts.AppClanChanged;
+using AppClanInfo = RustPlusContracts.AppClanInfo;
 using ProtoClanInfo = RustPlusContracts.ClanInfo;
 // ReSharper disable MemberCanBePrivate.Global
 
@@ -22,7 +21,8 @@ public static class AppClanInfoToModel
     /// <param name="clanInfo">The protobuf clan info, or <see langword="null"/>.</param>
     public static ClanInfo? ToClanInfo(this ProtoClanInfo? clanInfo)
     {
-        if (clanInfo is null) return null;
+        if (clanInfo is null)
+            return null;
 
         return new ClanInfo
         {

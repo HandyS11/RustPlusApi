@@ -1,4 +1,4 @@
-﻿using RustPlus.ConsoleApp.Utils;
+using RustPlus.ConsoleApp.Utils;
 using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
@@ -10,6 +10,7 @@ internal sealed class ToggleSmartSwitch(IRustPlus rustPlus)
         var response = await rustPlus.ToggleSmartSwitchAsync(entityId);
 
         DisplayUtilities.DisplayJson("ToggleSmartSwitch", response);
-        if (response.IsSuccess) DisplayUtilities.DisplaySmartSwitchValue(entityId, response.Data!.IsActive);
+        if (response.IsSuccess)
+            DisplayUtilities.DisplaySmartSwitchValue(entityId, response.Data!.IsActive);
     }
 }

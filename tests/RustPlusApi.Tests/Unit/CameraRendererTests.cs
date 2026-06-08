@@ -42,7 +42,8 @@ public class CameraRendererTests
         // b1 = 255, b2 = 192 (>>6 == 3, &0x3F == 0), b3 = 0  ->  t = (255<<2)|3 = 1023.
         var renderer = new CameraRenderer(16, 16);
         var rays = new List<byte>();
-        for (var n = 0; n < 32; n++) rays.AddRange(FullRay(255, 192, 0));
+        for (var n = 0; n < 32; n++)
+            rays.AddRange(FullRay(255, 192, 0));
 
         renderer.AddRays(new CameraFrame { RayData = rays.ToArray(), SampleOffset = 0 });
 
@@ -57,7 +58,8 @@ public class CameraRendererTests
         // b1 = 128 (<<2 = 512), b2 = 63 (>>6 == 0, &0x3F == 63), b3 = 2.
         var renderer = new CameraRenderer(16, 16);
         var rays = new List<byte>();
-        for (var n = 0; n < 32; n++) rays.AddRange(FullRay(128, 63, 2));
+        for (var n = 0; n < 32; n++)
+            rays.AddRange(FullRay(128, 63, 2));
 
         renderer.AddRays(new CameraFrame { RayData = rays.ToArray(), SampleOffset = 0 });
 

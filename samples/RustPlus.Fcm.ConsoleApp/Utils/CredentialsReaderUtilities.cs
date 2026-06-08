@@ -1,9 +1,8 @@
+using RustPlusApi.Fcm.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using RustPlusApi.Fcm.Data;
-
-using System.Diagnostics.CodeAnalysis;
 
 // ReSharper disable ClassNeverInstantiated.Global
 
@@ -28,7 +27,8 @@ internal static class CredentialsReaderUtilities
         try
         {
             var native = JsonSerializer.Deserialize<Credentials>(json, NativeOptions);
-            if (native?.Gcm is { AndroidId: not 0 }) return native;
+            if (native?.Gcm is { AndroidId: not 0 })
+                return native;
         }
         catch (JsonException)
         {

@@ -1,13 +1,11 @@
+using ProtoBuf;
+using RustPlusApi.Fcm.Data;
+using RustPlusApi.Fcm.Registration.Protobuf;
 using System.Globalization;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-
-using ProtoBuf;
-
-using RustPlusApi.Fcm.Data;
-using RustPlusApi.Fcm.Registration.Protobuf;
 
 namespace RustPlusApi.Fcm.Registration.Steps;
 

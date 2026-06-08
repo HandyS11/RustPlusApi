@@ -1,4 +1,4 @@
-﻿using RustPlus.ConsoleApp.Utils;
+using RustPlus.ConsoleApp.Utils;
 using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
@@ -10,6 +10,7 @@ internal sealed class StrobeSmartSwitch(IRustPlus rustPlus)
         var response = await rustPlus.StrobeSmartSwitchAsync(entityId, timeoutMilliseconds, value);
 
         DisplayUtilities.DisplayJson("StrobeSmartSwitch", response);
-        if (response.IsSuccess) DisplayUtilities.DisplaySmartSwitchValue(entityId, response.Data!.IsActive);
+        if (response.IsSuccess)
+            DisplayUtilities.DisplaySmartSwitchValue(entityId, response.Data!.IsActive);
     }
 }

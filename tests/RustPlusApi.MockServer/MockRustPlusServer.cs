@@ -1,8 +1,8 @@
+using ProtoBuf;
+using RustPlusContracts;
 using System.Net;
 using System.Net.Sockets;
 using System.Net.WebSockets;
-using ProtoBuf;
-using RustPlusContracts;
 
 namespace RustPlusApi.MockServer;
 
@@ -117,7 +117,8 @@ public sealed class MockRustPlusServer : IAsyncDisposable
             message.Position = 0;
             var request = Serializer.Deserialize<AppRequest>(message);
             var response = _responder(request);
-            if (response is null) continue;
+            if (response is null)
+                continue;
 
             await SendAsync(socket, response, ct);
         }
@@ -166,12 +167,14 @@ public sealed class MockRustPlusServer : IAsyncDisposable
             }
         }
 
-        if (_listener.IsListening) _listener.Stop();
+        if (_listener.IsListening)
+            _listener.Stop();
         _listener.Close();
 
         if (_acceptLoop is not null)
         {
-            try { await _acceptLoop; }
+            try
+            { await _acceptLoop; }
             catch (OperationCanceledException) { /* expected on shutdown */ }
         }
 

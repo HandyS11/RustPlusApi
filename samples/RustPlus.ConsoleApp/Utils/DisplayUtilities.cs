@@ -1,5 +1,5 @@
-﻿using System.Text.Json;
 using RustPlusApi.Data;
+using System.Text.Json;
 
 namespace RustPlus.ConsoleApp.Utils;
 

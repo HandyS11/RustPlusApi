@@ -1,6 +1,5 @@
-using System.Text.Json;
-
 using RustPlusApi.Fcm.Data;
+using System.Text.Json;
 
 namespace RustPlusApi.Fcm.Registration;
 

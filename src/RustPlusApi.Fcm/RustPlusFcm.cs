@@ -1,8 +1,8 @@
-using System.Diagnostics;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Extensions;
 using RustPlusApi.Fcm.Interfaces;
+using System.Diagnostics;
 using static RustPlusApi.Fcm.Utils.ResponseHelper;
 
 namespace RustPlusApi.Fcm;

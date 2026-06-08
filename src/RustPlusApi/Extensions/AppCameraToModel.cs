@@ -1,10 +1,9 @@
 using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Events;
-
 using AppCameraInfo = RustPlusContracts.AppCameraInfo;
 using AppCameraRays = RustPlusContracts.AppCameraRays;
-using ProtoVector3 = RustPlusContracts.Vector3;
 using ProtoCameraEntity = RustPlusContracts.AppCameraRays.Entity;
+using ProtoVector3 = RustPlusContracts.Vector3;
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;
@@ -86,7 +85,8 @@ public static class AppCameraToModel
     /// <param name="vector">The protobuf vector, or <see langword="null"/> to return a zero vector.</param>
     public static Vector3 ToVector3(this ProtoVector3? vector)
     {
-        if (vector is null) return new Vector3();
+        if (vector is null)
+            return new Vector3();
         return new Vector3 { X = vector.X, Y = vector.Y, Z = vector.Z };
     }
 }

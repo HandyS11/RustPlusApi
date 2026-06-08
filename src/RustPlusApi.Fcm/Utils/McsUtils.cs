@@ -15,7 +15,8 @@ public static class McsUtils
         {
             var b = (byte)(value & 0x7F);
             value >>= 7;
-            if (value != 0) b |= 0x80;
+            if (value != 0)
+                b |= 0x80;
             result.Add(b);
         } while (value != 0);
         return [.. result];
@@ -26,14 +27,22 @@ public static class McsUtils
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="type"/> is not a recognised MCS type.</exception>
     public static McsProtoTag GetTagFromProtobufType(Type type)
     {
-        if (type == typeof(HeartbeatPing)) return McsProtoTag.KHeartbeatPingTag;
-        if (type == typeof(HeartbeatAck)) return McsProtoTag.KHeartbeatAckTag;
-        if (type == typeof(LoginRequest)) return McsProtoTag.KLoginRequestTag;
-        if (type == typeof(LoginResponse)) return McsProtoTag.KLoginResponseTag;
-        if (type == typeof(Close)) return McsProtoTag.KCloseTag;
-        if (type == typeof(IqStanza)) return McsProtoTag.KIqStanzaTag;
-        if (type == typeof(DataMessageStanza)) return McsProtoTag.KDataMessageStanzaTag;
-        if (type == typeof(StreamErrorStanza)) return McsProtoTag.KStreamErrorStanzaTag;
+        if (type == typeof(HeartbeatPing))
+            return McsProtoTag.KHeartbeatPingTag;
+        if (type == typeof(HeartbeatAck))
+            return McsProtoTag.KHeartbeatAckTag;
+        if (type == typeof(LoginRequest))
+            return McsProtoTag.KLoginRequestTag;
+        if (type == typeof(LoginResponse))
+            return McsProtoTag.KLoginResponseTag;
+        if (type == typeof(Close))
+            return McsProtoTag.KCloseTag;
+        if (type == typeof(IqStanza))
+            return McsProtoTag.KIqStanzaTag;
+        if (type == typeof(DataMessageStanza))
+            return McsProtoTag.KDataMessageStanzaTag;
+        if (type == typeof(StreamErrorStanza))
+            return McsProtoTag.KStreamErrorStanzaTag;
         throw new ArgumentOutOfRangeException(nameof(type), type, null);
     }
 
