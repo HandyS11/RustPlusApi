@@ -4,7 +4,9 @@ using ProtoBuf;
 // listener. Hand-authored from the frozen Chromium `mcs.proto` (proto2). protobuf-net
 // serializes by field number, so the [ProtoMember] numbers below are the wire contract.
 // Optional scalars are modelled as nullable, required fields carry IsRequired = true.
+#pragma warning disable IDE0130 // Namespace does not match folder structure — McsProto matches the wire protocol name
 namespace McsProto;
+#pragma warning restore IDE0130
 
 /// <summary>TAG: 0 — Heartbeat ping sent by the server to check connection liveness.</summary>
 [ProtoContract]

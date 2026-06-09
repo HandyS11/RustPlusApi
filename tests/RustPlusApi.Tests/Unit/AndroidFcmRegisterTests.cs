@@ -259,7 +259,7 @@ public class AndroidFcmRegisterTests
     [Fact]
     public async Task CheckInAsync_NonSuccessStatus_Throws()
     {
-        var handler = StubHttpMessageHandler.Always(HttpStatusCode.InternalServerError, Array.Empty<byte>());
+        var handler = StubHttpMessageHandler.Always(HttpStatusCode.InternalServerError, []);
         var register = new AndroidFcmRegister(handler.CreateClient());
         await Assert.ThrowsAsync<HttpRequestException>(() => register.CheckInAsync());
     }

@@ -64,7 +64,9 @@ public sealed class SteamLoginService(int port = 3000)
                 var token = context.Request.QueryString["token"];
                 await RespondAsync(context, "<h1>Done. You can close this window.</h1>").ConfigureAwait(false);
                 if (!string.IsNullOrEmpty(token))
+                {
                     return token!;
+                }
             }
         }
         finally
@@ -151,7 +153,9 @@ public sealed class SteamLoginService(int port = 3000)
             {
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken).ConfigureAwait(false);
                 if (result.MessageType == WebSocketMessageType.Close)
+                {
                     break;
+                }
             }
         }
         catch (Exception ex)
@@ -184,7 +188,10 @@ public sealed class SteamLoginService(int port = 3000)
 
         var startInfo = new ProcessStartInfo(executable) { UseShellExecute = false };
 #if NET10_0_OR_GREATER
-        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
 #else
         startInfo.Arguments = string.Join(" ", arguments.Select(QuoteIfNeeded));
 #endif
@@ -201,14 +208,18 @@ public sealed class SteamLoginService(int port = 3000)
     {
         var native = FindChrome();
         if (native != null)
+        {
             return (native, []);
+        }
 
         var flatpak = ResolveOnPath("flatpak");
         if (flatpak != null)
         {
             var appId = FlatpakAppIds.FirstOrDefault(IsFlatpakAppInstalled);
             if (appId is not null)
+            {
                 return (flatpak, ["run", $"--filesystem={workDir}", appId]);
+            }
         }
 
         return null;
@@ -229,7 +240,9 @@ public sealed class SteamLoginService(int port = 3000)
     {
         var fromEnv = Environment.GetEnvironmentVariable("CHROME_PATH");
         if (!string.IsNullOrEmpty(fromEnv) && File.Exists(fromEnv))
+        {
             return fromEnv;
+        }
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -259,7 +272,9 @@ public sealed class SteamLoginService(int port = 3000)
         {
             var resolved = ResolveOnPath(name);
             if (resolved != null)
+            {
                 return resolved;
+            }
         }
 
         return null;
@@ -269,13 +284,17 @@ public sealed class SteamLoginService(int port = 3000)
     {
         var pathVariable = Environment.GetEnvironmentVariable("PATH");
         if (string.IsNullOrEmpty(pathVariable))
+        {
             return null;
+        }
 
         foreach (var directory in pathVariable!.Split(Path.PathSeparator))
         {
             var candidate = Path.Combine(directory, executable);
             if (File.Exists(candidate))
+            {
                 return candidate;
+            }
         }
 
         return null;
@@ -347,7 +366,9 @@ public sealed class SteamLoginService(int port = 3000)
         try
         {
             if (Directory.Exists(path))
+            {
                 Directory.Delete(path, recursive: true);
+            }
         }
         catch (Exception ex)
         {

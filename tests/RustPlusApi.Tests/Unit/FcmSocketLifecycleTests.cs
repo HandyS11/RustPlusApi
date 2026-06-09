@@ -75,7 +75,7 @@ public class FcmSocketLifecycleTests
     /// </summary>
     private sealed class CanceledProbeStream : Stream
     {
-        private readonly MemoryStream _reads = new(new byte[] { 41, 3, 0 });
+        private readonly MemoryStream _reads = new([41, 3, 0]);
 
         public override bool CanRead => true;
         public override bool CanWrite => true;

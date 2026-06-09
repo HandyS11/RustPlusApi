@@ -20,7 +20,7 @@ public static class AppMapToModel
             Width = appMap.Width,
             OceanMargin = appMap.OceanMargin,
             Background = HtmlColorParser.FromHtml(appMap.Background),
-            Monuments = appMap.Monuments.ToServerMapMonuments().ToList(),
+            Monuments = [..appMap.Monuments.ToServerMapMonuments()],
             JpgImage = appMap.JpgImage
         };
     }

@@ -51,7 +51,9 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
     public async Task<string> RegisterWithRustPlusAsync(Credentials credentials, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(credentials.ExpoPushToken))
+        {
             throw new InvalidOperationException("Credentials are missing the Expo push token; call AcquireCredentialsAsync first.");
+        }
 
         var steamToken = await _steamLoginService.LoginAsync(cancellationToken).ConfigureAwait(false);
         await _rustCompanionClient

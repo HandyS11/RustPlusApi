@@ -159,7 +159,9 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
 #endif
 
             if (!responseText.Contains("Error", StringComparison.Ordinal))
+            {
                 return responseText.Split('=')[1];
+            }
 
             await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
         }

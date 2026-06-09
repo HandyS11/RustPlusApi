@@ -91,7 +91,9 @@ public sealed class CameraRenderer(int width, int height)
             // sample past the end of the image buffer. Drop those rather than throw. (index is a
             // sum of non-negative sample-buffer values, so it can only ever be too large, never < 0.)
             if (index < _output.Length)
+            {
                 _output[index] = (t, r, i);
+            }
         }
     }
 
