@@ -60,7 +60,7 @@ jobs:
         run: |
           ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.exclusions="**/samples/**" /d:sonar.coverage.exclusions="**/samples/**,**/tests/**,**/tools/**" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" /d:sonar.scanner.scanAll=false /d:sonar.scanner.skipJreProvisioning=true
           dotnet build
-          dotnet test --no-build --collect:"XPlat Code Coverage;Format=opencover" --blame-hang-timeout 60s -p:TestTfmsInParallel=false
+          dotnet test --no-build --collect:"XPlat Code Coverage;Format=opencover" -p:TestTfmsInParallel=false
 
       - name: End Sonar analysis
         if: ${{ always() }}
