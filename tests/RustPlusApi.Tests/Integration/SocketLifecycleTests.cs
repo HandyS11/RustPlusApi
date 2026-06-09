@@ -1,6 +1,8 @@
+using ProtoBuf;
 using RustPlusApi.Data.Events;
 using RustPlusApi.MockServer;
 using RustPlusContracts;
+using System.Net.WebSockets;
 using Xunit;
 
 namespace RustPlusApi.Tests.Integration;
@@ -154,6 +156,52 @@ public class SocketLifecycleTests
 
         await Task.Delay(300);
         Assert.False(client.IsConnected());
+    }
+
+    [Fact]
+    public async Task DisposeAsync_WhenClientNeverAcksClose_CompletesWithoutHanging()
+    {
+        // Block the responder so the server's read loop is parked inside _responder (not in a
+        // cancellable ReceiveAsync). The active socket therefore stays Open through dispose,
+        // forcing the graceful-close path against a peer that will never ack the handshake.
+        var gate = new SemaphoreSlim(0, 1);
+        var server = new MockRustPlusServer(req =>
+        {
+            gate.Wait();
+            return MockResponses.Default(req);
+        });
+        server.Start();
+
+        try
+        {
+            using var peer = new ClientWebSocket();
+            await peer.ConnectAsync(new Uri($"ws://{MockRustPlusServer.Host}:{server.Port}"), CancellationToken.None)
+                .WaitAsync(Timeout);
+
+            await using var request = new MemoryStream();
+            Serializer.Serialize(request, new AppRequest
+            {
+                Seq = 1,
+                PlayerId = PlayerId,
+                PlayerToken = PlayerToken,
+                GetInfo = new AppEmpty()
+            });
+            await peer.SendAsync(request.ToArray(), WebSocketMessageType.Binary, true, CancellationToken.None)
+                .WaitAsync(Timeout);
+
+            // Give the server time to receive the request and park in the blocked responder.
+            await Task.Delay(300);
+
+            // Disposing must not block waiting for a close acknowledgement that never arrives.
+            var dispose = server.DisposeAsync().AsTask();
+            await dispose.WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.True(dispose.IsCompletedSuccessfully);
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     [Fact]

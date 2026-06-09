@@ -157,17 +157,10 @@ public sealed class MockRustPlusServer : IAsyncDisposable
     {
         await _cts.CancelAsync();
 
-        if (_activeSocket is { State: WebSocketState.Open })
-        {
-            try
-            {
-                await _activeSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-            }
-            catch (Exception) when (_activeSocket.State != WebSocketState.Open)
-            {
-                // Socket was aborted or disposed concurrently; nothing to do.
-            }
-        }
+        // Abort rather than attempt a graceful close handshake. The client may already be gone
+        // (e.g. disposed without sending a close frame), in which case CloseAsync would block
+        // forever waiting for an acknowledgement that never arrives.
+        _activeSocket?.Abort();
 
         if (_listener.IsListening)
         {

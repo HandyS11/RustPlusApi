@@ -34,11 +34,11 @@ jobs:
 
       - name: Checkout
         if: steps.gate.outputs.run == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup .NET
         if: steps.gate.outputs.run == 'true'
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
@@ -60,7 +60,7 @@ jobs:
 
       - name: Upload diff artifact
         if: steps.gate.outputs.run == 'true' && steps.refresh.outputs.exit_code == '1'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: proto-diff
           path: tools/update-proto/out/proto.diff
