@@ -163,9 +163,9 @@ public sealed class MockRustPlusServer : IAsyncDisposable
             {
                 await _activeSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
             }
-            catch (WebSocketException)
+            catch (Exception) when (_activeSocket.State != WebSocketState.Open)
             {
-                // The client may already be gone; nothing to do.
+                // Socket was aborted or disposed concurrently; nothing to do.
             }
         }
 
