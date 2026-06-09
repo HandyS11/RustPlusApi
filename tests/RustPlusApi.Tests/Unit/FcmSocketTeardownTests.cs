@@ -27,7 +27,7 @@ public class FcmSocketTeardownTests
         using var stream = new GatedStream();
 
         // Background the receive loop; it consumes the login frame then parks in a blocking read.
-        var loop = socket.StartReceiveLoopOverStreamForTestsAsync(stream);
+        var loop = socket.RunReceiveLoopOverStreamAsync(stream);
 #pragma warning restore RCS1261, CA2025
 
         await Task.Delay(100);

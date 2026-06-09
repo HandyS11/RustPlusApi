@@ -54,6 +54,61 @@ public class FcmSocketFramingTests
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
     }
 
+    /// <summary>
+    /// A duplex stream that ONLY supports asynchronous I/O: synchronous <see cref="Read"/>/<see cref="ReadByte"/>/
+    /// <see cref="Write"/> throw. Driving the receive/send path over it proves the loop uses ReadAsync/WriteAsync
+    /// (i.e. does not occupy a thread-pool thread with blocking calls for the connection's lifetime).
+    /// </summary>
+    /// <param name="script">The pre-built MCS byte script served to async reads.</param>
+#pragma warning disable CA1844 // memory-based overrides are a perf hint, irrelevant for this test stub
+    private sealed class AsyncOnlyStream(byte[] script) : Stream
+    {
+        private readonly MemoryStream _reads = new(script);
+        public MemoryStream Writes { get; } = new();
+
+        public override bool CanRead => true;
+        public override bool CanWrite => true;
+        public override bool CanSeek => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException("synchronous Read is not allowed");
+        public override int ReadByte() => throw new NotSupportedException("synchronous ReadByte is not allowed");
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException("synchronous Write is not allowed");
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => _reads.ReadAsync(buffer, offset, count, cancellationToken);
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => Writes.WriteAsync(buffer, offset, count, cancellationToken);
+
+        public override void Flush() { }
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    }
+#pragma warning restore CA1844
+
+    [Fact]
+    public async Task ReceiveLoop_OverAsyncOnlyStream_ProcessesFramesViaAsyncIo()
+    {
+        await using var socket = NewSocket();
+        string? notification = null;
+        socket.NotificationReceived += (_, n) => notification = n;
+
+        var stream = new AsyncOnlyStream(Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification()),
+            NextFrame(McsProtoTag.KHeartbeatPingTag, new HeartbeatPing { StreamId = 1, Status = 0 }),
+            NextFrame(McsProtoTag.KCloseTag, new Close())));
+
+        // Must complete using async I/O only: synchronous Read/Write on AsyncOnlyStream throw.
+        await socket.RunReceiveLoopOverStreamAsync(stream);
+
+        Assert.NotNull(notification);
+        // The ping-ack must have been written back via WriteAsync.
+        Assert.True(stream.Writes.ToArray().Length >= 2);
+    }
+
     /// <summary>Serializes <paramref name="message"/> to its MCS payload bytes.</summary>
     /// <param name="message">The protobuf message to serialize.</param>
     private static byte[] PayloadOf(object message)
@@ -119,9 +174,9 @@ public class FcmSocketFramingTests
         };
 
     [Fact]
-    public void LoginResponseThenDataMessage_RaisesNotificationReceived()
+    public async Task LoginResponseThenDataMessage_RaisesNotificationReceived()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         string? notification = null;
         socket.NotificationReceived += (_, n) => notification = n;
 
@@ -130,7 +185,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification()),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.NotNull(notification);
         // The delivered notification is the serialized FcmMessage; assert exact parsed fields.
@@ -142,16 +197,16 @@ public class FcmSocketFramingTests
     }
 
     [Fact]
-    public void HeartbeatPing_WritesHeartbeatAckBackToStream()
+    public async Task HeartbeatPing_WritesHeartbeatAckBackToStream()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
 
         var stream = new ScriptedStream(Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
             NextFrame(McsProtoTag.KHeartbeatPingTag, new HeartbeatPing { StreamId = 7, Status = 0 }),
             NextFrame(McsProtoTag.KCloseTag, new Close())));
 
-        socket.RunReceiveLoopOverStream(stream);
+        await socket.RunReceiveLoopOverStreamAsync(stream);
 
         // Decode the bytes the socket wrote back: [version][tag] varint(size) payload.
         var written = stream.Writes.ToArray();
@@ -167,16 +222,18 @@ public class FcmSocketFramingTests
         }
 
         idx++;
+#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
         using var payload = new MemoryStream(written, idx, written.Length - idx);
+#pragma warning restore RCS1261
         var ack = Serializer.Deserialize<HeartbeatAck>(payload);
         Assert.Equal(8, ack.StreamId);           // ping.StreamId (7) + 1
         Assert.Equal(7, ack.LastStreamIdReceived);
     }
 
     [Fact]
-    public void CloseTag_RaisesSocketClosedAndDisconnects()
+    public async Task CloseTag_RaisesSocketClosedAndDisconnects()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         var socketClosed = false;
         var disconnected = false;
         socket.SocketClosed += (_, _) => socketClosed = true;
@@ -186,40 +243,40 @@ public class FcmSocketFramingTests
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.True(socketClosed);
         Assert.True(disconnected);
     }
 
     [Fact]
-    public void UnsupportedVersion_ThrowsInvalidOperationException()
+    public async Task UnsupportedVersion_ThrowsInvalidOperationException()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
 
         var script = Build(FirstFrame(37, McsProtoTag.KLoginResponseTag, new LoginResponse()));
 
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => socket.RunReceiveLoopOverStream(new ScriptedStream(script)));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
         Assert.Contains("unsupported", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void FirstMessageNotLoginResponse_ThrowsInvalidOperationException()
+    public async Task FirstMessageNotLoginResponse_ThrowsInvalidOperationException()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
 
         var script = Build(FirstFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification()));
 
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => socket.RunReceiveLoopOverStream(new ScriptedStream(script)));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
         Assert.Contains(nameof(LoginResponse), ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void DataMessageMissingChannelId_IsIgnored()
+    public async Task DataMessageMissingChannelId_IsIgnored()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         var raised = false;
         socket.NotificationReceived += (_, _) => raised = true;
 
@@ -235,15 +292,15 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, stanza),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.False(raised);
     }
 
     [Fact]
-    public void DataMessageMissingBody_IsIgnored()
+    public async Task DataMessageMissingBody_IsIgnored()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         var raised = false;
         socket.NotificationReceived += (_, _) => raised = true;
 
@@ -259,17 +316,17 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, stanza),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.False(raised);
     }
 
     [Fact]
-    public void DuplicatePersistentId_IsSkipped()
+    public async Task DuplicatePersistentId_IsSkipped()
     {
         // The LoginResponse handler clears the dedupe set, so seeding it up front would not survive.
         // Instead send the same PersistentId twice: the first populates the set, the second is skipped.
-        using var socket = NewSocket([]);
+        await using var socket = NewSocket([]);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
 
@@ -279,17 +336,17 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "dup-1")),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.Equal(1, count);   // first delivered, duplicate skipped
     }
 
     [Fact]
-    public void ReadVarInt32_MultiByteSize_FrameDelivered()
+    public async Task ReadVarInt32_MultiByteSize_FrameDelivered()
     {
         // Build a DataMessageStanza whose serialized payload length >= 128, so the size varint
         // requires a continuation byte (multi-byte encoding path in ReadVarInt32).
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         string? notification = null;
         socket.NotificationReceived += (_, n) => notification = n;
 
@@ -316,18 +373,18 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, bigStanza),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.NotNull(notification);
     }
 
     [Fact]
-    public void OnGotMessageBytes_CorruptPayload_RaisesErrorOccurred()
+    public async Task OnGotMessageBytes_CorruptPayload_RaisesErrorOccurred()
     {
         // After a valid LoginResponse, send a frame whose tag maps to DataMessageStanza but whose
         // payload is random bytes that protobuf-net cannot deserialize.  OnGotMessageBytes must
         // catch the exception and fire ErrorOccurred instead of crashing the loop.
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         Exception? error = null;
         socket.ErrorOccurred += (_, ex) => error = ex;
 
@@ -343,16 +400,16 @@ public class FcmSocketFramingTests
             corruptFrame,
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.NotNull(error);
     }
 
     [Fact]
-    public void IqStanza_IsIgnored_NoNotificationAndNoThrow()
+    public async Task IqStanza_IsIgnored_NoNotificationAndNoThrow()
     {
         // The KIqStanzaTag case in OnMessage just breaks — assert no crash and no notification.
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         var raised = false;
         socket.NotificationReceived += (_, _) => raised = true;
 
@@ -361,17 +418,17 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KIqStanzaTag, new IqStanza()),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.False(raised);
     }
 
     [Fact]
-    public void UnrecognizedTag_HeartbeatAck_IsIgnored_NoNotificationAndNoThrow()
+    public async Task UnrecognizedTag_HeartbeatAck_IsIgnored_NoNotificationAndNoThrow()
     {
         // HeartbeatAck is a known protobuf type but has no explicit handling in OnMessage,
         // so it falls through to the default arm (Debug.WriteLine + ignore).
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         var raised = false;
         socket.NotificationReceived += (_, _) => raised = true;
 
@@ -380,7 +437,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KHeartbeatAckTag, new HeartbeatAck()),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.False(raised);
     }
@@ -393,9 +450,9 @@ public class FcmSocketFramingTests
     /// coalescing operator in <c>OnDataMessage</c>.
     /// </summary>
     [Fact]
-    public void DataMessage_AllOptionalFields_Present_Delivered()
+    public async Task DataMessage_AllOptionalFields_Present_Delivered()
     {
-        using var socket = NewSocket([]);
+        await using var socket = NewSocket([]);
         string? notification = null;
         socket.NotificationReceived += (_, n) => notification = n;
 
@@ -421,7 +478,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, stanza),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.NotNull(notification);
         // Verify the extra fields were actually captured in the serialized JSON.
@@ -435,10 +492,10 @@ public class FcmSocketFramingTests
     /// <c>dataMessage?.PersistentId != null</c> short-circuit false-branch (line 385).
     /// </summary>
     [Fact]
-    public void DataMessage_NullPersistentId_DeliveredAndNotAddedToDedupeSet()
+    public async Task DataMessage_NullPersistentId_DeliveredAndNotAddedToDedupeSet()
     {
         var ids = new List<string>();
-        using var socket = NewSocket(ids);
+        await using var socket = NewSocket(ids);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
 
@@ -460,7 +517,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, stanza),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.Equal(1, count);           // message was delivered
         Assert.Empty(ids);                // nothing added to the dedupe set
@@ -471,9 +528,9 @@ public class FcmSocketFramingTests
     /// <c>dataMessage.Sent ?? 0</c> null branch (SentAt falls back to epoch).
     /// </summary>
     [Fact]
-    public void DataMessage_NullSent_FallsBackToEpoch()
+    public async Task DataMessage_NullSent_FallsBackToEpoch()
     {
-        using var socket = NewSocket([]);
+        await using var socket = NewSocket([]);
         string? notification = null;
         socket.NotificationReceived += (_, n) => notification = n;
 
@@ -494,7 +551,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, stanza),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.NotNull(notification);
         // When Sent is null the SentAt maps to DateTime.UnixEpoch; the serialized JSON
@@ -507,9 +564,9 @@ public class FcmSocketFramingTests
     /// Covers the <c>NotificationReceived?.Invoke</c> null-conditional no-subscriber false-branch.
     /// </summary>
     [Fact]
-    public void DataMessage_NoNotificationReceivedSubscriber_DoesNotThrow()
+    public async Task DataMessage_NoNotificationReceivedSubscriber_DoesNotThrow()
     {
-        using var socket = NewSocket([]);
+        await using var socket = NewSocket([]);
         // NotificationReceived intentionally NOT subscribed
 
         var script = Build(
@@ -517,7 +574,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("no-sub")),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        var ex = Record.Exception(() => socket.RunReceiveLoopOverStream(new ScriptedStream(script)));
+        var ex = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
         Assert.Null(ex);
     }
 
@@ -527,11 +584,11 @@ public class FcmSocketFramingTests
     /// instead of deserializing.
     /// </summary>
     [Fact]
-    public void EmptyPayload_OnGotMessageBytes_DispatchesDefaultInstance()
+    public async Task EmptyPayload_OnGotMessageBytes_DispatchesDefaultInstance()
     {
         // Manually build a HeartbeatAck frame with a zero-length payload (size varint = 0)
         // after the LoginResponse, then close.
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         var raised = false;
         socket.NotificationReceived += (_, _) => raised = true;
 
@@ -544,7 +601,7 @@ public class FcmSocketFramingTests
             emptyFrame,
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        var ex = Record.Exception(() => socket.RunReceiveLoopOverStream(new ScriptedStream(script)));
+        var ex = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
 
         Assert.Null(ex);
         Assert.False(raised);   // HeartbeatAck hits the default arm → ignored, no notification
@@ -556,9 +613,9 @@ public class FcmSocketFramingTests
     /// in <c>OnGotMessageBytes</c>'s catch block.
     /// </summary>
     [Fact]
-    public void OnGotMessageBytes_CorruptPayload_NoErrorSubscriber_DoesNotThrow()
+    public async Task OnGotMessageBytes_CorruptPayload_NoErrorSubscriber_DoesNotThrow()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         // ErrorOccurred intentionally NOT subscribed
 
         var corruptPayload = new byte[] { 0xFF, 0xFE, 0xFD, 0xFC };
@@ -572,7 +629,7 @@ public class FcmSocketFramingTests
             corruptFrame,
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        var ex = Record.Exception(() => socket.RunReceiveLoopOverStream(new ScriptedStream(script)));
+        var ex = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
 
         Assert.Null(ex);   // catch absorbs exception; no subscriber → no rethrow
     }
@@ -584,12 +641,12 @@ public class FcmSocketFramingTests
     /// <c>dataMessage?.AppDatas is not { Count: &gt; 0 }</c> null-propagation path.
     /// </summary>
     [Fact]
-    public void DataMessage_NullStanza_IsIgnoredWithoutThrow()
+    public async Task DataMessage_NullStanza_IsIgnoredWithoutThrow()
     {
         // Send a tag that maps to DataMessageStanza but deserializes as an empty/null stanza
         // by sending a zero-length payload — Serializer produces a default instance with
         // null AppDatas list, which matches the "no AppDatas" guard.
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
         var raised = false;
         socket.NotificationReceived += (_, _) => raised = true;
 
@@ -602,7 +659,7 @@ public class FcmSocketFramingTests
             zeroLengthDataFrame,
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.False(raised);
     }
@@ -613,10 +670,10 @@ public class FcmSocketFramingTests
     /// <c>persistentIds?.Contains(...)</c> returns null, short-circuiting the condition.
     /// </summary>
     [Fact]
-    public void DataMessage_NullPersistentIdsCollection_DeliversSameMessageTwice()
+    public async Task DataMessage_NullPersistentIdsCollection_DeliversSameMessageTwice()
     {
         // persistentIds = null means no de-duplication at all.
-        using var socket = NewSocket(persistentIds: null);
+        await using var socket = NewSocket(persistentIds: null);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
 
@@ -626,7 +683,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("same-id")),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.Equal(2, count);   // both delivered; no deduplication without the set
     }
@@ -637,12 +694,12 @@ public class FcmSocketFramingTests
     /// Statement mutation that removes <c>persistentIds?.Clear()</c> in the LoginResponse arm.
     /// </summary>
     [Fact]
-    public void LoginResponse_ClearsPreSeededPersistentIds()
+    public async Task LoginResponse_ClearsPreSeededPersistentIds()
     {
         // Pre-seed the set with a known ID so that, WITHOUT clearing, the second delivery
         // would be skipped by the dedup check.
         var ids = new List<string> { "pre-existing-id" };
-        using var socket = NewSocket(ids);
+        await using var socket = NewSocket(ids);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
 
@@ -653,7 +710,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "pre-existing-id")),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.Equal(1, count);
     }
@@ -666,9 +723,9 @@ public class FcmSocketFramingTests
     /// <c>false</c>, killing that Boolean mutation survivor.
     /// </summary>
     [Fact]
-    public void DataMessage_LowerCaseBodyJson_DeserializesBodyFieldsCorrectly()
+    public async Task DataMessage_LowerCaseBodyJson_DeserializesBodyFieldsCorrectly()
     {
-        using var socket = NewSocket([]);
+        await using var socket = NewSocket([]);
         string? notification = null;
         socket.NotificationReceived += (_, n) => notification = n;
 
@@ -695,7 +752,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, stanza),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.NotNull(notification);
         using var doc = System.Text.Json.JsonDocument.Parse(notification!);
@@ -715,10 +772,10 @@ public class FcmSocketFramingTests
     /// dispatching LoginResponse is that it clears <c>persistentIds</c>, which is observable.
     /// </summary>
     [Fact]
-    public void LoginResponse_DispatchedViaOnGotMessageBytes_ClearsPersistentIds()
+    public async Task LoginResponse_DispatchedViaOnGotMessageBytes_ClearsPersistentIds()
     {
         var ids = new List<string> { "old-id" };
-        using var socket = NewSocket(ids);
+        await using var socket = NewSocket(ids);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
 
@@ -727,7 +784,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("old-id")),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        socket.RunReceiveLoopOverStream(new ScriptedStream(script));
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         // If OnGotMessageBytes was NOT called for LoginResponse, persistentIds would NOT be cleared,
         // "old-id" would still be in the set, and the DataMessage would be skipped (count == 0).
@@ -745,9 +802,9 @@ public class FcmSocketFramingTests
     /// a second time, and <c>HandlePing</c> writes a second HeartbeatAck.
     /// </remarks>
     [Fact]
-    public void EmptyPayload_HeartbeatPing_WritesExactlyOneAck()
+    public async Task EmptyPayload_HeartbeatPing_WritesExactlyOneAck()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
 
         // HeartbeatPing with zero-length payload (Activator.CreateInstance returns default instance
         // with null StreamId).
@@ -760,7 +817,7 @@ public class FcmSocketFramingTests
             emptyPingFrame,
             NextFrame(McsProtoTag.KCloseTag, new Close())));
 
-        socket.RunReceiveLoopOverStream(stream);
+        await socket.RunReceiveLoopOverStreamAsync(stream);
 
         // Parse writes: [version][tag] varint(size) payload.
         // If return; is removed, HandlePing is called twice → two HeartbeatAck writes.
@@ -779,24 +836,24 @@ public class FcmSocketFramingTests
     }
 
     [Fact]
-    public void ReceiveLoop_StreamEndsBetweenFrames_ExitsCleanly()
+    public async Task ReceiveLoop_StreamEndsBetweenFrames_ExitsCleanly()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
 
         // Login frame only — no Close. After processing login, the loop's tag read hits EOF
         // (ReadByte returns -1) and must break cleanly instead of treating -1 as a tag.
         var stream = new ScriptedStream(Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse())));
 
-        var exception = Record.Exception(() => socket.RunReceiveLoopOverStream(stream));
+        var exception = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(stream));
 
         Assert.Null(exception);
     }
 
     [Fact]
-    public void ReceiveLoop_TruncatedVarIntSize_ExitsCleanly()
+    public async Task ReceiveLoop_TruncatedVarIntSize_ExitsCleanly()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
 
         // Login frame, then a lone tag byte with no size varint before EOF. ReadVarInt32 hits EOF
         // and throws EndOfStreamException, which the receive loop swallows for a clean exit
@@ -806,15 +863,15 @@ public class FcmSocketFramingTests
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
             loneTagByte));
 
-        var exception = Record.Exception(() => socket.RunReceiveLoopOverStream(stream));
+        var exception = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(stream));
 
         Assert.Null(exception);
     }
 
     [Fact]
-    public void ReceiveLoop_TruncatedPayload_ExitsCleanly()
+    public async Task ReceiveLoop_TruncatedPayload_ExitsCleanly()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
 
         // Login frame, then a tag + size=10 varint but only 3 payload bytes before EOF. Read hits
         // EOF (underlying Read returns 0) and throws EndOfStreamException rather than busy-looping
@@ -828,7 +885,7 @@ public class FcmSocketFramingTests
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
             truncatedFrame));
 
-        var exception = Record.Exception(() => socket.RunReceiveLoopOverStream(stream));
+        var exception = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(stream));
 
         Assert.Null(exception);
     }

@@ -38,9 +38,13 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
     private Task? _receiveLoop;
 
+    /// <summary>Serializes writes to the transport so concurrent sends (e.g. a ping-ack racing another
+    /// send) cannot interleave bytes on the stream.</summary>
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
+
     /// <summary>The transport stream used for reading and writing MCS frames.
     /// In production this is set to the authenticated <see cref="SslStream"/> immediately after
-    /// TLS handshake; tests supply an in-memory stream via <see cref="RunReceiveLoopOverStream"/>.</summary>
+    /// TLS handshake; tests supply an in-memory stream via <see cref="RunReceiveLoopOverStreamAsync"/>.</summary>
     private Stream? _transport;
 
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -139,11 +143,12 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
                 loginRequest.ReceivedPersistentIds.AddRange(persistentIds);
             }
 
-            SendPacket(loginRequest);
+            await SendPacketAsync(loginRequest).ConfigureAwait(false);
 
             Connected?.Invoke(this, EventArgs.Empty);
 
-            _receiveLoop = Task.Run(ReceiveMessages, CancellationToken);
+            // Truly async: the loop yields at the first awaited read instead of holding a thread-pool thread.
+            _receiveLoop = ReceiveMessagesAsync();
         }
         catch (Exception ex)
         {
@@ -201,6 +206,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         _sslStream?.Dispose();
         _tcpClient?.Dispose();
         _cancellationTokenSource.Dispose();
+        _sendLock.Dispose();
     }
 
     /// <summary>
@@ -242,6 +248,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         await WaitForReceiveLoopAsync().ConfigureAwait(false);
 
         _cancellationTokenSource.Dispose();
+        _sendLock.Dispose();
     }
 
     /// <summary>
@@ -275,40 +282,31 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         }
     }
 
-    /// <summary>Test seam: starts the MCS receive/dispatch loop as a tracked background task over an
-    /// arbitrary stream and returns it, so tests can assert teardown awaits it. Internal — visible only to
-    /// RustPlusApi.Tests.</summary>
+    /// <summary>Test seam: runs the MCS receive/dispatch loop against an arbitrary stream as a tracked task,
+    /// bypassing the live TLS connect, and returns it so tests can await completion or assert teardown awaits
+    /// it. Internal — visible only to RustPlusApi.Tests.</summary>
     /// <param name="stream">The stream to read MCS frames from and write responses to.</param>
     /// <returns>The tracked receive-loop task.</returns>
-    internal Task StartReceiveLoopOverStreamForTestsAsync(Stream stream)
+    internal Task RunReceiveLoopOverStreamAsync(Stream stream)
     {
         _transport = stream;
-        _receiveLoop = Task.Run(ReceiveMessages, CancellationToken);
+        _receiveLoop = ReceiveMessagesAsync();
         return _receiveLoop;
     }
 
-    /// <summary>Test seam: runs the MCS receive/dispatch loop against an arbitrary stream,
-    /// bypassing the live TLS connect. Internal — visible only to RustPlusApi.Tests.</summary>
-    /// <param name="stream">The stream to read MCS frames from and write responses to.</param>
-    internal void RunReceiveLoopOverStream(Stream stream)
-    {
-        _transport = stream;
-        ReceiveMessages();
-    }
-
     /// <summary>
-    /// Continuously receives and processes messages from the FCM server over the SSL stream.
-    /// Validates the protocol version and login response, then enters a loop to handle incoming messages.
+    /// Continuously receives and processes messages from the FCM server over the transport stream using
+    /// asynchronous I/O. Validates the protocol version and login response, then loops handling incoming messages.
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// Thrown if the protocol version is unsupported, or if the initial response is not a <see cref="LoginResponse"/>.
     /// </exception>
-    private void ReceiveMessages()
+    private async Task ReceiveMessagesAsync()
     {
         try
         {
             // Read the header
-            var header = Read(2);
+            var header = await ReadBytesAsync(2).ConfigureAwait(false);
             int version = header[0];
             int tag = header[1];
 
@@ -317,8 +315,8 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
                 throw new InvalidOperationException($"Protocol version {version} unsupported");
             }
 
-            var size = ReadVarInt32();
-            var payload = Read(size);
+            var size = await ReadVarInt32Async().ConfigureAwait(false);
+            var payload = await ReadBytesAsync(size).ConfigureAwait(false);
             var type = BuildProtobufFromTag((McsProtoTag)tag);
 
             if (type != typeof(LoginResponse))
@@ -326,28 +324,32 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
                 throw new InvalidOperationException($"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
             }
 
-            OnGotMessageBytes(payload, type);
+            await OnGotMessageBytesAsync(payload, type).ConfigureAwait(false);
 
             while (!CancellationToken.IsCancellationRequested)
             {
                 // Read the tag and size
-                tag = _transport!.ReadByte();
+                tag = await ReadByteAsync().ConfigureAwait(false);
                 if (tag < 0)
                 {
                     break; // EOF: the server closed the connection between frames.
                 }
 
-                size = ReadVarInt32();
-                payload = Read(size);
+                size = await ReadVarInt32Async().ConfigureAwait(false);
+                payload = await ReadBytesAsync(size).ConfigureAwait(false);
                 type = BuildProtobufFromTag((McsProtoTag)tag);
 
-                OnGotMessageBytes(payload, type);
+                await OnGotMessageBytesAsync(payload, type).ConfigureAwait(false);
             }
         }
         catch (EndOfStreamException)
         {
             // Stream closed mid-frame (disconnect/truncation): exit the receive loop cleanly
             // rather than hang or surface a confusing decode error.
+        }
+        catch (OperationCanceledException)
+        {
+            // Teardown cancelled the token mid-read: a cancelled read is a clean exit, not an error.
         }
     }
 
@@ -356,7 +358,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// </summary>
     /// <param name="data">The message bytes.</param>
     /// <param name="type">The type of the protobuf message.</param>
-    private void OnGotMessageBytes(byte[] data, Type type)
+    private async Task OnGotMessageBytesAsync(byte[] data, Type type)
     {
         try
         {
@@ -364,16 +366,18 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
             if (data.Length == 0)
             {
-                OnMessage(new MessageEventArgs { Tag = messageTag, Object = Activator.CreateInstance(type) });
+                await OnMessageAsync(new MessageEventArgs { Tag = messageTag, Object = Activator.CreateInstance(type) }).ConfigureAwait(false);
                 return;
             }
 
             var buffer = data.Take(data.Length).ToArray();
 
+#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
             using var stream = new MemoryStream(buffer);
+#pragma warning restore RCS1261
             var message = Serializer.NonGeneric.Deserialize(type, stream);
 
-            OnMessage(new MessageEventArgs { Tag = messageTag, Object = message });
+            await OnMessageAsync(new MessageEventArgs { Tag = messageTag, Object = message }).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -387,13 +391,16 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// <param name="size">The number of bytes to read.</param>
     /// <returns>A byte array containing the data read from the stream.</returns>
     /// <exception cref="EndOfStreamException">Thrown when the stream closes before <paramref name="size"/> bytes arrive.</exception>
-    private byte[] Read(int size)
+    private async Task<byte[]> ReadBytesAsync(int size)
     {
         var buffer = new byte[size];
         var bytesRead = 0;
         while (bytesRead < size)
         {
-            var read = _transport!.Read(buffer, bytesRead, size - bytesRead);
+            // byte[] overload is intentional: the Memory<byte> overload (preferred by CA1835) is unavailable on netstandard2.0.
+#pragma warning disable CA1835
+            var read = await _transport!.ReadAsync(buffer, bytesRead, size - bytesRead, CancellationToken).ConfigureAwait(false);
+#pragma warning restore CA1835
             if (read == 0)
             {
                 throw new EndOfStreamException(); // stream closed before the full frame arrived
@@ -405,17 +412,31 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     }
 
     /// <summary>
-    /// Reads a variable-length 32-bit integer from the SSL stream.
+    /// Reads a single byte from the transport asynchronously.
+    /// </summary>
+    /// <returns>The byte value, or -1 at end of stream.</returns>
+    private async Task<int> ReadByteAsync()
+    {
+        var one = new byte[1];
+        // byte[] overload is intentional: the Memory<byte> overload (preferred by CA1835) is unavailable on netstandard2.0.
+#pragma warning disable CA1835
+        var read = await _transport!.ReadAsync(one, 0, 1, CancellationToken).ConfigureAwait(false);
+#pragma warning restore CA1835
+        return read == 0 ? -1 : one[0];
+    }
+
+    /// <summary>
+    /// Reads a variable-length 32-bit integer from the transport.
     /// </summary>
     /// <returns>The decoded 32-bit integer.</returns>
     /// <exception cref="EndOfStreamException">Thrown when the stream closes mid-value.</exception>
-    private int ReadVarInt32()
+    private async Task<int> ReadVarInt32Async()
     {
         var result = 0;
         var shift = 0;
         while (true)
         {
-            var b = _transport!.ReadByte();
+            var b = await ReadByteAsync().ConfigureAwait(false);
             if (b < 0)
             {
                 throw new EndOfStreamException(); // stream closed mid-varint
@@ -433,27 +454,42 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     }
 
     /// <summary>
-    /// Serializes and sends a protobuf packet over the SSL stream.
+    /// Serializes and sends a protobuf packet over the transport. Writes are serialized through
+    /// <see cref="_sendLock"/> so concurrent sends cannot interleave bytes on the stream.
     /// </summary>
     /// <param name="packet">The packet object to serialize and send.</param>
-    private void SendPacket(object packet)
+    private async Task SendPacketAsync(object packet)
     {
         var tagEnum = GetTagFromProtobufType(packet.GetType());
         var header = new byte[] { KMcsVersion, (byte)(int)tagEnum };
 
+#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
         using var ms = new MemoryStream();
+#pragma warning restore RCS1261
         Serializer.Serialize(ms, packet);
 
         var payload = ms.ToArray();
         byte[] frame = [.. header, .. EncodeVarInt32(payload.Length), .. payload];
-        _transport!.Write(frame, 0, frame.Length);
+
+        await _sendLock.WaitAsync(CancellationToken).ConfigureAwait(false);
+        try
+        {
+            // byte[] overload is intentional: the Memory<byte> overload (preferred by CA1835) is unavailable on netstandard2.0.
+#pragma warning disable CA1835
+            await _transport!.WriteAsync(frame, 0, frame.Length, CancellationToken).ConfigureAwait(false);
+#pragma warning restore CA1835
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
     }
 
     /// <summary>
     /// Handles an incoming FCM heartbeat ping by sending a corresponding heartbeat acknowledgment.
     /// </summary>
     /// <param name="ping">The <see cref="HeartbeatPing"/> message received from the server.</param>
-    private void HandlePing(HeartbeatPing? ping)
+    private async Task HandlePingAsync(HeartbeatPing? ping)
     {
         if (ping == null)
         {
@@ -470,7 +506,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
             Status = ping.Status
         };
 
-        SendPacket(pingResponse);
+        await SendPacketAsync(pingResponse).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -478,7 +514,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// Unrecognized tags are ignored so the receive loop keeps running.
     /// </summary>
     /// <param name="e">The <see cref="MessageEventArgs"/> containing the message tag and object.</param>
-    private void OnMessage(MessageEventArgs e)
+    private async Task OnMessageAsync(MessageEventArgs e)
     {
         // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
         switch (e.Tag)
@@ -490,7 +526,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
                 OnDataMessage(e.Object as DataMessageStanza);
                 break;
             case McsProtoTag.KHeartbeatPingTag:
-                HandlePing(e.Object as HeartbeatPing);
+                await HandlePingAsync(e.Object as HeartbeatPing).ConfigureAwait(false);
                 break;
             case McsProtoTag.KCloseTag:
                 SocketClosed?.Invoke(this, EventArgs.Empty);

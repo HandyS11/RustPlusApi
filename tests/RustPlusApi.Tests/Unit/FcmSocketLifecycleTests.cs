@@ -51,9 +51,9 @@ public class FcmSocketLifecycleTests
     }
 
     [Fact]
-    public void Disconnect_CancelsToken_StopsReceiveLoopBeforeProcessing()
+    public async Task Disconnect_CancelsToken_StopsReceiveLoopBeforeProcessing()
     {
-        using var socket = NewSocket();
+        await using var socket = NewSocket();
 
         // Cancel up front, then run a loop whose stream would otherwise read forever.
         socket.Disconnect();
@@ -63,7 +63,7 @@ public class FcmSocketLifecycleTests
         var raised = false;
         socket.NotificationReceived += (_, _) => raised = true;
 
-        socket.RunReceiveLoopOverStream(new CanceledProbeStream());
+        await socket.RunReceiveLoopOverStreamAsync(new CanceledProbeStream());
 
         Assert.False(raised);
     }
@@ -171,13 +171,17 @@ public class FcmSocketLifecycleTests
     /// the disposal the CTS is still alive and the loop would succeed (no throw).
     /// </summary>
     [Fact]
-    public void Dispose_DisposesInternalCts_ReceiveLoopThrowsObjectDisposed()
+    public async Task Dispose_DisposesInternalCts_ReceiveLoopThrowsObjectDisposed()
     {
         var socket = NewSocket();
+
+        // Intentionally the synchronous Dispose path: it must dispose the CTS (the behavior under test).
+#pragma warning disable CA1849, VSTHRD103, S6966
         socket.Dispose();
+#pragma warning restore CA1849, VSTHRD103, S6966
 
         // After Dispose() the CTS is disposed; the receive loop's CancellationToken access throws.
-        Assert.Throws<ObjectDisposedException>(
-            () => socket.RunReceiveLoopOverStream(new CanceledProbeStream()));
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            () => socket.RunReceiveLoopOverStreamAsync(new CanceledProbeStream()));
     }
 }

@@ -4,6 +4,7 @@ using RustPlusContracts;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.WebSockets;
+using System.Threading.Channels;
 using static System.GC;
 // ReSharper disable MemberCanBeProtected.Global
 // ReSharper disable MemberCanBePrivate.Global
@@ -28,6 +29,9 @@ public abstract class RustPlusSocket(
 {
     /// <summary>Bounds teardown waits so a wedged loop or dead peer cannot hang disposal.</summary>
     private static readonly TimeSpan TeardownTimeout = TimeSpan.FromSeconds(5);
+
+    /// <summary>Backoff applied after a non-fatal receive error so the loop cannot busy-spin on it.</summary>
+    private static readonly TimeSpan ReceiveErrorBackoff = TimeSpan.FromMilliseconds(100);
     /// <summary>
     /// Occurs when the client is about to connect to the Rust+ server.
     /// </summary>
@@ -93,7 +97,9 @@ public abstract class RustPlusSocket(
     /// <summary>int (not uint) so Interlocked.Increment works on netstandard2.0, which lacks the uint overload.</summary>
     private int _seq;
 
-    private readonly ConcurrentQueue<AppRequest> _sendQueue = new();
+    /// <summary>Outgoing requests are handed to the send loop via a channel — no polling, no per-send latency.</summary>
+    private readonly Channel<AppRequest> _sendChannel = Channel.CreateUnbounded<AppRequest>(
+        new UnboundedChannelOptions { SingleReader = true });
     private readonly ConcurrentQueue<TaskCompletionSource<AppMessage>> _responseQueue = new();
 
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -172,7 +178,7 @@ public abstract class RustPlusSocket(
 
         SendingRequest?.Invoke(this, EventArgs.Empty);
 
-        _sendQueue.Enqueue(request);
+        _sendChannel.Writer.TryWrite(request);
         _responseQueue.Enqueue(tcs);
 
         RequestSent?.Invoke(this, request);
@@ -249,6 +255,7 @@ public abstract class RustPlusSocket(
             _cancellationTokenSource.Cancel();
         }
 
+        _sendChannel.Writer.TryComplete();
         _webSocket?.Dispose();
         _cancellationTokenSource.Dispose();
     }
@@ -279,6 +286,8 @@ public abstract class RustPlusSocket(
 #endif
         }
 
+        _sendChannel.Writer.TryComplete();
+
         await WaitForLoopsAsync().ConfigureAwait(false);
 
         _webSocket?.Dispose();
@@ -302,9 +311,20 @@ public abstract class RustPlusSocket(
 
         var all = Task.WhenAll(loops);
         var completed = await Task.WhenAny(all, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
-        if (completed == all)
+        if (completed != all)
         {
-            await all.ConfigureAwait(false); // observe faults; cancellation is swallowed inside the loops
+            return;
+        }
+
+        try
+        {
+            await all.ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            // A loop faulting as the transport is torn down is expected during teardown; never let it
+            // escape disposal. The loops swallow their own cancellation, so this is a genuine I/O fault.
+            Debug.WriteLine($"Background loop faulted during teardown (expected): {ex}");
         }
     }
 
@@ -353,17 +373,17 @@ public abstract class RustPlusSocket(
     }
 
     /// <summary>
-    /// Continuously processes the sent queue by dequeuing requests and sending them to the Rust+ server
-    /// via the WebSocket connection as binary messages.
-    /// Waits for 100 milliseconds between each iteration.
+    /// Continuously drains the outgoing channel, serializing each request and sending it to the Rust+
+    /// server as a binary WebSocket message. Awaits the channel rather than polling, so there is no
+    /// per-send latency and no busy wakeups; exits when the token is cancelled or the channel completes.
     /// </summary>
     private async Task ProcessSendQueueAsync()
     {
         try
         {
-            while (IsConnected() && !CancellationToken.IsCancellationRequested)
+            while (await _sendChannel.Reader.WaitToReadAsync(CancellationToken).ConfigureAwait(false))
             {
-                if (_sendQueue.TryDequeue(out var request))
+                while (_sendChannel.Reader.TryRead(out var request))
                 {
 #pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
                     using var ms = new MemoryStream();
@@ -372,12 +392,17 @@ public abstract class RustPlusSocket(
                     var buffer = ms.ToArray();
                     await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true, CancellationToken).ConfigureAwait(false);
                 }
-                await Task.Delay(100, CancellationToken).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
         {
-            // Teardown cancelled the token mid-send/delay: exit the loop cleanly.
+            // Teardown cancelled the token mid-wait/send: exit the loop cleanly.
+        }
+        catch (WebSocketException ex)
+        {
+            // The socket broke under us (e.g. peer closed): surface it and stop draining.
+            Debug.WriteLine($"Send loop stopped due to a WebSocketException: {ex}");
+            ErrorOccurred?.Invoke(this, ex);
         }
     }
 
@@ -450,13 +475,26 @@ public abstract class RustPlusSocket(
             }
             catch (WebSocketException ex)
             {
+                // A WebSocket error means the connection is broken; retrying would immediately throw again.
+                // Surface it and exit instead of busy-spinning on a dead socket.
                 Debug.WriteLine($"Disconnected from the Rust+ socket due to a WebSocketException: {ex}");
                 ErrorOccurred?.Invoke(this, ex);
+                break;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Disconnected from the Rust+ socket due to an Exception: {ex}");
                 ErrorOccurred?.Invoke(this, ex);
+
+                // Back off so a persistently failing receive cannot busy-spin the loop.
+                try
+                {
+                    await Task.Delay(ReceiveErrorBackoff, CancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         }
         Debug.WriteLine("Receive loop exited.");
