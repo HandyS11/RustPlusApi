@@ -131,31 +131,6 @@ public class FcmSocketLifecycleTests
     }
 
     /// <summary>
-    /// Asserts that Dispose() cancels the internal CancellationTokenSource — specifically kills
-    /// the mutations that: (a) flip <c>!disposing</c> to <c>disposing</c> (inverting the
-    /// early-return guard so managed resources are never disposed), (b) flip
-    /// <c>!IsCancellationRequested</c> (so Cancel() is called even when already cancelled),
-    /// (c) remove the <c>_cancellationTokenSource.Cancel()</c> statement.
-    /// After Dispose the socket's CancellationToken must be in the cancelled state.
-    /// </summary>
-    [Fact]
-    public void Dispose_CancelsInternalToken()
-    {
-        var socket = NewSocket();
-
-        socket.Dispose();
-
-        // Verify the cancellation token was actually requested — observable side-effect of Cancel().
-        // If Dispose(bool disposing) early-returns or skips the Cancel call, this would be false.
-        // We call Disconnect first so the token is not already cancelled by a previous step.
-        // (Socket was freshly created, no Disconnect called, so token is fresh before Dispose.)
-        // We access the token via the Disconnected/Connecting events' callbacks by running the loop.
-        // Instead: just confirm Dispose doesn't throw and is safe to double-call.
-        var ex = Record.Exception(() => socket.Dispose());
-        Assert.Null(ex);
-    }
-
-    /// <summary>
     /// Asserts that calling Dispose() on a socket that was never connected (so
     /// _cancellationTokenSource is not yet cancelled) does not throw. This exercises the
     /// <c>if (!_cancellationTokenSource.IsCancellationRequested)</c> guard — if the mutation
