@@ -8,8 +8,12 @@ public static class McsUtils
 {
     /// <summary>Encodes <paramref name="value"/> as a base-128 varint byte sequence.</summary>
     /// <param name="value">The integer to encode.</param>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="value"/> is negative.</exception>
     public static byte[] EncodeVarInt32(int value)
     {
+        if (value < 0)
+            throw new ArgumentOutOfRangeException(nameof(value), value, "MCS varints encode non-negative lengths only.");
+
         List<byte> result = [];
         do
         {

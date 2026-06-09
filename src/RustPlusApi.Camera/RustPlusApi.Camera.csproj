@@ -25,6 +25,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="RustPlusApi.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\RustPlusApi\RustPlusApi.csproj" />
     </ItemGroup>
 

@@ -22,7 +22,12 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 10.0.x
+        # net8.0 host resolves the netstandard2.0 build of the libraries; net10.0 host
+        # resolves the net10.0 build. The test project multi-targets both so the same
+        # suite validates both compiled outputs (parity).
+        dotnet-version: |
+          8.0.x
+          10.0.x
 
     - name: Restore dependencies
       run: dotnet restore
@@ -30,5 +35,14 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
 
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+    - name: Test (net8.0 = netstandard2.0 build, and net10.0) with coverage
+      run: >
+        dotnet test --no-build --verbosity normal
+        --settings tests/RustPlusApi.Tests/coverlet.runsettings
+        --results-directory ${{ github.workspace }}/TestResults
+
+    - name: Enforce coverage threshold
+      # Achieved: ~99.3-99.6% line / ~97.3-97.6% branch. The gap to 100% is irreducible
+      # (compiler-generated async state-machine branches + live-socket/network lines that
+      # cannot be exercised offline). See docs/testing.md. Floor is set just below achieved.
+      run: python3 tools/coverage/check_threshold.py 99 95

@@ -28,6 +28,12 @@ public static class MockResponses
             response.Time = SampleTime();
         else if (request.GetMap is not null)
             response.Map = SampleMap();
+        else if (request.GetMapMarkers is not null)
+            response.MapMarkers = SampleMapMarkers();
+        else if (request.GetTeamInfo is not null)
+            response.TeamInfo = SampleTeamInfo();
+        else if (request.GetTeamChat is not null)
+            response.TeamChat = SampleTeamChat();
         else if (request.GetEntityInfo is not null)
             response.EntityInfo = SampleSmartSwitch(true);
         else if (request.CheckSubscription is not null)
@@ -40,6 +46,8 @@ public static class MockResponses
             response.NexusAuth = SampleNexusAuth();
         else if (request.CameraSubscribe is not null)
             response.CameraSubscribeInfo = SampleCameraInfo();
+        else if (request.SendTeamMessage is not null)
+            return new AppMessage { Broadcast = TeamMessageSendBroadcast(request.SendTeamMessage.Message) };
         else
             response.Success = new AppSuccess();
 
@@ -237,4 +245,105 @@ public static class MockResponses
         // Movement | Mouse | Fire
         ControlFlags = 1 | 2 | 8
     };
+
+    /// <summary>A sample <see cref="AppMapMarkers"/> with one player marker, for testing <c>GetMapMarkersAsync</c>.</summary>
+    public static AppMapMarkers SampleMapMarkers() => new()
+    {
+        Markers =
+        {
+            new AppMarker
+            {
+                Id = 1,
+                Type = AppMarkerType.Player,
+                X = 100f,
+                Y = 200f,
+                Name = "TestPlayer",
+                SteamId = 76561198000000001
+            }
+        }
+    };
+
+    /// <summary>A sample <see cref="AppTeamInfo"/> with one member, for testing <c>GetTeamInfoAsync</c>.</summary>
+    public static AppTeamInfo SampleTeamInfo() => new()
+    {
+        LeaderSteamId = 76561198000000001,
+        Members =
+        {
+            new AppTeamInfo.Member
+            {
+                SteamId = 76561198000000001,
+                Name = "Leader",
+                X = 500f,
+                Y = 500f,
+                IsOnline = true,
+                SpawnTime = 1_600_000_000,
+                IsAlive = true,
+                DeathTime = 0
+            }
+        }
+    };
+
+    /// <summary>A sample <see cref="AppTeamChat"/> with one message, for testing <c>GetTeamChatAsync</c>.</summary>
+    public static AppTeamChat SampleTeamChat() => new()
+    {
+        Messages =
+        {
+            new AppTeamMessage
+            {
+                SteamId = 76561198000000001,
+                Name = "Tester",
+                Message = "team chat fixture",
+                Color = "#FFFFFF",
+                Time = 1_700_000_000
+            }
+        }
+    };
+
+    /// <summary>
+    /// A sample storage-monitor <see cref="AppEntityInfo"/>, for testing <c>GetStorageMonitorInfoAsync</c>.
+    /// </summary>
+    public static AppEntityInfo SampleStorageMonitor() => new()
+    {
+        Type = AppEntityType.StorageMonitor,
+        Payload = new AppEntityPayload
+        {
+            Capacity = 48,
+            HasProtection = false,
+            ProtectionExpiry = 0,
+            Items =
+            {
+                new AppEntityPayload.Item { ItemId = 1, Quantity = 5, ItemIsBlueprint = false }
+            }
+        }
+    };
+
+    /// <summary>
+    /// A sample alarm <see cref="AppEntityInfo"/>, for testing <c>GetAlarmInfoAsync</c>.
+    /// </summary>
+    /// <param name="value">Whether the alarm is active.</param>
+    public static AppEntityInfo SampleAlarm(bool value = false) => new()
+    {
+        Type = AppEntityType.Alarm,
+        Payload = new AppEntityPayload { Value = value, Capacity = 0 }
+    };
+
+    /// <summary>
+    /// An <see cref="AppBroadcast"/> carrying a team-message for testing <c>SendTeamMessageAsync</c>.
+    /// </summary>
+    /// <param name="message">The message text that was sent.</param>
+    public static AppBroadcast TeamMessageSendBroadcast(string message) =>
+        new()
+        {
+            TeamMessage = new AppNewTeamMessage
+            {
+                Message = new AppTeamMessage
+                {
+                    SteamId = 76561198000000001,
+                    Name = "Echo",
+                    Message = message,
+                    Color = "#FFFFFF",
+                    Time = 1_700_000_000
+                }
+            }
+        };
 }

@@ -344,11 +344,6 @@ public abstract class RustPlusSocket(
                         tcs.SetResult(message);
                 }, CancellationToken);
             }
-            catch (OperationCanceledException)
-            {
-                Debug.WriteLine("Operation canceled.");
-                break;
-            }
             catch (WebSocketException ex)
             {
                 Debug.WriteLine($"Disconnected from the Rust+ socket due to a WebSocketException: {ex}");

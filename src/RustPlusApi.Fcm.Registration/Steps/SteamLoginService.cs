@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
@@ -22,8 +23,10 @@ namespace RustPlusApi.Fcm.Registration.Steps;
 /// stable Chrome in 137+. CDP injection runs inside the page's own main world before its scripts,
 /// so it sidesteps all of that — the same mechanism Puppeteer/Playwright use. <b>Chrome/Chromium
 /// is required</b> (native or Flatpak are auto-detected; <c>CHROME_PATH</c> overrides discovery).
-/// This step is interactive and only validatable by a real run.
+/// This step is interactive and only validatable by a real run. Excluded from the coverage gate;
+/// validated by the opt-in <c>SteamInjectionCanaryTests</c> canary instead.
 /// </remarks>
+[ExcludeFromCodeCoverage]
 public sealed class SteamLoginService(int port = 3000)
 {
     /// <summary>Launches Chrome, navigates to the Facepunch Steam login page, and returns the captured auth token.</summary>

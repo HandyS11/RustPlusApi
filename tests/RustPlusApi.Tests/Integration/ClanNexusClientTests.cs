@@ -133,4 +133,17 @@ public class ClanNexusClientTests
         Assert.NotNull(change.ClanInfo);
         Assert.Equal("Mock Clan", change.ClanInfo!.Name);
     }
+
+    [Fact]
+    public async Task SendClanMessageAsync_ReportsSuccess()
+    {
+        var (server, client) = await ConnectAsync();
+        await using var _ = server;
+        using var __ = client;
+
+        var response = await client.SendClanMessageAsync("hello clan").WaitAsync(Timeout);
+
+        Assert.True(response.IsSuccess);
+        Assert.True(response.Data);
+    }
 }

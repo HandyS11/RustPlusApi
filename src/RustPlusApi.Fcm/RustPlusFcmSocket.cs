@@ -4,6 +4,7 @@ using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Interfaces;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -31,6 +32,11 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
     private TcpClient? _tcpClient;
     private SslStream? _sslStream;
+
+    /// <summary>The transport stream used for reading and writing MCS frames.
+    /// In production this is set to the authenticated <see cref="SslStream"/> immediately after
+    /// TLS handshake; tests supply an in-memory stream via <see cref="RunReceiveLoopOverStream"/>.</summary>
+    private Stream? _transport;
 
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
@@ -86,6 +92,9 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// Connects to the FCM MCS server over TLS, performs the MCS login handshake,
     /// and starts the background message-receive loop.
     /// </summary>
+    /// <remarks>Excluded from coverage: live TLS connection to mtalk.google.com:5228;
+    /// the MCS pipeline it drives is exercised offline via the <c>RunReceiveLoopOverStream</c> seam.</remarks>
+    [ExcludeFromCodeCoverage]
     public async Task ConnectAsync()
     {
         Connecting?.Invoke(this, EventArgs.Empty);
@@ -100,6 +109,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
         _sslStream = new SslStream(_tcpClient.GetStream(), false);
         await _sslStream.AuthenticateAsClientAsync(Host).ConfigureAwait(false);
+        _transport = _sslStream;
 
         try
         {
@@ -120,7 +130,9 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
             };
 
             if (persistentIds != null)
+            {
                 loginRequest.ReceivedPersistentIds.AddRange(persistentIds);
+            }
 
             SendPacket(loginRequest);
 
@@ -172,14 +184,27 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     protected virtual void Dispose(bool disposing)
     {
         if (!disposing)
+        {
             return;
+        }
 
         if (!_cancellationTokenSource.IsCancellationRequested)
+        {
             _cancellationTokenSource.Cancel();
+        }
 
         _sslStream?.Dispose();
         _tcpClient?.Dispose();
         _cancellationTokenSource.Dispose();
+    }
+
+    /// <summary>Test seam: runs the MCS receive/dispatch loop against an arbitrary stream,
+    /// bypassing the live TLS connect. Internal — visible only to RustPlusApi.Tests.</summary>
+    /// <param name="stream">The stream to read MCS frames from and write responses to.</param>
+    internal void RunReceiveLoopOverStream(Stream stream)
+    {
+        _transport = stream;
+        ReceiveMessages();
     }
 
     /// <summary>
@@ -191,32 +216,49 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// </exception>
     private void ReceiveMessages()
     {
-        // Read the header
-        var header = Read(2);
-        int version = header[0];
-        int tag = header[1];
-
-        if (version is < KMcsVersion and not 38)
-            throw new InvalidOperationException($"Protocol version {version} unsupported");
-
-        var size = ReadVarInt32();
-        var payload = Read(size);
-        var type = BuildProtobufFromTag((McsProtoTag)tag);
-
-        if (type != typeof(LoginResponse))
-            throw new InvalidOperationException($"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
-
-        OnGotMessageBytes(payload, type);
-
-        while (!CancellationToken.IsCancellationRequested)
+        try
         {
-            // Read the tag and size
-            tag = _sslStream!.ReadByte();
-            size = ReadVarInt32();
-            payload = Read(size);
-            type = BuildProtobufFromTag((McsProtoTag)tag);
+            // Read the header
+            var header = Read(2);
+            int version = header[0];
+            int tag = header[1];
+
+            if (version is < KMcsVersion and not 38)
+            {
+                throw new InvalidOperationException($"Protocol version {version} unsupported");
+            }
+
+            var size = ReadVarInt32();
+            var payload = Read(size);
+            var type = BuildProtobufFromTag((McsProtoTag)tag);
+
+            if (type != typeof(LoginResponse))
+            {
+                throw new InvalidOperationException($"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
+            }
 
             OnGotMessageBytes(payload, type);
+
+            while (!CancellationToken.IsCancellationRequested)
+            {
+                // Read the tag and size
+                tag = _transport!.ReadByte();
+                if (tag < 0)
+                {
+                    break; // EOF: the server closed the connection between frames.
+                }
+
+                size = ReadVarInt32();
+                payload = Read(size);
+                type = BuildProtobufFromTag((McsProtoTag)tag);
+
+                OnGotMessageBytes(payload, type);
+            }
+        }
+        catch (EndOfStreamException)
+        {
+            // Stream closed mid-frame (disconnect/truncation): exit the receive loop cleanly
+            // rather than hang or surface a confusing decode error.
         }
     }
 
@@ -255,13 +297,20 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// </summary>
     /// <param name="size">The number of bytes to read.</param>
     /// <returns>A byte array containing the data read from the stream.</returns>
+    /// <exception cref="EndOfStreamException">Thrown when the stream closes before <paramref name="size"/> bytes arrive.</exception>
     private byte[] Read(int size)
     {
         var buffer = new byte[size];
         var bytesRead = 0;
         while (bytesRead < size)
         {
-            bytesRead += _sslStream!.Read(buffer, bytesRead, size - bytesRead);
+            var read = _transport!.Read(buffer, bytesRead, size - bytesRead);
+            if (read == 0)
+            {
+                throw new EndOfStreamException(); // stream closed before the full frame arrived
+            }
+
+            bytesRead += read;
         }
         return buffer;
     }
@@ -270,16 +319,25 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// Reads a variable-length 32-bit integer from the SSL stream.
     /// </summary>
     /// <returns>The decoded 32-bit integer.</returns>
+    /// <exception cref="EndOfStreamException">Thrown when the stream closes mid-value.</exception>
     private int ReadVarInt32()
     {
         var result = 0;
         var shift = 0;
         while (true)
         {
-            var b = (byte)_sslStream!.ReadByte();
+            var b = _transport!.ReadByte();
+            if (b < 0)
+            {
+                throw new EndOfStreamException(); // stream closed mid-varint
+            }
+
             result |= (b & 0x7F) << shift;
             if ((b & 0x80) == 0)
+            {
                 break;
+            }
+
             shift += 7;
         }
         return result;
@@ -298,7 +356,8 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         Serializer.Serialize(ms, packet);
 
         var payload = ms.ToArray();
-        _sslStream!.Write([.. header, .. EncodeVarInt32(payload.Length), .. payload]);
+        byte[] frame = [.. header, .. EncodeVarInt32(payload.Length), .. payload];
+        _transport!.Write(frame, 0, frame.Length);
     }
 
     /// <summary>
@@ -308,7 +367,9 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     private void HandlePing(HeartbeatPing? ping)
     {
         if (ping == null)
+        {
             return;
+        }
 
         Debug.WriteLine($"Responding to ping: Stream ID: {ping.StreamId}," +
                         $"Last: {ping.LastStreamIdReceived}," +
@@ -409,7 +470,9 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         };
 
         if (dataMessage.PersistentId is not null)
+        {
             persistentIds?.Add(dataMessage.PersistentId);
+        }
 
         ParseNotification(fcmMessage);
         NotificationReceived?.Invoke(this, JsonSerializer.Serialize(fcmMessage));

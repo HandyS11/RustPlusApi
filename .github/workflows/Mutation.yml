@@ -1,0 +1,57 @@
+name: Mutation Testing
+
+permissions:
+  contents: read
+
+# Mutation runs rebuild + rerun the suite per mutant, so they are slow. Gate them behind
+# manual dispatch and a weekly schedule rather than every PR.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1" # Mondays 03:00 UTC
+
+jobs:
+  stryker:
+    name: Stryker mutation testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # RustPlusApi.csproj (core) is intentionally omitted: Stryker 4.x cannot mutate it
+        # because protobuf-net.BuildTools generates the RustPlusContracts types at compile
+        # time and Stryker's rollback compiler cannot resolve them. The core mappers/client
+        # are covered by exact-assertion unit tests instead. See docs/testing.md.
+        project:
+          - RustPlusApi.Fcm.csproj
+          - RustPlusApi.Fcm.Registration.csproj
+          - RustPlusApi.Camera.csproj
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Stryker (${{ matrix.project }})
+        working-directory: tests/RustPlusApi.Tests
+        run: >
+          dotnet stryker
+          --config-file stryker-config.json
+          --project ${{ matrix.project }}
+          --reporter cleartext
+          --reporter html
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stryker-report-${{ matrix.project }}
+          path: tests/RustPlusApi.Tests/StrykerOutput/**/reports/mutation-report.html
+          if-no-files-found: ignore
