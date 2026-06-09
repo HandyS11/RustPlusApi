@@ -39,7 +39,9 @@ jobs:
       - name: Restore tools
         run: dotnet tool restore
 
-      - name: Stryker (${{ matrix.project }})
+      - name: Stryker (${{ matrix.project }}) with dashboard
+        env:
+          STRYKER_DASHBOARD_API_KEY: ${{ secrets.STRYKER_DASHBOARD_API_KEY }}
         working-directory: tests/RustPlusApi.Tests
         run: >
           dotnet stryker
@@ -47,6 +49,7 @@ jobs:
           --project ${{ matrix.project }}
           --reporter cleartext
           --reporter html
+          --reporter dashboard
 
       - name: Upload mutation report
         if: always()

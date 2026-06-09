@@ -62,3 +62,15 @@ jobs:
           dotnet build
           dotnet test --no-build --collect:"XPlat Code Coverage;Format=opencover" --blame-hang-timeout 60s
           ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
