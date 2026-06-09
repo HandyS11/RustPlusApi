@@ -101,16 +101,19 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// Connects to the FCM MCS server over TLS, performs the MCS login handshake,
     /// and starts the background message-receive loop.
     /// </summary>
+    /// <param name="cancellationToken">A token to cancel the connection attempt (TLS connect on net10.0+).</param>
     /// <remarks>Excluded from coverage: live TLS connection to mtalk.google.com:5228;
-    /// the MCS pipeline it drives is exercised offline via the <c>RunReceiveLoopOverStream</c> seam.</remarks>
+    /// the MCS pipeline it drives is exercised offline via the <c>RunReceiveLoopOverStreamAsync</c> seam.</remarks>
     [ExcludeFromCodeCoverage]
-    public async Task ConnectAsync()
+    public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
         Connecting?.Invoke(this, EventArgs.Empty);
 
         _tcpClient = new TcpClient();
 #if NET10_0_OR_GREATER
-        await _tcpClient.ConnectAsync(Host, Port, CancellationToken).ConfigureAwait(false);
+        // Either the caller's token or the instance token can cancel the TLS connect.
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
+        await _tcpClient.ConnectAsync(Host, Port, linked.Token).ConfigureAwait(false);
 #else
         // netstandard2.0 lacks the CancellationToken overload.
         await _tcpClient.ConnectAsync(Host, Port).ConfigureAwait(false);

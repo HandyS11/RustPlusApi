@@ -66,7 +66,7 @@ public sealed class PairingListener(Credentials credentials, ICollection<string>
 
         try
         {
-            await _fcm.ConnectAsync().ConfigureAwait(false);
+            await _fcm.ConnectAsync(cancellationToken).ConfigureAwait(false);
             Listening?.Invoke(this, EventArgs.Empty);
             return await completion.Task.ConfigureAwait(false);
         }

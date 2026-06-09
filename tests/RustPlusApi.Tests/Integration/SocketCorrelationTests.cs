@@ -70,4 +70,25 @@ public class SocketCorrelationTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
         Assert.Equal(0, client.PendingRequestCountForTests); // pending entry removed on cancellation
     }
+
+    [Fact]
+    public async Task GetInfoAsync_HonorsCallerCancellationToken()
+    {
+        // Proves the caller token flows the whole public path: GetInfoAsync → ProcessRequestAsync → SendRequestAsync.
+        await using var server = new MockRustPlusServer(_ => null);
+        server.Start();
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        using var cts = new CancellationTokenSource();
+        var task = client.GetInfoAsync(cts.Token);
+
+        await Task.Delay(150);
+        Assert.Equal(1, client.PendingRequestCountForTests);
+
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
+        Assert.Equal(0, client.PendingRequestCountForTests);
+    }
 }

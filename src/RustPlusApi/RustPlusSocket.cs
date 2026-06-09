@@ -134,7 +134,8 @@ public abstract class RustPlusSocket(
     /// Starts background tasks for receiving and sending messages.
     /// If an exception occurs, <see cref="ErrorOccurred"/> is raised.
     /// </summary>
-    public async Task ConnectAsync()
+    /// <param name="cancellationToken">A token to cancel the connection attempt.</param>
+    public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
         _webSocket = new ClientWebSocket();
         _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
@@ -147,8 +148,11 @@ public abstract class RustPlusSocket(
 
         try
         {
-            await _webSocket.ConnectAsync(uri, CancellationToken).ConfigureAwait(false);
+            // Either the caller's token or the instance token can cancel the connect handshake.
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
+            await _webSocket.ConnectAsync(uri, linked.Token).ConfigureAwait(false);
 
+            // The background loops outlive the connect call, so they track the instance token only.
             ReceiveLoopForTests = Task.Run(ReceiveAsync, CancellationToken);
             SendLoopForTests = Task.Run(ProcessSendQueueAsync, CancellationToken);
 

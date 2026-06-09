@@ -36,7 +36,8 @@ public interface IRustPlusSocket
     event EventHandler<Exception>? ErrorOccurred;
 
     /// <summary>Opens the WebSocket connection to the server.</summary>
-    Task ConnectAsync();
+    /// <param name="cancellationToken">A token to cancel the connection attempt.</param>
+    Task ConnectAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Closes the WebSocket connection.</summary>
     /// <param name="forceClose">When <see langword="true"/>, aborts the connection immediately instead of sending a close handshake.</param>

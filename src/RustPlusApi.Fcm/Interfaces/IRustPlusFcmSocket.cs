@@ -25,7 +25,8 @@ public interface IRustPlusFcmSocket
     event EventHandler<Exception>? ErrorOccurred;
 
     /// <summary>Connects to the FCM MCS endpoint and begins receiving notifications.</summary>
-    Task ConnectAsync();
+    /// <param name="cancellationToken">A token to cancel the connection attempt.</param>
+    Task ConnectAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Cancels the receive loop and releases socket resources.</summary>
     void Disconnect();
