@@ -771,4 +771,59 @@ public class FcmSocketFramingTests
         }
         Assert.Equal(1, ackCount);
     }
+
+    [Fact]
+    public void ReceiveLoop_StreamEndsBetweenFrames_ExitsCleanly()
+    {
+        using var socket = NewSocket();
+
+        // Login frame only — no Close. After processing login, the loop's tag read hits EOF
+        // (ReadByte returns -1) and must break cleanly instead of treating -1 as a tag.
+        var stream = new ScriptedStream(Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse())));
+
+        var exception = Record.Exception(() => socket.RunReceiveLoopOverStream(stream));
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void ReceiveLoop_TruncatedVarIntSize_ExitsCleanly()
+    {
+        using var socket = NewSocket();
+
+        // Login frame, then a lone tag byte with no size varint before EOF. ReadVarInt32 hits EOF
+        // and throws EndOfStreamException, which the receive loop swallows for a clean exit
+        // (rather than spinning forever on a -1 → 0xFF continuation byte).
+        var loneTagByte = Enumerable.Repeat((byte)(int)McsProtoTag.KDataMessageStanzaTag, 1);
+        var stream = new ScriptedStream(Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            loneTagByte));
+
+        var exception = Record.Exception(() => socket.RunReceiveLoopOverStream(stream));
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void ReceiveLoop_TruncatedPayload_ExitsCleanly()
+    {
+        using var socket = NewSocket();
+
+        // Login frame, then a tag + size=10 varint but only 3 payload bytes before EOF. Read hits
+        // EOF (underlying Read returns 0) and throws EndOfStreamException rather than busy-looping
+        // forever; the receive loop swallows it for a clean exit.
+        var truncatedFrame =
+            new byte[] { (byte)(int)McsProtoTag.KDataMessageStanzaTag }
+            .Concat(EncodeVarInt32(10))
+            .Concat(new byte[] { 1, 2, 3 });
+
+        var stream = new ScriptedStream(Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            truncatedFrame));
+
+        var exception = Record.Exception(() => socket.RunReceiveLoopOverStream(stream));
+
+        Assert.Null(exception);
+    }
 }

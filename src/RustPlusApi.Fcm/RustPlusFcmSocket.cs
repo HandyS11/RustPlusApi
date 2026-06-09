@@ -201,32 +201,41 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// </exception>
     private void ReceiveMessages()
     {
-        // Read the header
-        var header = Read(2);
-        int version = header[0];
-        int tag = header[1];
-
-        if (version is < KMcsVersion and not 38)
-            throw new InvalidOperationException($"Protocol version {version} unsupported");
-
-        var size = ReadVarInt32();
-        var payload = Read(size);
-        var type = BuildProtobufFromTag((McsProtoTag)tag);
-
-        if (type != typeof(LoginResponse))
-            throw new InvalidOperationException($"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
-
-        OnGotMessageBytes(payload, type);
-
-        while (!CancellationToken.IsCancellationRequested)
+        try
         {
-            // Read the tag and size
-            tag = _transport!.ReadByte();
-            size = ReadVarInt32();
-            payload = Read(size);
-            type = BuildProtobufFromTag((McsProtoTag)tag);
+            // Read the header
+            var header = Read(2);
+            int version = header[0];
+            int tag = header[1];
+
+            if (version is < KMcsVersion and not 38)
+                throw new InvalidOperationException($"Protocol version {version} unsupported");
+
+            var size = ReadVarInt32();
+            var payload = Read(size);
+            var type = BuildProtobufFromTag((McsProtoTag)tag);
+
+            if (type != typeof(LoginResponse))
+                throw new InvalidOperationException($"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
 
             OnGotMessageBytes(payload, type);
+
+            while (!CancellationToken.IsCancellationRequested)
+            {
+                // Read the tag and size
+                tag = _transport!.ReadByte();
+                if (tag < 0) break; // EOF: the server closed the connection between frames.
+                size = ReadVarInt32();
+                payload = Read(size);
+                type = BuildProtobufFromTag((McsProtoTag)tag);
+
+                OnGotMessageBytes(payload, type);
+            }
+        }
+        catch (EndOfStreamException)
+        {
+            // Stream closed mid-frame (disconnect/truncation): exit the receive loop cleanly
+            // rather than hang or surface a confusing decode error.
         }
     }
 
@@ -265,13 +274,17 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// </summary>
     /// <param name="size">The number of bytes to read.</param>
     /// <returns>A byte array containing the data read from the stream.</returns>
+    /// <exception cref="EndOfStreamException">Thrown when the stream closes before <paramref name="size"/> bytes arrive.</exception>
     private byte[] Read(int size)
     {
         var buffer = new byte[size];
         var bytesRead = 0;
         while (bytesRead < size)
         {
-            bytesRead += _transport!.Read(buffer, bytesRead, size - bytesRead);
+            var read = _transport!.Read(buffer, bytesRead, size - bytesRead);
+            if (read == 0)
+                throw new EndOfStreamException(); // stream closed before the full frame arrived
+            bytesRead += read;
         }
         return buffer;
     }
@@ -280,13 +293,16 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// Reads a variable-length 32-bit integer from the SSL stream.
     /// </summary>
     /// <returns>The decoded 32-bit integer.</returns>
+    /// <exception cref="EndOfStreamException">Thrown when the stream closes mid-value.</exception>
     private int ReadVarInt32()
     {
         var result = 0;
         var shift = 0;
         while (true)
         {
-            var b = (byte)_transport!.ReadByte();
+            var b = _transport!.ReadByte();
+            if (b < 0)
+                throw new EndOfStreamException(); // stream closed mid-varint
             result |= (b & 0x7F) << shift;
             if ((b & 0x80) == 0)
                 break;
