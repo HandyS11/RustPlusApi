@@ -239,7 +239,7 @@ public class RustPlusParseNotificationTests
         sut.Dispose();
         // Second dispose: token is already cancelled — hits the false branch of
         // `if (!_cancellationTokenSource.IsCancellationRequested)`
-        var ex = Record.Exception(() => sut.Dispose());
+        var ex = Record.Exception(sut.Dispose);
         Assert.Null(ex);
     }
 }

@@ -52,7 +52,9 @@ public class RemainingMapperTests
             EntityId = 7,
             Payload = new AppEntityPayload
             {
-                Capacity = 24, HasProtection = false, ProtectionExpiry = 1_700_000_000,
+                Capacity = 24,
+                HasProtection = false,
+                ProtectionExpiry = 1_700_000_000,
                 Items = { new AppEntityPayload.Item { ItemId = 1, Quantity = 2 } }
             }
         };

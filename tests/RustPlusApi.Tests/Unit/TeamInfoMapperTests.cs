@@ -47,7 +47,7 @@ public class TeamInfoMapperTests
     public void ToTeamInfo_UnknownNoteType_Throws()
     {
         var info = new AppTeamInfo { MapNotes = { new AppTeamInfo.Note { Type = 99 } } };
-        Assert.Throws<ArgumentException>(() => info.ToTeamInfo());
+        Assert.Throws<ArgumentException>(info.ToTeamInfo);
     }
 
     [Fact]

@@ -22,7 +22,9 @@ public static class AppClanInfoToModel
     public static ClanInfo? ToClanInfo(this ProtoClanInfo? clanInfo)
     {
         if (clanInfo is null)
+        {
             return null;
+        }
 
         return new ClanInfo
         {

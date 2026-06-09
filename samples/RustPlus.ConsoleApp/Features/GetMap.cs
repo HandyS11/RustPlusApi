@@ -10,7 +10,10 @@ internal sealed class GetMap(IRustPlus rustPlus)
         var response = await rustPlus.GetMapAsync();
 
         if (!response.IsSuccess)
+        {
             return;
+        }
+
         await File.WriteAllBytesAsync("map.jpg", response.Data?.JpgImage!);
 
         DisplayUtilities.DisplayJson("Map", response);

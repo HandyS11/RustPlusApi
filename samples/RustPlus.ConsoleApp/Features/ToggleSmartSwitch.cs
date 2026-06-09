@@ -11,6 +11,8 @@ internal sealed class ToggleSmartSwitch(IRustPlus rustPlus)
 
         DisplayUtilities.DisplayJson("ToggleSmartSwitch", response);
         if (response.IsSuccess)
+        {
             DisplayUtilities.DisplaySmartSwitchValue(entityId, response.Data!.IsActive);
+        }
     }
 }

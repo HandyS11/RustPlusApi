@@ -26,7 +26,13 @@ public class CredentialsStoreFileTests
             Assert.Equal(1UL, loaded.Gcm.AndroidId);
             Assert.Equal("t", loaded.Fcm!.Token);
         }
-        finally { if (File.Exists(path)) File.Delete(path); }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
     }
 
     [Fact]

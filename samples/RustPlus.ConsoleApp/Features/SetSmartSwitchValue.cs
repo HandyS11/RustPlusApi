@@ -11,7 +11,8 @@ internal sealed class SetSmartSwitchValue(IRustPlus rustPlus)
 
         DisplayUtilities.DisplayJson("SetSmartSwitchValue", response);
         if (response.IsSuccess)
+        {
             DisplayUtilities.DisplaySmartSwitchValue(smartSwitchId, smartSwitchValue);
-
+        }
     }
 }

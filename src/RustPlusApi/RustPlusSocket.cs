@@ -177,7 +177,9 @@ public abstract class RustPlusSocket(
     public async Task DisconnectAsync(bool forceClose = false)
     {
         if (!IsConnected())
+        {
             return;
+        }
 
         Disconnecting?.Invoke(this, EventArgs.Empty);
 
@@ -212,10 +214,14 @@ public abstract class RustPlusSocket(
     protected virtual void Dispose(bool disposing)
     {
         if (!disposing)
+        {
             return;
+        }
 
         if (!_cancellationTokenSource.IsCancellationRequested)
+        {
             _cancellationTokenSource.Cancel();
+        }
 
         _webSocket?.Dispose();
         _cancellationTokenSource.Dispose();
@@ -243,7 +249,10 @@ public abstract class RustPlusSocket(
     protected static bool IsError(AppMessage response)
     {
         if (response.Broadcast is not null)
+        {
             return false;
+        }
+
         return response.Response.Error is not null;
     }
 
@@ -341,7 +350,9 @@ public abstract class RustPlusSocket(
                 _ = Task.Run(() =>
                 {
                     if (_responseQueue.TryDequeue(out var tcs))
+                    {
                         tcs.SetResult(message);
+                    }
                 }, CancellationToken);
             }
             catch (WebSocketException ex)

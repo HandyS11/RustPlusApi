@@ -37,8 +37,11 @@ internal static class CredentialsReaderUtilities
 
         // Fallback: the rustplus.js `fcm-register` output.
         var config = JsonSerializer.Deserialize<JavaScriptConfig>(json);
-        if (config?.FcmCredentials?.Gcm == null)
+        if (config?.FcmCredentials?.Gcm is null)
+        {
             throw new InvalidOperationException("Invalid config file - missing FCM credentials");
+        }
+
         return config.ConvertToCredentials();
     }
 
@@ -47,16 +50,20 @@ internal static class CredentialsReaderUtilities
         var configContent = File.ReadAllText(configFilePath);
         var config = JsonSerializer.Deserialize<JavaScriptConfig>(configContent);
 
-        if (config?.FcmCredentials?.Gcm == null)
+        if (config?.FcmCredentials?.Gcm is null)
+        {
             throw new InvalidOperationException("Invalid JavaScript config file - missing FCM credentials");
+        }
 
         return config;
     }
 
     public static Credentials ConvertToCredentials(this JavaScriptConfig config)
     {
-        if (config.FcmCredentials?.Gcm == null)
+        if (config.FcmCredentials?.Gcm is null)
+        {
             throw new InvalidOperationException("Invalid config - missing FCM credentials");
+        }
 
         return new Credentials
         {

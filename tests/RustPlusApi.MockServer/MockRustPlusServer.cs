@@ -118,7 +118,9 @@ public sealed class MockRustPlusServer : IAsyncDisposable
             var request = Serializer.Deserialize<AppRequest>(message);
             var response = _responder(request);
             if (response is null)
+            {
                 continue;
+            }
 
             await SendAsync(socket, response, ct);
         }
@@ -168,7 +170,10 @@ public sealed class MockRustPlusServer : IAsyncDisposable
         }
 
         if (_listener.IsListening)
+        {
             _listener.Stop();
+        }
+
         _listener.Close();
 
         if (_acceptLoop is not null)

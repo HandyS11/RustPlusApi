@@ -40,7 +40,9 @@ public class EntityInfoMapperTests
     {
         var payload = new AppEntityPayload
         {
-            Capacity = 48, HasProtection = true, ProtectionExpiry = 1_700_000_000,
+            Capacity = 48,
+            HasProtection = true,
+            ProtectionExpiry = 1_700_000_000,
             Items = { new AppEntityPayload.Item { ItemId = 1, Quantity = 5, ItemIsBlueprint = true } }
         };
 

@@ -48,7 +48,10 @@ public class VarIntTests
         {
             result |= (b & 0x7F) << shift;
             if ((b & 0x80) == 0)
+            {
                 break;
+            }
+
             shift += 7;
         }
         return result;

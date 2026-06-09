@@ -27,8 +27,13 @@ public class ClanInfoPresenceTests
     public void ToClanInfo_AllOptionalsSet_AreMapped()
     {
         var proto = Minimal();
-        proto.Motd = "m"; proto.MotdTimestamp = 1_700_000_000; proto.MotdAuthor = 5;
-        proto.Logo = [1, 2]; proto.Color = 42; proto.MaxMemberCount = 50; proto.Score = 99;
+        proto.Motd = "m";
+        proto.MotdTimestamp = 1_700_000_000;
+        proto.MotdAuthor = 5;
+        proto.Logo = [1, 2];
+        proto.Color = 42;
+        proto.MaxMemberCount = 50;
+        proto.Score = 99;
 
         var model = proto.ToClanInfo()!;
 

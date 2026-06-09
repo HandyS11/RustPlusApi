@@ -63,16 +63,23 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     protected override void ParseNotification(AppBroadcast? broadcast)
     {
         if (broadcast is null)
+        {
             return;
+        }
 
         if (broadcast.EntityChanged is not null)
         {
             // There is no physical difference between a SmartSwitch and an Alarm
             // If you check the status of an alarm, it will return the same as a smart switch
             if (broadcast.EntityChanged.Payload.Capacity is 0)
+            {
                 OnSmartSwitchTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartSwitchEvent());
+            }
             else
+            {
                 OnStorageMonitorTriggered?.Invoke(this, broadcast.EntityChanged.ToStorageMonitorEvent());
+            }
+
             return;
         }
         if (broadcast.TeamMessage is not null)
@@ -486,7 +493,9 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         var response = await SetSmartSwitchValueAsync(entityId, value).ConfigureAwait(false);
 
         if (!response.IsSuccess)
+        {
             return response;
+        }
 
         await Task.Delay(timeoutMilliseconds).ConfigureAwait(false);
         return await SetSmartSwitchValueAsync(entityId, !value).ConfigureAwait(false);
@@ -502,7 +511,9 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         var entityInfo = await GetSmartSwitchInfoAsync(entityId).ConfigureAwait(false);
 
         if (!entityInfo.IsSuccess)
+        {
             return entityInfo;
+        }
 
         var value = entityInfo.Data!.IsActive;
         return await SetSmartSwitchValueAsync(entityId, !value).ConfigureAwait(false);

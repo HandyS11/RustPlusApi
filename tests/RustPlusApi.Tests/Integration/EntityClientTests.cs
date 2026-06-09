@@ -68,7 +68,8 @@ public class EntityClientTests
     public async Task GetSmartSwitchInfoAsync_ReturnsActiveState()
     {
         var (server, client) = await ConnectEntityAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.GetSmartSwitchInfoAsync(1).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.True(response.Data!.IsActive);
@@ -81,9 +82,14 @@ public class EntityClientTests
         {
             var resp = new AppResponse { Seq = req.Seq };
             if (req.GetEntityInfo is not null)
+            {
                 resp.EntityInfo = MockResponses.SampleAlarm(value: false);
+            }
             else
+            {
                 resp.Success = new AppSuccess();
+            }
+
             return new AppMessage { Response = resp };
         });
         server.Start();
@@ -102,9 +108,14 @@ public class EntityClientTests
         {
             var resp = new AppResponse { Seq = req.Seq };
             if (req.GetEntityInfo is not null)
+            {
                 resp.EntityInfo = MockResponses.SampleStorageMonitor();
+            }
             else
+            {
                 resp.Success = new AppSuccess();
+            }
+
             return new AppMessage { Response = resp };
         });
         server.Start();
@@ -121,7 +132,8 @@ public class EntityClientTests
     public async Task CheckSubscriptionAsync_ReturnsFlag()
     {
         var (server, client) = await ConnectEntityAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.CheckSubscriptionAsync(1).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.True(response.Data!.IsSubscribed);
@@ -131,7 +143,8 @@ public class EntityClientTests
     public async Task SetSmartSwitchValueAsync_ReturnsUpdatedState()
     {
         var (server, client) = await ConnectEntityAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.SetSmartSwitchValueAsync(1, true).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.True(response.Data!.IsActive);
@@ -141,7 +154,8 @@ public class EntityClientTests
     public async Task ToggleSmartSwitchAsync_ReadsThenWritesNegation()
     {
         var (server, client) = await ConnectEntityAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         // Current state is true (GetEntityInfo returns true), so Toggle writes false.
         var response = await client.ToggleSmartSwitchAsync(1).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
@@ -152,7 +166,8 @@ public class EntityClientTests
     public async Task StrobeSmartSwitchAsync_CompletesBothFlips()
     {
         var (server, client) = await ConnectEntityAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.StrobeSmartSwitchAsync(1, timeoutMilliseconds: 10, value: true)
             .WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
@@ -162,7 +177,8 @@ public class EntityClientTests
     public async Task SetSubscriptionAsync_ReportsSuccess()
     {
         var (server, client) = await ConnectEntityAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.SetSubscriptionAsync(1).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
     }
@@ -171,7 +187,8 @@ public class EntityClientTests
     public async Task SendTeamMessageAsync_ReturnsMappedMessage()
     {
         var (server, client) = await ConnectEntityAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.SendTeamMessageAsync("hi").WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.Equal("hi", response.Data!.Message);
@@ -181,7 +198,8 @@ public class EntityClientTests
     public async Task GetMapAsync_ReturnsMappedServerMap()
     {
         var (server, client) = await ConnectDefaultAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.GetMapAsync().WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.Equal(2000u, response.Data!.Width);
@@ -191,7 +209,8 @@ public class EntityClientTests
     public async Task GetMapMarkersAsync_ReturnsMappedMarkers()
     {
         var (server, client) = await ConnectDefaultAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.GetMapMarkersAsync().WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.NotNull(response.Data);
@@ -202,7 +221,8 @@ public class EntityClientTests
     public async Task GetTeamInfoAsync_ReturnsMappedTeamInfo()
     {
         var (server, client) = await ConnectDefaultAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.GetTeamInfoAsync().WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.Equal(76561198000000001ul, response.Data!.LeaderSteamId);
@@ -213,7 +233,8 @@ public class EntityClientTests
     public async Task GetTeamChatAsync_ReturnsMappedMessages()
     {
         var (server, client) = await ConnectDefaultAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.GetTeamChatAsync().WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         var message = Assert.Single(response.Data!.Messages!);

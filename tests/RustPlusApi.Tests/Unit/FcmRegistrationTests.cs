@@ -1,11 +1,11 @@
-using System.Net;
-using System.Text;
-using System.Text.Json;
 using ProtoBuf;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Registration;
 using RustPlusApi.Fcm.Registration.Protobuf;
 using RustPlusApi.Tests.TestHelpers;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 using Xunit;
 
 namespace RustPlusApi.Tests.Unit;
@@ -27,9 +27,15 @@ public class FcmRegistrationTests
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(ms.ToArray()) };
             }
             if (url.Contains("installations", StringComparison.Ordinal))
+            {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{ "authToken": { "token": "fis" } }""") };
+            }
+
             if (url.Contains("register", StringComparison.Ordinal)) // FCM c2dm register
+            {
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("token=fcm") };
+            }
+
             // Expo
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{ "data": { "expoPushToken": "ExponentPushToken[e]" } }""") };
         });

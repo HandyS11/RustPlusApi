@@ -20,7 +20,7 @@ public class IndexGeneratorTests
     {
         // Captured from the real implementation; any xorshift mutation diverges.
         var g = new IndexGenerator(1337);
-        Assert.Equal(5,  g.NextInt(64));
+        Assert.Equal(5, g.NextInt(64));
         Assert.Equal(51, g.NextInt(64));
         Assert.Equal(57, g.NextInt(64));
         Assert.Equal(14, g.NextInt(64));
@@ -56,13 +56,13 @@ public class IndexGeneratorTests
     public void NextInt_Seed999_ExactSequence()
     {
         var g = new IndexGenerator(999);
-        Assert.Equal(15,  g.NextInt(256));
+        Assert.Equal(15, g.NextInt(256));
         Assert.Equal(131, g.NextInt(256));
-        Assert.Equal(87,  g.NextInt(256));
-        Assert.Equal(69,  g.NextInt(256));
+        Assert.Equal(87, g.NextInt(256));
+        Assert.Equal(69, g.NextInt(256));
         Assert.Equal(239, g.NextInt(256));
-        Assert.Equal(12,  g.NextInt(256));
-        Assert.Equal(77,  g.NextInt(256));
+        Assert.Equal(12, g.NextInt(256));
+        Assert.Equal(77, g.NextInt(256));
         Assert.Equal(212, g.NextInt(256));
         Assert.Equal(130, g.NextInt(256));
         Assert.Equal(222, g.NextInt(256));
@@ -74,7 +74,7 @@ public class IndexGeneratorTests
     public void NextInt_Seed1337_LargeDomain_ExactSequence()
     {
         var g = new IndexGenerator(1337);
-        Assert.Equal(79,  g.NextInt(1000));
+        Assert.Equal(79, g.NextInt(1000));
         Assert.Equal(803, g.NextInt(1000));
         Assert.Equal(896, g.NextInt(1000));
         Assert.Equal(227, g.NextInt(1000));
@@ -96,7 +96,9 @@ public class IndexGeneratorTests
         var a = new IndexGenerator(1337);
         var b = new IndexGenerator(1337);
         for (var i = 0; i < 100; i++)
+        {
             Assert.Equal(a.NextInt(64), b.NextInt(64));
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -120,7 +122,9 @@ public class IndexGeneratorTests
         // When max==1, result is always 0 (NextState()*1/4294967295 truncates to 0).
         var g = new IndexGenerator(1337);
         for (var i = 0; i < 20; i++)
+        {
             Assert.Equal(0, g.NextInt(1));
+        }
     }
 
     [Fact]
@@ -140,14 +144,16 @@ public class IndexGeneratorTests
         // Two different seeds should diverge immediately (kills seed-ignored mutation).
         var a = new IndexGenerator(1337);
         var b = new IndexGenerator(1338);
-        bool anyDifferent = false;
-        for (int i = 0; i < 10; i++)
+        var anyDifferent = false;
+        for (var i = 0; i < 10; i++)
         {
-            if (a.NextInt(1000) != b.NextInt(1000))
+            if (a.NextInt(1000) == b.NextInt(1000))
             {
-                anyDifferent = true;
-                break;
+                continue;
             }
+
+            anyDifferent = true;
+            break;
         }
 
         Assert.True(anyDifferent);
@@ -186,10 +192,10 @@ public class IndexGeneratorTests
     public void NextInt_Seed1_LargeMax_ExactNegativeStateBranchValue()
     {
         var g = new IndexGenerator(1);
-        Assert.Equal(135184,      g.NextInt(int.MaxValue)); // t positive
-        Assert.Equal(33817344,    g.NextInt(int.MaxValue)); // t positive
-        Assert.Equal(1323717729,  g.NextInt(int.MaxValue)); // t negative → branch exercised
-        Assert.Equal(153799847,   g.NextInt(int.MaxValue)); // t positive
-        Assert.Equal(1199344615,  g.NextInt(int.MaxValue)); // t negative again
+        Assert.Equal(135184, g.NextInt(int.MaxValue)); // t positive
+        Assert.Equal(33817344, g.NextInt(int.MaxValue)); // t positive
+        Assert.Equal(1323717729, g.NextInt(int.MaxValue)); // t negative → branch exercised
+        Assert.Equal(153799847, g.NextInt(int.MaxValue)); // t positive
+        Assert.Equal(1199344615, g.NextInt(int.MaxValue)); // t negative again
     }
 }

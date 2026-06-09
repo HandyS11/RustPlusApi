@@ -1,5 +1,5 @@
-using System.Drawing;
 using RustPlusApi.Utils;
+using System.Drawing;
 using Xunit;
 
 namespace RustPlusApi.Tests.Unit;

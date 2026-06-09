@@ -97,7 +97,7 @@ public class FcmSocketLifecycleTests
         var socket = NewSocket();
 
         socket.Dispose();
-        var exception = Record.Exception(() => socket.Dispose());
+        var exception = Record.Exception(socket.Dispose);
 
         Assert.Null(exception);
     }

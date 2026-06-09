@@ -11,6 +11,8 @@ internal sealed class StrobeSmartSwitch(IRustPlus rustPlus)
 
         DisplayUtilities.DisplayJson("StrobeSmartSwitch", response);
         if (response.IsSuccess)
+        {
             DisplayUtilities.DisplaySmartSwitchValue(entityId, response.Data!.IsActive);
+        }
     }
 }

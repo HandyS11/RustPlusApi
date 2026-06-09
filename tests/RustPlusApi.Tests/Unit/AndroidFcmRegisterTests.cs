@@ -1,10 +1,10 @@
-using System.Net;
-using System.Text;
 using ProtoBuf;
 using RustPlusApi.Fcm.Registration;
 using RustPlusApi.Fcm.Registration.Protobuf;
 using RustPlusApi.Fcm.Registration.Steps;
 using RustPlusApi.Tests.TestHelpers;
+using System.Net;
+using System.Text;
 using Xunit;
 
 namespace RustPlusApi.Tests.Unit;
@@ -17,7 +17,9 @@ public class AndroidFcmRegisterTests
         using var ms = new MemoryStream();
         Serializer.Serialize(ms, new AndroidCheckinResponse
         {
-            StatsOk = true, AndroidId = androidId, SecurityToken = securityToken
+            StatsOk = true,
+            AndroidId = androidId,
+            SecurityToken = securityToken
         });
         return ms.ToArray();
     }
@@ -185,8 +187,16 @@ public class AndroidFcmRegisterTests
         var handler = new StubHttpMessageHandler((req, _) =>
         {
             var url = req.RequestUri!.ToString();
-            if (url.Contains("checkin", StringComparison.Ordinal)) return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(CheckinResponseBytes(5, 6)) };
-            if (url.Contains("installations", StringComparison.Ordinal)) return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{ "authToken": { "token": "fis" } }""") };
+            if (url.Contains("checkin", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(CheckinResponseBytes(5, 6)) };
+            }
+
+            if (url.Contains("installations", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{ "authToken": { "token": "fis" } }""") };
+            }
+
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("token=final") };
         });
         var register = new AndroidFcmRegister(handler.CreateClient());

@@ -37,7 +37,8 @@ public class CameraModelMapperTests
     {
         var rays = new AppCameraRays
         {
-            VerticalFov = 90f, RayData = [1],
+            VerticalFov = 90f,
+            RayData = [1],
             TimeOfDay = 0.5f,
             CameraPosition = new ProtoVector3 { X = 1, Y = 2, Z = 3 },
             CameraRotation = new ProtoVector3 { X = 4, Y = 5, Z = 6 }
@@ -68,7 +69,8 @@ public class CameraModelMapperTests
     {
         var rays = new AppCameraRays
         {
-            VerticalFov = 90f, RayData = [1],
+            VerticalFov = 90f,
+            RayData = [1],
             TimeOfDay = 0.75f,
             CameraPosition = new ProtoVector3 { X = 10, Y = 20, Z = 30 },
             CameraRotation = new ProtoVector3 { X = 1, Y = 2, Z = 3 }

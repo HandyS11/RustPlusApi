@@ -60,9 +60,9 @@ public class CameraRendererTests
         var renderer = new CameraRenderer(4, 4);
         using var image = Decode(renderer.Render());
 
-        for (int y = 0; y < 4; y++)
+        for (var y = 0; y < 4; y++)
         {
-            for (int x = 0; x < 4; x++)
+            for (var x = 0; x < 4; x++)
             {
                 Assert.Equal(new Rgba32(0, 0, 0, 0), image[x, y]);
             }
@@ -108,9 +108,9 @@ public class CameraRendererTests
         using var image = Decode(renderer.Render());
 
         // Every pixel except (2,2) must remain transparent
-        for (int y = 0; y < 4; y++)
+        for (var y = 0; y < 4; y++)
         {
-            for (int x = 0; x < 4; x++)
+            for (var x = 0; x < 4; x++)
             {
                 if (x != 2 || y != 2)
                 {
@@ -150,7 +150,9 @@ public class CameraRendererTests
         var renderer = new CameraRenderer(16, 16);
         var rays = new List<byte>();
         for (var n = 0; n < 32; n++)
+        {
             rays.AddRange(FullRay(255, 192, 0));
+        }
 
         renderer.AddRays(new CameraFrame { RayData = rays.ToArray(), SampleOffset = 0 });
 
@@ -183,12 +185,12 @@ public class CameraRendererTests
     [Theory]
     [InlineData(0, 127, 127, 127)]   // [0.5, 0.5, 0.5]
     [InlineData(1, 204, 178, 178)]   // [0.8, 0.7, 0.7]
-    [InlineData(2,  76, 178, 255)]   // [0.3, 0.7, 1.0]
+    [InlineData(2, 76, 178, 255)]   // [0.3, 0.7, 1.0]
     [InlineData(3, 153, 153, 153)]   // [0.6, 0.6, 0.6]
     [InlineData(4, 178, 178, 178)]   // [0.7, 0.7, 0.7]
     [InlineData(5, 204, 153, 102)]   // [0.8, 0.6, 0.4]
     [InlineData(6, 255, 102, 102)]   // [1.0, 0.4, 0.4]
-    [InlineData(7, 255,  25,  25)]   // [1.0, 0.1, 0.1]
+    [InlineData(7, 255, 25, 25)]   // [1.0, 0.1, 0.1]
     public void Material_FullAlignment_ExactPixelColour(int material, byte r, byte g, byte b)
     {
         // b2=63 → alignment=63, t=(128<<2)|(63>>6)=512 (non-sky)
@@ -211,7 +213,9 @@ public class CameraRendererTests
         var renderer = new CameraRenderer(16, 16);
         var rays = new List<byte>();
         for (var n = 0; n < 32; n++)
+        {
             rays.AddRange(FullRay(128, 63, 2));
+        }
 
         renderer.AddRays(new CameraFrame { RayData = rays.ToArray(), SampleOffset = 0 });
 
@@ -224,11 +228,11 @@ public class CameraRendererTests
     // ──────────────────────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData(0,  64,  64,  64)]  // [0.5,0.5,0.5] * 32/63
-    [InlineData(1, 103,  90,  90)]  // [0.8,0.7,0.7] * 32/63
-    [InlineData(2,  38,  90, 129)]  // [0.3,0.7,1.0] * 32/63
-    [InlineData(5, 103,  77,  51)]  // [0.8,0.6,0.4] * 32/63
-    [InlineData(7, 129,  12,  12)]  // [1.0,0.1,0.1] * 32/63
+    [InlineData(0, 64, 64, 64)]  // [0.5,0.5,0.5] * 32/63
+    [InlineData(1, 103, 90, 90)]  // [0.8,0.7,0.7] * 32/63
+    [InlineData(2, 38, 90, 129)]  // [0.3,0.7,1.0] * 32/63
+    [InlineData(5, 103, 77, 51)]  // [0.8,0.6,0.4] * 32/63
+    [InlineData(7, 129, 12, 12)]  // [1.0,0.1,0.1] * 32/63
     public void Material_MidAlignment_ExactPixelColour(int material, byte r, byte g, byte b)
     {
         // b2=32 → alignment=32, t=(0<<2)|(32>>6)=0 → not sky (t≠1023)
@@ -289,7 +293,7 @@ public class CameraRendererTests
         // Drive ToByte's > 255 clamp arm: produce alignmentRaw > 63 via small-delta.
         var renderer = new CameraRenderer(16, 16);
         var rays = new List<byte> { 255, 0, 63, 6 };
-        rays.AddRange(new byte[] { 0x79, 0xFF });
+        rays.AddRange([0x79, 0xFF]);
 
         renderer.AddRays(new CameraFrame { RayData = rays.ToArray(), SampleOffset = 0 });
         var png = renderer.Render();
@@ -330,8 +334,8 @@ public class CameraRendererTests
     {
         var renderer = new CameraRenderer(16, 16);
         var rays = new List<byte>();
-        rays.AddRange(new byte[] { 255, 0, 0, 0 });
-        rays.AddRange(new byte[] { 0b0100_0000, 0x00 });
+        rays.AddRange([255, 0, 0, 0]);
+        rays.AddRange("@\0"u8.ToArray());
 
         renderer.AddRays(new CameraFrame { RayData = rays.ToArray(), SampleOffset = 0 });
         var png = renderer.Render();
@@ -392,11 +396,11 @@ public class CameraRendererTests
 
         using var image = Decode(renderer.Render());
 
-        Assert.Equal(new Rgba32( 76, 178, 255), image[2, 2]); // ray 0: full ray
-        Assert.Equal(new Rgba32( 76, 178, 255), image[3, 0]); // ray 1: repeat → same colour
-        Assert.Equal(new Rgba32( 72, 170, 242), image[0, 1]); // ray 2: small-delta, r=60
-        Assert.Equal(new Rgba32( 76, 178, 255), image[0, 3]); // ray 3: medium-delta, r=63
-        Assert.Equal(new Rgba32(  0,   0,   0), image[0, 2]); // ray 4: default, r=0 → black
+        Assert.Equal(new Rgba32(76, 178, 255), image[2, 2]); // ray 0: full ray
+        Assert.Equal(new Rgba32(76, 178, 255), image[3, 0]); // ray 1: repeat → same colour
+        Assert.Equal(new Rgba32(72, 170, 242), image[0, 1]); // ray 2: small-delta, r=60
+        Assert.Equal(new Rgba32(76, 178, 255), image[0, 3]); // ray 3: medium-delta, r=63
+        Assert.Equal(new Rgba32(0, 0, 0), image[0, 2]); // ray 4: default, r=0 → black
     }
 
     [Fact]
@@ -404,11 +408,11 @@ public class CameraRendererTests
     {
         var renderer = new CameraRenderer(16, 16);
         var rays = new List<byte>();
-        rays.AddRange(new byte[] { 255, 128, 63, 2 });
-        rays.AddRange(new byte[] { 0b0000_0000 });
-        rays.AddRange(new byte[] { 0b0100_0000, 0x88 });
-        rays.AddRange(new byte[] { 0b1000_0000, 0x80 });
-        rays.AddRange(new byte[] { 0b1100_0001, 0x40, 0x00 });
+        rays.AddRange([255, 128, 63, 2]);
+        rays.AddRange([0b0000_0000]);
+        rays.AddRange([0b0100_0000, 0x88]);
+        rays.AddRange([0b1000_0000, 0x80]);
+        rays.AddRange([0b1100_0001, 0x40, 0x00]);
 
         renderer.AddRays(new CameraFrame { RayData = rays.ToArray(), SampleOffset = 0 });
         var png = renderer.Render();
@@ -617,9 +621,9 @@ public class CameraRendererTests
 
         using var image = Decode(renderer.Render());
 
-        Assert.Equal(new Rgba32( 76, 178, 255), image[2, 2]); // default arm
-        Assert.Equal(new Rgba32( 76, 178, 255), image[3, 0]); // repeat from correct slot
-        Assert.Equal(new Rgba32(  0,   0,   0), image[0, 1]); // repeat from empty slot 0
+        Assert.Equal(new Rgba32(76, 178, 255), image[2, 2]); // default arm
+        Assert.Equal(new Rgba32(76, 178, 255), image[3, 0]); // repeat from correct slot
+        Assert.Equal(new Rgba32(0, 0, 0), image[0, 1]); // repeat from empty slot 0
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -648,8 +652,8 @@ public class CameraRendererTests
 
         using var image = Decode(renderer.Render());
 
-        Assert.Equal(new Rgba32(0, 0, 0),         image[2, 2]); // full ray: r=0 → black
-        Assert.Equal(new Rgba32(208, 230, 252),    image[3, 0]); // delta hits sky sentinel
+        Assert.Equal(new Rgba32(0, 0, 0), image[2, 2]); // full ray: r=0 → black
+        Assert.Equal(new Rgba32(208, 230, 252), image[3, 0]); // delta hits sky sentinel
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -677,8 +681,8 @@ public class CameraRendererTests
 
         using var image = Decode(renderer.Render());
 
-        Assert.Equal(new Rgba32(0, 0, 0),         image[2, 2]); // full ray: r=0 → black
-        Assert.Equal(new Rgba32(208, 230, 252),    image[3, 0]); // delta hits sky sentinel
+        Assert.Equal(new Rgba32(0, 0, 0), image[2, 2]); // full ray: r=0 → black
+        Assert.Equal(new Rgba32(208, 230, 252), image[3, 0]); // delta hits sky sentinel
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -697,7 +701,10 @@ public class CameraRendererTests
         // thing under test is the out-of-range image-index guard.
         var renderer = new CameraRenderer(4, 2);
         var rays = new List<byte>();
-        for (var n = 0; n < 7; n++) rays.AddRange(FullRay(128, 63, 2));
+        for (var n = 0; n < 7; n++)
+        {
+            rays.AddRange(FullRay(128, 63, 2));
+        }
 
         var exception = Record.Exception(() =>
             renderer.AddRays(new CameraFrame { RayData = rays.ToArray(), SampleOffset = 1 }));

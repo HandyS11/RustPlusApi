@@ -39,7 +39,9 @@ internal sealed partial class Emitter
     {
         var queue = new Queue<string>();
         foreach (var r in roots.Where(r => _server.Messages.ContainsKey(r) && _scopeMessages.Add(r)))
+        {
             queue.Enqueue(r);
+        }
 
         while (queue.Count > 0)
         {
@@ -49,7 +51,9 @@ internal sealed partial class Emitter
                 if (_server.Messages.ContainsKey(protoType))
                 {
                     if (_scopeMessages.Add(protoType))
+                    {
                         queue.Enqueue(protoType);
+                    }
                 }
                 else if (_server.Enums.ContainsKey(protoType))
                 {
@@ -85,32 +89,35 @@ internal sealed partial class Emitter
     /// <param name="indent">Tab indentation depth.</param>
     private void RenderScope(StringBuilder sb, string? parentQualified, int indent)
     {
-        bool first = true;
+        var first = true;
         foreach (var qn in OrderedChildren(parentQualified))
         {
             if (!first || parentQualified is not null)
+            {
                 sb.AppendLine();
+            }
+
             first = false;
 
             // Preserved types win even when the server also defines them (e.g. an unreferenced
             // Half3 struct): we emit the committed definition verbatim rather than the server's.
             if (_preserved.Contains(qn))
+            {
                 sb.AppendLine(_committed.RawTopLevelBlocks[qn]);
+            }
             else if (_server.Messages.TryGetValue(qn, out var m))
+            {
                 RenderMessage(sb, m, indent);
+            }
             else if (_server.Enums.TryGetValue(qn, out var e))
+            {
                 RenderEnum(sb, e, indent);
+            }
         }
     }
 
     private List<string> OrderedChildren(string? parentQualified)
     {
-        bool InScope(string qn) =>
-            (_server.Messages.ContainsKey(qn) && _scopeMessages.Contains(qn)) ||
-            (_server.Enums.ContainsKey(qn) && _scopeEnums.Contains(qn)) ||
-            _preserved.Contains(qn);
-        bool IsDirectChild(string qn) => ParentOf(qn) == parentQualified;
-
         var ordered = _committed.DeclOrder.Where(qn => IsDirectChild(qn) && InScope(qn)).ToList();
         var known = new HashSet<string>(ordered, StringComparer.Ordinal);
 
@@ -120,6 +127,13 @@ internal sealed partial class Emitter
             .OrderBy(qn => qn, StringComparer.Ordinal);
         ordered.AddRange(extra);
         return ordered;
+
+        bool IsDirectChild(string qn) => ParentOf(qn) == parentQualified;
+
+        bool InScope(string qn) =>
+            (_server.Messages.ContainsKey(qn) && _scopeMessages.Contains(qn)) ||
+            (_server.Enums.ContainsKey(qn) && _scopeEnums.Contains(qn)) ||
+            _preserved.Contains(qn);
     }
 
     private void RenderMessage(StringBuilder sb, Message msg, int indent)
@@ -145,7 +159,10 @@ internal sealed partial class Emitter
         var pad = new string('\t', indent);
         sb.Append(pad).Append("enum ").Append(en.SimpleName).AppendLine(" {");
         foreach (var (name, value) in en.Values)
+        {
             sb.Append(pad).Append('\t').Append(name).Append(" = ").Append(value).AppendLine(";");
+        }
+
         sb.Append(pad).AppendLine("}");
     }
 
@@ -158,10 +175,15 @@ internal sealed partial class Emitter
     {
         var parent = ParentOf(protoType);
         if (parent is null)
+        {
             return protoType; // scalar or top-level type
+        }
 
         if (ParentOf(currentQualified) == parent && currentQualified != parent)
+        {
             return protoType[(parent.Length + 1)..]; // sibling reference -> simple name
+        }
+
         return protoType;                            // parent->child or distant -> qualified
     }
 
@@ -171,7 +193,7 @@ internal sealed partial class Emitter
         return i < 0 ? null : qualified[..i];
     }
 
-    public static string ToSnakeCase(string camel)
+    private static string ToSnakeCase(string camel)
     {
         var s = LowerUpper().Replace(camel, "$1_$2");
         s = AcronymWord().Replace(s, "$1_$2");

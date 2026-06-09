@@ -4,8 +4,8 @@ namespace RustPlusApi.Fcm.Data.Events;
 public sealed record AlarmEvent
 {
     /// <summary>The alarm title configured in the Rust+ app.</summary>
-    public string Title { get; set; } = null!;
+    public string Title { get; init; } = null!;
 
     /// <summary>The alarm message configured in the Rust+ app.</summary>
-    public string Message { get; set; } = null!;
+    public string Message { get; init; } = null!;
 }

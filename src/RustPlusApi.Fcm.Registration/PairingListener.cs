@@ -1,6 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
+using System.Diagnostics.CodeAnalysis;
 
 namespace RustPlusApi.Fcm.Registration;
 

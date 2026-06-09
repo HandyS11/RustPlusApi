@@ -86,7 +86,10 @@ public static class AppCameraToModel
     public static Vector3 ToVector3(this ProtoVector3? vector)
     {
         if (vector is null)
+        {
             return new Vector3();
+        }
+
         return new Vector3 { X = vector.X, Y = vector.Y, Z = vector.Z };
     }
 }

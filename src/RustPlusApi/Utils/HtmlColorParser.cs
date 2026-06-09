@@ -19,24 +19,28 @@ public static class HtmlColorParser
         return ColorTranslator.FromHtml(html);
 #else
         if (string.IsNullOrEmpty(html))
-            return Color.Empty;
-
-        if (html[0] == '#')
         {
-            var hex = html.Substring(1);
-            switch (hex.Length)
-            {
-                case 3:
-                    return Color.FromArgb(
-                        Nibble(hex[0]), Nibble(hex[1]), Nibble(hex[2]));
-                case 6:
-                    var rgb = int.Parse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-                    return Color.FromArgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
-                case 8:
-                    var argb = uint.Parse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-                    return Color.FromArgb(
-                        (byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb);
-            }
+            return Color.Empty;
+        }
+
+        if (html[0] != '#')
+        {
+            return Color.FromName(html);
+        }
+
+        var hex = html.Substring(1);
+        switch (hex.Length)
+        {
+            case 3:
+                return Color.FromArgb(
+                    Nibble(hex[0]), Nibble(hex[1]), Nibble(hex[2]));
+            case 6:
+                var rgb = int.Parse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                return Color.FromArgb((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
+            case 8:
+                var argb = uint.Parse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                return Color.FromArgb(
+                    (byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb);
         }
 
         return Color.FromName(html);

@@ -5,14 +5,14 @@ namespace RustPlusApi.Fcm.Data;
 public record Notification<T>
 {
     /// <summary>Steam ID of the player who performed the pairing.</summary>
-    public ulong PlayerId { get; set; }
+    public ulong PlayerId { get; init; }
 
     /// <summary>Rust+ player token for the pairing player.</summary>
-    public int PlayerToken { get; set; }
+    public int PlayerToken { get; init; }
 
     /// <summary>The Rust+ server ID the pairing is associated with.</summary>
-    public Guid ServerId { get; set; }
+    public Guid ServerId { get; init; }
 
     /// <summary>The typed pairing payload.</summary>
-    public T? Data { get; set; }
+    public T? Data { get; init; }
 }

@@ -24,7 +24,10 @@ internal sealed partial class CommittedProto
     public string LabelFor(string qualified, int number, bool repeated)
     {
         if (_labels.TryGetValue($"{qualified}#{number}", out var l))
+        {
             return l;
+        }
+
         // New (server-only) scalar/message fields default to optional (proto2-safe).
         return repeated ? "repeated" : "optional";
     }
@@ -38,11 +41,15 @@ internal sealed partial class CommittedProto
         foreach (var rawLine in File.ReadLines(protoPath))
         {
             if (topLevelName is not null)
+            {
                 block.Add(rawLine);
+            }
 
             var line = rawLine.Trim();
             if (line.Length == 0 || line.StartsWith("//", StringComparison.Ordinal))
+            {
                 continue;
+            }
 
             var open = DeclOpen().Match(line);
             if (open.Success)
@@ -59,7 +66,10 @@ internal sealed partial class CommittedProto
             if (line.StartsWith('}'))
             {
                 if (stack.Count > 0)
+                {
                     stack.RemoveAt(stack.Count - 1);
+                }
+
                 if (stack.Count == 0 && topLevelName is not null)
                 {
                     result.RawTopLevelBlocks[topLevelName] = string.Join('\n', block).TrimEnd();

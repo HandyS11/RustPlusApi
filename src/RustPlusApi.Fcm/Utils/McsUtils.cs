@@ -12,7 +12,9 @@ public static class McsUtils
     public static byte[] EncodeVarInt32(int value)
     {
         if (value < 0)
+        {
             throw new ArgumentOutOfRangeException(nameof(value), value, "MCS varints encode non-negative lengths only.");
+        }
 
         List<byte> result = [];
         do
@@ -20,7 +22,10 @@ public static class McsUtils
             var b = (byte)(value & 0x7F);
             value >>= 7;
             if (value != 0)
+            {
                 b |= 0x80;
+            }
+
             result.Add(b);
         } while (value != 0);
         return [.. result];
@@ -31,23 +36,18 @@ public static class McsUtils
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="type"/> is not a recognised MCS type.</exception>
     public static McsProtoTag GetTagFromProtobufType(Type type)
     {
-        if (type == typeof(HeartbeatPing))
-            return McsProtoTag.KHeartbeatPingTag;
-        if (type == typeof(HeartbeatAck))
-            return McsProtoTag.KHeartbeatAckTag;
-        if (type == typeof(LoginRequest))
-            return McsProtoTag.KLoginRequestTag;
-        if (type == typeof(LoginResponse))
-            return McsProtoTag.KLoginResponseTag;
-        if (type == typeof(Close))
-            return McsProtoTag.KCloseTag;
-        if (type == typeof(IqStanza))
-            return McsProtoTag.KIqStanzaTag;
-        if (type == typeof(DataMessageStanza))
-            return McsProtoTag.KDataMessageStanzaTag;
-        if (type == typeof(StreamErrorStanza))
-            return McsProtoTag.KStreamErrorStanzaTag;
-        throw new ArgumentOutOfRangeException(nameof(type), type, null);
+        return type switch
+        {
+            var t when t == typeof(HeartbeatPing) => McsProtoTag.KHeartbeatPingTag,
+            var t when t == typeof(HeartbeatAck) => McsProtoTag.KHeartbeatAckTag,
+            var t when t == typeof(LoginRequest) => McsProtoTag.KLoginRequestTag,
+            var t when t == typeof(LoginResponse) => McsProtoTag.KLoginResponseTag,
+            var t when t == typeof(Close) => McsProtoTag.KCloseTag,
+            var t when t == typeof(IqStanza) => McsProtoTag.KIqStanzaTag,
+            var t when t == typeof(DataMessageStanza) => McsProtoTag.KDataMessageStanzaTag,
+            var t when t == typeof(StreamErrorStanza) => McsProtoTag.KStreamErrorStanzaTag,
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+        };
     }
 
     /// <summary>Returns the CLR <see cref="Type"/> that corresponds to the given MCS protocol tag.</summary>

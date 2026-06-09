@@ -13,7 +13,10 @@ public class MapMarkerDispatchTests
     {
         var m = new AppMapMarkers();
         foreach (var (id, type) in markers)
+        {
             m.Markers.Add(new AppMarker { Id = id, X = 1, Y = 1, Type = type, Name = "n" });
+        }
+
         return m;
     }
 
@@ -55,6 +58,6 @@ public class MapMarkerDispatchTests
     public void ToMapMarkers_UnknownType_Throws()
     {
         var markers = With((1, (AppMarkerType)999));
-        Assert.Throws<ArgumentException>(() => markers.ToMapMarkers());
+        Assert.Throws<ArgumentException>(markers.ToMapMarkers);
     }
 }

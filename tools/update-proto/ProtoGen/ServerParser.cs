@@ -32,17 +32,24 @@ internal sealed class ServerParser
         foreach (var ns in root.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>())
         {
             if (ns.Name.ToString() != "ProtoBuf")
+            {
                 continue;
+            }
 
             foreach (var member in ns.Members)
+            {
                 parser.Discover(member, parentQualified: null);
+            }
         }
 
         // Second pass: now that every type name is registered, fill fields (needs type resolution).
         foreach (var ns in root.DescendantNodes().OfType<BaseNamespaceDeclarationSyntax>())
         {
             if (ns.Name.ToString() != "ProtoBuf")
+            {
                 continue;
+            }
+
             // class- and struct-based messages (e.g. Half3 is a struct : IProto<Half3>).
             foreach (var type in ns.DescendantNodes().OfType<TypeDeclarationSyntax>()
                                    .Where(t => t is ClassDeclarationSyntax or StructDeclarationSyntax))
@@ -61,7 +68,7 @@ internal sealed class ServerParser
     {
         switch (member)
         {
-            case TypeDeclarationSyntax cls when cls is ClassDeclarationSyntax or StructDeclarationSyntax && IsProtoMessage(cls):
+            case TypeDeclarationSyntax cls and (ClassDeclarationSyntax or StructDeclarationSyntax) when IsProtoMessage(cls):
                 {
                     var simple = cls.Identifier.Text;
                     var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
@@ -69,7 +76,10 @@ internal sealed class ServerParser
                     Register(simple, qualified);
 
                     foreach (var inner in cls.Members)
+                    {
                         Discover(inner, qualified);
+                    }
+
                     break;
                 }
             case EnumDeclarationSyntax en:
@@ -77,12 +87,15 @@ internal sealed class ServerParser
                     var simple = en.Identifier.Text;
                     var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
                     var def = new EnumDef { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
-                    int next = 0;
+                    var next = 0;
                     foreach (var m in en.Members)
                     {
-                        int val = next;
+                        var val = next;
                         if (m.EqualsValue?.Value is { } v && TryParseInt(v, out var explicitVal))
+                        {
                             val = explicitVal;
+                        }
+
                         def.Values.Add((m.Identifier.Text, val));
                         next = val + 1;
                     }
@@ -102,18 +115,25 @@ internal sealed class ServerParser
         // checking the enclosing class chain).
         var qualified = ResolveDeclaredQualifiedName(cls);
         if (qualified is null || !_messages.TryGetValue(qualified, out var msg) || msg.Fields.Count > 0)
+        {
             return;
+        }
 
         // Declared field types: name -> (csType, repeated, elementType)
         var decls = new Dictionary<string, (string CsType, bool Repeated, string Element)>(StringComparer.Ordinal);
         foreach (var fd in cls.Members.OfType<FieldDeclarationSyntax>())
         {
             if (fd.Modifiers.Any(SyntaxKind.StaticKeyword) || fd.Modifiers.Any(SyntaxKind.ConstKeyword))
+            {
                 continue;
+            }
+
             var typeStr = fd.Declaration.Type.ToString();
             var (repeated, element) = UnwrapList(typeStr);
             foreach (var v in fd.Declaration.Variables)
+            {
                 decls[v.Identifier.Text] = (typeStr, repeated, element);
+            }
         }
 
         var deser = cls.Members.OfType<MethodDeclarationSyntax>().FirstOrDefault(m =>
@@ -122,26 +142,36 @@ internal sealed class ServerParser
             m.ParameterList.Parameters.Count == 3 &&
             m.ParameterList.Parameters[1].Type?.ToString() == simple);
         if (deser is null)
+        {
             return;
+        }
 
         var seen = new HashSet<int>();
         foreach (var sw in deser.DescendantNodes().OfType<SwitchStatementSyntax>())
         {
-            bool fieldNumberMode = IsKeyFieldSwitch(sw);
+            var fieldNumberMode = IsKeyFieldSwitch(sw);
             foreach (var section in sw.Sections)
             {
                 var fieldName = FindFieldName(section);
                 if (fieldName is null || !decls.TryGetValue(fieldName, out var d))
+                {
                     continue;
+                }
+
                 var readMethod = FindReadMethod(section);
 
                 foreach (var label in section.Labels.OfType<CaseSwitchLabelSyntax>())
                 {
                     if (!TryParseInt(label.Value, out var raw) || raw <= 0)
+                    {
                         continue;
-                    int number = fieldNumberMode ? raw : raw >> 3;
+                    }
+
+                    var number = fieldNumberMode ? raw : raw >> 3;
                     if (number <= 0 || !seen.Add(number))
+                    {
                         continue;
+                    }
 
                     var protoType = ResolveProtoType(d.Repeated ? d.Element : d.CsType, readMethod, qualified);
                     msg.Fields.Add(new Field
@@ -166,7 +196,10 @@ internal sealed class ServerParser
     private void Register(string simple, string qualified)
     {
         if (!_bySimpleName.TryGetValue(simple, out var list))
+        {
             _bySimpleName[simple] = list = [];
+        }
+
         list.Add(qualified);
     }
 
@@ -175,7 +208,10 @@ internal sealed class ServerParser
         // Build the qualified name by walking enclosing class/struct declarations.
         var parts = new List<string> { cls.Identifier.Text };
         for (var p = cls.Parent; p is ClassDeclarationSyntax or StructDeclarationSyntax; p = p.Parent)
+        {
             parts.Insert(0, ((TypeDeclarationSyntax)p).Identifier.Text);
+        }
+
         var qualified = string.Join('.', parts);
         return _messages.ContainsKey(qualified) ? qualified : null;
     }
@@ -183,7 +219,7 @@ internal sealed class ServerParser
     /// <summary>When the switch expression is <c>key.Field</c>, case labels are field numbers; otherwise they are wire keys.</summary>
     /// <param name="sw">The switch statement to inspect.</param>
     private static bool IsKeyFieldSwitch(SwitchStatementSyntax sw) =>
-        sw.Expression is MemberAccessExpressionSyntax ma && ma.Name.Identifier.Text == "Field";
+        sw.Expression is MemberAccessExpressionSyntax { Name.Identifier.Text: "Field" };
 
     /// <summary>The field assigned in a switch section: prefer assignment / .Add / ref target.</summary>
     /// <param name="section">The switch section to analyze.</param>
@@ -193,7 +229,9 @@ internal sealed class ServerParser
         foreach (var asg in section.DescendantNodes().OfType<AssignmentExpressionSyntax>())
         {
             if (InstanceMember(asg.Left) is { } n)
+            {
                 return n;
+            }
         }
         // instance.X.Add(...)
         foreach (var inv in section.DescendantNodes().OfType<InvocationExpressionSyntax>())
@@ -208,13 +246,17 @@ internal sealed class ServerParser
         foreach (var arg in section.DescendantNodes().OfType<ArgumentSyntax>())
         {
             if (arg.RefKindKeyword.IsKind(SyntaxKind.RefKeyword) && InstanceMember(arg.Expression) is { } n)
+            {
                 return n;
+            }
         }
         // fallback: first instance.X anywhere
         foreach (var ma in section.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
         {
             if (InstanceMember(ma) is { } n)
+            {
                 return n;
+            }
         }
         return null;
     }
@@ -229,7 +271,9 @@ internal sealed class ServerParser
         foreach (var inv in section.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
             if (inv.Expression is MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "ProtocolParser" } } ma)
+            {
                 return ma.Name.Identifier.Text;
+            }
         }
         return null;
     }
@@ -237,16 +281,24 @@ internal sealed class ServerParser
     private static (bool Repeated, string Element) UnwrapList(string csType)
     {
         if (csType.StartsWith("List<", StringComparison.Ordinal) && csType.EndsWith('>'))
+        {
             return (true, csType["List<".Length..^1].Trim());
+        }
+
         return (false, csType);
     }
 
     private string ResolveProtoType(string csType, string? readMethod, string scopeQualified)
     {
         if (readMethod == "ReadZInt32")
+        {
             return "sint32";
+        }
+
         if (readMethod == "ReadZInt64")
+        {
             return "sint64";
+        }
 
         var scalar = csType switch
         {
@@ -262,12 +314,16 @@ internal sealed class ServerParser
             _ => null,
         };
         if (scalar is not null)
+        {
             return scalar;
+        }
 
         // Known server message/enum reference: resolve the simple name within the current scope.
         var resolved = ResolveTypeName(csType, scopeQualified);
         if (resolved is not null)
+        {
             return resolved;
+        }
 
         // Wrapper types that aren't proto messages (e.g. NetworkableId, ArraySegment<byte>): the
         // ProtocolParser read method reveals the real wire scalar.
@@ -294,9 +350,14 @@ internal sealed class ServerParser
     private string? ResolveTypeName(string simple, string scopeQualified)
     {
         if (!_bySimpleName.TryGetValue(simple, out var candidates))
+        {
             return null;
+        }
+
         if (candidates.Count == 1)
+        {
             return candidates[0];
+        }
 
         // Walk scope ancestors: "A.B.C" -> "A.B" -> "A" -> ""
         var scopes = new List<string> { scopeQualified };
@@ -311,7 +372,9 @@ internal sealed class ServerParser
         {
             var nested = $"{s}.{simple}";
             if (candidates.Contains(nested))
+            {
                 return nested;
+            }
         }
         // prefer a top-level candidate (no dot)
         return candidates.FirstOrDefault(c => !c.Contains('.', StringComparison.Ordinal)) ?? candidates[0];
@@ -319,20 +382,23 @@ internal sealed class ServerParser
 
     private static bool TryParseInt(ExpressionSyntax expr, out int value)
     {
-        value = 0;
-        switch (expr)
+        while (true)
         {
-            case LiteralExpressionSyntax lit when lit.Token.Value is not null:
-                var t = lit.Token.Text.TrimEnd('u', 'U', 'l', 'L');
-                return int.TryParse(t, out value);
-            case PrefixUnaryExpressionSyntax { OperatorToken.RawKind: (int)SyntaxKind.MinusToken } neg
-                when TryParseInt(neg.Operand, out var inner):
-                value = -inner;
-                return true;
-            case CastExpressionSyntax cast:
-                return TryParseInt(cast.Expression, out value);
-            default:
-                return false;
+            value = 0;
+            switch (expr)
+            {
+                case LiteralExpressionSyntax { Token.Value: not null } lit:
+                    var t = lit.Token.Text.TrimEnd('u', 'U', 'l', 'L');
+                    return int.TryParse(t, out value);
+                case PrefixUnaryExpressionSyntax { OperatorToken.RawKind: (int)SyntaxKind.MinusToken } neg when TryParseInt(neg.Operand, out var inner):
+                    value = -inner;
+                    return true;
+                case CastExpressionSyntax cast:
+                    expr = cast.Expression;
+                    continue;
+                default:
+                    return false;
+            }
         }
     }
 }

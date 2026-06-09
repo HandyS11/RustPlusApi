@@ -1,7 +1,7 @@
 using RustPlusApi.Extensions;
 using RustPlusContracts;
-using static RustPlusContracts.AppMarker;
 using Xunit;
+using static RustPlusContracts.AppMarker;
 
 namespace RustPlusApi.Tests.Unit;
 
@@ -11,7 +11,13 @@ public class MarkerMapperTests
 {
     private static AppMarker Marker(AppMarkerType type) => new()
     {
-        Id = 7, X = 1.5f, Y = 2.5f, Name = "M", SteamId = 76561198000000001, OutOfStock = true, Type = type
+        Id = 7,
+        X = 1.5f,
+        Y = 2.5f,
+        Name = "M",
+        SteamId = 76561198000000001,
+        OutOfStock = true,
+        Type = type
     };
 
     [Fact]
@@ -37,8 +43,15 @@ public class MarkerMapperTests
         var marker = Marker(AppMarkerType.VendingMachine);
         marker.SellOrders.Add(new SellOrder
         {
-            ItemId = 1, Quantity = 2, CurrencyId = 3, CostPerItem = 4, AmountInStock = 5,
-            ItemIsBlueprint = true, CurrencyIsBlueprint = false, ItemCondition = 0.5f, ItemConditionMax = 1f,
+            ItemId = 1,
+            Quantity = 2,
+            CurrencyId = 3,
+            CostPerItem = 4,
+            AmountInStock = 5,
+            ItemIsBlueprint = true,
+            CurrencyIsBlueprint = false,
+            ItemCondition = 0.5f,
+            ItemConditionMax = 1f,
             PriceMultiplier = 1.25f
         });
 

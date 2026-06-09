@@ -1,9 +1,9 @@
-using System.Net;
-using System.Text;
-using System.Text.Json;
 using RustPlusApi.Fcm.Registration;
 using RustPlusApi.Fcm.Registration.Steps;
 using RustPlusApi.Tests.TestHelpers;
+using System.Net;
+using System.Text;
+using System.Text.Json;
 using Xunit;
 
 namespace RustPlusApi.Tests.Unit;

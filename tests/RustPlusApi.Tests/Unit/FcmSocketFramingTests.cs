@@ -161,7 +161,11 @@ public class FcmSocketFramingTests
 
         // Skip the varint size, then deserialize the HeartbeatAck payload.
         var idx = 2;
-        while ((written[idx] & 0x80) != 0) idx++;
+        while ((written[idx] & 0x80) != 0)
+        {
+            idx++;
+        }
+
         idx++;
         using var payload = new MemoryStream(written, idx, written.Length - idx);
         var ack = Serializer.Deserialize<HeartbeatAck>(payload);
@@ -767,7 +771,9 @@ public class FcmSocketFramingTests
         for (var i = 0; i < written.Length - 1; i++)
         {
             if (written[i] == KMcsVersion && written[i + 1] == ackTag)
+            {
                 ackCount++;
+            }
         }
         Assert.Equal(1, ackCount);
     }

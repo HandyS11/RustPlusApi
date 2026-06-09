@@ -26,7 +26,8 @@ public class ClientErrorPathTests
     public async Task GetClanInfoAsync_OnError_SurfacesFailureMessage()
     {
         var (server, client) = await ConnectErroringAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.GetClanInfoAsync().WaitAsync(Timeout);
         Assert.False(response.IsSuccess);
         Assert.Equal("no_permission", response.Error!.Message);
@@ -36,7 +37,8 @@ public class ClientErrorPathTests
     public async Task ToggleSmartSwitchAsync_WhenReadFails_ReturnsFailureWithoutWriting()
     {
         var (server, client) = await ConnectErroringAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.ToggleSmartSwitchAsync(1).WaitAsync(Timeout);
         Assert.False(response.IsSuccess);
     }
@@ -45,7 +47,8 @@ public class ClientErrorPathTests
     public async Task StrobeSmartSwitchAsync_WhenFirstSetFails_ReturnsFailure()
     {
         var (server, client) = await ConnectErroringAsync();
-        await using var _ = server; using var __ = client;
+        await using var _ = server;
+        using var __ = client;
         var response = await client.StrobeSmartSwitchAsync(1, timeoutMilliseconds: 10).WaitAsync(Timeout);
         Assert.False(response.IsSuccess);
     }
