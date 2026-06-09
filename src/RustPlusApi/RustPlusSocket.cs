@@ -50,13 +50,13 @@ public abstract class RustPlusSocket(
     /// <summary>
     /// Occurs when a request is about to be sent to the Rust+ server.
     /// </summary>
-    /// <seealso cref="SendRequestAsync(AppRequest)"/>
+    /// <seealso cref="SendRequestAsync"/>
     public event EventHandler? SendingRequest;
 
     /// <summary>
     /// Occurs after a request has been sent to the Rust+ server.
     /// </summary>
-    /// <seealso cref="SendRequestAsync(AppRequest)"/>
+    /// <seealso cref="SendRequestAsync"/>
     public event EventHandler<AppRequest>? RequestSent;
 
     /// <summary>
@@ -109,9 +109,12 @@ public abstract class RustPlusSocket(
     private readonly ConcurrentDictionary<uint, TaskCompletionSource<AppMessage>> _pendingRequests = new();
 
     /// <summary>Requests answered by a broadcast (e.g. SetEntityValue → EntityChanged, SendTeamMessage →
-    /// TeamMessage). Broadcasts carry no seq, so these are matched FIFO; a broadcast with no waiter here is a
-    /// pure notification.</summary>
-    private readonly ConcurrentQueue<TaskCompletionSource<AppMessage>> _pendingBroadcastReplies = new();
+    /// TeamMessage). Broadcasts carry no seq, so each waiter supplies a matcher describing the broadcast it
+    /// expects (entity ID, own Steam ID, …); a broadcast that matches no waiter is a pure notification.
+    /// Guarded by <see cref="_broadcastRepliesLock"/>.</summary>
+    private readonly List<(Func<AppBroadcast, bool> Matches, TaskCompletionSource<AppMessage> Tcs)> _pendingBroadcastReplies = [];
+
+    private readonly object _broadcastRepliesLock = new();
 
     /// <summary>Test seam: the number of in-flight requests awaiting a seq-bearing response.</summary>
     internal int PendingRequestCountForTests => _pendingRequests.Count;
@@ -128,17 +131,49 @@ public abstract class RustPlusSocket(
     private int _playerToken = playerToken;
     private ulong _playerId = playerId;
 
+    /// <summary>The Steam ID requests are currently issued as (see <see cref="SetPlayer"/>).</summary>
+    protected ulong PlayerId => _playerId;
+
     /// <summary>
     /// Asynchronously connects to the Rust+ server using a WebSocket.
     /// Raises <see cref="Connecting"/> before attempting to connect and <see cref="Connected"/> upon successful connection.
     /// Starts background tasks for receiving and sending messages.
-    /// If an exception occurs, <see cref="ErrorOccurred"/> is raised.
+    /// On failure, <see cref="ErrorOccurred"/> is raised and the exception is rethrown to the caller.
+    /// An instance can reconnect: after <see cref="DisconnectAsync"/> (or a dropped connection), calling
+    /// this again opens a fresh socket; the previous one is released, never leaked.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the connection attempt.</param>
+    /// <exception cref="ObjectDisposedException">Thrown when the client has been disposed.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the client is already connected.</exception>
+    /// <exception cref="WebSocketException">Thrown when the WebSocket connect fails (also raised via <see cref="ErrorOccurred"/>).</exception>
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
-        _webSocket = new ClientWebSocket();
-        _webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
+#if NET10_0_OR_GREATER
+        ObjectDisposedException.ThrowIf(_cancellationTokenSource.IsCancellationRequested, this);
+#else
+        // ObjectDisposedException.ThrowIf is unavailable on netstandard2.0.
+        if (_cancellationTokenSource.IsCancellationRequested)
+        {
+            throw new ObjectDisposedException(GetType().FullName);
+        }
+#endif
+
+        if (IsConnected())
+        {
+            throw new InvalidOperationException("Already connected. Call DisconnectAsync before reconnecting.");
+        }
+
+        // Reconnect support: release the previous (closed/dead) socket so it is never leaked, and
+        // make sure its receive loop has exited so two loops can never read concurrently.
+        if (_webSocket is not null)
+        {
+            _webSocket.Dispose();
+            _webSocket = null;
+            await WaitForReceiveLoopExitAsync().ConfigureAwait(false);
+        }
+
+        var webSocket = new ClientWebSocket();
+        webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
 
         var uri = useFacepunchProxy
             ? new Uri($"wss://companion-rust.facepunch.com/game/{server}/{port}")
@@ -150,18 +185,65 @@ public abstract class RustPlusSocket(
         {
             // Either the caller's token or the instance token can cancel the connect handshake.
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
-            await _webSocket.ConnectAsync(uri, linked.Token).ConfigureAwait(false);
-
-            // The background loops outlive the connect call, so they track the instance token only.
-            ReceiveLoopForTests = Task.Run(ReceiveAsync, CancellationToken);
-            SendLoopForTests = Task.Run(ProcessSendQueueAsync, CancellationToken);
-
-            Connected?.Invoke(this, EventArgs.Empty);
+            await webSocket.ConnectAsync(uri, linked.Token).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
+            // Surface the failure on the event *and* to the caller: awaiting ConnectAsync must never
+            // "succeed" against a server that was never reached.
+            webSocket.Dispose();
             Debug.WriteLine($"Exception occured on ConnectAsync: {ex}");
             ErrorOccurred?.Invoke(this, ex);
+            throw;
+        }
+
+        _webSocket = webSocket;
+
+        // The background loops outlive the connect call, so they track the instance token only.
+        // The receive loop is bound to its own socket so a stale loop can never read a newer connection.
+#pragma warning disable CA2025 // the loop owns this socket's read side by design; teardown/reconnect awaits the loop before disposing it
+        ReceiveLoopForTests = Task.Run(() => ReceiveAsync(webSocket), CancellationToken);
+#pragma warning restore CA2025
+
+        // The send loop drains a single channel across reconnects; only start it if it is not running
+        // (first connect, or it exited when a previous connection broke mid-send).
+        if (SendLoopForTests is not { IsCompleted: false })
+        {
+            SendLoopForTests = Task.Run(ProcessSendQueueAsync, CancellationToken);
+        }
+
+        Connected?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Awaits the previous connection's receive loop before a reconnect, bounded by
+    /// <see cref="TeardownTimeout"/>. Disposing the old socket unblocks its read, so a clean exit is
+    /// prompt; a fault from that torn-down read is expected and swallowed.
+    /// </summary>
+    private async Task WaitForReceiveLoopExitAsync()
+    {
+        var loop = ReceiveLoopForTests;
+        if (loop is null)
+        {
+            return;
+        }
+
+        var completed = await Task.WhenAny(loop, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
+        if (completed != loop)
+        {
+            return;
+        }
+
+        try
+        {
+#pragma warning disable VSTHRD003 // we own this background task; awaiting it before reconnect cannot deadlock
+            await loop.ConfigureAwait(false);
+#pragma warning restore VSTHRD003
+        }
+        catch (Exception ex)
+        {
+            // The old loop faulting as its socket was torn down is expected; never block a reconnect on it.
+            Debug.WriteLine($"Previous receive loop faulted before reconnect (expected): {ex}");
         }
     }
 
@@ -183,12 +265,13 @@ public abstract class RustPlusSocket(
     /// cancellation or timeout the pending entry is removed and the task faults with a clear exception.
     /// </summary>
     /// <param name="request">The <see cref="AppRequest"/> to send.</param>
-    /// <param name="expectsBroadcastReply">When <see langword="true"/>, the reply is delivered as a broadcast
-    /// (no seq) and is matched FIFO rather than by sequence number.</param>
+    /// <param name="broadcastReplyMatcher">When non-null, the success reply is delivered as a broadcast
+    /// (no seq); the first incoming broadcast this predicate matches resolves the request. Unrelated
+    /// broadcasts (other players' messages, other entities) are left to the notification pipeline.</param>
     /// <param name="cancellationToken">A token to cancel waiting for the response.</param>
     /// <returns>A task that represents the asynchronous operation and contains the <see cref="AppMessage"/> response.</returns>
     /// <exception cref="TimeoutException">Thrown when no response arrives within the request timeout.</exception>
-    public async Task<AppMessage> SendRequestAsync(AppRequest request, bool expectsBroadcastReply = false, CancellationToken cancellationToken = default)
+    public async Task<AppMessage> SendRequestAsync(AppRequest request, Func<AppBroadcast, bool>? broadcastReplyMatcher = null, CancellationToken cancellationToken = default)
     {
         // RunContinuationsAsynchronously keeps the receive loop from running awaiters inline when it resolves the TCS.
         var tcs = new TaskCompletionSource<AppMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -200,10 +283,13 @@ public abstract class RustPlusSocket(
 
         // Always keyed by seq: even a broadcast-reply request gets a seq-bearing response on error.
         _pendingRequests[seq] = tcs;
-        if (expectsBroadcastReply)
+        if (broadcastReplyMatcher is not null)
         {
-            // …and additionally matched FIFO, because its success reply is a broadcast (no seq).
-            _pendingBroadcastReplies.Enqueue(tcs);
+            // …and additionally matched by predicate, because its success reply is a broadcast (no seq).
+            lock (_broadcastRepliesLock)
+            {
+                _pendingBroadcastReplies.Add((broadcastReplyMatcher, tcs));
+            }
         }
 
         SendingRequest?.Invoke(this, EventArgs.Empty);
@@ -232,6 +318,13 @@ public abstract class RustPlusSocket(
         finally
         {
             _pendingRequests.TryRemove(seq, out _);
+            if (broadcastReplyMatcher is not null)
+            {
+                lock (_broadcastRepliesLock)
+                {
+                    _pendingBroadcastReplies.RemoveAll(waiter => ReferenceEquals(waiter.Tcs, tcs));
+                }
+            }
         }
     }
 
@@ -481,14 +574,16 @@ public abstract class RustPlusSocket(
     /// <exception cref="InvalidOperationException">
     /// Thrown if the WebSocket is in an invalid state.
     /// </exception>
-    private async Task ReceiveAsync()
+    /// <param name="webSocket">The connection this loop reads; bound per-loop so a stale loop from a
+    /// previous connection can never read a newer socket during a reconnect.</param>
+    private async Task ReceiveAsync(ClientWebSocket webSocket)
     {
         const int bufferSize = 1024;
         var buffer = new byte[bufferSize];
 
         Debug.WriteLine("Receiving data from the Rust+ server...");
 
-        while (IsConnected() && !CancellationToken.IsCancellationRequested)
+        while (webSocket.State == WebSocketState.Open && !CancellationToken.IsCancellationRequested)
         {
             Debug.WriteLine("Waiting for data...");
             try
@@ -498,7 +593,7 @@ public abstract class RustPlusSocket(
 
                 do
                 {
-                    result = await _webSocket!.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken).ConfigureAwait(false);
+                    result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken).ConfigureAwait(false);
                     receiveBuffer.AddRange(buffer.Take(result.Count));
                 } while (!result.EndOfMessage);
 
@@ -525,7 +620,7 @@ public abstract class RustPlusSocket(
                 }
 
                 // Correlate the reply. A seq-bearing response resolves the request it answers; a broadcast
-                // resolves the oldest request that opted into a broadcast reply, else it is a pure notification.
+                // resolves the oldest waiter whose matcher accepts it, else it is a pure notification.
                 if (message.Response is not null)
                 {
                     if (_pendingRequests.TryRemove(message.Response.Seq, out var tcs))
@@ -535,14 +630,7 @@ public abstract class RustPlusSocket(
                 }
                 else if (message.Broadcast is not null)
                 {
-                    while (_pendingBroadcastReplies.TryDequeue(out var tcs))
-                    {
-                        // Skip entries already cancelled/timed-out; stop once a live waiter is resolved.
-                        if (tcs.TrySetResult(message))
-                        {
-                            break;
-                        }
-                    }
+                    ResolveBroadcastReply(message);
                 }
             }
             catch (OperationCanceledException)
@@ -575,5 +663,56 @@ public abstract class RustPlusSocket(
             }
         }
         Debug.WriteLine("Receive loop exited.");
+    }
+
+    /// <summary>
+    /// Resolves an incoming broadcast against the pending broadcast-reply waiters: the oldest live
+    /// waiter whose matcher accepts the broadcast wins. A broadcast that matches no waiter is a pure
+    /// notification and is left untouched (it was already dispatched via <see cref="ParseNotification"/>).
+    /// </summary>
+    /// <param name="message">The received <see cref="AppMessage"/> carrying a non-null broadcast.</param>
+    private void ResolveBroadcastReply(AppMessage message)
+    {
+        lock (_broadcastRepliesLock)
+        {
+            var index = 0;
+            while (index < _pendingBroadcastReplies.Count)
+            {
+                var (matches, tcs) = _pendingBroadcastReplies[index];
+                if (!SafeMatches(matches, message.Broadcast))
+                {
+                    index++;
+                    continue;
+                }
+
+                _pendingBroadcastReplies.RemoveAt(index);
+
+                // RunContinuationsAsynchronously means no awaiter runs inline under this lock.
+                // A false result is a waiter already cancelled/timed-out: keep scanning.
+                if (tcs.TrySetResult(message))
+                {
+                    return;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Runs a broadcast-reply matcher defensively: a throwing matcher (from a derived class) must count
+    /// as "no match", never kill the receive loop.
+    /// </summary>
+    /// <param name="matches">The matcher supplied by the requester.</param>
+    /// <param name="broadcast">The broadcast under consideration.</param>
+    private static bool SafeMatches(Func<AppBroadcast, bool> matches, AppBroadcast broadcast)
+    {
+        try
+        {
+            return matches(broadcast);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Broadcast-reply matcher threw; treating as no match: {ex}");
+            return false;
+        }
     }
 }

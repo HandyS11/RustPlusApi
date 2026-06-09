@@ -27,7 +27,16 @@ catch (Exception ex)
 
 using var rustPlus = new RustPlusApi.RustPlus(credentials.Ip, credentials.Port, credentials.PlayerId, credentials.PlayerToken);
 
-await rustPlus.ConnectAsync();
+try
+{
+    await rustPlus.ConnectAsync();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Failed to connect to {credentials.Ip}:{credentials.Port} — {ex.Message}");
+    Console.WriteLine("Check that the server is up and the credentials are current.");
+    return;
+}
 
 var isRunning = true;
 while (isRunning)

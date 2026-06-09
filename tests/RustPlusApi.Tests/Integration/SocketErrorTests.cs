@@ -11,17 +11,19 @@ public class SocketErrorTests
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
     [Fact]
-    public async Task ConnectAsync_ToDeadPort_RaisesErrorOccurred()
+    public async Task ConnectAsync_ToDeadPort_RaisesErrorOccurredAndThrows()
     {
-        // Port 1 (or any closed loopback port) makes the WebSocket connect throw -> ErrorOccurred.
+        // Port 1 (or any closed loopback port) makes the WebSocket connect throw -> ErrorOccurred + rethrow.
         await using var client = new RustPlus("127.0.0.1", 1, 1, 1);
         var error = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
         client.ErrorOccurred += (_, ex) => error.TrySetResult(ex);
 
-        await client.ConnectAsync().WaitAsync(Timeout);
+        // The failure must surface to the caller, not just on the event: awaiting ConnectAsync against
+        // a server that was never reached can no longer look like success.
+        var thrown = await Assert.ThrowsAnyAsync<Exception>(() => client.ConnectAsync().WaitAsync(Timeout));
 
         var ex = await error.Task.WaitAsync(Timeout);
-        Assert.NotNull(ex);
+        Assert.Same(ex, thrown);
         Assert.False(client.IsConnected());
     }
 
@@ -46,15 +48,15 @@ public class SocketErrorTests
     }
 
     [Fact]
-    public async Task ConnectAsync_WithFacepunchProxy_RaisesErrorOccurred()
+    public async Task ConnectAsync_WithFacepunchProxy_RaisesErrorOccurredAndThrows()
     {
         // useFacepunchProxy=true exercises the wss:// URL branch in ConnectAsync; connecting
-        // to the Facepunch host will fail in CI, triggering the catch -> ErrorOccurred.
+        // to the Facepunch host will fail in CI, triggering ErrorOccurred + rethrow.
         await using var client = new RustPlus("example.invalid", 28083, 1, 1, useFacepunchProxy: true);
         var error = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
         client.ErrorOccurred += (_, ex) => error.TrySetResult(ex);
 
-        await client.ConnectAsync().WaitAsync(Timeout);
+        await Assert.ThrowsAnyAsync<Exception>(() => client.ConnectAsync().WaitAsync(Timeout));
 
         var ex = await error.Task.WaitAsync(Timeout);
         Assert.NotNull(ex);

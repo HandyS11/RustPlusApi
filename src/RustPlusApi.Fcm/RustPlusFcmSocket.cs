@@ -100,31 +100,42 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// <summary>
     /// Connects to the FCM MCS server over TLS, performs the MCS login handshake,
     /// and starts the background message-receive loop.
+    /// On failure, <see cref="ErrorOccurred"/> is raised, the partial transport is released (so the
+    /// instance can retry), and the exception is rethrown to the caller.
+    /// Instances are single-connection: after <see cref="Disconnect"/> or disposal, create a new
+    /// instance to reconnect.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the connection attempt (TLS connect on net10.0+).</param>
+    /// <exception cref="InvalidOperationException">Thrown when the socket is already connected, or was closed by <see cref="Disconnect"/>/disposal.</exception>
     /// <remarks>Excluded from coverage: live TLS connection to mtalk.google.com:5228;
     /// the MCS pipeline it drives is exercised offline via the <c>RunReceiveLoopOverStreamAsync</c> seam.</remarks>
     [ExcludeFromCodeCoverage]
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
+        if (_tcpClient is not null || _cancellationTokenSource.IsCancellationRequested)
+        {
+            throw new InvalidOperationException(
+                "This socket has already been connected or closed; instances are single-connection — create a new instance to reconnect.");
+        }
+
         Connecting?.Invoke(this, EventArgs.Empty);
-
-        _tcpClient = new TcpClient();
-#if NET10_0_OR_GREATER
-        // Either the caller's token or the instance token can cancel the TLS connect.
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
-        await _tcpClient.ConnectAsync(Host, Port, linked.Token).ConfigureAwait(false);
-#else
-        // netstandard2.0 lacks the CancellationToken overload.
-        await _tcpClient.ConnectAsync(Host, Port).ConfigureAwait(false);
-#endif
-
-        _sslStream = new SslStream(_tcpClient.GetStream(), false);
-        await _sslStream.AuthenticateAsClientAsync(Host).ConfigureAwait(false);
-        _transport = _sslStream;
 
         try
         {
+            _tcpClient = new TcpClient();
+#if NET10_0_OR_GREATER
+            // Either the caller's token or the instance token can cancel the TLS connect.
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
+            await _tcpClient.ConnectAsync(Host, Port, linked.Token).ConfigureAwait(false);
+#else
+            // netstandard2.0 lacks the CancellationToken overload.
+            await _tcpClient.ConnectAsync(Host, Port).ConfigureAwait(false);
+#endif
+
+            _sslStream = new SslStream(_tcpClient.GetStream(), false);
+            await _sslStream.AuthenticateAsClientAsync(Host).ConfigureAwait(false);
+            _transport = _sslStream;
+
             var loginRequest = new LoginRequest
             {
                 AdaptiveHeartbeat = false,
@@ -155,8 +166,19 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         }
         catch (Exception ex)
         {
+            // Surface the failure on the event *and* to the caller, and release the partial transport
+            // so a failed connect leaves the instance clean (and retryable).
+#pragma warning disable CA1849, VSTHRD103, S6966 // sync Dispose is intentional (ns2.0 has no Stream.DisposeAsync)
+            _sslStream?.Dispose();
+#pragma warning restore CA1849, VSTHRD103, S6966
+            _tcpClient?.Dispose();
+            _sslStream = null;
+            _tcpClient = null;
+            _transport = null;
+
             Debug.WriteLine($"Exception occured on ConnectAsync: {ex}");
             ErrorOccurred?.Invoke(this, ex);
+            throw;
         }
     }
 

@@ -92,6 +92,17 @@ public class FcmSocketLifecycleTests
     }
 
     [Fact]
+    public async Task ConnectAsync_AfterDisconnect_ThrowsInvalidOperation()
+    {
+        // FCM sockets are single-connection: Disconnect cancels the instance token for good, so a
+        // reconnect attempt must fail fast (synchronously, before touching the network).
+        await using var socket = NewSocket();
+        socket.Disconnect();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => socket.ConnectAsync());
+    }
+
+    [Fact]
     public void Dispose_IsIdempotent()
     {
         var socket = NewSocket();

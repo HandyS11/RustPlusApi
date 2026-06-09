@@ -72,7 +72,7 @@ public static class MockResponses
         }
         else if (request.SendTeamMessage is not null)
         {
-            return new AppMessage { Broadcast = TeamMessageSendBroadcast(request.SendTeamMessage.Message) };
+            return new AppMessage { Broadcast = TeamMessageSendBroadcast(request.PlayerId, request.SendTeamMessage.Message) };
         }
         else
         {
@@ -357,16 +357,19 @@ public static class MockResponses
 
     /// <summary>
     /// An <see cref="AppBroadcast"/> carrying a team-message for testing <c>SendTeamMessageAsync</c>.
+    /// Echoes the sender's Steam ID, like the real server, so the client's broadcast-reply matcher
+    /// (own Steam ID) recognizes it as the reply.
     /// </summary>
+    /// <param name="steamId">The Steam ID of the player who sent the message.</param>
     /// <param name="message">The message text that was sent.</param>
-    public static AppBroadcast TeamMessageSendBroadcast(string message) =>
+    public static AppBroadcast TeamMessageSendBroadcast(ulong steamId, string message) =>
         new()
         {
             TeamMessage = new AppNewTeamMessage
             {
                 Message = new AppTeamMessage
                 {
-                    SteamId = 76561198000000001,
+                    SteamId = steamId,
                     Name = "Echo",
                     Message = message,
                     Color = "#FFFFFF",

@@ -35,8 +35,11 @@ public interface IRustPlusSocket
     /// <summary>Raised when an unhandled exception occurs on the receive loop.</summary>
     event EventHandler<Exception>? ErrorOccurred;
 
-    /// <summary>Opens the WebSocket connection to the server.</summary>
+    /// <summary>Opens the WebSocket connection to the server. On failure, <c>ErrorOccurred</c> is raised
+    /// and the exception is rethrown. May be called again after a disconnect to reconnect.</summary>
     /// <param name="cancellationToken">A token to cancel the connection attempt.</param>
+    /// <exception cref="ObjectDisposedException">Thrown when the client has been disposed.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the client is already connected.</exception>
     Task ConnectAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Closes the WebSocket connection.</summary>

@@ -1,4 +1,4 @@
-using RustPlus.Fcm.ConsoleApp.Utils;
+﻿using RustPlus.Fcm.ConsoleApp.Utils;
 using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Data;
 using System.Diagnostics;
@@ -60,7 +60,15 @@ listener.OnStorageMonitorParing += (_, pairing) => Console.WriteLine($"[STORAGE 
 listener.OnSmartAlarmParing += (_, pairing) => Console.WriteLine($"[SMART ALARM PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
 listener.OnAlarmTriggered += (_, alarm) => Console.WriteLine($"[ALARM TRIGGERED]:\n{JsonSerializer.Serialize(alarm, JsonUtilities.JsonOptions)}");
 
-await listener.ConnectAsync();
+try
+{
+    await listener.ConnectAsync();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Failed to connect to FCM: {ex.Message}");
+    return;
+}
 
 Console.ReadLine();
 listener.Disconnect();

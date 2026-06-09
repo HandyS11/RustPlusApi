@@ -72,6 +72,107 @@ public class SocketCorrelationTests
     }
 
     [Fact]
+    public async Task BroadcastReply_NonMatchingBroadcasts_StayNotificationsAndDoNotResolveRequest()
+    {
+        // SetEntityValue gets no seq response; its reply is the EntityChanged broadcast for *that*
+        // entity. An EntityChanged for another entity, or a team message, must not be consumed as
+        // the reply — they stay pure notifications.
+        await using var server = new MockRustPlusServer(req =>
+            req.SetEntityValue is not null ? null : MockResponses.Default(req));
+        server.Start();
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        var otherSwitchEvent = new TaskCompletionSource<Data.Events.SmartSwitchEventArg>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        client.OnSmartSwitchTriggered += (_, e) => otherSwitchEvent.TrySetResult(e);
+
+        await client.ConnectAsync().WaitAsync(Timeout);
+        await client.GetInfoAsync().WaitAsync(Timeout); // round-trip so the server registers the socket
+
+        var requestTask = client.SetSmartSwitchValueAsync(42, true);
+        await Task.Delay(150); // request is in flight, waiting on its broadcast reply
+
+        // Unrelated broadcasts arrive first: another entity, then a team message.
+        await server.BroadcastAsync(MockResponses.SmartSwitchBroadcast(7, true));
+        await server.BroadcastAsync(MockResponses.TeamMessageBroadcast(999, "Other", "hi"));
+
+        var notified = await otherSwitchEvent.Task.WaitAsync(Timeout);
+        Assert.Equal(7u, notified.Id); // delivered as a notification, not stolen as the reply
+        Assert.False(requestTask.IsCompleted); // the request is still waiting for *its* broadcast
+
+        // Now the genuine reply for entity 42 arrives.
+        await server.BroadcastAsync(MockResponses.SmartSwitchBroadcast(42, true));
+
+        var response = await requestTask.WaitAsync(Timeout);
+        Assert.True(response.IsSuccess);
+        Assert.True(response.Data!.IsActive);
+    }
+
+    [Fact]
+    public async Task SendTeamMessageAsync_IgnoresAnotherPlayersMessage()
+    {
+        // The reply to SendTeamMessage is the broadcast echoing *our own* message. Another team
+        // member's message arriving in the window must not be returned as ours.
+        await using var server = new MockRustPlusServer(req =>
+            req.SendTeamMessage is not null ? null : MockResponses.Default(req));
+        server.Start();
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+
+        await client.ConnectAsync().WaitAsync(Timeout);
+        await client.GetInfoAsync().WaitAsync(Timeout); // round-trip so the server registers the socket
+
+        var requestTask = client.SendTeamMessageAsync("mine");
+        await Task.Delay(150);
+
+        // Another player's message lands first.
+        await server.BroadcastAsync(MockResponses.TeamMessageBroadcast(999, "Other", "their message"));
+        await Task.Delay(100);
+        Assert.False(requestTask.IsCompleted);
+
+        // The echo of our own message (our Steam ID) resolves the request.
+        await server.BroadcastAsync(MockResponses.TeamMessageSendBroadcast(PlayerId, "mine"));
+
+        var response = await requestTask.WaitAsync(Timeout);
+        Assert.True(response.IsSuccess);
+        Assert.Equal("mine", response.Data!.Message);
+    }
+
+    [Fact]
+    public async Task BroadcastReply_ThrowingMatcher_CountsAsNoMatchAndKeepsReceiveLoopAlive()
+    {
+        // A matcher that throws must be treated as "no match" — never resolve the request with the
+        // wrong message and never kill the receive loop. The seq-bearing response still resolves it.
+        var gate = new SemaphoreSlim(0, 1);
+        await using var server = new MockRustPlusServer(req =>
+        {
+            if (req.GetTime is not null)
+            {
+                gate.Wait(TimeSpan.FromSeconds(5));
+            }
+            return MockResponses.Default(req);
+        });
+        server.Start();
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+
+        await client.ConnectAsync().WaitAsync(Timeout);
+        await client.GetInfoAsync().WaitAsync(Timeout); // round-trip so the server registers the socket
+
+        var requestTask = client.SendRequestAsync(
+            new AppRequest { GetTime = new AppEmpty() },
+            broadcastReplyMatcher: _ => throw new InvalidOperationException("boom"));
+        await Task.Delay(150);
+
+        await server.BroadcastAsync(MockResponses.TeamMessageBroadcast(1, "x", "hi"));
+        await Task.Delay(100);
+        Assert.False(requestTask.IsCompleted); // the throwing matcher did not consume the broadcast
+
+        gate.Release(); // the seq response arrives and resolves the request
+
+        var message = await requestTask.WaitAsync(Timeout);
+        Assert.NotNull(message.Response);
+        Assert.True(client.IsConnected()); // the receive loop survived the throwing matcher
+    }
+
+    [Fact]
     public async Task GetInfoAsync_HonorsCallerCancellationToken()
     {
         // Proves the caller token flows the whole public path: GetInfoAsync → ProcessRequestAsync → SendRequestAsync.

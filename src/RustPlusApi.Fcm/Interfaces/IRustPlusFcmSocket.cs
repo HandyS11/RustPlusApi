@@ -24,8 +24,11 @@ public interface IRustPlusFcmSocket
     /// <summary>Raised when an unhandled exception occurs on the receive loop.</summary>
     event EventHandler<Exception>? ErrorOccurred;
 
-    /// <summary>Connects to the FCM MCS endpoint and begins receiving notifications.</summary>
+    /// <summary>Connects to the FCM MCS endpoint and begins receiving notifications. On failure,
+    /// <c>ErrorOccurred</c> is raised and the exception is rethrown. Instances are single-connection:
+    /// after <see cref="Disconnect"/> or disposal, create a new instance to reconnect.</summary>
     /// <param name="cancellationToken">A token to cancel the connection attempt.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the socket is already connected or was closed.</exception>
     Task ConnectAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Cancels the receive loop and releases socket resources.</summary>

@@ -40,7 +40,7 @@ public class EntityClientTests
         if (request.SendTeamMessage is not null)
         {
             // SendTeamMessageAsync selects r.Broadcast.TeamMessage.Message.ToTeamMessage()
-            return new AppMessage { Broadcast = MockResponses.TeamMessageSendBroadcast(request.SendTeamMessage.Message) };
+            return new AppMessage { Broadcast = MockResponses.TeamMessageSendBroadcast(request.PlayerId, request.SendTeamMessage.Message) };
         }
         response.Success = new AppSuccess();
         return new AppMessage { Response = response };

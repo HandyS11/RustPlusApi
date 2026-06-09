@@ -111,13 +111,14 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <typeparam name="T">The type of the result.</typeparam>
     /// <param name="request">The request to be processed.</param>
     /// <param name="successSelector">The function to select the result from the response.</param>
-    /// <param name="expectsBroadcastReply">When <see langword="true"/>, the reply is delivered as a broadcast
-    /// (no seq), so the selector reads <c>response.Broadcast</c> rather than <c>response.Response</c>.</param>
+    /// <param name="broadcastReplyMatcher">When non-null, the success reply is delivered as a broadcast
+    /// (no seq) and is matched by this predicate, so the selector reads <c>response.Broadcast</c> rather
+    /// than <c>response.Response</c>. Unrelated broadcasts stay pure notifications.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector, bool expectsBroadcastReply = false, CancellationToken cancellationToken = default)
+    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector, Func<AppBroadcast, bool>? broadcastReplyMatcher = null, CancellationToken cancellationToken = default)
     {
-        var response = await SendRequestAsync(request, expectsBroadcastReply, cancellationToken: cancellationToken).ConfigureAwait(false);
+        var response = await SendRequestAsync(request, broadcastReplyMatcher, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         return IsError(response)
             ? ResponseHelper.BuildGenericOutput<T>(false, default!, GetErrorMessage(response))
@@ -460,7 +461,10 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         return await ProcessRequestAsync<TeamMessage?>(
             request,
             r => r.Broadcast.TeamMessage.Message.ToTeamMessage(),
-            expectsBroadcastReply: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            // The reply is the team-message broadcast echoing our own message: match on our Steam ID
+            // so another player's message arriving first cannot be mistaken for the reply.
+            broadcastReplyMatcher: b => b.TeamMessage?.Message?.SteamId == PlayerId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -483,7 +487,10 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         return await ProcessRequestAsync<SmartSwitchInfo?>(
             request,
             r => r.Broadcast.EntityChanged.ToSmartSwitchEvent(),
-            expectsBroadcastReply: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            // The reply is the EntityChanged broadcast for this switch: match on the entity ID so an
+            // unrelated broadcast (team chat, another entity) cannot resolve this request.
+            broadcastReplyMatcher: b => b.EntityChanged?.EntityId == smartSwitchId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

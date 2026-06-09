@@ -97,6 +97,50 @@ public class SocketLifecycleTests
     }
 
     [Fact]
+    public async Task ConnectAsync_AfterDisconnect_ReconnectsAndServesRequests()
+    {
+        await using var server = new MockRustPlusServer();
+        server.Start();
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+
+        await client.ConnectAsync().WaitAsync(Timeout);
+        var first = await client.GetInfoAsync().WaitAsync(Timeout);
+        Assert.True(first.IsSuccess);
+
+        await client.DisconnectAsync().WaitAsync(Timeout);
+        Assert.False(client.IsConnected());
+
+        // Same instance reconnects: the previous socket is released and a fresh one serves requests.
+        await client.ConnectAsync().WaitAsync(Timeout);
+        Assert.True(client.IsConnected());
+
+        var second = await client.GetInfoAsync().WaitAsync(Timeout);
+        Assert.True(second.IsSuccess);
+        Assert.Equal("Mock Rust Server", second.Data!.Name);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhenAlreadyConnected_ThrowsInvalidOperation()
+    {
+        await using var server = new MockRustPlusServer();
+        server.Start();
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.ConnectAsync().WaitAsync(Timeout));
+        Assert.True(client.IsConnected()); // the live connection is untouched
+    }
+
+    [Fact]
+    public async Task ConnectAsync_AfterDispose_ThrowsObjectDisposed()
+    {
+        var client = new RustPlus(MockRustPlusServer.Host, 1, PlayerId, PlayerToken);
+        await client.DisposeAsync();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => client.ConnectAsync());
+    }
+
+    [Fact]
     public async Task StorageMonitorBroadcast_RaisesOnStorageMonitorTriggered()
     {
         await using var server = new MockRustPlusServer();
