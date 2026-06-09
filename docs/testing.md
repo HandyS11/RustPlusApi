@@ -57,24 +57,34 @@ host, it loads the `net10.0` asset. The same xUnit test suite therefore exercise
 outputs without any duplication.
 
 **Headline case — `HtmlColorParser`:** The `FromHtml` method contains a `#if NET10_0_OR_GREATER`
-branch (using `Convert.FromHexString`) and a `#else` branch (manual hex parsing for
-`netstandard2.0`). The `net10.0` run covers the `#if` path; the `net8.0` run covers the `#else`
-path. Both branches are covered *across* the TFM matrix.
+branch (delegating to the in-box `ColorTranslator.FromHtml`) and a `#else` branch (manual hex
+parsing for `netstandard2.0`, where `ColorTranslator` lives in the Windows-only
+`System.Drawing.Common`). The `net10.0` run covers the `#if` path; the `net8.0` run covers the
+`#else` path. `HtmlColorParserTests` asserts identical ARGB results for both, so the two
+implementations are pinned to agree — and the class reaches 100/100 across the TFM matrix.
 
 ---
 
-## Coverage report artifact: `HtmlColorParser` under net10.0
+## Coverage gate
 
-The net10.0 coverage report shows `HtmlColorParser` at approximately 94%/90% rather than 100/100.
-This is a coverlet + `#if` PDB artifact: the `net10.0` compiler does not emit the `#else` block, so
-coverlet registers a phantom sequence point for it; the class is genuinely fully covered when both
-TFM reports are considered together.
+`tools/coverage/report.sh` prints overall `seq=...% branch=...%` per TFM plus every class still
+below 100/100. `tools/coverage/check_threshold.py <line_min> <branch_min>` is the CI gate; it fails
+if either per-TFM report drops below the floor. CI (`.github/workflows/CI.yml`) runs it at
+**line 99 / branch 95**.
 
-**Do not** add `[ExcludeFromCodeCoverage]` to `HtmlColorParser.cs`. That would discard the real
-`net8.0` coverage of the `#else` path.
+Achieved at the time of writing: **net10.0 ≈ 99.6% line / 97.6% branch; net8.0 ≈ 99.3% / 97.3%**.
+The gap to a literal 100% is irreducible and lives entirely in:
 
-The Phase 9 coverage gate should evaluate coverage as "every reachable line is covered by at least
-one TFM" (merged view) rather than requiring 100% in each per-TFM report independently.
+- **Compiler-generated async state-machine branches** — the `MoveNext` fault/continuation arcs in
+  `RustPlusSocket.ReceiveAsync`/`ConnectAsync` and similar `async` methods. No deterministic test
+  can hit these synthetic branches.
+- **Live-socket / live-network lines** — e.g. the non-null `_sslStream?.Close()`/`?.Dispose()`
+  cleanup paths and the connect error-invoke, which only execute after a real TLS/WebSocket
+  connection. The offline pipelines they feed are covered via test seams; the connect itself is
+  `[ExcludeFromCodeCoverage]` (see below).
+
+These are not dead code (so they were not removed) and not cleanly excludable per-branch, so the
+gate floor sits just below the achieved figures rather than at 100%.
 
 ---
 
@@ -89,30 +99,40 @@ Restore the tool once:
 dotnet tool restore
 ```
 
-Run mutation testing against the core library (net10.0):
+Run mutation testing against a project (from the test-project directory so the relative
+`solution` path in the config resolves):
 
 ```bash
-dotnet stryker \
-  --config-file tests/RustPlusApi.Tests/stryker-config.json \
-  --project RustPlusApi.csproj
+cd tests/RustPlusApi.Tests
+dotnet stryker --config-file stryker-config.json --project RustPlusApi.Fcm.csproj
+dotnet stryker --config-file stryker-config.json --project RustPlusApi.Fcm.Registration.csproj
+dotnet stryker --config-file stryker-config.json --project RustPlusApi.Camera.csproj
 ```
 
-Run against a specific project or TFM:
+To mutate the `netstandard2.0` build (exercising the `#else` sides of `#if` forks), add
+`--target-framework net8.0`.
 
-```bash
-dotnet stryker \
-  --config-file tests/RustPlusApi.Tests/stryker-config.json \
-  --project RustPlusApi.Fcm.csproj
+Reports are written to `StrykerOutput/` (git-ignored). Thresholds (in `stryker-config.json`):
+break at 75%, low at 80%, high at 90%. The `.github/workflows/Mutation.yml` workflow runs the
+matrix weekly and on manual dispatch.
 
-dotnet stryker \
-  --config-file tests/RustPlusApi.Tests/stryker-config.json \
-  --project RustPlusApi.csproj \
-  --target-framework net8.0
-```
+### Known limitation: the core `RustPlusApi.csproj` cannot be mutated
 
-Reports are written to `StrykerOutput/` (git-ignored).
+`RustPlusApi.csproj` crashes Stryker 4.x (`CompilationException` in the rollback compiler) because
+`protobuf-net.BuildTools` generates the `RustPlusContracts` types at compile time and Stryker's
+instrumented re-compilation cannot resolve them — even with `--mutate '!**/Protobuf/**'`. The core
+mappers, `RustPlus`, and `RustPlusSocket` are instead covered by exact-assertion unit tests
+(every mapped field, exact error/branch behavior), so their behavior is pinned even though a
+mutation score cannot be measured.
 
-Thresholds (configured in `stryker-config.json`): break at 75%, low at 80%, high at 90%.
+### Achieved mutation scores (net10.0)
+
+| Project | Score | Notes |
+|---|---|---|
+| `RustPlusApi.Camera` | ~97.7% | Remaining survivors are equivalent (signed vs unsigned `>>` on `byte` values). |
+| `RustPlusApi.Fcm.Registration` | ~84.6% | Remaining: `ConfigureAwait`/`Task.Delay` (equivalent in tests) + `[ExcludeFromCodeCoverage]` Steam surface. |
+| `RustPlusApi.Fcm` | ~78.5% | Remaining: `Debug.WriteLine` log-string mutants, live-socket cleanup, and equivalent shift/xor mutants in `McsUtils`. |
+| `RustPlusApi` (core) | n/a | Cannot run — see limitation above. |
 
 ---
 
@@ -143,7 +163,7 @@ logic that could be unit-tested in isolation.
 **Justification:** Post-guard flow drives live Steam login (`SteamLoginService.LoginAsync`) and the
 Rust Companion registration endpoint (`RustCompanionClient.RegisterAsync`). Both are upstream-fragile
 live-network calls. The guard (throwing when `ExpoPushToken` is missing) is unit-tested in
-`RegistrationOrchestrationTests`. The remainder is validated only by the
+`FcmRegistrationTests`. The remainder is validated only by the
 `RegistrationCanaryTests.AcquireCredentials_AgainstRealEndpoints_ProducesTokens` canary.
 
 ### `RustPlusFcmSocket.ConnectAsync`
@@ -153,7 +173,7 @@ live-network calls. The guard (throwing when `ExpoPushToken` is missing) is unit
 **Justification:** Opens a live TLS socket to `mtalk.google.com:5228`, authenticates as an Android
 device, sends an MCS `LoginRequest`, and starts a background receive loop. The entire MCS
 receive/dispatch pipeline it feeds is covered offline via the `RunReceiveLoopOverStream` seam
-(internal method visible to the test assembly) — see `RustPlusFcmSocketTests`. The TCP/TLS connect
+(internal method visible to the test assembly) — see `FcmSocketFramingTests`/`FcmSocketLifecycleTests`. The TCP/TLS connect
 and handshake sequence itself requires the live Google endpoint.
 
 ### `PairingListener.WaitForServerPairingAsync`
@@ -162,7 +182,7 @@ and handshake sequence itself requires the live Google endpoint.
 
 **Justification:** Calls `_fcm.ConnectAsync()` internally, which requires a live FCM connection (see
 above). The pairing-notification mapping helper (`ToServerPairing`) is `internal static` and is fully
-unit-tested in `PairingListenerTests` independently of the live flow.
+unit-tested in `RegistrationTests` independently of the live flow.
 
 ### Generated protobuf contract files (via `ExcludeByFile`)
 
