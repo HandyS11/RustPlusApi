@@ -682,6 +682,33 @@ public class CameraRendererTests
     }
 
     // ──────────────────────────────────────────────────────────────────────────
+    // Malformed-frame robustness: SampleOffset is server/network-supplied.
+    // An odd offset swaps the (x,y) read roles so a sample can map outside the
+    // image buffer; AddRays must drop it (bounds guard) rather than throw.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void AddRays_OddSampleOffset_DropsOutOfRangeSamplesWithoutThrowing()
+    {
+        // 4×2 (width > height) + odd offset makes some samples map to an index
+        // >= width*height (out of range). Seven rays guarantee at least one such
+        // sample (the x-component read reaches 2 or 3), exercising the guard's
+        // false branch. The offset stays below the buffer boundary, so the only
+        // thing under test is the out-of-range image-index guard.
+        var renderer = new CameraRenderer(4, 2);
+        var rays = new List<byte>();
+        for (var n = 0; n < 7; n++) rays.AddRange(FullRay(128, 63, 2));
+
+        var exception = Record.Exception(() =>
+            renderer.AddRays(new CameraFrame { RayData = rays.ToArray(), SampleOffset = 1 }));
+
+        Assert.Null(exception);
+        using var image = Decode(renderer.Render());
+        Assert.Equal(4, image.Width);
+        Assert.Equal(2, image.Height);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
     // Private helper
     // ──────────────────────────────────────────────────────────────────────────
 

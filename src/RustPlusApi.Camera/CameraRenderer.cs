@@ -85,7 +85,11 @@ public sealed class CameraRenderer(int width, int height)
 
             sampleOffset %= 2 * width * height;
             var index = _samplePositionBuffer[sampleOffset++] + (_samplePositionBuffer[sampleOffset++] * width);
-            _output[index] = (t, r, i);
+            // SampleOffset is server/network-supplied; a malformed (e.g. odd) offset can map a
+            // sample past the end of the image buffer. Drop those rather than throw. (index is a
+            // sum of non-negative sample-buffer values, so it can only ever be too large, never < 0.)
+            if (index < _output.Length)
+                _output[index] = (t, r, i);
         }
     }
 
