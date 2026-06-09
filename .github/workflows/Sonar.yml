@@ -36,7 +36,7 @@ jobs:
       - name: Cache SonarQube packages
         uses: actions/cache@v4
         with:
-          path: ~\.sonar\cache
+          path: ${{ runner.temp }}\cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
@@ -55,27 +55,10 @@ jobs:
           New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
           dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
 
-      - name: Build and test
+      - name: Build and analyze
         shell: powershell
         run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.exclusions="**/samples/**" /d:sonar.coverage.exclusions="**/samples/**,**/tests/**,**/tools/**" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" /d:sonar.scanner.scanAll=false /d:sonar.scanner.skipJreProvisioning=true
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.exclusions="**/samples/**" /d:sonar.coverage.exclusions="**/samples/**,**/tests/**,**/tools/**" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
           dotnet build
-          dotnet test --no-build --collect:"XPlat Code Coverage;Format=opencover" -p:TestTfmsInParallel=false
-
-      - name: End Sonar analysis
-        if: ${{ always() }}
-        shell: powershell
-        run: |
-          $maxAttempts = 3
-          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-            ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
-            if ($LASTEXITCODE -eq 0) {
-              break
-            }
-
-            if ($attempt -eq $maxAttempts) {
-              exit $LASTEXITCODE
-            }
-
-            Start-Sleep -Seconds (10 * $attempt)
-          }
+          dotnet test --no-build --collect:"XPlat Code Coverage;Format=opencover" --blame-hang-timeout 60s
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
