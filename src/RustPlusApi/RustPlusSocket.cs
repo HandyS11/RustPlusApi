@@ -24,8 +24,10 @@ public abstract class RustPlusSocket(
     ulong playerId,
     int playerToken,
     bool useFacepunchProxy = false)
-    : IRustPlusSocket, IDisposable
+    : IRustPlusSocket, IDisposable, IAsyncDisposable
 {
+    /// <summary>Bounds teardown waits so a wedged loop or dead peer cannot hang disposal.</summary>
+    private static readonly TimeSpan TeardownTimeout = TimeSpan.FromSeconds(5);
     /// <summary>
     /// Occurs when the client is about to connect to the Rust+ server.
     /// </summary>
@@ -97,6 +99,15 @@ public abstract class RustPlusSocket(
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
+    private Task? _receiveLoop;
+    private Task? _sendLoop;
+
+    /// <summary>Test seam: the tracked receive loop, so tests can assert it actually completed on teardown.</summary>
+    internal Task? ReceiveLoopForTests => _receiveLoop;
+
+    /// <summary>Test seam: the tracked send loop, so tests can assert it actually completed on teardown.</summary>
+    internal Task? SendLoopForTests => _sendLoop;
+
     private int _playerToken = playerToken;
     private ulong _playerId = playerId;
 
@@ -119,10 +130,10 @@ public abstract class RustPlusSocket(
 
         try
         {
-            await _webSocket.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
+            await _webSocket.ConnectAsync(uri, CancellationToken).ConfigureAwait(false);
 
-            _ = Task.Run(ReceiveAsync, CancellationToken.None);
-            _ = Task.Run(ProcessSendQueueAsync, CancellationToken.None);
+            _receiveLoop = Task.Run(ReceiveAsync, CancellationToken);
+            _sendLoop = Task.Run(ProcessSendQueueAsync, CancellationToken);
 
             Connected?.Invoke(this, EventArgs.Empty);
         }
@@ -185,12 +196,27 @@ public abstract class RustPlusSocket(
 
         while (!_responseQueue.IsEmpty && !forceClose)
         {
-            await Task.Delay(50, CancellationToken.None).ConfigureAwait(false);
+            await Task.Delay(50, CancellationToken).ConfigureAwait(false);
         }
 
         // Give the server a moment to flush any in-flight responses before closing.
-        await Task.Delay(1000, CancellationToken.None).ConfigureAwait(false);
-        await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None).ConfigureAwait(false);
+        await Task.Delay(1000, CancellationToken).ConfigureAwait(false);
+
+        // Bound the close handshake: a dead peer that never acks must not hang teardown.
+        using var closeTimeout = new CancellationTokenSource(TeardownTimeout);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
+        try
+        {
+            await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, linked.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Bounded close timed out (or the instance token was cancelled): drop the socket regardless.
+        }
+        catch (WebSocketException)
+        {
+            // Peer already gone; nothing to close gracefully.
+        }
 
         Disconnected?.Invoke(this, EventArgs.Empty);
     }
@@ -225,6 +251,61 @@ public abstract class RustPlusSocket(
 
         _webSocket?.Dispose();
         _cancellationTokenSource.Dispose();
+    }
+
+    /// <summary>
+    /// Asynchronously disposes the client: cancels background work, awaits the tracked receive/send
+    /// loops (bounded by <see cref="TeardownTimeout"/>), then releases the WebSocket. Prefer this over
+    /// <see cref="Dispose()"/> so teardown deterministically drains in-flight I/O instead of abandoning it.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore().ConfigureAwait(false);
+        SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Cancels the instance token, awaits the tracked background loops (bounded), and releases resources.
+    /// Override to extend async teardown in derived classes.
+    /// </summary>
+    protected virtual async ValueTask DisposeAsyncCore()
+    {
+        if (!_cancellationTokenSource.IsCancellationRequested)
+        {
+#if NET10_0_OR_GREATER
+            await _cancellationTokenSource.CancelAsync().ConfigureAwait(false);
+#else
+            _cancellationTokenSource.Cancel();
+#endif
+        }
+
+        await WaitForLoopsAsync().ConfigureAwait(false);
+
+        _webSocket?.Dispose();
+        _cancellationTokenSource.Dispose();
+    }
+
+    /// <summary>
+    /// Awaits the tracked receive/send loops, bounded by <see cref="TeardownTimeout"/> so a wedged loop
+    /// cannot hang disposal. The loops swallow their own cancellation, so a clean stop completes promptly.
+    /// </summary>
+    private async Task WaitForLoopsAsync()
+    {
+        var loops = new[] { _receiveLoop, _sendLoop }
+            .Where(static t => t is not null)
+            .Cast<Task>()
+            .ToArray();
+        if (loops.Length == 0)
+        {
+            return;
+        }
+
+        var all = Task.WhenAll(loops);
+        var completed = await Task.WhenAny(all, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
+        if (completed == all)
+        {
+            await all.ConfigureAwait(false); // observe faults; cancellation is swallowed inside the loops
+        }
     }
 
     /// <summary>
@@ -278,18 +359,25 @@ public abstract class RustPlusSocket(
     /// </summary>
     private async Task ProcessSendQueueAsync()
     {
-        while (IsConnected() && !CancellationToken.IsCancellationRequested)
+        try
         {
-            if (_sendQueue.TryDequeue(out var request))
+            while (IsConnected() && !CancellationToken.IsCancellationRequested)
             {
+                if (_sendQueue.TryDequeue(out var request))
+                {
 #pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
-                using var ms = new MemoryStream();
+                    using var ms = new MemoryStream();
 #pragma warning restore RCS1261
-                Serializer.Serialize(ms, request);
-                var buffer = ms.ToArray();
-                await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true, CancellationToken.None).ConfigureAwait(false);
+                    Serializer.Serialize(ms, request);
+                    var buffer = ms.ToArray();
+                    await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true, CancellationToken).ConfigureAwait(false);
+                }
+                await Task.Delay(100, CancellationToken).ConfigureAwait(false);
             }
-            await Task.Delay(100, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Teardown cancelled the token mid-send/delay: exit the loop cleanly.
         }
     }
 
@@ -321,7 +409,7 @@ public abstract class RustPlusSocket(
 
                 do
                 {
-                    result = await _webSocket!.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None).ConfigureAwait(false);
+                    result = await _webSocket!.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken).ConfigureAwait(false);
                     receiveBuffer.AddRange(buffer.Take(result.Count));
                 } while (!result.EndOfMessage);
 
@@ -354,6 +442,11 @@ public abstract class RustPlusSocket(
                         tcs.SetResult(message);
                     }
                 }, CancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Teardown cancelled the instance token: leave the receive loop without raising an error.
+                break;
             }
             catch (WebSocketException ex)
             {

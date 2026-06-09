@@ -30,7 +30,7 @@ public class ClanNexusClientTests
     {
         var (server, client) = await ConnectAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
 
         var response = await client.GetClanInfoAsync().WaitAsync(Timeout);
 
@@ -44,7 +44,7 @@ public class ClanNexusClientTests
     {
         var (server, client) = await ConnectAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
 
         var response = await client.GetClanChatAsync().WaitAsync(Timeout);
 
@@ -58,7 +58,7 @@ public class ClanNexusClientTests
     {
         var (server, client) = await ConnectAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
 
         var response = await client.GetNexusAuthAsync("app-key").WaitAsync(Timeout);
 
@@ -71,7 +71,7 @@ public class ClanNexusClientTests
     {
         var (server, client) = await ConnectAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
 
         var response = await client.SetClanMotdAsync("new motd").WaitAsync(Timeout);
 
@@ -85,7 +85,7 @@ public class ClanNexusClientTests
         // Regression guard for the IsError fix: a bare AppSuccess used to be treated as an error.
         var (server, client) = await ConnectAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
 
         var response = await client.PromoteToLeaderAsync(PlayerId).WaitAsync(Timeout);
 
@@ -98,7 +98,7 @@ public class ClanNexusClientTests
     {
         var (server, client) = await ConnectAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
 
         var received = new TaskCompletionSource<ClanMessageEventArg>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -119,7 +119,7 @@ public class ClanNexusClientTests
     {
         var (server, client) = await ConnectAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
 
         var received = new TaskCompletionSource<ClanChangedEventArg>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -139,7 +139,7 @@ public class ClanNexusClientTests
     {
         var (server, client) = await ConnectAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
 
         var response = await client.SendClanMessageAsync("hello clan").WaitAsync(Timeout);
 

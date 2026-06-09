@@ -23,15 +23,20 @@ namespace RustPlusApi.Fcm;
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
 /// <param name="persistentIds">The collection of persistent IDs as <see cref="ICollection{T}"/> of <see cref="string"/>.</param>
 public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<string>? persistentIds = null)
-    : IRustPlusFcmSocket, IDisposable
+    : IRustPlusFcmSocket, IDisposable, IAsyncDisposable
 {
     private const string Host = "mtalk.google.com";
     private const int Port = 5228;
 
     private const int KMcsVersion = 41;
 
+    /// <summary>Bounds teardown waits so a wedged receive loop cannot hang disposal.</summary>
+    private static readonly TimeSpan TeardownTimeout = TimeSpan.FromSeconds(5);
+
     private TcpClient? _tcpClient;
     private SslStream? _sslStream;
+
+    private Task? _receiveLoop;
 
     /// <summary>The transport stream used for reading and writing MCS frames.
     /// In production this is set to the authenticated <see cref="SslStream"/> immediately after
@@ -138,7 +143,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
             Connected?.Invoke(this, EventArgs.Empty);
 
-            _ = Task.Run(ReceiveMessages, CancellationToken);
+            _receiveLoop = Task.Run(ReceiveMessages, CancellationToken);
         }
         catch (Exception ex)
         {
@@ -196,6 +201,90 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         _sslStream?.Dispose();
         _tcpClient?.Dispose();
         _cancellationTokenSource.Dispose();
+    }
+
+    /// <summary>
+    /// Asynchronously disposes the socket: cancels background work, unblocks the in-progress read by
+    /// tearing down the transport, then awaits the tracked receive loop (bounded by <see cref="TeardownTimeout"/>)
+    /// before releasing remaining resources. Prefer this over <see cref="Dispose()"/> so teardown
+    /// deterministically drains the receive loop instead of abandoning it.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore().ConfigureAwait(false);
+        SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Cancels the instance token, tears down the transport to unblock the synchronous read, awaits the
+    /// tracked receive loop (bounded), then disposes remaining resources. Override to extend async teardown.
+    /// </summary>
+    protected virtual async ValueTask DisposeAsyncCore()
+    {
+        if (!_cancellationTokenSource.IsCancellationRequested)
+        {
+#if NET10_0_OR_GREATER
+            await _cancellationTokenSource.CancelAsync().ConfigureAwait(false);
+#else
+            _cancellationTokenSource.Cancel();
+#endif
+        }
+
+        // Tear down the transport so any blocking Read/ReadByte unblocks and the loop can observe EOF.
+        // Synchronous Dispose is intentional: it works on both TFMs (netstandard2.0 lacks Stream.DisposeAsync)
+        // and a cheap unblock is all that's needed here.
+#pragma warning disable CA1849, VSTHRD103, S6966 // sync Dispose is intentional (ns2.0 has no Stream.DisposeAsync)
+        _transport?.Dispose();
+        _sslStream?.Dispose();
+#pragma warning restore CA1849, VSTHRD103, S6966
+        _tcpClient?.Dispose();
+
+        await WaitForReceiveLoopAsync().ConfigureAwait(false);
+
+        _cancellationTokenSource.Dispose();
+    }
+
+    /// <summary>
+    /// Awaits the tracked receive loop, bounded by <see cref="TeardownTimeout"/>. A fault is expected when
+    /// the transport is torn out from under a blocking read, so it is swallowed on teardown.
+    /// </summary>
+    private async Task WaitForReceiveLoopAsync()
+    {
+        var loop = _receiveLoop;
+        if (loop is null)
+        {
+            return;
+        }
+
+        var completed = await Task.WhenAny(loop, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
+        if (completed != loop)
+        {
+            return;
+        }
+
+        try
+        {
+#pragma warning disable VSTHRD003 // we own this background task; awaiting it on teardown cannot deadlock
+            await loop.ConfigureAwait(false);
+#pragma warning restore VSTHRD003
+        }
+        catch (Exception ex)
+        {
+            // The loop faulted because the transport was disposed mid-read: expected during teardown.
+            Debug.WriteLine($"Receive loop faulted during teardown (expected): {ex}");
+        }
+    }
+
+    /// <summary>Test seam: starts the MCS receive/dispatch loop as a tracked background task over an
+    /// arbitrary stream and returns it, so tests can assert teardown awaits it. Internal — visible only to
+    /// RustPlusApi.Tests.</summary>
+    /// <param name="stream">The stream to read MCS frames from and write responses to.</param>
+    /// <returns>The tracked receive-loop task.</returns>
+    internal Task StartReceiveLoopOverStreamForTestsAsync(Stream stream)
+    {
+        _transport = stream;
+        _receiveLoop = Task.Run(ReceiveMessages, CancellationToken);
+        return _receiveLoop;
     }
 
     /// <summary>Test seam: runs the MCS receive/dispatch loop against an arbitrary stream,

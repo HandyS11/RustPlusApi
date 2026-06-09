@@ -24,9 +24,10 @@
         <PackageReference Include="protobuf-net" />
     </ItemGroup>
 
-    <!-- netstandard2.0 BCL gap: System.Text.Json (in-box on net10) (v2 §1). -->
+    <!-- netstandard2.0 BCL gap: System.Text.Json (in-box on net10) (v2 §1), plus IAsyncDisposable/ValueTask. -->
     <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
         <PackageReference Include="System.Text.Json" />
+        <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
     </ItemGroup>
 
     <ItemGroup>

@@ -69,7 +69,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectEntityAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         var response = await client.GetSmartSwitchInfoAsync(1).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.True(response.Data!.IsActive);
@@ -93,7 +93,7 @@ public class EntityClientTests
             return new AppMessage { Response = resp };
         });
         server.Start();
-        using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetAlarmInfoAsync(1).WaitAsync(Timeout);
@@ -119,7 +119,7 @@ public class EntityClientTests
             return new AppMessage { Response = resp };
         });
         server.Start();
-        using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetStorageMonitorInfoAsync(1).WaitAsync(Timeout);
@@ -133,7 +133,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectEntityAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         var response = await client.CheckSubscriptionAsync(1).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.True(response.Data!.IsSubscribed);
@@ -144,7 +144,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectEntityAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         var response = await client.SetSmartSwitchValueAsync(1, true).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.True(response.Data!.IsActive);
@@ -155,7 +155,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectEntityAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         // Current state is true (GetEntityInfo returns true), so Toggle writes false.
         var response = await client.ToggleSmartSwitchAsync(1).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
@@ -167,7 +167,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectEntityAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         var response = await client.StrobeSmartSwitchAsync(1, timeoutMilliseconds: 10, value: true)
             .WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
@@ -178,7 +178,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectEntityAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         var response = await client.SetSubscriptionAsync(1).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
     }
@@ -188,7 +188,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectEntityAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         var response = await client.SendTeamMessageAsync("hi").WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.Equal("hi", response.Data!.Message);
@@ -199,7 +199,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectDefaultAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         var response = await client.GetMapAsync().WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.Equal(2000u, response.Data!.Width);
@@ -210,7 +210,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectDefaultAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         var response = await client.GetMapMarkersAsync().WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.NotNull(response.Data);
@@ -222,7 +222,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectDefaultAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         var response = await client.GetTeamInfoAsync().WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         Assert.Equal(76561198000000001ul, response.Data!.LeaderSteamId);
@@ -234,7 +234,7 @@ public class EntityClientTests
     {
         var (server, client) = await ConnectDefaultAsync();
         await using var _ = server;
-        using var __ = client;
+        await using var __ = client;
         var response = await client.GetTeamChatAsync().WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         var message = Assert.Single(response.Data!.Messages!);
