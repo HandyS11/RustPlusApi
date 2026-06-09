@@ -111,10 +111,12 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <typeparam name="T">The type of the result.</typeparam>
     /// <param name="request">The request to be processed.</param>
     /// <param name="successSelector">The function to select the result from the response.</param>
+    /// <param name="expectsBroadcastReply">When <see langword="true"/>, the reply is delivered as a broadcast
+    /// (no seq), so the selector reads <c>response.Broadcast</c> rather than <c>response.Response</c>.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
-    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
+    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector, bool expectsBroadcastReply = false)
     {
-        var response = await SendRequestAsync(request).ConfigureAwait(false);
+        var response = await SendRequestAsync(request, expectsBroadcastReply).ConfigureAwait(false);
 
         return IsError(response)
             ? ResponseHelper.BuildGenericOutput<T>(false, default!, GetErrorMessage(response))
@@ -435,7 +437,8 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<TeamMessage?>(
             request,
-            r => r.Broadcast.TeamMessage.Message.ToTeamMessage()).ConfigureAwait(false);
+            r => r.Broadcast.TeamMessage.Message.ToTeamMessage(),
+            expectsBroadcastReply: true).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -456,7 +459,8 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<SmartSwitchInfo?>(
             request,
-            r => r.Broadcast.EntityChanged.ToSmartSwitchEvent()).ConfigureAwait(false);
+            r => r.Broadcast.EntityChanged.ToSmartSwitchEvent(),
+            expectsBroadcastReply: true).ConfigureAwait(false);
     }
 
     /// <summary>

@@ -41,4 +41,8 @@ public interface IRustPlusSocket
     /// <summary>Closes the WebSocket connection.</summary>
     /// <param name="forceClose">When <see langword="true"/>, aborts the connection immediately instead of sending a close handshake.</param>
     Task DisconnectAsync(bool forceClose = false);
+
+    /// <summary>Indicates whether the WebSocket connection is currently open.</summary>
+    /// <returns><see langword="true"/> if connected; otherwise, <see langword="false"/>.</returns>
+    bool IsConnected();
 }

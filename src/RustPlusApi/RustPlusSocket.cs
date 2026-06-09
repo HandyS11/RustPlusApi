@@ -32,6 +32,9 @@ public abstract class RustPlusSocket(
 
     /// <summary>Backoff applied after a non-fatal receive error so the loop cannot busy-spin on it.</summary>
     private static readonly TimeSpan ReceiveErrorBackoff = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>Default per-request timeout so an awaited response can never hang forever.</summary>
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
     /// <summary>
     /// Occurs when the client is about to connect to the Rust+ server.
     /// </summary>
@@ -100,19 +103,27 @@ public abstract class RustPlusSocket(
     /// <summary>Outgoing requests are handed to the send loop via a channel — no polling, no per-send latency.</summary>
     private readonly Channel<AppRequest> _sendChannel = Channel.CreateUnbounded<AppRequest>(
         new UnboundedChannelOptions { SingleReader = true });
-    private readonly ConcurrentQueue<TaskCompletionSource<AppMessage>> _responseQueue = new();
+
+    /// <summary>Requests answered by a seq-bearing <see cref="AppResponse"/>, keyed by <see cref="AppRequest.Seq"/>
+    /// so each response resolves the request it actually answers; unsolicited broadcasts never touch this map.</summary>
+    private readonly ConcurrentDictionary<uint, TaskCompletionSource<AppMessage>> _pendingRequests = new();
+
+    /// <summary>Requests answered by a broadcast (e.g. SetEntityValue → EntityChanged, SendTeamMessage →
+    /// TeamMessage). Broadcasts carry no seq, so these are matched FIFO; a broadcast with no waiter here is a
+    /// pure notification.</summary>
+    private readonly ConcurrentQueue<TaskCompletionSource<AppMessage>> _pendingBroadcastReplies = new();
+
+    /// <summary>Test seam: the number of in-flight requests awaiting a seq-bearing response.</summary>
+    internal int PendingRequestCountForTests => _pendingRequests.Count;
 
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
-    private Task? _receiveLoop;
-    private Task? _sendLoop;
-
     /// <summary>Test seam: the tracked receive loop, so tests can assert it actually completed on teardown.</summary>
-    internal Task? ReceiveLoopForTests => _receiveLoop;
+    internal Task? ReceiveLoopForTests { get; private set; }
 
     /// <summary>Test seam: the tracked send loop, so tests can assert it actually completed on teardown.</summary>
-    internal Task? SendLoopForTests => _sendLoop;
+    internal Task? SendLoopForTests { get; private set; }
 
     private int _playerToken = playerToken;
     private ulong _playerId = playerId;
@@ -138,8 +149,8 @@ public abstract class RustPlusSocket(
         {
             await _webSocket.ConnectAsync(uri, CancellationToken).ConfigureAwait(false);
 
-            _receiveLoop = Task.Run(ReceiveAsync, CancellationToken);
-            _sendLoop = Task.Run(ProcessSendQueueAsync, CancellationToken);
+            ReceiveLoopForTests = Task.Run(ReceiveAsync, CancellationToken);
+            SendLoopForTests = Task.Run(ProcessSendQueueAsync, CancellationToken);
 
             Connected?.Invoke(this, EventArgs.Empty);
         }
@@ -162,35 +173,69 @@ public abstract class RustPlusSocket(
     }
 
     /// <summary>
-    /// Asynchronously sends a request to the Rust+ server.
-    /// The request is enqueued and the method returns a task that completes when a response is received.
-    /// Raises <see cref="SendingRequest"/> before enqueuing and <see cref="RequestSent"/> after enqueuing.
+    /// Asynchronously sends a request to the Rust+ server and awaits the response correlated by sequence
+    /// number. Raises <see cref="SendingRequest"/> before sending and <see cref="RequestSent"/> after.
+    /// The wait honors <paramref name="cancellationToken"/>, the instance token, and a default timeout; on
+    /// cancellation or timeout the pending entry is removed and the task faults with a clear exception.
     /// </summary>
     /// <param name="request">The <see cref="AppRequest"/> to send.</param>
+    /// <param name="expectsBroadcastReply">When <see langword="true"/>, the reply is delivered as a broadcast
+    /// (no seq) and is matched FIFO rather than by sequence number.</param>
+    /// <param name="cancellationToken">A token to cancel waiting for the response.</param>
     /// <returns>A task that represents the asynchronous operation and contains the <see cref="AppMessage"/> response.</returns>
-    public async Task<AppMessage> SendRequestAsync(AppRequest request)
+    /// <exception cref="TimeoutException">Thrown when no response arrives within the request timeout.</exception>
+    public async Task<AppMessage> SendRequestAsync(AppRequest request, bool expectsBroadcastReply = false, CancellationToken cancellationToken = default)
     {
-        var tcs = new TaskCompletionSource<AppMessage>();
+        // RunContinuationsAsynchronously keeps the receive loop from running awaiters inline when it resolves the TCS.
+        var tcs = new TaskCompletionSource<AppMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        request.Seq = (uint)Interlocked.Increment(ref _seq);
+        var seq = (uint)Interlocked.Increment(ref _seq);
+        request.Seq = seq;
         request.PlayerId = _playerId;
         request.PlayerToken = _playerToken;
+
+        // Always keyed by seq: even a broadcast-reply request gets a seq-bearing response on error.
+        _pendingRequests[seq] = tcs;
+        if (expectsBroadcastReply)
+        {
+            // …and additionally matched FIFO, because its success reply is a broadcast (no seq).
+            _pendingBroadcastReplies.Enqueue(tcs);
+        }
 
         SendingRequest?.Invoke(this, EventArgs.Empty);
 
         _sendChannel.Writer.TryWrite(request);
-        _responseQueue.Enqueue(tcs);
 
         RequestSent?.Invoke(this, request);
 
-        return await tcs.Task.ConfigureAwait(false);
+        using var timeoutCts = new CancellationTokenSource(RequestTimeout);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken, timeoutCts.Token);
+
+        try
+        {
+            // Cancel the wait if the caller cancels, the client is disposed, or the request times out.
+            using (linked.Token.Register(static state => ((TaskCompletionSource<AppMessage>)state!).TrySetCanceled(), tcs))
+            {
+                return await tcs.Task.ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested
+                                                 && !cancellationToken.IsCancellationRequested
+                                                 && !CancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"The Rust+ request (Seq {seq}) timed out after {RequestTimeout.TotalSeconds:0.#}s.");
+        }
+        finally
+        {
+            _pendingRequests.TryRemove(seq, out _);
+        }
     }
 
     /// <summary>
     /// Asynchronously disconnects from the Rust+ server, waiting for pending responses unless <paramref name="forceClose"/> is true.
     /// Raises <c>Disconnecting</c> before disconnecting and <c>Disconnected</c> after.
     /// </summary>
-    /// <param name="forceClose">When <see langword="true"/>, skips draining the pending-response queue.</param>
+    /// <param name="forceClose">When <see langword="true"/>, skips draining in-flight requests.</param>
     public async Task DisconnectAsync(bool forceClose = false)
     {
         if (!IsConnected())
@@ -200,13 +245,12 @@ public abstract class RustPlusSocket(
 
         Disconnecting?.Invoke(this, EventArgs.Empty);
 
-        while (!_responseQueue.IsEmpty && !forceClose)
+        if (!forceClose)
         {
-            await Task.Delay(50, CancellationToken).ConfigureAwait(false);
+            // Drain by awaiting the in-flight requests' completion (bounded), instead of polling a queue
+            // and sleeping a fixed second before closing.
+            await WaitForPendingRequestsAsync().ConfigureAwait(false);
         }
-
-        // Give the server a moment to flush any in-flight responses before closing.
-        await Task.Delay(1000, CancellationToken).ConfigureAwait(false);
 
         // Bound the close handshake: a dead peer that never acks must not hang teardown.
         using var closeTimeout = new CancellationTokenSource(TeardownTimeout);
@@ -300,7 +344,7 @@ public abstract class RustPlusSocket(
     /// </summary>
     private async Task WaitForLoopsAsync()
     {
-        var loops = new[] { _receiveLoop, _sendLoop }
+        var loops = new[] { ReceiveLoopForTests, SendLoopForTests }
             .Where(static t => t is not null)
             .Cast<Task>()
             .ToArray();
@@ -326,6 +370,22 @@ public abstract class RustPlusSocket(
             // escape disposal. The loops swallow their own cancellation, so this is a genuine I/O fault.
             Debug.WriteLine($"Background loop faulted during teardown (expected): {ex}");
         }
+    }
+
+    /// <summary>
+    /// Awaits the settlement of all in-flight requests, bounded by <see cref="TeardownTimeout"/> so a server
+    /// that never answers cannot hang a graceful disconnect. Faults are observed by each request's caller.
+    /// </summary>
+    private async Task WaitForPendingRequestsAsync()
+    {
+        var pending = _pendingRequests.Values.Select(static tcs => tcs.Task).ToArray();
+        if (pending.Length == 0)
+        {
+            return;
+        }
+
+        var all = Task.WhenAll(pending);
+        await Task.WhenAny(all, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -460,13 +520,26 @@ public abstract class RustPlusSocket(
                     ResponseReceived?.Invoke(this, message);
                 }
 
-                _ = Task.Run(() =>
+                // Correlate the reply. A seq-bearing response resolves the request it answers; a broadcast
+                // resolves the oldest request that opted into a broadcast reply, else it is a pure notification.
+                if (message.Response is not null)
                 {
-                    if (_responseQueue.TryDequeue(out var tcs))
+                    if (_pendingRequests.TryRemove(message.Response.Seq, out var tcs))
                     {
-                        tcs.SetResult(message);
+                        tcs.TrySetResult(message);
                     }
-                }, CancellationToken);
+                }
+                else if (message.Broadcast is not null)
+                {
+                    while (_pendingBroadcastReplies.TryDequeue(out var tcs))
+                    {
+                        // Skip entries already cancelled/timed-out; stop once a live waiter is resolved.
+                        if (tcs.TrySetResult(message))
+                        {
+                            break;
+                        }
+                    }
+                }
             }
             catch (OperationCanceledException)
             {
