@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace RustPlusApi.Fcm.UnitTests;
 
+/// <summary>In-memory logger capturing entries so tests can assert level + message.</summary>
 public sealed class SpyLogger : ILogger
 {
     public List<(LogLevel Level, string Message)> Entries { get; } = [];
@@ -20,6 +21,7 @@ public sealed class SpyLogger : ILogger
     }
 }
 
+/// <summary>Factory that hands out a single shared <see cref="SpyLogger"/> for assertions.</summary>
 public sealed class SpyLoggerFactory : ILoggerFactory
 {
     public SpyLogger Logger { get; } = new();

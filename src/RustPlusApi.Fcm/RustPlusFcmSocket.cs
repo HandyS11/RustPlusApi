@@ -40,7 +40,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
     /// <summary>The client's logger; <c>NullLogger</c> when no factory was supplied.
     /// Exposed to derived classes (e.g. <see cref="RustPlusFcm"/>).</summary>
-    private protected ILogger Logger { get; } =
+    private protected readonly ILogger Logger =
         (options?.LoggerFactory ?? NullLoggerFactory.Instance).CreateLogger("RustPlusApi.Fcm.RustPlusFcmSocket");
 
     private TcpClient? _tcpClient;
