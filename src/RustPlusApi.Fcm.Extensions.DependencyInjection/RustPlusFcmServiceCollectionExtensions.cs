@@ -58,7 +58,7 @@ public static class RustPlusFcmServiceCollectionExtensions
     /// <param name="credentials">The FCM credentials to authenticate with.</param>
     /// <param name="configureOptions">Optional tuning applied to <see cref="RustPlusFcmSocketOptions"/>.</param>
     /// <returns>The same <paramref name="services"/>, for chaining.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="credentials"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="services"/> or <paramref name="credentials"/> is <see langword="null"/>.</exception>
     public static IServiceCollection AddRustPlusFcm(
         this IServiceCollection services,
         Credentials credentials,

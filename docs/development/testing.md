@@ -7,7 +7,7 @@ coverage, how to run mutation testing, and why certain members are excluded from
 
 ## Test projects
 
-The monolithic test project was split into five focused projects under `tests/`:
+The monolithic test project was split into **seven** focused projects under `tests/`:
 
 | Source project | Unit tests | Integration tests |
 | --- | --- | --- |

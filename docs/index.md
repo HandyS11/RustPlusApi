@@ -64,6 +64,8 @@ _disableBreadcrumb: true
 | **[RustPlusApi.Fcm](xref:RustPlusApi.Fcm)** | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm) | FCM listener for pairing & alarm notifications. |
 | **[RustPlusApi.Fcm.Registration](xref:RustPlusApi.Fcm.Registration)** | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.Registration.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Registration) | Native credential acquisition (no Node.js). |
 | **[RustPlusApi.Camera](xref:RustPlusApi.Camera)** | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Camera.svg)](https://www.nuget.org/packages/RustPlusApi.Camera) | Renders camera frames into images (ImageSharp). |
+| **[RustPlusApi.Extensions.DependencyInjection](xref:RustPlusApi.Extensions.DependencyInjection)** | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Extensions.DependencyInjection.svg)](https://www.nuget.org/packages/RustPlusApi.Extensions.DependencyInjection) | DI registration (`AddRustPlus`, `IRustPlusFactory`) for the core client. |
+| **[RustPlusApi.Fcm.Extensions.DependencyInjection](xref:RustPlusApi.Fcm.Extensions.DependencyInjection)** | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.Extensions.DependencyInjection.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Extensions.DependencyInjection) | DI registration (`AddRustPlusFcm`, `IRustPlusFcmFactory`) for the FCM listener. |
 
 ## Quickstart
 
