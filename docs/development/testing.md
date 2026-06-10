@@ -141,6 +141,10 @@ Reports are written to `StrykerOutput/` (git-ignored). Thresholds (in `stryker-c
 break at 75%, low at 80%, high at 90%. The `.github/workflows/Mutation.yml` workflow runs the
 matrix weekly and on manual dispatch.
 
+Logging calls are excluded from mutation via `ignore-methods` (`Log*`, `CreateLogger`): the
+`[LoggerMessage]`-generated methods are non-functional diagnostics, so mutating their arguments
+would only produce equivalent or low-value mutants.
+
 ### Known limitation: the core `RustPlusApi.csproj` cannot be mutated
 
 `RustPlusApi.csproj` crashes Stryker 4.x (`CompilationException` in the rollback compiler) because
@@ -156,7 +160,7 @@ mutation score cannot be measured.
 | --- | --- | --- |
 | `RustPlusApi.Camera` | ~97.7% | Remaining survivors are equivalent (signed vs unsigned `>>` on `byte` values). |
 | `RustPlusApi.Fcm.Registration` | ~84.6% | Remaining: `ConfigureAwait`/`Task.Delay` (equivalent in tests) + `[ExcludeFromCodeCoverage]` Steam surface. |
-| `RustPlusApi.Fcm` | ~78.5% | Remaining: `Debug.WriteLine` log-string mutants, live-socket cleanup, and equivalent shift/xor mutants in `McsUtils`. |
+| `RustPlusApi.Fcm` | ~78.5% | Remaining: live-socket cleanup and equivalent shift/xor mutants in `McsUtils`; `Log*`/`CreateLogger` calls are suppressed via `ignore-methods`. |
 | `RustPlusApi` (core) | n/a | Cannot run — see limitation above. |
 
 ---
@@ -227,6 +231,19 @@ path)
 serialization behavior is already locked by `ProtobufRoundTripTests`, `McsRoundTripTests`, and
 `RegistrationTests`. The auto-generated `ShouldSerialize*` / `Reset*` / unused-field members
 accessed only by the protobuf-net runtime are not worth bespoke unit tests.
+
+### `[LoggerMessage]` generated log methods and `RustPlusConnection` record members
+
+**Files:** `src/RustPlusApi/RustPlusSocketLog.cs`, `src/RustPlusApi.Fcm/RustPlusFcmSocketLog.cs`,
+`src/RustPlusApi/RustPlusConnection.cs`
+
+**Justification:** The `[LoggerMessage]` source generator emits the partial log-method bodies with
+`[GeneratedCode]`, and the C# compiler emits the record's `Equals`/`GetHashCode`/`ToString`/
+`Deconstruct`/copy-constructor/equality members with `[CompilerGenerated]`. Both are already dropped
+by the `ExcludeByAttribute` rule (`GeneratedCodeAttribute`, `CompilerGeneratedAttribute`) in the
+`coverlet.runsettings` files, with positional property accessors handled by `SkipAutoProps`. No
+bespoke tests are required for these members; logging behaviour is exercised through the call sites
+in `RustPlusLoggingTests` / `FcmLoggingTests`.
 
 ---
 
