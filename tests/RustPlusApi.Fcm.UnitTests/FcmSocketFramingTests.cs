@@ -427,7 +427,7 @@ public class FcmSocketFramingTests
     public async Task UnrecognizedTag_HeartbeatAck_IsIgnored_NoNotificationAndNoThrow()
     {
         // HeartbeatAck is a known protobuf type but has no explicit handling in OnMessage,
-        // so it falls through to the default arm (Debug.WriteLine + ignore).
+        // so it falls through to the default arm (Logger.LogUnrecognizedTag + ignore).
         await using var socket = NewSocket();
         var raised = false;
         socket.NotificationReceived += (_, _) => raised = true;

@@ -178,7 +178,7 @@ public class SocketLifecycleTests
         // Round-trip so server registers the active socket.
         await client.GetInfoAsync().WaitAsync(Timeout);
 
-        // A broadcast with no recognized payload exercises the Debug.WriteLine fall-through in ParseNotification.
+        // A broadcast with no recognized payload exercises the Logger.LogUnknownBroadcast path in ParseNotification.
         await server.BroadcastAsync(new AppBroadcast());
         await Task.Delay(200);
 
