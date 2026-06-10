@@ -35,9 +35,7 @@ using Microsoft.Extensions.Logging;
 
 using var loggerFactory = LoggerFactory.Create(b => b.AddConsole());
 
-var fcm = new RustPlusFcm(
-    credentials,
-    options: new RustPlusFcmSocketOptions { LoggerFactory = loggerFactory });
+var fcm = new RustPlusFcm(credentials, loggerFactory: loggerFactory);
 ```
 
 ## Credentials

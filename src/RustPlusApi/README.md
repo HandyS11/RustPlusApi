@@ -35,7 +35,7 @@ package.
 
 ## Logging
 
-Pass an `ILoggerFactory` via the options to route the client's diagnostics into your logging stack:
+Pass an `ILoggerFactory` to the constructor to route the client's diagnostics into your logging stack:
 
 ```csharp
 using Microsoft.Extensions.Logging;
@@ -44,7 +44,7 @@ using var loggerFactory = LoggerFactory.Create(b => b.AddConsole());
 
 using var rustPlus = new RustPlus(
     new RustPlusConnection("127.0.0.1", 28082, 76561198000000000, 123456789),
-    new RustPlusSocketOptions { LoggerFactory = loggerFactory });
+    loggerFactory: loggerFactory);
 ```
 
 ## Documentation
