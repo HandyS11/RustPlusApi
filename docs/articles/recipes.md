@@ -156,7 +156,7 @@ if (!sub.IsSuccess)
 
 var info = sub.Data!;
 var renderer = new CameraRenderer(info.Width, info.Height);
-var tcs = new TaskCompletionSource();
+var tcs = new TaskCompletionSource<bool>();
 var frameCount = 0;
 
 rustPlus.OnCameraRaysReceived += async (_, frame) =>
@@ -170,7 +170,7 @@ rustPlus.OnCameraRaysReceived += async (_, frame) =>
     var png = renderer.Render();
     await File.WriteAllBytesAsync("snapshot.png", png);
     Console.WriteLine($"Saved snapshot.png ({png.Length:N0} bytes) after {frameCount} frames.");
-    tcs.TrySetResult();
+    tcs.TrySetResult(true);
 };
 
 await tcs.Task;   // wait until the snapshot is saved

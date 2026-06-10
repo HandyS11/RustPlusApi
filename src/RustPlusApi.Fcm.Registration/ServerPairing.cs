@@ -9,7 +9,7 @@ public sealed record ServerPairing
     /// <summary>The server's IP address or hostname.</summary>
     public string Ip { get; init; } = null!;
 
-    /// <summary>The companion's app port.</summary>
+    /// <summary>The companion app port.</summary>
     public int Port { get; init; }
 
     /// <summary>The Steam64 ID of the player who paired the server.</summary>

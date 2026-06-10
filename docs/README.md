@@ -49,4 +49,4 @@ reference (DocFX rebuilds the `docs/api/` metadata each run).
 | `api/` | Generated API metadata (gitignored). |
 | `_site/` | Generated static site (gitignored). |
 
-This page is also published on the docs site as [Building the Docs](https://handys11.github.io/RustPlusApi/development/building-docs.html).
+A site-published version of this guide is available at [Building the Docs](https://handys11.github.io/RustPlusApi/development/building-docs.html).
