@@ -2,7 +2,7 @@ namespace RustPlusApi.Fcm.Registration;
 
 /// <summary>
 /// The strongly-typed result of an in-game "Pair with Server" notification — exactly the four
-/// arguments needed for <c>new RustPlus(server, port, playerId, playerToken)</c>.
+/// arguments needed for <c>new RustPlus(new RustPlusConnection(server, port, playerId, playerToken))</c>.
 /// </summary>
 public sealed record ServerPairing
 {

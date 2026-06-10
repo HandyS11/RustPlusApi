@@ -28,6 +28,18 @@ await listener.ConnectAsync();
 listener.Disconnect();
 ```
 
+## Logging
+
+```csharp
+using Microsoft.Extensions.Logging;
+
+using var loggerFactory = LoggerFactory.Create(b => b.AddConsole());
+
+var fcm = new RustPlusFcm(
+    credentials,
+    options: new RustPlusFcmSocketOptions { LoggerFactory = loggerFactory });
+```
+
 ## Credentials
 
 Get `credentials` natively with the

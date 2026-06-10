@@ -61,7 +61,7 @@ See [`samples/`](samples/README.md) for the full walkthrough. (You can still use
 **2. Talk to the server:**
 
 ```csharp
-using var rustPlus = new RustPlus(server, port, playerId, playerToken);
+using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken));
 await rustPlus.ConnectAsync();
 
 var info = await rustPlus.GetInfoAsync();

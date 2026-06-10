@@ -27,5 +27,5 @@ var pairing = await listener.WaitForServerPairingAsync();
 
 Console.WriteLine();
 Console.WriteLine("Paired! Use these arguments:");
-Console.WriteLine($"  new RustPlus(\"{pairing.Ip}\", {pairing.Port}, {pairing.PlayerId}, {pairing.PlayerToken});");
+Console.WriteLine($"  new RustPlus(new RustPlusConnection(\"{pairing.Ip}\", {pairing.Port}, {pairing.PlayerId}, {pairing.PlayerToken}));");
 Console.WriteLine($"  (server: {pairing.Name})");
