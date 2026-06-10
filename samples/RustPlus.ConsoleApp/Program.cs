@@ -38,202 +38,94 @@ catch (Exception ex)
     return;
 }
 
-var isRunning = true;
-while (isRunning)
-{
-    Console.Clear();
-    Console.WriteLine("Choose an option:");
-    Console.WriteLine("0. Exit");
-    Console.WriteLine("1. Common Features");
-    Console.WriteLine("2. Team Features");
-    Console.WriteLine("3. Electricity Features");
+var ids = new EntityIdStore();
 
-    Console.Write("\nPlease enter your choice: ");
-    switch (Console.ReadLine())
-    {
-        case "0":
-            isRunning = false;
-            break;
-        case "1":
-            await CommonFeatureMenuAsync();
-            break;
-        case "2":
-            await TeamFeatureMenuAsync();
-            break;
-        case "3":
-            await ElectricityFeatureMenuAsync();
-            break;
-        default:
-            Console.WriteLine("Invalid choice, please try again.");
-            break;
-    }
-
-    Console.WriteLine("\nPress any key to continue...");
-    Console.ReadKey(intercept: true);
-}
+await Menu.RunAsync("Main menu",
+    new MenuItem("Common Features", () => Menu.RunAsync("Common",
+        new MenuItem("Get Info", () => new GetInfo(rustPlus).GetInfoAsync()),
+        new MenuItem("Get Map", () => new GetMap(rustPlus).GetMapAsync()),
+        new MenuItem("Get Map Markers", () => new GetMapMarkers(rustPlus).GetMapMarkersAsync()),
+        new MenuItem("Get Time", () => new GetTime(rustPlus).GetTimeAsync()),
+        new MenuItem("Get Nexus Auth", () =>
+        {
+            Console.Write("\nType the Nexus app key: ");
+            var appKey = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(appKey))
+            {
+                Console.WriteLine("App key cannot be empty.");
+                return Task.CompletedTask;
+            }
+            return new GetNexusAuth(rustPlus).GetNexusAuthAsync(appKey);
+        }))),
+    new MenuItem("Team Features", () => Menu.RunAsync("Team",
+        new MenuItem("Get Team Info", () => new GetTeamInfo(rustPlus).GetTeamInfoAsync()),
+        new MenuItem("Get Team Chat", () => new GetTeamChat(rustPlus).GetTeamChatAsync()),
+        new MenuItem("Promote to Leader", () =>
+            new PromoteToLeader(rustPlus).PromoteToLeaderAsync(ids.GetUlong("steamId"))),
+        new MenuItem("Send Team Message", () =>
+        {
+            Console.Write("\nType your message to send to the team: ");
+            var message = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                Console.WriteLine("Message cannot be empty.");
+                return Task.CompletedTask;
+            }
+            return new SendTeamMessage(rustPlus).SendTeamMessageAsync(message);
+        }))),
+    new MenuItem("Clan Features", () => Menu.RunAsync("Clan",
+        new MenuItem("Get Clan Info", () => new GetClanInfo(rustPlus).GetClanInfoAsync()),
+        new MenuItem("Get Clan Chat", () => new GetClanChat(rustPlus).GetClanChatAsync()),
+        new MenuItem("Send Clan Message", () =>
+        {
+            Console.Write("\nType your message to send to the clan: ");
+            var message = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                Console.WriteLine("Message cannot be empty.");
+                return Task.CompletedTask;
+            }
+            return new SendClanMessage(rustPlus).SendClanMessageAsync(message);
+        }),
+        new MenuItem("Set Clan MOTD", () =>
+        {
+            Console.Write("\nType the new clan message of the day: ");
+            var message = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                Console.WriteLine("Message cannot be empty.");
+                return Task.CompletedTask;
+            }
+            return new SetClanMotd(rustPlus).SetClanMotdAsync(message);
+        }))),
+    new MenuItem("Electricity Features", () => Menu.RunAsync("Electricity",
+        new MenuItem("Get Alarm Info", () =>
+            new GetAlarmInfo(rustPlus).GetAlarmInfoAsync(ids.GetUlong("alarmId"))),
+        new MenuItem("Check Subscription", () =>
+            new CheckSubscription(rustPlus).CheckSubscriptionAsync(ids.GetUlong("alarmId"))),
+        new MenuItem("Set Subscription", () =>
+        {
+            var alarmId = ids.GetUlong("alarmId");
+            Console.Write("\nType 'y' to subscribe to alarm notifications, any other key to unsubscribe: ");
+            var doSubscribe = string.Equals(Console.ReadLine()?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
+            return new SetSubscription(rustPlus).SetSubscriptionAsync(alarmId, doSubscribe);
+        }),
+        new MenuItem("Get Storage Monitor Info", () =>
+            new GetStorageMonitorInfo(rustPlus).GetStorageMonitorInfoAsync(ids.GetUlong("storageMonitorId"))),
+        new MenuItem("Get Smart Switch Info", () =>
+            new GetSmartSwitchInfo(rustPlus).GetSmartSwitchInfoAsync(ids.GetUlong("smartSwitchId"))),
+        new MenuItem("Set Smart Switch Value", () =>
+        {
+            var smartSwitchId = ids.GetUlong("smartSwitchId");
+            Console.Write("\nType 'y' to activate the smart switch, any other key to deactivate: ");
+            var value = string.Equals(Console.ReadLine()?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
+            return new SetSmartSwitchValue(rustPlus).SetSmartSwitchValueAsync(smartSwitchId, value);
+        }),
+        new MenuItem("Strobe Smart Switch", () =>
+            new StrobeSmartSwitch(rustPlus).StrobeSmartSwitchAsync(ids.GetUlong("smartSwitchId"))),
+        new MenuItem("Toggle Smart Switch", () =>
+            new ToggleSmartSwitch(rustPlus).ToggleSmartSwitchAsync(ids.GetUlong("smartSwitchId"))))),
+    new MenuItem("Camera Features", () => new CameraSession(rustPlus, ids).RunAsync()),
+    new MenuItem("Live Events", () => new LiveEvents(rustPlus).RunAsync()));
 
 await rustPlus.DisconnectAsync();
-return;
-
-async Task CommonFeatureMenuAsync()
-{
-    while (true)
-    {
-        Console.Clear();
-        Console.WriteLine("Common Menu:");
-        Console.WriteLine("0. Back to main menu");
-        Console.WriteLine("1. Get Info");
-        Console.WriteLine("2. Get Map");
-        Console.WriteLine("3. Get Map Markers");
-        Console.WriteLine("4. Get Time");
-
-        Console.Write("\nPlease enter your choice: ");
-        switch (Console.ReadLine())
-        {
-            case "0":
-                return;
-            case "1":
-                await new GetInfo(rustPlus).GetInfoAsync();
-                break;
-            case "2":
-                await new GetMap(rustPlus).GetMapAsync();
-                break;
-            case "3":
-                await new GetMapMarkers(rustPlus).GetMapMarkersAsync();
-                break;
-            case "4":
-                await new GetTime(rustPlus).GetTimeAsync();
-                break;
-            default:
-                Console.WriteLine("Invalid choice, please try again.");
-                break;
-        }
-
-        Console.WriteLine("\nPress any key to continue...");
-        Console.ReadKey(intercept: true);
-    }
-}
-
-async Task TeamFeatureMenuAsync()
-{
-    while (true)
-    {
-        Console.Clear();
-        Console.WriteLine("Team Menu:");
-        Console.WriteLine("0. Back to main menu");
-        Console.WriteLine("1. Get Team Info");
-        Console.WriteLine("2. Get Team Chat");
-        Console.WriteLine("3. Promote to Leader");
-        Console.WriteLine("4. Send Team Message");
-
-        Console.Write("\nPlease enter your choice: ");
-        switch (Console.ReadLine())
-        {
-            case "0":
-                return;
-            case "1":
-                await new GetTeamInfo(rustPlus).GetTeamInfoAsync();
-                break;
-            case "2":
-                await new GetTeamChat(rustPlus).GetTeamChatAsync();
-                break;
-            case "3":
-                Console.WriteLine("\nType the steam ID to promote to leader:");
-                var input = Console.ReadLine();
-                if (!ulong.TryParse(input, out var steamId))
-                {
-                    Console.WriteLine("Invalid input, please try again.");
-                    break;
-                }
-                await new PromoteToLeader(rustPlus).PromoteToLeaderAsync(steamId);
-                break;
-            case "4":
-                Console.WriteLine("\nType your message to send to the team:");
-                var message = Console.ReadLine();
-                if (string.IsNullOrWhiteSpace(message))
-                {
-                    Console.WriteLine("Message cannot be empty, please try again.");
-                    break;
-                }
-                await new SendTeamMessage(rustPlus).SendTeamMessageAsync(message);
-                break;
-            default:
-                Console.WriteLine("Invalid choice, please try again.");
-                break;
-        }
-
-        Console.WriteLine("\nPress any key to continue...");
-        Console.ReadKey(intercept: true);
-    }
-}
-
-async Task ElectricityFeatureMenuAsync()
-{
-    while (true)
-    {
-        Console.Clear();
-        Console.WriteLine("Electricity Menu:");
-        Console.WriteLine("0. Back to main menu");
-        Console.WriteLine("1. Get Alarm Info");
-        Console.WriteLine("2. Check Subscription");
-        Console.WriteLine("3. Set Subscription");
-        Console.WriteLine("4. Get Storage Monitor Info");
-        Console.WriteLine("5. Get Smart Switch Info");
-        Console.WriteLine("6. Set Smart Switch Value");
-        Console.WriteLine("7. Strobe Smart Switch");
-        Console.WriteLine("8. Toggle Smart Switch");
-
-        Console.Write("\nPlease enter your choice: ");
-        switch (Console.ReadLine())
-        {
-            case "0":
-                return;
-            case "1":
-                await new GetAlarmInfo(rustPlus).GetAlarmInfoAsync(GetEntityId("alarmId"));
-                break;
-            case "2":
-                await new CheckSubscription(rustPlus).CheckSubscriptionAsync(GetEntityId("alarmId"));
-                break;
-            case "3":
-                Console.Write("\nType 'y' to activate the alarm, any other key to deactivate: ");
-                var input = Console.ReadLine();
-                var doSubscribe = string.Equals(input?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
-                await new SetSubscription(rustPlus).SetSubscriptionAsync(GetEntityId("alarmId"), doSubscribe);
-                break;
-            case "4":
-                await new GetStorageMonitorInfo(rustPlus).GetStorageMonitorInfoAsync(GetEntityId("storageMonitorId"));
-                break;
-            case "5":
-                await new GetSmartSwitchInfo(rustPlus).GetSmartSwitchInfoAsync(GetEntityId("smartSwitchId"));
-                break;
-            case "6":
-                Console.Write("\nType 'y' to activate the smart switch, any other key to deactivate: ");
-                input = Console.ReadLine();
-                var smartSwitchValue = string.Equals(input?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
-                await new SetSmartSwitchValue(rustPlus).SetSmartSwitchValueAsync(GetEntityId("smartSwitchId"), smartSwitchValue);
-                break;
-            case "7":
-                await new StrobeSmartSwitch(rustPlus).StrobeSmartSwitchAsync(GetEntityId("smartSwitchId"));
-                break;
-            case "8":
-                await new ToggleSmartSwitch(rustPlus).ToggleSmartSwitchAsync(GetEntityId("smartSwitchId"));
-                break;
-        }
-
-        Console.WriteLine("\nPress any key to continue...");
-        Console.ReadKey(intercept: true);
-    }
-}
-
-ulong GetEntityId(string type)
-{
-    while (true)
-    {
-        Console.Write($"\nType the {type}: ");
-        if (ulong.TryParse(Console.ReadLine(), out var entityId))
-        {
-            return entityId;
-        }
-        Console.WriteLine("Invalid input, please try again.");
-    }
-}

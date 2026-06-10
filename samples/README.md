@@ -45,7 +45,20 @@ It reads `rustplus.config.json` (the native format from step 1) and also accepts
 
 ## 3. RustPlus.ConsoleApp — query and control a server
 
-Interactive menu for server info, map, team, smart switches, etc.
+Interactive menu covering the full `IRustPlus` surface:
+
+- **Common** — info, map (saved to `map.jpg`), map markers, time, Nexus auth.
+- **Team** — team info, team chat, promote to leader, send message.
+- **Clan** — clan info, clan chat, send message, set MOTD.
+- **Electricity** — alarms, subscriptions, storage monitors, smart switches (get/set/strobe/toggle).
+- **Camera** — subscribe and stream frames as an ASCII preview, send movement input, unsubscribe.
+- **Live Events** — stream smart-switch, storage-monitor, team/clan chat and clan-change events live.
+
+Entity ids (alarm / smart switch / storage monitor / camera) are remembered for the session — press
+Enter at the prompt to reuse the last value.
+
+Camera rendering depends on the **RustPlusApi.Camera** package and is **experimental** (frame
+fidelity is not yet validated against real captures).
 
 ```bash
 # Copy credentials.sample.json to credentials.json and fill in the values
