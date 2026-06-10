@@ -20,7 +20,7 @@ public class SocketErrorTests
         // timeout (default 30 s). Killing the transport must fault it right away instead.
         var server = new MockRustPlusServer(_ => null);
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, 1, 1);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var requestTask = client.SendRequestAsync(new AppRequest { GetInfo = new AppEmpty() });
@@ -41,7 +41,7 @@ public class SocketErrorTests
         // No response can arrive after the close, so the request must fail fast, not time out.
         await using var server = new MockRustPlusServer(_ => null);
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, 1, 1);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var requestTask = client.SendRequestAsync(new AppRequest { GetInfo = new AppEmpty() });
@@ -60,7 +60,7 @@ public class SocketErrorTests
         await using var server = new MockRustPlusServer(_ => null);
         server.Start();
         var options = new RustPlusSocketOptions { RequestTimeout = TimeSpan.FromMilliseconds(500) };
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, 1, 1, options: options);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1), options);
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var ex = await Assert.ThrowsAsync<TimeoutException>(
@@ -72,7 +72,7 @@ public class SocketErrorTests
     public async Task ConnectAsync_ToDeadPort_RaisesErrorOccurredAndThrows()
     {
         // Port 1 (or any closed loopback port) makes the WebSocket connect throw -> ErrorOccurred + rethrow.
-        await using var client = new RustPlus("127.0.0.1", 1, 1, 1);
+        await using var client = new RustPlus(new RustPlusConnection("127.0.0.1", 1, 1, 1));
         var error = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
         client.ErrorOccurred += (_, ex) => error.TrySetResult(ex);
 
@@ -90,7 +90,7 @@ public class SocketErrorTests
     {
         var server = new MockRustPlusServer();
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, 1, 1);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1));
         var signalled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         client.ErrorOccurred += (_, _) => signalled.TrySetResult(true);
 
@@ -110,7 +110,7 @@ public class SocketErrorTests
     {
         // useFacepunchProxy=true exercises the wss:// URL branch in ConnectAsync; connecting
         // to the Facepunch host will fail in CI, triggering ErrorOccurred + rethrow.
-        await using var client = new RustPlus("example.invalid", 28083, 1, 1, useFacepunchProxy: true);
+        await using var client = new RustPlus(new RustPlusConnection("example.invalid", 28083, 1, 1, UseFacepunchProxy: true));
         var error = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
         client.ErrorOccurred += (_, ex) => error.TrySetResult(ex);
 

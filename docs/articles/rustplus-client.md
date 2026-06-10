@@ -6,17 +6,22 @@ typed, task-based API.
 ## Construct and connect
 
 ```csharp
-using var rustPlus = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy: false);
+using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken, UseFacepunchProxy: false));
 await rustPlus.ConnectAsync();
 ```
 
-| Parameter | Meaning |
+`RustPlusConnection` is a record grouping the connection identity:
+
+| Property | Meaning |
 | --- | --- |
-| `server` | The server's IP address. |
-| `port` | The Rust+ companion port (not the in-game connect port). |
-| `playerId` | Your Steam ID. |
-| `playerToken` | The player token from pairing. |
-| `useFacepunchProxy` | Route through the Facepunch proxy instead of connecting directly. |
+| `Server` | The server's IP address. |
+| `Port` | The Rust+ companion port (not the in-game connect port). |
+| `PlayerId` | Your Steam ID. |
+| `PlayerToken` | The player token from pairing. |
+| `UseFacepunchProxy` | Route through the Facepunch proxy instead of connecting directly. |
+
+> `RustPlusConnection.ToString()` redacts `PlayerToken` (it prints as `***`) so the credential is not
+> accidentally leaked through logs or exceptions.
 
 ## Connection lifecycle
 

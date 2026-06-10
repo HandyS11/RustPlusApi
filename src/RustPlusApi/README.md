@@ -19,7 +19,7 @@ dotnet add package RustPlusApi
 ```csharp
 using RustPlusApi;
 
-using var rustPlus = new RustPlus(server, port, playerId, playerToken);
+using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken));
 await rustPlus.ConnectAsync();
 
 var info = await rustPlus.GetInfoAsync();          // Response<ServerInfo?>
@@ -32,6 +32,20 @@ rustPlus.OnSmartSwitchTriggered += (_, e) => { /* react to a smart switch */ };
 Every request returns a `Response<T>` (`IsSuccess` / `Error` / `Data`). Need credentials? Use the
 [`RustPlusApi.Fcm.Registration`](https://www.nuget.org/packages/RustPlusApi.Fcm.Registration)
 package.
+
+## Logging
+
+Pass an `ILoggerFactory` via the options to route the client's diagnostics into your logging stack:
+
+```csharp
+using Microsoft.Extensions.Logging;
+
+using var loggerFactory = LoggerFactory.Create(b => b.AddConsole());
+
+using var rustPlus = new RustPlus(
+    new RustPlusConnection("127.0.0.1", 28082, 76561198000000000, 123456789),
+    new RustPlusSocketOptions { LoggerFactory = loggerFactory });
+```
 
 ## Documentation
 

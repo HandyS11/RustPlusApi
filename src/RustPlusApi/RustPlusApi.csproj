@@ -23,6 +23,7 @@
     <ItemGroup>
         <PackageReference Include="protobuf-net" />
         <PackageReference Include="protobuf-net.BuildTools" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     </ItemGroup>
 
     <!-- IAsyncDisposable / ValueTask + Channels are in-box on net10.0; netstandard2.0 needs the packages. -->

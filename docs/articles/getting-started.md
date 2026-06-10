@@ -50,7 +50,7 @@ All four arrive together in the server-pairing push notification.
 ```csharp
 using RustPlusApi;
 
-using var rustPlus = new RustPlus(server, port, playerId, playerToken);
+using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken));
 await rustPlus.ConnectAsync();
 
 var info = await rustPlus.GetInfoAsync();

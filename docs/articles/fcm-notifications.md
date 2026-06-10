@@ -141,7 +141,7 @@ For the common "wait for the next server pairing" case, `RustPlusApi.Fcm.Registr
 ```csharp
 using var pairing = new PairingListener(credentials);
 ServerPairing server = await pairing.WaitForServerPairingAsync();
-using var rustPlus = new RustPlus(server.Ip, server.Port, server.PlayerId, server.PlayerToken);
+using var rustPlus = new RustPlus(new RustPlusConnection(server.Ip, server.Port, server.PlayerId, server.PlayerToken));
 ```
 
 See [Credentials](credentials.md) for how to obtain the FCM credentials.

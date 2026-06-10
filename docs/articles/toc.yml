@@ -16,6 +16,8 @@
       href: cameras.md
     - name: FCM Notifications
       href: fcm-notifications.md
+    - name: Logging
+      href: logging.md
 - name: Resources
   items:
     - name: Samples

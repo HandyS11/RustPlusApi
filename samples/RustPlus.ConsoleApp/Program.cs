@@ -25,7 +25,7 @@ catch (Exception ex)
     return;
 }
 
-using var rustPlus = new RustPlusApi.RustPlus(credentials.Ip, credentials.Port, credentials.PlayerId, credentials.PlayerToken);
+using var rustPlus = new RustPlusApi.RustPlus(new RustPlusApi.RustPlusConnection(credentials.Ip, credentials.Port, credentials.PlayerId, credentials.PlayerToken));
 
 try
 {

@@ -14,7 +14,7 @@ namespace RustPlusApi.UnitTests;
 public class RustPlusParseNotificationTests
 {
     /// <summary>Exposes the protected members of <see cref="RustPlus"/> for direct unit testing.</summary>
-    private sealed class TestRustPlus() : RustPlus("127.0.0.1", 1, 1, 1)
+    private sealed class TestRustPlus() : RustPlus(new RustPlusConnection("127.0.0.1", 1, 1, 1))
     {
         public void Feed(AppBroadcast? b) => ParseNotification(b);
 

@@ -29,7 +29,7 @@ dotnet run --project samples/RustPlus.Register.ConsoleApp
   Firefox/Safari won't work — the Steam step drives Chrome via the DevTools protocol.
 - After Steam login, open Rust → join a server → **Pair with Server**.
 - It prints the absolute path of the saved `rustplus.config.json` and the
-  `new RustPlus(ip, port, playerId, playerToken)` line to use with the other samples.
+  `new RustPlus(new RustPlusConnection(ip, port, playerId, playerToken))` line to use with the other samples.
 
 ## 2. RustPlus.Fcm.ConsoleApp — listen for FCM notifications
 

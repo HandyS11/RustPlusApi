@@ -2,7 +2,6 @@ using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Extensions;
 using RustPlusApi.Fcm.Interfaces;
-using System.Diagnostics;
 using static RustPlusApi.Fcm.Utils.ResponseHelper;
 
 namespace RustPlusApi.Fcm;
@@ -89,7 +88,7 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
                 OnAlarmTriggered?.Invoke(this, message.Data.ToAlarmEvent());
                 break;
             default:
-                Debug.WriteLine($"Unknown channel: {message.Data.ChannelId}");
+                Logger.LogUnknownChannel(message.Data.ChannelId);
                 break;
         }
     }
@@ -115,7 +114,7 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
                 OnServerPairing?.Invoke(this, server);
                 break;
             default:
-                Debug.WriteLine($"Unknown pairing type: {body.Type}");
+                Logger.LogUnknownPairingType(body.Type);
                 break;
         }
     }
@@ -143,7 +142,7 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
                 OnStorageMonitorPairing?.Invoke(this, response);
                 break;
             default:
-                Debug.WriteLine($"Unknown entity type: {body.EntityType}");
+                Logger.LogUnknownEntityType(body.EntityType);
                 break;
         }
     }

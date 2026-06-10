@@ -27,7 +27,7 @@ CredentialsStore.Save("rustplus.config.json", credentials);
 
 using var listener = new PairingListener(credentials);
 ServerPairing pairing = await listener.WaitForServerPairingAsync(); // pair in game
-var rustPlus = new RustPlus(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken);
+var rustPlus = new RustPlus(new RustPlusConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken));
 ```
 
 ## Requirements & caveats

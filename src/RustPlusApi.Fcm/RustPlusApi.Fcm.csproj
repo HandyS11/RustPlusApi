@@ -22,6 +22,7 @@
 
     <ItemGroup>
         <PackageReference Include="protobuf-net" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     </ItemGroup>
 
     <!-- netstandard2.0 BCL gap: System.Text.Json (in-box on net10), plus IAsyncDisposable/ValueTask. -->

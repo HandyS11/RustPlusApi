@@ -1,8 +1,9 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ProtoBuf;
 using RustPlusApi.Interfaces;
 using RustPlusContracts;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Threading.Channels;
 using static System.GC;
@@ -14,23 +15,20 @@ namespace RustPlusApi;
 /// <summary>
 /// A Rust+ API client made in C#.
 /// </summary>
-/// <param name="server">The IP address of the Rust+ server.</param>
-/// <param name="port">The port dedicated for the Rust+ companion app (not the one used to connect in-game).</param>
-/// <param name="playerId">Your Steam ID.</param>
-/// <param name="playerToken">Your player token acquired with FCM.</param>
-/// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
+/// <param name="connection">The server endpoint and player credentials to connect as.</param>
 /// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
 public abstract class RustPlusSocket(
-    string server,
-    int port,
-    ulong playerId,
-    int playerToken,
-    bool useFacepunchProxy = false,
+    RustPlusConnection connection,
     RustPlusSocketOptions? options = null)
     : IRustPlusSocket, IDisposable, IAsyncDisposable
 {
     /// <summary>Tuning values for this instance; options are init-only so the snapshot is stable.</summary>
     private readonly RustPlusSocketOptions _options = options ?? new RustPlusSocketOptions();
+
+    /// <summary>The client logger; <c>NullLogger</c> when no factory was supplied. Exposed to derived
+    /// classes (e.g. <see cref="RustPlus"/>) so they log through the same categorised sink.</summary>
+    private protected readonly ILogger Logger =
+        (options?.LoggerFactory ?? NullLoggerFactory.Instance).CreateLogger("RustPlusApi.RustPlusSocket");
 
     /// <summary>Backoff applied after a non-fatal receive error so the loop cannot busy-spin on it.</summary>
     private static readonly TimeSpan ReceiveErrorBackoff = TimeSpan.FromMilliseconds(100);
@@ -127,10 +125,10 @@ public abstract class RustPlusSocket(
     /// <summary>Test seam: the tracked send loop, so tests can assert it actually completed on teardown.</summary>
     internal Task? SendLoopForTests { get; private set; }
 
-    private int _playerToken = playerToken;
+    private int _playerToken = connection.PlayerToken;
 
     /// <summary>The Steam ID requests are currently issued as (see <see cref="SetPlayer"/>).</summary>
-    protected ulong PlayerId { get; private set; } = playerId;
+    protected ulong PlayerId { get; private set; } = connection.PlayerId;
 
     /// <summary>
     /// Asynchronously connects to the Rust+ server using a WebSocket.
@@ -173,9 +171,9 @@ public abstract class RustPlusSocket(
         var webSocket = new ClientWebSocket();
         webSocket.Options.KeepAliveInterval = _options.KeepAliveInterval;
 
-        var uri = useFacepunchProxy
-            ? new Uri($"wss://companion-rust.facepunch.com/game/{server}/{port}")
-            : new Uri($"ws://{server}:{port}");
+        var uri = connection.UseFacepunchProxy
+            ? new Uri($"wss://companion-rust.facepunch.com/game/{connection.Server}/{connection.Port}")
+            : new Uri($"ws://{connection.Server}:{connection.Port}");
 
         Connecting?.Invoke(this, EventArgs.Empty);
 
@@ -190,7 +188,7 @@ public abstract class RustPlusSocket(
             // Surface the failure on the event *and* to the caller: awaiting ConnectAsync must never
             // "succeed" against a server that was never reached.
             webSocket.Dispose();
-            Debug.WriteLine($"Exception occured on ConnectAsync: {ex}");
+            Logger.LogConnectFailed(ex);
             ErrorOccurred?.Invoke(this, ex);
             throw;
         }
@@ -241,7 +239,7 @@ public abstract class RustPlusSocket(
         catch (Exception ex)
         {
             // The old loop faulting as its socket was torn down is expected; never block a reconnect on it.
-            Debug.WriteLine($"Previous receive loop faulted before reconnect (expected): {ex}");
+            Logger.LogPreviousReceiveLoopFaulted(ex);
         }
     }
 
@@ -466,7 +464,7 @@ public abstract class RustPlusSocket(
         {
             // A loop faulting as the transport is torn down is expected during teardown; never let it
             // escape disposal. The loops swallow their own cancellation, so this is a genuine I/O fault.
-            Debug.WriteLine($"Background loop faulted during teardown (expected): {ex}");
+            Logger.LogTeardownLoopFaulted(ex);
         }
     }
 
@@ -561,7 +559,7 @@ public abstract class RustPlusSocket(
         {
             // The socket broke under us (e.g. peer closed): surface it, stop draining, and fail the
             // in-flight requests now — none of them can ever be answered on this connection.
-            Debug.WriteLine($"Send loop stopped due to a WebSocketException: {ex}");
+            Logger.LogSendLoopFaulted(ex);
             ErrorOccurred?.Invoke(this, ex);
             FailPendingRequests(ex);
         }
@@ -584,11 +582,11 @@ public abstract class RustPlusSocket(
     {
         var buffer = new byte[_options.ReceiveBufferSize];
 
-        Debug.WriteLine("Receiving data from the Rust+ server...");
+        Logger.LogReceivingData();
 
         while (webSocket.State == WebSocketState.Open && !CancellationToken.IsCancellationRequested)
         {
-            Debug.WriteLine("Waiting for data...");
+            Logger.LogWaitingForData();
             try
             {
                 var message = await ReceiveMessageAsync(webSocket, buffer).ConfigureAwait(false);
@@ -604,14 +602,14 @@ public abstract class RustPlusSocket(
                 // A WebSocket error means the connection is broken; retrying would immediately throw again.
                 // Surface it and exit instead of busy-spinning on a dead socket. Fail the in-flight
                 // requests now rather than leaving each to hit its full request timeout.
-                Debug.WriteLine($"Disconnected from the Rust+ socket due to a WebSocketException: {ex}");
+                Logger.LogReceiveWebSocketFault(ex);
                 ErrorOccurred?.Invoke(this, ex);
                 FailPendingRequests(ex);
                 break;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Disconnected from the Rust+ socket due to an Exception: {ex}");
+                Logger.LogReceiveFault(ex);
                 ErrorOccurred?.Invoke(this, ex);
 
                 // Back off so a persistently failing receive cannot busy-spin the loop.
@@ -625,7 +623,7 @@ public abstract class RustPlusSocket(
                 }
             }
         }
-        Debug.WriteLine("Receive loop exited.");
+        Logger.LogReceiveLoopExited();
 
         // The loop also exits without an exception (server close frame, graceful disconnect). No
         // response can arrive any more, so fail whatever is still pending instead of letting each
@@ -671,19 +669,19 @@ public abstract class RustPlusSocket(
     /// <param name="message">The message just read off the socket.</param>
     private void DispatchMessage(AppMessage message)
     {
-        Debug.WriteLine($"Received message:\n{message}");
+        Logger.LogReceivedMessage(message);
         MessageReceived?.Invoke(this, message);
 
         if (message.Broadcast is not null)
         {
-            Debug.WriteLine($"Received notification:\n{message}");
+            Logger.LogReceivedNotification(message);
             NotificationReceived?.Invoke(this, message);
             // Entity type from message.Response.EntityInfo.Type is not yet used.
             ParseNotification(message.Broadcast);
         }
         else
         {
-            Debug.WriteLine($"Received response:\n{message}");
+            Logger.LogReceivedResponse(message);
             ResponseReceived?.Invoke(this, message);
         }
 
@@ -766,7 +764,7 @@ public abstract class RustPlusSocket(
     /// </summary>
     /// <param name="matches">The matcher supplied by the requester.</param>
     /// <param name="broadcast">The broadcast under consideration.</param>
-    private static bool SafeMatches(Func<AppBroadcast, bool> matches, AppBroadcast broadcast)
+    private bool SafeMatches(Func<AppBroadcast, bool> matches, AppBroadcast broadcast)
     {
         try
         {
@@ -774,7 +772,7 @@ public abstract class RustPlusSocket(
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Broadcast-reply matcher threw; treating as no match: {ex}");
+            Logger.LogMatcherThrew(ex);
             return false;
         }
     }

@@ -31,7 +31,7 @@ public class SocketCorrelationTests
             return MockResponses.Default(req);
         });
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var requestTask = client.GetInfoAsync();
@@ -56,7 +56,7 @@ public class SocketCorrelationTests
         // The server never replies, so the request stays pending until the caller's token cancels it.
         await using var server = new MockRustPlusServer(_ => null);
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         using var cts = new CancellationTokenSource();
@@ -80,7 +80,7 @@ public class SocketCorrelationTests
         await using var server = new MockRustPlusServer(req =>
             req.SetEntityValue is not null ? null : MockResponses.Default(req));
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         var otherSwitchEvent = new TaskCompletionSource<Data.Events.SmartSwitchEventArg>(
             TaskCreationOptions.RunContinuationsAsynchronously);
         client.OnSmartSwitchTriggered += (_, e) => otherSwitchEvent.TrySetResult(e);
@@ -115,7 +115,7 @@ public class SocketCorrelationTests
         await using var server = new MockRustPlusServer(req =>
             req.SendTeamMessage is not null ? null : MockResponses.Default(req));
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
 
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.GetInfoAsync().WaitAsync(Timeout); // round-trip so the server registers the socket
@@ -151,7 +151,7 @@ public class SocketCorrelationTests
             return MockResponses.Default(req);
         });
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
 
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.GetInfoAsync().WaitAsync(Timeout); // round-trip so the server registers the socket
@@ -178,7 +178,7 @@ public class SocketCorrelationTests
         // Proves the caller token flows the whole public path: GetInfoAsync → ProcessRequestAsync → SendRequestAsync.
         await using var server = new MockRustPlusServer(_ => null);
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         using var cts = new CancellationTokenSource();

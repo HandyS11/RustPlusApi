@@ -56,7 +56,7 @@ CredentialsStore.Save("rustplus.config.json", credentials);
 // Step 8: pair in game; one await yields the RustPlus constructor args.
 using var listener = new PairingListener(credentials);
 ServerPairing pairing = await listener.WaitForServerPairingAsync();
-// new RustPlus(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken)
+// new RustPlus(new RustPlusConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken))
 ```
 
 | Step | Component | Result |

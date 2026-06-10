@@ -8,7 +8,7 @@ internal static class Program
 {
     private static void Main()
     {
-        using var rustPlus = new RustPlus("127.0.0.1", 28083, 76561198000000000UL, 123456789);
+        using var rustPlus = new RustPlus(new RustPlusConnection("127.0.0.1", 28083, 76561198000000000UL, 123456789));
         System.Console.WriteLine("Constructed RustPlus: connected=" + rustPlus.IsConnected);
     }
 }
