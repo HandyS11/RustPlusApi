@@ -410,7 +410,7 @@ public abstract class RustPlusSocket(
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await DisposeAsyncCore().ConfigureAwait(false);
+        await DisposeCoreAsync().ConfigureAwait(false);
         SuppressFinalize(this);
     }
 
@@ -418,7 +418,7 @@ public abstract class RustPlusSocket(
     /// Cancels the instance token, awaits the tracked background loops (bounded), and releases resources.
     /// Override to extend async teardown in derived classes.
     /// </summary>
-    protected virtual async ValueTask DisposeAsyncCore()
+    protected virtual async ValueTask DisposeCoreAsync()
     {
         if (!_cancellationTokenSource.IsCancellationRequested)
         {

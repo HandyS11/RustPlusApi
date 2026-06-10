@@ -1,4 +1,3 @@
-using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Data;
 using Xunit;
 
@@ -91,6 +90,26 @@ public class FcmSocketLifecycleTests
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
     }
 
+    /// <summary>
+    /// A <see cref="MemoryStream"/> that completes <see cref="FirstWrite"/> as soon as the first frame is
+    /// written. Lets the heartbeat test wait on the actual condition (a ping was emitted) instead of a
+    /// fixed delay, which flakes when the loop task is starved of scheduling under parallel test runs.
+    /// </summary>
+    private sealed class SignalingMemoryStream : MemoryStream
+    {
+        private readonly TaskCompletionSource<bool> _firstWrite =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>Completes once at least one frame has been written.</summary>
+        public Task FirstWrite => _firstWrite.Task;
+
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            await base.WriteAsync(buffer.AsMemory(offset, count), cancellationToken);
+            _firstWrite.TrySetResult(true);
+        }
+    }
+
     [Fact]
     public async Task ConnectAsync_AfterDisconnect_ThrowsInvalidOperation()
     {
@@ -112,12 +131,14 @@ public class FcmSocketLifecycleTests
             InactivityTimeout = TimeSpan.FromSeconds(30)
         };
         await using var socket = new OptionsSocket(options);
-        await using var transport = new MemoryStream();
+        await using var transport = new SignalingMemoryStream();
 
 #pragma warning disable CA2025 // the loop is awaited to completion below, before the stream leaves scope
         var loop = socket.RunHeartbeatLoopOverStreamAsync(transport);
 #pragma warning restore CA2025
-        await Task.Delay(200);
+        // Wait for the loop to actually emit a frame rather than a fixed delay: under parallel test runs
+        // the loop task can be starved well past any arbitrary sleep, leaving zero frames written.
+        await transport.FirstWrite.WaitAsync(TimeSpan.FromSeconds(10));
         socket.Disconnect(); // cancels the token; the loop exits on its next delay
         await loop.WaitAsync(TimeSpan.FromSeconds(5));
 
