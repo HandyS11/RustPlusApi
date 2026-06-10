@@ -19,7 +19,7 @@ the server-pairing push notification (`ServerPairing.Port`).
    pass `useFacepunchProxy: true` to route traffic through Facepunch's relay:
 
 ```csharp
-using var rustPlus = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy: true);
+using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken, UseFacepunchProxy: true));
 ```
 
 See [Getting Started](getting-started.md) for the full connection example and [Credentials](credentials.md)

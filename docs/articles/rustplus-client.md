@@ -6,7 +6,7 @@ typed, task-based API.
 ## Construct and connect
 
 ```csharp
-using var rustPlus = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy: false);
+using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken, UseFacepunchProxy: false));
 await rustPlus.ConnectAsync();
 ```
 

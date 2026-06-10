@@ -30,7 +30,7 @@ listener.OnAlarmTriggered += async (_, alarm) =>
 {
     Console.WriteLine($"Alarm fired: {alarm?.Title} — turning on siren switch");
 
-    using var rustPlus = new RustPlus(ServerIp, ServerPort, PlayerId, PlayerToken);
+    using var rustPlus = new RustPlus(new RustPlusConnection(ServerIp, ServerPort, PlayerId, PlayerToken));
     await rustPlus.ConnectAsync();
 
     var result = await rustPlus.SetSmartSwitchValueAsync(SirenSwitchId, true);
@@ -60,7 +60,7 @@ const int    ServerPort = 28082;
 const ulong  PlayerId   = 76561198000000000UL;
 const int    PlayerToken = -123456789;
 
-using var rustPlus = new RustPlus(ServerIp, ServerPort, PlayerId, PlayerToken);
+using var rustPlus = new RustPlus(new RustPlusConnection(ServerIp, ServerPort, PlayerId, PlayerToken));
 await rustPlus.ConnectAsync();
 
 var response = await rustPlus.GetMapAsync();
@@ -101,7 +101,7 @@ const int    ServerPort  = 28082;
 const ulong  PlayerId    = 76561198000000000UL;  // your SteamID64 — used as the echo guard
 const int    PlayerToken = -123456789;
 
-using var rustPlus = new RustPlus(ServerIp, ServerPort, PlayerId, PlayerToken);
+using var rustPlus = new RustPlus(new RustPlusConnection(ServerIp, ServerPort, PlayerId, PlayerToken));
 
 rustPlus.OnTeamChatReceived += async (_, msg) =>
 {
@@ -144,7 +144,7 @@ const int    PlayerToken = -123456789;
 const string CameraId    = "CAM01";   // in-game identifier set on the computer station
 const int    FrameTarget = 10;        // accumulate 10 frames before saving
 
-using var rustPlus = new RustPlus(ServerIp, ServerPort, PlayerId, PlayerToken);
+using var rustPlus = new RustPlus(new RustPlusConnection(ServerIp, ServerPort, PlayerId, PlayerToken));
 await rustPlus.ConnectAsync();
 
 var sub = await rustPlus.SubscribeToCameraAsync(CameraId);
@@ -213,7 +213,7 @@ var pairing = await pairingListener.WaitForServerPairingAsync();
 Console.WriteLine($"Paired: {pairing.Ip}:{pairing.Port} (player {pairing.PlayerId})");
 
 // ── use the pairing values immediately ───────────────────────────────────────
-using var rustPlus = new RustPlus(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken);
+using var rustPlus = new RustPlus(new RustPlusConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken));
 await rustPlus.ConnectAsync();
 
 var info = await rustPlus.GetInfoAsync();
