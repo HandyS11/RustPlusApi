@@ -22,9 +22,10 @@ namespace RustPlusApi;
 /// <param name="playerId">Your Steam ID.</param>
 /// <param name="playerToken">Your player token acquired with FCM.</param>
 /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
+/// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
 /// <seealso cref="RustPlusSocket"/>
-public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false)
-    : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy), IRustPlus
+public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false, RustPlusSocketOptions? options = null)
+    : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy, options), IRustPlus
 {
     /// <summary>
     /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or alarm.

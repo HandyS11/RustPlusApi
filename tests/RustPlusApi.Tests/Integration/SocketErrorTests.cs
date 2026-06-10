@@ -1,14 +1,72 @@
 using RustPlusApi.MockServer;
+using RustPlusContracts;
+using System.Net.WebSockets;
 using Xunit;
 
 namespace RustPlusApi.Tests.Integration;
 
 /// <summary>
-/// Covers the error-raising paths of the socket: failed connect and abnormal receive.
+/// Covers the error-raising paths of the socket: failed connect, abnormal receive, and
+/// fail-fast of in-flight requests when the transport dies.
 /// </summary>
 public class SocketErrorTests
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
+
+    [Fact]
+    public async Task TransportDeath_FailsPendingRequestsImmediately()
+    {
+        // The responder never replies, so the request would otherwise sit until its full request
+        // timeout (default 30 s). Killing the transport must fault it right away instead.
+        var server = new MockRustPlusServer(_ => null);
+        server.Start();
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, 1, 1);
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        var requestTask = client.SendRequestAsync(new AppRequest { GetInfo = new AppEmpty() });
+        await Task.Delay(150); // request is in flight
+        Assert.Equal(1, client.PendingRequestCountForTests);
+
+        await server.DisposeAsync(); // tears the socket out from under the client
+
+        // Well under the 30 s request timeout: the receive loop's fail-fast must fault the request.
+        await Assert.ThrowsAsync<WebSocketException>(() => requestTask.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(0, client.PendingRequestCountForTests);
+    }
+
+    [Fact]
+    public async Task ForceClose_FailsUnansweredRequestsInsteadOfTimingOut()
+    {
+        // A graceful-but-forced disconnect closes the socket while a request is still unanswered.
+        // No response can arrive after the close, so the request must fail fast, not time out.
+        await using var server = new MockRustPlusServer(_ => null);
+        server.Start();
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, 1, 1);
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        var requestTask = client.SendRequestAsync(new AppRequest { GetInfo = new AppEmpty() });
+        await Task.Delay(150);
+
+        await client.DisconnectAsync(forceClose: true).WaitAsync(Timeout);
+
+        await Assert.ThrowsAsync<WebSocketException>(() => requestTask.WaitAsync(TimeSpan.FromSeconds(5)));
+    }
+
+    [Fact]
+    public async Task CustomRequestTimeout_IsHonored()
+    {
+        // Options wiring: a 500 ms request timeout against a server that never replies must throw
+        // TimeoutException far sooner than the 30 s default.
+        await using var server = new MockRustPlusServer(_ => null);
+        server.Start();
+        var options = new RustPlusSocketOptions { RequestTimeout = TimeSpan.FromMilliseconds(500) };
+        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, 1, 1, options: options);
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        var ex = await Assert.ThrowsAsync<TimeoutException>(
+            () => client.GetInfoAsync().WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Contains("0.5s", ex.Message, StringComparison.Ordinal);
+    }
 
     [Fact]
     public async Task ConnectAsync_ToDeadPort_RaisesErrorOccurredAndThrows()

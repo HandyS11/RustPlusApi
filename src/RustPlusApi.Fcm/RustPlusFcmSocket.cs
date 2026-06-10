@@ -395,10 +395,8 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
                 return;
             }
 
-            var buffer = data.Take(data.Length).ToArray();
-
 #pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
-            using var stream = new MemoryStream(buffer);
+            using var stream = new MemoryStream(data);
 #pragma warning restore RCS1261
             var message = Serializer.NonGeneric.Deserialize(type, stream);
 

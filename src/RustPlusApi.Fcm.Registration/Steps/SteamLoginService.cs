@@ -61,7 +61,7 @@ public sealed class SteamLoginService(int port = 3000)
             while (!cancellationToken.IsCancellationRequested)
             {
                 var context = await listener.GetContextAsync().ConfigureAwait(false);
-                var token = context.Request.QueryString["token"];
+                var token = await ReadTokenAsync(context.Request).ConfigureAwait(false);
                 await RespondAsync(context, "<h1>Done. You can close this window.</h1>").ConfigureAwait(false);
                 if (!string.IsNullOrEmpty(token))
                 {
@@ -92,9 +92,17 @@ public sealed class SteamLoginService(int port = 3000)
         // Drain incoming CDP events so the socket never blocks on backpressure.
         _ = Task.Run(() => DrainAsync(socket, cancellationToken), cancellationToken);
 
+        // Deliver the token via a POST body so it never lands in the URL (browser history, request
+        // logs). text/plain keeps it a CORS "simple request" (no preflight) and mode:'no-cors' is
+        // fine because the response is never read. If fetch fails for any reason, fall back to the
+        // old query-string navigation so the login can't break — the listener accepts both.
+        var callback = $"http://localhost:{port}/callback";
         var shim =
             "window.ReactNativeWebView = { postMessage: function (m) { try { var a = JSON.parse(m); " +
-            $"if (a && a.Token) {{ window.location.href = 'http://localhost:{port}/callback?token=' + encodeURIComponent(a.Token); }} }} catch (e) {{}} }} }};";
+            "if (a && a.Token) { " +
+            $"fetch('{callback}', {{ method: 'POST', mode: 'no-cors', headers: {{ 'Content-Type': 'text/plain' }}, body: a.Token }})" +
+            $".catch(function () {{ window.location.href = '{callback}?token=' + encodeURIComponent(a.Token); }});" +
+            " } } catch (e) {} } };";
 
         await SendAsync(socket, 1, "Page.enable", new { }, cancellationToken).ConfigureAwait(false);
         await SendAsync(socket, 2, "Page.addScriptToEvaluateOnNewDocument", new { source = shim }, cancellationToken).ConfigureAwait(false);
@@ -321,6 +329,21 @@ public sealed class SteamLoginService(int port = 3000)
     private static string QuoteIfNeeded(string argument) =>
         argument.IndexOf(' ') >= 0 ? "\"" + argument + "\"" : argument;
 #endif
+
+    /// <summary>Extracts the auth token from a callback request: POST body (primary path, keeps the
+    /// token out of URLs) or the <c>token</c> query parameter (navigation fallback).</summary>
+    /// <param name="request">The callback request from the injected shim.</param>
+    private static async Task<string?> ReadTokenAsync(HttpListenerRequest request)
+    {
+        if (request.HttpMethod == "POST")
+        {
+            using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
+            var body = await reader.ReadToEndAsync().ConfigureAwait(false);
+            return body.Trim();
+        }
+
+        return request.QueryString["token"];
+    }
 
     private static async Task RespondAsync(HttpListenerContext context, string html)
     {

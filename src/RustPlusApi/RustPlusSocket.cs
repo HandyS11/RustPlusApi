@@ -19,22 +19,21 @@ namespace RustPlusApi;
 /// <param name="playerId">Your Steam ID.</param>
 /// <param name="playerToken">Your player token acquired with FCM.</param>
 /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
+/// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
 public abstract class RustPlusSocket(
     string server,
     int port,
     ulong playerId,
     int playerToken,
-    bool useFacepunchProxy = false)
+    bool useFacepunchProxy = false,
+    RustPlusSocketOptions? options = null)
     : IRustPlusSocket, IDisposable, IAsyncDisposable
 {
-    /// <summary>Bounds teardown waits so a wedged loop or dead peer cannot hang disposal.</summary>
-    private static readonly TimeSpan TeardownTimeout = TimeSpan.FromSeconds(5);
+    /// <summary>Tuning values for this instance; options are init-only so the snapshot is stable.</summary>
+    private readonly RustPlusSocketOptions _options = options ?? new RustPlusSocketOptions();
 
     /// <summary>Backoff applied after a non-fatal receive error so the loop cannot busy-spin on it.</summary>
     private static readonly TimeSpan ReceiveErrorBackoff = TimeSpan.FromMilliseconds(100);
-
-    /// <summary>Default per-request timeout so an awaited response can never hang forever.</summary>
-    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
     /// <summary>
     /// Occurs when the client is about to connect to the Rust+ server.
     /// </summary>
@@ -173,7 +172,7 @@ public abstract class RustPlusSocket(
         }
 
         var webSocket = new ClientWebSocket();
-        webSocket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
+        webSocket.Options.KeepAliveInterval = _options.KeepAliveInterval;
 
         var uri = useFacepunchProxy
             ? new Uri($"wss://companion-rust.facepunch.com/game/{server}/{port}")
@@ -217,7 +216,7 @@ public abstract class RustPlusSocket(
 
     /// <summary>
     /// Awaits the previous connection's receive loop before a reconnect, bounded by
-    /// <see cref="TeardownTimeout"/>. Disposing the old socket unblocks its read, so a clean exit is
+    /// <see cref="RustPlusSocketOptions.TeardownTimeout"/>. Disposing the old socket unblocks its read, so a clean exit is
     /// prompt; a fault from that torn-down read is expected and swallowed.
     /// </summary>
     private async Task WaitForReceiveLoopExitAsync()
@@ -228,7 +227,7 @@ public abstract class RustPlusSocket(
             return;
         }
 
-        var completed = await Task.WhenAny(loop, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
+        var completed = await Task.WhenAny(loop, Task.Delay(_options.TeardownTimeout)).ConfigureAwait(false);
         if (completed != loop)
         {
             return;
@@ -298,7 +297,7 @@ public abstract class RustPlusSocket(
 
         RequestSent?.Invoke(this, request);
 
-        using var timeoutCts = new CancellationTokenSource(RequestTimeout);
+        using var timeoutCts = new CancellationTokenSource(_options.RequestTimeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken, timeoutCts.Token);
 
         try
@@ -313,7 +312,7 @@ public abstract class RustPlusSocket(
                                                  && !cancellationToken.IsCancellationRequested
                                                  && !CancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException($"The Rust+ request (Seq {seq}) timed out after {RequestTimeout.TotalSeconds:0.#}s.");
+            throw new TimeoutException($"The Rust+ request (Seq {seq}) timed out after {_options.RequestTimeout.TotalSeconds:0.#}s.");
         }
         finally
         {
@@ -350,7 +349,7 @@ public abstract class RustPlusSocket(
         }
 
         // Bound the close handshake: a dead peer that never acks must not hang teardown.
-        using var closeTimeout = new CancellationTokenSource(TeardownTimeout);
+        using var closeTimeout = new CancellationTokenSource(_options.TeardownTimeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
         try
         {
@@ -403,7 +402,7 @@ public abstract class RustPlusSocket(
 
     /// <summary>
     /// Asynchronously disposes the client: cancels background work, awaits the tracked receive/send
-    /// loops (bounded by <see cref="TeardownTimeout"/>), then releases the WebSocket. Prefer this over
+    /// loops (bounded by <see cref="RustPlusSocketOptions.TeardownTimeout"/>), then releases the WebSocket. Prefer this over
     /// <see cref="Dispose()"/> so teardown deterministically drains in-flight I/O instead of abandoning it.
     /// </summary>
     public async ValueTask DisposeAsync()
@@ -436,7 +435,7 @@ public abstract class RustPlusSocket(
     }
 
     /// <summary>
-    /// Awaits the tracked receive/send loops, bounded by <see cref="TeardownTimeout"/> so a wedged loop
+    /// Awaits the tracked receive/send loops, bounded by <see cref="RustPlusSocketOptions.TeardownTimeout"/> so a wedged loop
     /// cannot hang disposal. The loops swallow their own cancellation, so a clean stop completes promptly.
     /// </summary>
     private async Task WaitForLoopsAsync()
@@ -451,7 +450,7 @@ public abstract class RustPlusSocket(
         }
 
         var all = Task.WhenAll(loops);
-        var completed = await Task.WhenAny(all, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
+        var completed = await Task.WhenAny(all, Task.Delay(_options.TeardownTimeout)).ConfigureAwait(false);
         if (completed != all)
         {
             return;
@@ -470,7 +469,7 @@ public abstract class RustPlusSocket(
     }
 
     /// <summary>
-    /// Awaits the settlement of all in-flight requests, bounded by <see cref="TeardownTimeout"/> so a server
+    /// Awaits the settlement of all in-flight requests, bounded by <see cref="RustPlusSocketOptions.TeardownTimeout"/> so a server
     /// that never answers cannot hang a graceful disconnect. Faults are observed by each request's caller.
     /// </summary>
     private async Task WaitForPendingRequestsAsync()
@@ -482,7 +481,7 @@ public abstract class RustPlusSocket(
         }
 
         var all = Task.WhenAll(pending);
-        await Task.WhenAny(all, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
+        await Task.WhenAny(all, Task.Delay(_options.TeardownTimeout)).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -557,9 +556,11 @@ public abstract class RustPlusSocket(
         }
         catch (WebSocketException ex)
         {
-            // The socket broke under us (e.g. peer closed): surface it and stop draining.
+            // The socket broke under us (e.g. peer closed): surface it, stop draining, and fail the
+            // in-flight requests now — none of them can ever be answered on this connection.
             Debug.WriteLine($"Send loop stopped due to a WebSocketException: {ex}");
             ErrorOccurred?.Invoke(this, ex);
+            FailPendingRequests(ex);
         }
     }
 
@@ -578,8 +579,7 @@ public abstract class RustPlusSocket(
     /// previous connection can never read a newer socket during a reconnect.</param>
     private async Task ReceiveAsync(ClientWebSocket webSocket)
     {
-        const int bufferSize = 1024;
-        var buffer = new byte[bufferSize];
+        var buffer = new byte[_options.ReceiveBufferSize];
 
         Debug.WriteLine("Receiving data from the Rust+ server...");
 
@@ -588,19 +588,22 @@ public abstract class RustPlusSocket(
             Debug.WriteLine("Waiting for data...");
             try
             {
-                var receiveBuffer = new List<byte>();
+                // Accumulate fragments straight into a stream: no per-read LINQ, no list growth,
+                // and one buffer reused for the connection (map messages span megabytes).
+#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
+                using var messageStream = new MemoryStream();
+#pragma warning restore RCS1261
                 WebSocketReceiveResult result;
 
                 do
                 {
                     result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken).ConfigureAwait(false);
-                    receiveBuffer.AddRange(buffer.Take(result.Count));
+#pragma warning disable CA1849, VSTHRD103, S6966 // MemoryStream.Write is in-memory and never blocks; WriteAsync would only add overhead
+                    messageStream.Write(buffer, 0, result.Count);
+#pragma warning restore CA1849, VSTHRD103, S6966
                 } while (!result.EndOfMessage);
 
-                var messageData = receiveBuffer.ToArray();
-#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
-                using var messageStream = new MemoryStream(messageData);
-#pragma warning restore RCS1261
+                messageStream.Position = 0;
                 var message = Serializer.Deserialize<AppMessage>(messageStream);
 
                 Debug.WriteLine($"Received message:\n{message}");
@@ -641,9 +644,11 @@ public abstract class RustPlusSocket(
             catch (WebSocketException ex)
             {
                 // A WebSocket error means the connection is broken; retrying would immediately throw again.
-                // Surface it and exit instead of busy-spinning on a dead socket.
+                // Surface it and exit instead of busy-spinning on a dead socket. Fail the in-flight
+                // requests now rather than leaving each to hit its full request timeout.
                 Debug.WriteLine($"Disconnected from the Rust+ socket due to a WebSocketException: {ex}");
                 ErrorOccurred?.Invoke(this, ex);
+                FailPendingRequests(ex);
                 break;
             }
             catch (Exception ex)
@@ -663,6 +668,42 @@ public abstract class RustPlusSocket(
             }
         }
         Debug.WriteLine("Receive loop exited.");
+
+        // The loop also exits without an exception (server close frame, graceful disconnect). No
+        // response can arrive any more, so fail whatever is still pending instead of letting each
+        // request run out its full timeout. On disposal the waiters are already cancelled via the
+        // instance token, so this is a no-op there.
+        FailPendingRequests(new WebSocketException(
+            WebSocketError.ConnectionClosedPrematurely,
+            "The connection closed before a response arrived."));
+    }
+
+    /// <summary>
+    /// Faults every in-flight request (seq-keyed and broadcast-reply waiters) with
+    /// <paramref name="reason"/>. Called when the transport dies or closes: at that point no pending
+    /// request can ever be answered, so failing fast beats letting each one hit its full timeout.
+    /// Waiters that already completed (cancelled, timed out, resolved) are unaffected.
+    /// </summary>
+    /// <param name="reason">The transport failure to surface to each pending caller.</param>
+    private void FailPendingRequests(Exception reason)
+    {
+        foreach (var seq in _pendingRequests.Keys.ToArray())
+        {
+            if (_pendingRequests.TryRemove(seq, out var tcs))
+            {
+                tcs.TrySetException(reason);
+            }
+        }
+
+        lock (_broadcastRepliesLock)
+        {
+            foreach (var (_, tcs) in _pendingBroadcastReplies)
+            {
+                tcs.TrySetException(reason);
+            }
+
+            _pendingBroadcastReplies.Clear();
+        }
     }
 
     /// <summary>

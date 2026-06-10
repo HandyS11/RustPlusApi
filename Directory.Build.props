@@ -6,6 +6,8 @@
 	</PropertyGroup>
 
     <PropertyGroup>
+      <!-- Placeholder for local builds only: CD packs with -p:Version=<tag> on release (see CD.yml),
+           so a local `dotnet pack` always produces 1.0.0. -->
       <Version>1.0.0</Version>
       <IsPackable>false</IsPackable>
     </PropertyGroup>
