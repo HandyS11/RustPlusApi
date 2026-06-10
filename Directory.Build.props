@@ -38,10 +38,9 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <!-- NOTE: Do NOT reference SonarAnalyzer.CSharp here. SonarScanner for .NET
-             (dotnet-sonarscanner) injects its own configured copy of the analyzer during
-             `begin`; a NuGet copy conflicts with it, suppresses the protobuf metrics the
-             scanner uploads, and collapses the reported lines-of-code to near-zero.
-             Use SonarLint (connected mode) for local rule feedback instead. -->
+        <PackageReference Include="SonarAnalyzer.CSharp">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 </Project>

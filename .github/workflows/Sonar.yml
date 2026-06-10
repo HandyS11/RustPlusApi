@@ -3,11 +3,13 @@ name: SonarQube Analysis
 permissions:
     contents: read
 
+# Analyze only the long-lived branch. This SonarQube instance is Community Edition,
+# which has no branch/PR support — every analysis writes to the single main branch.
+# Running on `pull_request` lets Scanner for .NET v8 auto-enable "incremental PR
+# analysis" (changed-files-only) and overwrite the main project with a partial scope,
+# which is what collapsed Lines of Code to ~23. PR build/test feedback is covered by CI.yml.
 on:
   push:
-    branches:
-      - develop
-  pull_request:
     branches:
       - develop
 
