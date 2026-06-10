@@ -20,8 +20,8 @@ trim_trailing_whitespace = true
 [*.cs]
 
 # Organize usings
-dotnet_separate_import_directive_groups = false
-dotnet_sort_system_directives_first = false
+dotnet_separate_import_directive_groups = false:suggestion
+dotnet_sort_system_directives_first = false:suggestion
 csharp_using_directive_placement = outside_namespace:suggestion
 file_header_template = unset
 
