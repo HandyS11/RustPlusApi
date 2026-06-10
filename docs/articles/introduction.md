@@ -20,6 +20,22 @@ The library is split so you only take the dependencies you need.
 | **RustPlusApi.Fcm.Registration** | Acquires all the credentials natively (GCM check-in → Firebase → FCM → Expo → Steam → Rust Companion). Replaces the `rustplus.js` Node CLI. | RustPlusApi.Fcm |
 | **RustPlusApi.Camera** | Renders camera frames (`AppCameraRays`) into images. | RustPlusApi, SixLabors.ImageSharp |
 
+```mermaid
+graph LR
+    subgraph Your app
+        A[Your .NET code]
+    end
+    A --> Core["RustPlusApi<br/>(WebSocket client)"]
+    A --> Fcm["RustPlusApi.Fcm<br/>(FCM listener)"]
+    A --> Reg["RustPlusApi.Fcm.Registration<br/>(credential acquisition)"]
+    A --> Cam["RustPlusApi.Camera<br/>(frame rendering)"]
+    Reg --> Fcm
+    Cam --> Core
+    Core -- "WebSocket :companion port" --> S[(Rust server)]
+    Fcm -- "MCS / FCM" --> G[(Google FCM)]
+    Reg -- "HTTPS" --> X[(Google / Expo / Steam / Facepunch)]
+```
+
 ## Target frameworks
 
 Everything targets **.NET Standard 2.0** and **.NET 10**, so the libraries run on .NET Framework
@@ -28,11 +44,24 @@ Everything targets **.NET Standard 2.0** and **.NET 10**, so the libraries run o
 
 ## How it fits together
 
-1. **Get credentials once** with `RustPlusApi.Fcm.Registration` (or the rustplus.js CLI). This
-   yields the FCM credentials and, after you pair in game, the four values a `RustPlus` client
-   needs: server IP, port, player id, player token.
-2. **Talk to the server** with `RustPlusApi` (`RustPlus`).
-3. **Listen for notifications** (pairing, alarms) with `RustPlusApi.Fcm` (`RustPlusFcm`).
-4. **Render cameras** (optional) with `RustPlusApi.Camera`.
+**1. Get credentials once** — `RustPlusApi.Fcm.Registration` drives the full chain: GCM check-in,
+Firebase installation, FCM token, Expo push token, an interactive Steam login via Chrome DevTools,
+and a Rust Companion device registration. The result is a `rustplus.config.json` you load on every
+subsequent run. After that, pairing a server in game pushes four values — server IP, companion
+port, your SteamID64, and a per-server token — straight to your app via FCM. See
+[Credentials](credentials.md) for the step-by-step flow.
+
+**2. Talk to the server** — `RustPlusApi` opens a WebSocket to the companion port and exposes a
+typed `Response<T>` API: server info, time, map, markers, team and clan chat, smart entities,
+camera subscription, and Nexus cross-server auth. See [RustPlus Client](rustplus-client.md) for the
+full surface.
+
+**3. Listen for notifications** — `RustPlusApi.Fcm` maintains a persistent MCS connection to
+Google FCM and surfaces server-pairing events, smart-alarm triggers, and entity pairing
+notifications as strongly-typed .NET events. See [FCM Notifications](fcm-notifications.md).
+
+**4. Render cameras** (optional) — `RustPlusApi.Camera` converts the raw `AppCameraRays` protobuf
+frames from the WebSocket stream into images using SixLabors.ImageSharp. See
+[Cameras](cameras.md).
 
 Start with [Getting Started](getting-started.md).

@@ -79,7 +79,9 @@ await listener.ConnectAsync();
 ## Documentation
 
 Full guides and the API reference live on the **[documentation site](https://handys11.github.io/RustPlusApi/)**
-(built with DocFX). Start with [Getting Started](https://handys11.github.io/RustPlusApi/articles/getting-started.html).
+(built with DocFX). Start with [Getting Started](https://handys11.github.io/RustPlusApi/articles/getting-started.html),
+browse the [Recipes](https://handys11.github.io/RustPlusApi/articles/recipes.html) for common patterns, or check the
+[Troubleshooting](https://handys11.github.io/RustPlusApi/articles/troubleshooting.html) page if something isn't working.
 Runnable examples are in [`samples/`](samples/README.md).
 
 ## Credits

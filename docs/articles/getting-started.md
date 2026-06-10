@@ -1,5 +1,16 @@
 # Getting Started
 
+## Prerequisites
+
+- **.NET SDK** — any target the library supports: .NET Framework 4.6.2 or later, .NET 6–10, Mono,
+  or Unity. The `netstandard2.0` build covers everything; the `net10.0` build uses modern BCL
+  fast-paths on .NET 10.
+- **Google Chrome or Chromium** — required for the one-time credential registration step (Step 1).
+  A native install, a Flatpak, or any path you point to via `CHROME_PATH` works. Firefox and Safari
+  will not work — see [Credentials](credentials.md#steam-login-requires-chromechromium).
+- **A Rust server with Rust+ enabled** — you need access to the in-game *Rust+* menu so you can
+  choose *Pair with Server* to complete the pairing flow.
+
 ## Install
 
 ```bash
@@ -22,6 +33,17 @@ dotnet run --project samples/RustPlus.Register.ConsoleApp
 
 It writes `rustplus.config.json` (the FCM credentials) and, after you choose **Pair with Server**
 in game, prints the four values for the `RustPlus` constructor.
+
+### What the four values are
+
+All four arrive together in the server-pairing push notification.
+
+| Value | Meaning | Source |
+| --- | --- | --- |
+| `server` | Server IP address | Pairing notification (`ServerPairing.Ip`) |
+| `port` | Rust+ companion port — **not** the game join port | Pairing notification (`ServerPairing.Port`) |
+| `playerId` | Your SteamID64 | Pairing notification (`ServerPairing.PlayerId`) |
+| `playerToken` | Per-server auth token issued at pairing time | Pairing notification (`ServerPairing.PlayerToken`) |
 
 ## 2. Connect and query the server
 
@@ -58,3 +80,7 @@ See [FCM Notifications](fcm-notifications.md) for the full event list.
 - [Credentials](credentials.md) — how the native registration flow works end to end.
 - [RustPlus Client](rustplus-client.md) — info/time/map, entities, team, events.
 - [Cameras](cameras.md) — subscribe to and render server cameras.
+
+## If something doesn't work
+
+See [Troubleshooting](troubleshooting.md).

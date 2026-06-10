@@ -4,6 +4,8 @@ Native C# acquisition of the FCM + Rust+ credentials — **no Node.js required**
 (GCM check-in → Firebase → FCM → Expo → Steam login → Rust Companion) so you log into Steam once,
 pair in game, and get everything `RustPlus(...)` and `RustPlusFcm(...)` need.
 
+**Part of [RustPlusApi](https://github.com/HandyS11/RustPlusApi)** · [Documentation](https://handys11.github.io/RustPlusApi/) · [Samples](https://github.com/HandyS11/RustPlusApi/tree/develop/samples)
+
 Targets **.NET Standard 2.0** and **.NET 10**.
 
 ## Install
@@ -41,5 +43,6 @@ var rustPlus = new RustPlus(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.
 ## Documentation
 
 - [Credentials guide](https://handys11.github.io/RustPlusApi/articles/credentials.html)
+- [Troubleshooting](https://handys11.github.io/RustPlusApi/articles/troubleshooting.html)
 - [API reference](https://handys11.github.io/RustPlusApi/) ·
   [source & samples](https://github.com/HandyS11/RustPlusApi)
