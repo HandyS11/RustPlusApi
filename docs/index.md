@@ -14,7 +14,7 @@ _disableBreadcrumb: true
   </p>
   <div class="rp-cta">
     <a class="btn btn-primary" href="articles/getting-started.md">Get Started</a>
-    <a class="btn btn-outline-secondary" href="xref:RustPlusApi">API Reference</a>
+    <a class="btn btn-outline-secondary" href="api/RustPlusApi.yml">API Reference</a>
   </div>
   <p class="rp-badges">
     <img src="https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4?logo=dotnet" alt=".NET" />
