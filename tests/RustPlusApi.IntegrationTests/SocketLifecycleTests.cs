@@ -8,7 +8,7 @@ using Xunit;
 namespace RustPlusApi.IntegrationTests;
 
 /// <summary>
-/// Covers socket lifecycle events, SetPlayer, disconnect variants, and the
+/// Covers socket lifecycle events, disconnect variants, and the
 /// storage-monitor + unknown broadcast arms of ParseNotification.
 /// </summary>
 public class SocketLifecycleTests
@@ -41,25 +41,6 @@ public class SocketLifecycleTests
         Assert.Contains("sent", events);
         Assert.Contains("message", events);
         Assert.Contains("response", events);
-    }
-
-    [Fact]
-    public async Task SetPlayer_ChangesCredentialsOnNextRequest()
-    {
-        ulong? observedId = null;
-        await using var server = new MockRustPlusServer(req =>
-        {
-            observedId = req.PlayerId;
-            return MockResponses.Default(req);
-        });
-        server.Start();
-        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
-        await client.ConnectAsync().WaitAsync(Timeout);
-
-        client.SetPlayer(42, 7);
-        await client.GetTimeAsync().WaitAsync(Timeout);
-
-        Assert.Equal(42ul, observedId);
     }
 
     [Fact]
@@ -276,5 +257,26 @@ public class SocketLifecycleTests
         await Task.WhenAll(requestTask, disconnectTask).WaitAsync(Timeout);
 
         Assert.False(client.IsConnected);
+    }
+
+    [Fact]
+    public async Task Requests_AreStampedWithConnectionCredentials()
+    {
+        ulong? observedId = null;
+        int? observedToken = null;
+        await using var server = new MockRustPlusServer(req =>
+        {
+            observedId = req.PlayerId;
+            observedToken = req.PlayerToken;
+            return MockResponses.Default(req);
+        });
+        server.Start();
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        await client.GetTimeAsync().WaitAsync(Timeout);
+
+        Assert.Equal(PlayerId, observedId);
+        Assert.Equal(PlayerToken, observedToken);
     }
 }

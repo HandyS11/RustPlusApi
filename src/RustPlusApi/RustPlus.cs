@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using RustPlusApi.Data;
 using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Clans;
@@ -18,9 +19,11 @@ namespace RustPlusApi;
 /// </summary>
 /// <param name="connection">The server endpoint and player credentials to connect as.</param>
 /// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
+/// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
+/// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
 /// <seealso cref="RustPlusSocket"/>
-public class RustPlus(RustPlusConnection connection, RustPlusSocketOptions? options = null)
-    : RustPlusSocket(connection, options), IRustPlus
+public class RustPlus(RustPlusConnection connection, RustPlusSocketOptions? options = null, ILoggerFactory? loggerFactory = null)
+    : RustPlusSocket(connection, options, loggerFactory), IRustPlus
 {
     /// <summary>
     /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or alarm.
