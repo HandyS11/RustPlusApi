@@ -7,7 +7,6 @@ using RustPlusApi.Extensions;
 using RustPlusApi.Interfaces;
 using RustPlusApi.Utils;
 using RustPlusContracts;
-using System.Diagnostics;
 using ClanInfo = RustPlusApi.Data.Clans.ClanInfo;
 // ReSharper disable MemberCanBePrivate.Global
 
@@ -99,7 +98,7 @@ public class RustPlus(RustPlusConnection connection, RustPlusSocketOptions? opti
             OnCameraRaysReceived?.Invoke(this, broadcast.CameraRays.ToCameraRaysEvent());
             return;
         }
-        Debug.WriteLine($"Unknown broadcast:\n{broadcast}");
+        Logger.LogUnknownBroadcast(broadcast);
     }
 
     /// <summary>

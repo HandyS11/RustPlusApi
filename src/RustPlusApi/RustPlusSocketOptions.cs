@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace RustPlusApi;
 
 /// <summary>
@@ -22,4 +24,9 @@ public sealed class RustPlusSocketOptions
     /// <summary>The receive buffer size in bytes. Map images arrive as multi-megabyte messages, so
     /// a larger buffer means far fewer reads per message. Default: 64 KB.</summary>
     public int ReceiveBufferSize { get; init; } = 64 * 1024;
+
+    /// <summary>Factory used to create the client's logger. When <see langword="null"/>, logging is
+    /// disabled (a no-op <c>NullLogger</c> is used). Supply one to route diagnostics into your
+    /// logging stack.</summary>
+    public ILoggerFactory? LoggerFactory { get; init; }
 }
