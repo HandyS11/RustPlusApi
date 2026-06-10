@@ -162,6 +162,20 @@ public class RustPlusFcmServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public async Task FactoryCreate_WithExplicitPersistentIds_DoesNotThrow()
+    {
+        var services = new ServiceCollection();
+        services.AddRustPlusFcmFactory();
+        await using var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<IRustPlusFcmFactory>();
+
+        // Covers the caller-supplied list branch (the null branch is covered by the other Create tests).
+        await using var client = factory.Create(AnyCredentials(), ["already-seen-id"]);
+
+        Assert.NotNull(client);
+    }
+
+    [Fact]
     public async Task FactoryCreate_WithNullCredentials_Throws()
     {
         var services = new ServiceCollection();
