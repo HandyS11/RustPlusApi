@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+
 namespace RustPlusApi;
 
 /// <summary>
@@ -15,4 +18,23 @@ public sealed record RustPlusConnection(
     int Port,
     ulong PlayerId,
     int PlayerToken,
-    bool UseFacepunchProxy = false);
+    bool UseFacepunchProxy = false)
+{
+    /// <summary>
+    /// Redacts <see cref="PlayerToken"/> (a credential) from the record's string form so it cannot leak
+    /// through logs, exceptions, or string interpolation. Equality is unaffected — the generated
+    /// <c>Equals</c>/<c>GetHashCode</c> still use every member, including the token.
+    /// </summary>
+    /// <param name="builder">The builder the record's <c>ToString</c> writes its members into.</param>
+    /// <returns><see langword="true"/> so the record renders its members between braces.</returns>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder
+            .Append(nameof(Server)).Append(" = ").Append(Server)
+            .Append(", ").Append(nameof(Port)).Append(" = ").Append(Port.ToString(CultureInfo.InvariantCulture))
+            .Append(", ").Append(nameof(PlayerId)).Append(" = ").Append(PlayerId.ToString(CultureInfo.InvariantCulture))
+            .Append(", ").Append(nameof(PlayerToken)).Append(" = ***")
+            .Append(", ").Append(nameof(UseFacepunchProxy)).Append(" = ").Append(UseFacepunchProxy);
+        return true;
+    }
+}
