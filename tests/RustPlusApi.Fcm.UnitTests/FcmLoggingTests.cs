@@ -8,7 +8,14 @@ namespace RustPlusApi.Fcm.UnitTests;
 public class FcmLoggingTests
 {
     private static Credentials AnyCredentials() =>
-        new() { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } };
+        new()
+        {
+            Gcm = new Gcm
+            {
+                AndroidId = 1,
+                SecurityToken = 1
+            }
+        };
 
     [Fact]
     public void Constructor_WithNoOptions_DoesNotThrow()
@@ -40,7 +47,10 @@ public class FcmLoggingTests
 
         fcm.InvokeParseNotification(new FcmMessage
         {
-            Data = new MessageData { ChannelId = "not-a-known-channel" }
+            Data = new MessageData
+            {
+                ChannelId = "not-a-known-channel"
+            }
         });
 
         Assert.Single(factory.Logger.Entries, e =>
@@ -51,13 +61,23 @@ public class FcmLoggingTests
     /// <param name="credentials">The FCM credentials.</param>
     /// <param name="options">Optional socket options.</param>
     /// <param name="loggerFactory">Optional logger factory.</param>
-    private sealed class TestSocket(Credentials credentials, RustPlusFcmSocketOptions? options = null, ILoggerFactory? loggerFactory = null)
+    private sealed class TestSocket(
+        Credentials credentials,
+        RustPlusFcmSocketOptions? options = null,
+        ILoggerFactory? loggerFactory = null)
         : RustPlusFcmSocket(credentials, options: options, loggerFactory: loggerFactory);
 
     /// <summary>Exposes the protected ParseNotification so the unknown-channel path can be driven.</summary>
     /// <param name="loggerFactory">The logger factory under test.</param>
     private sealed class TestableRustPlusFcm(ILoggerFactory loggerFactory)
-        : RustPlusFcm(new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } }, loggerFactory: loggerFactory)
+        : RustPlusFcm(new Credentials
+        {
+            Gcm = new Gcm
+            {
+                AndroidId = 1,
+                SecurityToken = 1
+            }
+        }, loggerFactory: loggerFactory)
     {
         public void InvokeParseNotification(FcmMessage message) => ParseNotification(message);
     }

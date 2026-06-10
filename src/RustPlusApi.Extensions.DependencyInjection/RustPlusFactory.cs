@@ -10,7 +10,8 @@ namespace RustPlusApi.Extensions.DependencyInjection;
 /// </summary>
 /// <param name="loggerFactory">The host's logger factory; <see langword="null"/> disables client logging.</param>
 /// <param name="options">The configured socket tuning options.</param>
-internal sealed class RustPlusFactory(ILoggerFactory? loggerFactory, IOptions<RustPlusSocketOptions> options) : IRustPlusFactory
+internal sealed class RustPlusFactory(ILoggerFactory? loggerFactory, IOptions<RustPlusSocketOptions> options)
+    : IRustPlusFactory
 {
     /// <inheritdoc />
     public IRustPlus Create(RustPlusConnection connection)

@@ -96,6 +96,7 @@ internal sealed partial class CommittedProto
             state.TopLevelName = open.Groups[2].Value;
             state.Block = [rawLine];
         }
+
         state.Stack.Add(open.Groups[2].Value);
         DeclOrder.Add(string.Join('.', state.Stack));
         return true;
@@ -123,6 +124,7 @@ internal sealed partial class CommittedProto
             RawTopLevelBlocks[state.TopLevelName] = string.Join('\n', state.Block).TrimEnd();
             state.TopLevelName = null;
         }
+
         return true;
     }
 

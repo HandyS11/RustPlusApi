@@ -43,7 +43,14 @@ public class ProtobufRoundTripTests
     [Fact]
     public void AppMessage_WithResponse_RoundTrips()
     {
-        var message = new AppMessage { Response = new AppResponse { Seq = 3, Info = MockResponses.SampleInfo() } };
+        var message = new AppMessage
+        {
+            Response = new AppResponse
+            {
+                Seq = 3,
+                Info = MockResponses.SampleInfo()
+            }
+        };
 
         var result = RoundTrip(message);
 
@@ -57,7 +64,10 @@ public class ProtobufRoundTripTests
     [Fact]
     public void AppMessage_WithBroadcast_RoundTrips()
     {
-        var message = new AppMessage { Broadcast = MockResponses.TeamMessageBroadcast(1, "Tester", "hi") };
+        var message = new AppMessage
+        {
+            Broadcast = MockResponses.TeamMessageBroadcast(1, "Tester", "hi")
+        };
 
         var result = RoundTrip(message);
 
@@ -70,8 +80,21 @@ public class ProtobufRoundTripTests
     [Fact]
     public void OptionalScalarPresence_IsTrackedViaShouldSerialize()
     {
-        var withMotd = new ClanInfo { ClanId = 1, Name = "c", Created = 0, Creator = 0, Motd = "hi" };
-        var withoutMotd = new ClanInfo { ClanId = 1, Name = "c", Created = 0, Creator = 0 };
+        var withMotd = new ClanInfo
+        {
+            ClanId = 1,
+            Name = "c",
+            Created = 0,
+            Creator = 0,
+            Motd = "hi"
+        };
+        var withoutMotd = new ClanInfo
+        {
+            ClanId = 1,
+            Name = "c",
+            Created = 0,
+            Creator = 0
+        };
 
         Assert.True(RoundTrip(withMotd).ShouldSerializeMotd());
         Assert.False(RoundTrip(withoutMotd).ShouldSerializeMotd());

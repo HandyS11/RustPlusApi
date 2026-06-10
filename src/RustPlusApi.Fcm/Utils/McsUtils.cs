@@ -13,7 +13,8 @@ public static class McsUtils
     {
         if (value < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(value), value, "MCS varints encode non-negative lengths only.");
+            throw new ArgumentOutOfRangeException(nameof(value), value,
+                "MCS varints encode non-negative lengths only.");
         }
 
         List<byte> result = [];
@@ -30,6 +31,7 @@ public static class McsUtils
 
             result.Add(b);
         } while (value != 0);
+
         return [.. result];
     }
 

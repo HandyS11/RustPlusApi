@@ -24,7 +24,12 @@ public class McsRoundTripTests
     [Fact]
     public void HeartbeatPing_RoundTrips()
     {
-        var result = RoundTrip(new HeartbeatPing { StreamId = 5, LastStreamIdReceived = 4, Status = 1 });
+        var result = RoundTrip(new HeartbeatPing
+        {
+            StreamId = 5,
+            LastStreamIdReceived = 4,
+            Status = 1
+        });
 
         Assert.Equal(5, result.StreamId);
         Assert.Equal(4, result.LastStreamIdReceived);
@@ -53,8 +58,19 @@ public class McsRoundTripTests
             AuthToken = "secret",
             auth_service = LoginRequest.AuthService.AndroidId,
             UseRmq2 = true,
-            Settings = { new Setting { Name = "new_vc", Value = "1" } },
-            ReceivedPersistentIds = { "abc", "def" }
+            Settings =
+            {
+                new Setting
+                {
+                    Name = "new_vc",
+                    Value = "1"
+                }
+            },
+            ReceivedPersistentIds =
+            {
+                "abc",
+                "def"
+            }
         };
 
         var result = RoundTrip(request);
@@ -78,8 +94,16 @@ public class McsRoundTripTests
             Sent = 1_700_000_000_000,
             AppDatas =
             {
-                new AppData { Key = "channelId", Value = "rust" },
-                new AppData { Key = "body", Value = "{}" }
+                new AppData
+                {
+                    Key = "channelId",
+                    Value = "rust"
+                },
+                new AppData
+                {
+                    Key = "body",
+                    Value = "{}"
+                }
             }
         };
 
@@ -98,9 +122,8 @@ public class McsRoundTripTests
     {
         foreach (var type in new[]
                  {
-                     typeof(HeartbeatPing), typeof(HeartbeatAck), typeof(LoginRequest),
-                     typeof(LoginResponse), typeof(Close), typeof(IqStanza),
-                     typeof(DataMessageStanza), typeof(StreamErrorStanza)
+                     typeof(HeartbeatPing), typeof(HeartbeatAck), typeof(LoginRequest), typeof(LoginResponse),
+                     typeof(Close), typeof(IqStanza), typeof(DataMessageStanza), typeof(StreamErrorStanza)
                  })
         {
             var tag = GetTagFromProtobufType(type);

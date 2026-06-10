@@ -10,7 +10,10 @@ namespace RustPlus.Fcm.ConsoleApp.Utils;
 
 internal static class CredentialsReaderUtilities
 {
-    private static readonly JsonSerializerOptions NativeOptions = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions NativeOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     /// <summary>
     /// Loads credentials from either the native format written by
@@ -76,39 +79,36 @@ internal static class CredentialsReaderUtilities
     }
 }
 
-[SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Instantiated by JSON deserialization.")]
+[SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses",
+    Justification = "Instantiated by JSON deserialization.")]
 internal sealed record JavaScriptConfig
 {
-    [JsonPropertyName("fcm_credentials")]
-    public FcmCredentialsSection? FcmCredentials { get; init; }
+    [JsonPropertyName("fcm_credentials")] public FcmCredentialsSection? FcmCredentials { get; init; }
 
-    [JsonPropertyName("expo_push_token")]
-    public string? ExpoPushToken { get; init; }
+    [JsonPropertyName("expo_push_token")] public string? ExpoPushToken { get; init; }
 }
 
-[SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Instantiated by JSON deserialization.")]
+[SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses",
+    Justification = "Instantiated by JSON deserialization.")]
 internal sealed record FcmCredentialsSection
 {
-    [JsonPropertyName("gcm")]
-    public GcmSection? Gcm { get; init; }
+    [JsonPropertyName("gcm")] public GcmSection? Gcm { get; init; }
 
-    [JsonPropertyName("fcm")]
-    public FcmSection? Fcm { get; init; }
+    [JsonPropertyName("fcm")] public FcmSection? Fcm { get; init; }
 }
 
-[SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Instantiated by JSON deserialization.")]
+[SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses",
+    Justification = "Instantiated by JSON deserialization.")]
 internal sealed record GcmSection
 {
-    [JsonPropertyName("androidId")]
-    public string AndroidId { get; init; } = null!;
+    [JsonPropertyName("androidId")] public string AndroidId { get; init; } = null!;
 
-    [JsonPropertyName("securityToken")]
-    public string SecurityToken { get; init; } = null!;
+    [JsonPropertyName("securityToken")] public string SecurityToken { get; init; } = null!;
 }
 
-[SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Instantiated by JSON deserialization.")]
+[SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses",
+    Justification = "Instantiated by JSON deserialization.")]
 internal sealed record FcmSection
 {
-    [JsonPropertyName("token")]
-    public string Token { get; init; } = null!;
+    [JsonPropertyName("token")] public string Token { get; init; } = null!;
 }

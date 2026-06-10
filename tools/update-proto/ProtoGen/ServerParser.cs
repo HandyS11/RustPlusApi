@@ -14,6 +14,7 @@ internal sealed class ServerParser
 {
     private readonly Dictionary<string, Message> _messages = new(StringComparer.Ordinal);
     private readonly Dictionary<string, EnumDef> _enums = new(StringComparer.Ordinal);
+
     /// <summary>Maps simple names to their fully-qualified names (a simple name like "Member" can be ambiguous).</summary>
     private readonly Dictionary<string, List<string>> _bySimpleName = new(StringComparer.Ordinal);
 
@@ -52,7 +53,7 @@ internal sealed class ServerParser
 
             // class- and struct-based messages (e.g. Half3 is a struct : IProto<Half3>).
             foreach (var type in ns.DescendantNodes().OfType<TypeDeclarationSyntax>()
-                                   .Where(t => t is ClassDeclarationSyntax or StructDeclarationSyntax))
+                         .Where(t => t is ClassDeclarationSyntax or StructDeclarationSyntax))
             {
                 parser.FillFields(type);
             }
@@ -68,7 +69,8 @@ internal sealed class ServerParser
     {
         switch (member)
         {
-            case TypeDeclarationSyntax cls and (ClassDeclarationSyntax or StructDeclarationSyntax) when IsProtoMessage(cls):
+            case TypeDeclarationSyntax cls and (ClassDeclarationSyntax or StructDeclarationSyntax)
+                when IsProtoMessage(cls):
                 DiscoverMessage(cls, parentQualified);
                 break;
             case EnumDeclarationSyntax en:
@@ -84,7 +86,12 @@ internal sealed class ServerParser
     {
         var simple = cls.Identifier.Text;
         var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
-        _messages[qualified] = new Message { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
+        _messages[qualified] = new Message
+        {
+            QualifiedName = qualified,
+            SimpleName = simple,
+            ParentQualifiedName = parentQualified
+        };
         Register(simple, qualified);
 
         foreach (var inner in cls.Members)
@@ -100,7 +107,12 @@ internal sealed class ServerParser
     {
         var simple = en.Identifier.Text;
         var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
-        var def = new EnumDef { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
+        var def = new EnumDef
+        {
+            QualifiedName = qualified,
+            SimpleName = simple,
+            ParentQualifiedName = parentQualified
+        };
         var next = 0;
         foreach (var m in en.Members)
         {
@@ -113,6 +125,7 @@ internal sealed class ServerParser
             def.Values.Add((m.Identifier.Text, val));
             next = val + 1;
         }
+
         _enums[qualified] = def;
         Register(simple, qualified);
     }
@@ -158,7 +171,8 @@ internal sealed class ServerParser
     /// <summary>Collects the non-static, non-const field declarations of a message as
     /// name -> (csType, repeated, elementType).</summary>
     /// <param name="cls">The type declaration to scan.</param>
-    private static Dictionary<string, (string CsType, bool Repeated, string Element)> CollectFieldDeclarations(TypeDeclarationSyntax cls)
+    private static Dictionary<string, (string CsType, bool Repeated, string Element)> CollectFieldDeclarations(
+        TypeDeclarationSyntax cls)
     {
         var decls = new Dictionary<string, (string CsType, bool Repeated, string Element)>(StringComparer.Ordinal);
         foreach (var fd in cls.Members.OfType<FieldDeclarationSyntax>())
@@ -245,7 +259,10 @@ internal sealed class ServerParser
     private string? ResolveDeclaredQualifiedName(TypeDeclarationSyntax cls)
     {
         // Build the qualified name by walking enclosing class/struct declarations.
-        var parts = new List<string> { cls.Identifier.Text };
+        var parts = new List<string>
+        {
+            cls.Identifier.Text
+        };
         for (var p = cls.Parent; p is ClassDeclarationSyntax or StructDeclarationSyntax; p = p.Parent)
         {
             parts.Insert(0, ((TypeDeclarationSyntax)p).Identifier.Text);
@@ -272,6 +289,7 @@ internal sealed class ServerParser
                 return n;
             }
         }
+
         // instance.X.Add(...)
         foreach (var inv in section.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
@@ -281,6 +299,7 @@ internal sealed class ServerParser
                 return n;
             }
         }
+
         // ... ref instance.X ...
         foreach (var arg in section.DescendantNodes().OfType<ArgumentSyntax>())
         {
@@ -289,6 +308,7 @@ internal sealed class ServerParser
                 return n;
             }
         }
+
         // fallback: first instance.X anywhere
         foreach (var ma in section.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
         {
@@ -297,6 +317,7 @@ internal sealed class ServerParser
                 return n;
             }
         }
+
         return null;
     }
 
@@ -309,11 +330,15 @@ internal sealed class ServerParser
     {
         foreach (var inv in section.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
-            if (inv.Expression is MemberAccessExpressionSyntax { Expression: IdentifierNameSyntax { Identifier.Text: "ProtocolParser" } } ma)
+            if (inv.Expression is MemberAccessExpressionSyntax
+                {
+                    Expression: IdentifierNameSyntax { Identifier.Text: "ProtocolParser" }
+                } ma)
             {
                 return ma.Name.Identifier.Text;
             }
         }
+
         return null;
     }
 
@@ -399,7 +424,10 @@ internal sealed class ServerParser
         }
 
         // Walk scope ancestors: "A.B.C" -> "A.B" -> "A" -> ""
-        var scopes = new List<string> { scopeQualified };
+        var scopes = new List<string>
+        {
+            scopeQualified
+        };
         var idx = scopeQualified.LastIndexOf('.');
         while (idx >= 0)
         {
@@ -407,6 +435,7 @@ internal sealed class ServerParser
             scopes.Add(scopeQualified);
             idx = scopeQualified.LastIndexOf('.');
         }
+
         foreach (var s in scopes)
         {
             var nested = $"{s}.{simple}";
@@ -415,6 +444,7 @@ internal sealed class ServerParser
                 return nested;
             }
         }
+
         // prefer a top-level candidate (no dot)
         return candidates.FirstOrDefault(c => !c.Contains('.', StringComparison.Ordinal)) ?? candidates[0];
     }
@@ -429,7 +459,8 @@ internal sealed class ServerParser
                 case LiteralExpressionSyntax { Token.Value: not null } lit:
                     var t = lit.Token.Text.TrimEnd('u', 'U', 'l', 'L');
                     return int.TryParse(t, out value);
-                case PrefixUnaryExpressionSyntax { OperatorToken.RawKind: (int)SyntaxKind.MinusToken } neg when TryParseInt(neg.Operand, out var inner):
+                case PrefixUnaryExpressionSyntax { OperatorToken.RawKind: (int)SyntaxKind.MinusToken } neg
+                    when TryParseInt(neg.Operand, out var inner):
                     value = -inner;
                     return true;
                 case CastExpressionSyntax cast:

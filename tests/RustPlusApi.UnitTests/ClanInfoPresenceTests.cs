@@ -8,7 +8,13 @@ namespace RustPlusApi.UnitTests;
 /// <summary>Exercises both sides of every presence fork in <see cref="AppClanInfoToModel"/>.</summary>
 public class ClanInfoPresenceTests
 {
-    private static ProtoClanInfo Minimal() => new() { ClanId = 1, Name = "c", Created = 0, Creator = 0 };
+    private static ProtoClanInfo Minimal() => new()
+    {
+        ClanId = 1,
+        Name = "c",
+        Created = 0,
+        Creator = 0
+    };
 
     [Fact]
     public void ToClanInfo_AllOptionalsUnset_AreNull()
@@ -48,8 +54,17 @@ public class ClanInfoPresenceTests
     [Fact]
     public void ToClanRole_CanAccessScoreEvents_RespectsPresenceAndValue()
     {
-        var setTrue = new ProtoClanInfo.Role { RoleId = 1, Name = "r", CanAccessScoreEvents = true };
-        var unset = new ProtoClanInfo.Role { RoleId = 2, Name = "r" };
+        var setTrue = new ProtoClanInfo.Role
+        {
+            RoleId = 1,
+            Name = "r",
+            CanAccessScoreEvents = true
+        };
+        var unset = new ProtoClanInfo.Role
+        {
+            RoleId = 2,
+            Name = "r"
+        };
         Assert.True(setTrue.ToClanRole().CanAccessScoreEvents);
         Assert.False(unset.ToClanRole().CanAccessScoreEvents);
     }
@@ -57,8 +72,16 @@ public class ClanInfoPresenceTests
     [Fact]
     public void ToClanMember_OptionalNotesAndOnline_RespectPresence()
     {
-        var withOpts = new ProtoClanInfo.Member { SteamId = 1, Notes = "hi", Online = true };
-        var without = new ProtoClanInfo.Member { SteamId = 2 };
+        var withOpts = new ProtoClanInfo.Member
+        {
+            SteamId = 1,
+            Notes = "hi",
+            Online = true
+        };
+        var without = new ProtoClanInfo.Member
+        {
+            SteamId = 2
+        };
         Assert.Equal("hi", withOpts.ToClanMember().Notes);
         Assert.True(withOpts.ToClanMember().Online);
         Assert.Null(without.ToClanMember().Notes);
@@ -68,7 +91,12 @@ public class ClanInfoPresenceTests
     [Fact]
     public void ToClanInvite_MapsFieldsAndTimestamp()
     {
-        var invite = new ProtoClanInfo.Invite { SteamId = 1, Recruiter = 2, Timestamp = 1_700_000_000 };
+        var invite = new ProtoClanInfo.Invite
+        {
+            SteamId = 1,
+            Recruiter = 2,
+            Timestamp = 1_700_000_000
+        };
         var model = invite.ToClanInvite();
         Assert.Equal(1ul, model.SteamId);
         Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1_700_000_000).UtcDateTime, model.Timestamp);
@@ -77,7 +105,10 @@ public class ClanInfoPresenceTests
     [Fact]
     public void ToClanChangedEvent_WrapsClanInfo()
     {
-        var changed = new AppClanChanged { ClanInfo = Minimal() };
+        var changed = new AppClanChanged
+        {
+            ClanInfo = Minimal()
+        };
         Assert.Equal(1, changed.ToClanChangedEvent().ClanInfo!.ClanId);
     }
 }

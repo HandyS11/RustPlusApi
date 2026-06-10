@@ -31,7 +31,14 @@ public class FcmSocketLifecycleTests
     }
 
     private static TestSocket NewSocket() =>
-        new(new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } });
+        new(new Credentials
+        {
+            Gcm = new Gcm
+            {
+                AndroidId = 1,
+                SecurityToken = 1
+            }
+        });
 
     [Fact]
     public void Disconnect_RaisesDisconnectingThenDisconnected()
@@ -80,7 +87,12 @@ public class FcmSocketLifecycleTests
         public override bool CanWrite => true;
         public override bool CanSeek => false;
         public override long Length => throw new NotSupportedException();
-        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
 
         public override int Read(byte[] buffer, int offset, int count) => _reads.Read(buffer, offset, count);
         public override int ReadByte() => _reads.ReadByte();
@@ -145,8 +157,8 @@ public class FcmSocketLifecycleTests
         // Frame layout per packet: [version, tag, varint-size, payload]. HeartbeatPing tag = 0.
         var written = transport.ToArray();
         Assert.True(written.Length >= 3, "expected at least one heartbeat frame");
-        Assert.Equal(41, written[0]);  // KMcsVersion
-        Assert.Equal(0, written[1]);   // KHeartbeatPingTag
+        Assert.Equal(41, written[0]); // KMcsVersion
+        Assert.Equal(0, written[1]); // KHeartbeatPingTag
     }
 
     [Fact]
@@ -182,7 +194,14 @@ public class FcmSocketLifecycleTests
     /// <summary>Concrete subclass that forwards heartbeat/watchdog tuning options.</summary>
     /// <param name="options">The heartbeat/watchdog options under test.</param>
     private sealed class OptionsSocket(RustPlusFcmSocketOptions options)
-        : RustPlusFcmSocket(new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } }, options: options);
+        : RustPlusFcmSocket(new Credentials
+        {
+            Gcm = new Gcm
+            {
+                AndroidId = 1,
+                SecurityToken = 1
+            }
+        }, options: options);
 
     [Fact]
     public void Dispose_IsIdempotent()
@@ -214,7 +233,14 @@ public class FcmSocketLifecycleTests
     [Fact]
     public void Dispose_CallsProtectedDisposeWithTrue()
     {
-        var creds = new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } };
+        var creds = new Credentials
+        {
+            Gcm = new Gcm
+            {
+                AndroidId = 1,
+                SecurityToken = 1
+            }
+        };
         var spy = new SpySocket(creds);
 
         spy.Dispose();
@@ -236,7 +262,7 @@ public class FcmSocketLifecycleTests
         // Fresh socket: CancellationTokenSource is not yet cancelled.
         var socket = NewSocket();
         var ex = Record.Exception(socket.Dispose);
-        Assert.Null(ex);   // must not throw regardless of which branch the guard takes
+        Assert.Null(ex); // must not throw regardless of which branch the guard takes
     }
 
     /// <summary>
@@ -248,7 +274,7 @@ public class FcmSocketLifecycleTests
     public void Dispose_AfterDisconnect_CancellationAlreadyRequested_DoesNotThrow()
     {
         var socket = NewSocket();
-        socket.Disconnect();  // cancels the token
+        socket.Disconnect(); // cancels the token
 
         // Now Dispose: _cancellationTokenSource.IsCancellationRequested == true,
         // so the inner Cancel() should be skipped via the guard. Must not throw.
@@ -274,7 +300,7 @@ public class FcmSocketLifecycleTests
 #pragma warning restore CA1849, VSTHRD103, S6966
 
         // After Dispose() the CTS is disposed; the receive loop's CancellationToken access throws.
-        await Assert.ThrowsAsync<ObjectDisposedException>(
-            () => socket.RunReceiveLoopOverStreamAsync(new CanceledProbeStream()));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
+            socket.RunReceiveLoopOverStreamAsync(new CanceledProbeStream()));
     }
 }

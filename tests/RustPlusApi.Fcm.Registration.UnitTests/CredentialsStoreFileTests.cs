@@ -15,8 +15,15 @@ public class CredentialsStoreFileTests
         {
             var credentials = new Credentials
             {
-                Gcm = new Gcm { AndroidId = 1, SecurityToken = 2 },
-                Fcm = new FcmToken { Token = "t" },
+                Gcm = new Gcm
+                {
+                    AndroidId = 1,
+                    SecurityToken = 2
+                },
+                Fcm = new FcmToken
+                {
+                    Token = "t"
+                },
                 ExpoPushToken = "ExponentPushToken[a]"
             };
             CredentialsStore.Save(path, credentials);
@@ -44,7 +51,14 @@ public class CredentialsStoreFileTests
     [Fact]
     public void Serialize_ProducesIndentedJson()
     {
-        var credentials = new Credentials { Gcm = new Gcm { AndroidId = 7, SecurityToken = 3 } };
+        var credentials = new Credentials
+        {
+            Gcm = new Gcm
+            {
+                AndroidId = 7,
+                SecurityToken = 3
+            }
+        };
 
         var json = CredentialsStore.Serialize(credentials);
 

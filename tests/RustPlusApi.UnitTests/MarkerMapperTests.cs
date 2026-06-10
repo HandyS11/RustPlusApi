@@ -68,7 +68,13 @@ public class MarkerMapperTests
     public void ToVendingMachineItem_WhenPriceMultiplierUnset_IsNull()
     {
         // PriceMultiplier left default => ShouldSerializePriceMultiplier() is false => null.
-        var order = new SellOrder { ItemId = 9, Quantity = 1, CostPerItem = 1, AmountInStock = 1 };
+        var order = new SellOrder
+        {
+            ItemId = 9,
+            Quantity = 1,
+            CostPerItem = 1,
+            AmountInStock = 1
+        };
         var item = order.ToVendingMachineItem();
         Assert.Null(item.PriceMultiplier);
     }
@@ -84,9 +90,12 @@ public class MarkerMapperTests
         var (id, x, y) = type switch
         {
             AppMarkerType.Ch47 => (marker.ToCh47Marker().Id, marker.ToCh47Marker().X, marker.ToCh47Marker().Y),
-            AppMarkerType.CargoShip => (marker.ToCargoShipMarker().Id, marker.ToCargoShipMarker().X, marker.ToCargoShipMarker().Y),
-            AppMarkerType.PatrolHelicopter => (marker.ToPatrolHelicopterMarker().Id, marker.ToPatrolHelicopterMarker().X, marker.ToPatrolHelicopterMarker().Y),
-            _ => (marker.ToTravellingVendorMarker().Id, marker.ToTravellingVendorMarker().X, marker.ToTravellingVendorMarker().Y),
+            AppMarkerType.CargoShip => (marker.ToCargoShipMarker().Id, marker.ToCargoShipMarker().X,
+                marker.ToCargoShipMarker().Y),
+            AppMarkerType.PatrolHelicopter => (marker.ToPatrolHelicopterMarker().Id,
+                marker.ToPatrolHelicopterMarker().X, marker.ToPatrolHelicopterMarker().Y),
+            _ => (marker.ToTravellingVendorMarker().Id, marker.ToTravellingVendorMarker().X,
+                marker.ToTravellingVendorMarker().Y),
         };
         Assert.Equal(7u, id);
         Assert.Equal(1.5f, x);

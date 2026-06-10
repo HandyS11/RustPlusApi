@@ -14,6 +14,7 @@ internal sealed partial class Emitter
     private readonly CommittedProto _committed;
     private readonly HashSet<string> _scopeMessages = new(StringComparer.Ordinal);
     private readonly HashSet<string> _scopeEnums = new(StringComparer.Ordinal);
+
     /// <summary>Committed top-level types that the authoritative closure does not cover: external well-known
     /// types (Vector2/3/4) and unreachable/vestigial types (Half3, Color, Ray, ClanActionResult).
     /// Emitted verbatim from the committed proto — no authoritative claim is made about them.</summary>
@@ -64,9 +65,9 @@ internal sealed partial class Emitter
 
         // Preserve any committed top-level declaration the closure does not authoritatively cover.
         foreach (var name in _committed.DeclOrder
-            .Where(n => !n.Contains('.', StringComparison.Ordinal) &&
-                        !_scopeMessages.Contains(n) && !_scopeEnums.Contains(n) &&
-                        _committed.RawTopLevelBlocks.ContainsKey(n)))
+                     .Where(n => !n.Contains('.', StringComparison.Ordinal) &&
+                                 !_scopeMessages.Contains(n) && !_scopeEnums.Contains(n) &&
+                                 _committed.RawTopLevelBlocks.ContainsKey(n)))
         {
             _preserved.Add(name);
         }
@@ -145,9 +146,9 @@ internal sealed partial class Emitter
         {
             var label = _committed.LabelFor(msg.QualifiedName, f.Number, f.Repeated);
             sb.Append(pad).Append('\t')
-              .Append(label).Append(' ')
-              .Append(EmitTypeName(f.ProtoType, msg.QualifiedName)).Append(' ')
-              .Append(ToSnakeCase(f.Name)).Append(" = ").Append(f.Number).AppendLine(";");
+                .Append(label).Append(' ')
+                .Append(EmitTypeName(f.ProtoType, msg.QualifiedName)).Append(' ')
+                .Append(ToSnakeCase(f.Name)).Append(" = ").Append(f.Number).AppendLine(";");
         }
 
         RenderScope(sb, msg.QualifiedName, indent + 1);
@@ -184,7 +185,7 @@ internal sealed partial class Emitter
             return protoType[(parent.Length + 1)..]; // sibling reference -> simple name
         }
 
-        return protoType;                            // parent->child or distant -> qualified
+        return protoType; // parent->child or distant -> qualified
     }
 
     private static string? ParentOf(string qualified)

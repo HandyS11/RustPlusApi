@@ -23,7 +23,10 @@ public class SocketErrorTests
         await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1));
         await client.ConnectAsync().WaitAsync(Timeout);
 
-        var requestTask = client.SendRequestAsync(new AppRequest { GetInfo = new AppEmpty() });
+        var requestTask = client.SendRequestAsync(new AppRequest
+        {
+            GetInfo = new AppEmpty()
+        });
         await Task.Delay(150); // request is in flight
         Assert.Equal(1, client.PendingRequestCountForTests);
 
@@ -44,7 +47,10 @@ public class SocketErrorTests
         await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1));
         await client.ConnectAsync().WaitAsync(Timeout);
 
-        var requestTask = client.SendRequestAsync(new AppRequest { GetInfo = new AppEmpty() });
+        var requestTask = client.SendRequestAsync(new AppRequest
+        {
+            GetInfo = new AppEmpty()
+        });
         await Task.Delay(150);
 
         await client.DisconnectAsync(forceClose: true).WaitAsync(Timeout);
@@ -59,12 +65,16 @@ public class SocketErrorTests
         // TimeoutException far sooner than the 30 s default.
         await using var server = new MockRustPlusServer(_ => null);
         server.Start();
-        var options = new RustPlusSocketOptions { RequestTimeout = TimeSpan.FromMilliseconds(500) };
-        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1), options);
+        var options = new RustPlusSocketOptions
+        {
+            RequestTimeout = TimeSpan.FromMilliseconds(500)
+        };
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1), options);
         await client.ConnectAsync().WaitAsync(Timeout);
 
-        var ex = await Assert.ThrowsAsync<TimeoutException>(
-            () => client.GetInfoAsync().WaitAsync(TimeSpan.FromSeconds(5)));
+        var ex = await Assert.ThrowsAsync<TimeoutException>(() =>
+            client.GetInfoAsync().WaitAsync(TimeSpan.FromSeconds(5)));
         Assert.Contains("0.5s", ex.Message, StringComparison.Ordinal);
     }
 
@@ -110,7 +120,8 @@ public class SocketErrorTests
     {
         // useFacepunchProxy=true exercises the wss:// URL branch in ConnectAsync; connecting
         // to the Facepunch host will fail in CI, triggering ErrorOccurred + rethrow.
-        await using var client = new RustPlus(new RustPlusConnection("example.invalid", 28083, 1, 1, UseFacepunchProxy: true));
+        await using var client =
+            new RustPlus(new RustPlusConnection("example.invalid", 28083, 1, 1, UseFacepunchProxy: true));
         var error = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
         client.ErrorOccurred += (_, ex) => error.TrySetResult(ex);
 

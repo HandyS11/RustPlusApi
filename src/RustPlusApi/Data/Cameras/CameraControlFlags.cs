@@ -15,16 +15,22 @@ public enum CameraControlFlags
 {
     /// <summary>No controls available.</summary>
     None = 0,
+
     /// <summary>WASD movement is supported.</summary>
     Movement = 1 << 0,
+
     /// <summary>Mouse look is supported.</summary>
     Mouse = 1 << 1,
+
     /// <summary>Sprint and duck inputs are supported.</summary>
     SprintAndDuck = 1 << 2,
+
     /// <summary>Fire inputs are supported.</summary>
     Fire = 1 << 3,
+
     /// <summary>Reload input is supported.</summary>
     Reload = 1 << 4,
+
     /// <summary>The camera renders a crosshair overlay.</summary>
     Crosshair = 1 << 5,
 }

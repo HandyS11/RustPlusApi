@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Threading.Channels;
 using static System.GC;
+
 // ReSharper disable MemberCanBeProtected.Global
 // ReSharper disable MemberCanBePrivate.Global
 
@@ -44,6 +45,7 @@ public abstract class RustPlusSocket(
 
     /// <summary>Backoff applied after a non-fatal receive error so the loop cannot busy-spin on it.</summary>
     private static readonly TimeSpan ReceiveErrorBackoff = TimeSpan.FromMilliseconds(100);
+
     /// <summary>
     /// Occurs when the client is about to connect to the Rust+ server.
     /// </summary>
@@ -111,7 +113,10 @@ public abstract class RustPlusSocket(
 
     /// <summary>Outgoing requests are handed to the send loop via a channel — no polling, no per-send latency.</summary>
     private readonly Channel<AppRequest> _sendChannel = Channel.CreateUnbounded<AppRequest>(
-        new UnboundedChannelOptions { SingleReader = true });
+        new UnboundedChannelOptions
+        {
+            SingleReader = true
+        });
 
     /// <summary>Requests answered by a seq-bearing <see cref="AppResponse"/>, keyed by <see cref="AppRequest.Seq"/>
     /// so each response resolves the request it actually answers; unsolicited broadcasts never touch this map.</summary>
@@ -121,7 +126,8 @@ public abstract class RustPlusSocket(
     /// TeamMessage). Broadcasts carry no seq, so each waiter supplies a matcher describing the broadcast it
     /// expects (entity ID, own Steam ID, …); a broadcast that matches no waiter is a pure notification.
     /// Guarded by <see cref="_broadcastRepliesLock"/>.</summary>
-    private readonly List<(Func<AppBroadcast, bool> Matches, TaskCompletionSource<AppMessage> Tcs)> _pendingBroadcastReplies = [];
+    private readonly List<(Func<AppBroadcast, bool> Matches, TaskCompletionSource<AppMessage> Tcs)>
+        _pendingBroadcastReplies = [];
 
     private readonly object _broadcastRepliesLock = new();
 
@@ -268,7 +274,8 @@ public abstract class RustPlusSocket(
     /// <param name="cancellationToken">A token to cancel waiting for the response.</param>
     /// <returns>A task that represents the asynchronous operation and contains the <see cref="AppMessage"/> response.</returns>
     /// <exception cref="TimeoutException">Thrown when no response arrives within the request timeout.</exception>
-    public async Task<AppMessage> SendRequestAsync(AppRequest request, Func<AppBroadcast, bool>? broadcastReplyMatcher = null, CancellationToken cancellationToken = default)
+    public async Task<AppMessage> SendRequestAsync(AppRequest request,
+        Func<AppBroadcast, bool>? broadcastReplyMatcher = null, CancellationToken cancellationToken = default)
     {
         // RunContinuationsAsynchronously keeps the receive loop from running awaiters inline when it resolves the TCS.
         var tcs = new TaskCompletionSource<AppMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -296,12 +303,14 @@ public abstract class RustPlusSocket(
         RequestSent?.Invoke(this, request);
 
         using var timeoutCts = new CancellationTokenSource(_options.RequestTimeout);
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken, timeoutCts.Token);
+        using var linked =
+            CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken, timeoutCts.Token);
 
         try
         {
             // Cancel the wait if the caller cancels, the client is disposed, or the request times out.
-            using (linked.Token.Register(static state => ((TaskCompletionSource<AppMessage>)state!).TrySetCanceled(), tcs))
+            using (linked.Token.Register(static state => ((TaskCompletionSource<AppMessage>)state!).TrySetCanceled(),
+                       tcs))
             {
                 return await tcs.Task.ConfigureAwait(false);
             }
@@ -310,7 +319,8 @@ public abstract class RustPlusSocket(
                                                  && !cancellationToken.IsCancellationRequested
                                                  && !CancellationToken.IsCancellationRequested)
         {
-            throw new TimeoutException($"The Rust+ request (Seq {seq}) timed out after {_options.RequestTimeout.TotalSeconds:0.#}s.");
+            throw new TimeoutException(
+                $"The Rust+ request (Seq {seq}) timed out after {_options.RequestTimeout.TotalSeconds:0.#}s.");
         }
         finally
         {
@@ -351,7 +361,8 @@ public abstract class RustPlusSocket(
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
         try
         {
-            await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, linked.Token).ConfigureAwait(false);
+            await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, linked.Token)
+                .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -438,7 +449,10 @@ public abstract class RustPlusSocket(
     /// </summary>
     private async Task WaitForLoopsAsync()
     {
-        var loops = new[] { ReceiveLoopForTests, SendLoopForTests }
+        var loops = new[]
+            {
+                ReceiveLoopForTests, SendLoopForTests
+            }
             .Where(static t => t is not null)
             .Cast<Task>()
             .ToArray();
@@ -545,7 +559,8 @@ public abstract class RustPlusSocket(
 #pragma warning restore RCS1261
                     Serializer.Serialize(ms, request);
                     var buffer = ms.ToArray();
-                    await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true, CancellationToken).ConfigureAwait(false);
+                    await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true,
+                        CancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -621,6 +636,7 @@ public abstract class RustPlusSocket(
                 }
             }
         }
+
         Logger.LogReceiveLoopExited();
 
         // The loop also exits without an exception (server close frame, graceful disconnect). No
@@ -649,7 +665,8 @@ public abstract class RustPlusSocket(
 
         do
         {
-            result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken).ConfigureAwait(false);
+            result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken)
+                .ConfigureAwait(false);
 #pragma warning disable CA1849, VSTHRD103, S6966 // MemoryStream.Write is in-memory and never blocks; WriteAsync would only add overhead
             messageStream.Write(buffer, 0, result.Count);
 #pragma warning restore CA1849, VSTHRD103, S6966

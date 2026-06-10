@@ -1,9 +1,7 @@
 using RustPlusApi.Camera;
 using RustPlusApi.Data.Cameras;
-
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-
 using Xunit;
 
 namespace RustPlusApi.Camera.UnitTests;
@@ -154,7 +152,11 @@ public class CameraRendererTests
             rays.AddRange(FullRay(255, 192, 0));
         }
 
-        renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = [.. rays],
+            SampleOffset = 0
+        });
 
         using var image = Decode(renderer.Render());
         Assert.True(HasPixel(image, new Rgba32(208, 230, 252)));
@@ -183,14 +185,14 @@ public class CameraRendererTests
     // ──────────────────────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData(0, 127, 127, 127)]   // [0.5, 0.5, 0.5]
-    [InlineData(1, 204, 178, 178)]   // [0.8, 0.7, 0.7]
-    [InlineData(2, 76, 178, 255)]   // [0.3, 0.7, 1.0]
-    [InlineData(3, 153, 153, 153)]   // [0.6, 0.6, 0.6]
-    [InlineData(4, 178, 178, 178)]   // [0.7, 0.7, 0.7]
-    [InlineData(5, 204, 153, 102)]   // [0.8, 0.6, 0.4]
-    [InlineData(6, 255, 102, 102)]   // [1.0, 0.4, 0.4]
-    [InlineData(7, 255, 25, 25)]   // [1.0, 0.1, 0.1]
+    [InlineData(0, 127, 127, 127)] // [0.5, 0.5, 0.5]
+    [InlineData(1, 204, 178, 178)] // [0.8, 0.7, 0.7]
+    [InlineData(2, 76, 178, 255)] // [0.3, 0.7, 1.0]
+    [InlineData(3, 153, 153, 153)] // [0.6, 0.6, 0.6]
+    [InlineData(4, 178, 178, 178)] // [0.7, 0.7, 0.7]
+    [InlineData(5, 204, 153, 102)] // [0.8, 0.6, 0.4]
+    [InlineData(6, 255, 102, 102)] // [1.0, 0.4, 0.4]
+    [InlineData(7, 255, 25, 25)] // [1.0, 0.1, 0.1]
     public void Material_FullAlignment_ExactPixelColour(int material, byte r, byte g, byte b)
     {
         // b2=63 → alignment=63, t=(128<<2)|(63>>6)=512 (non-sky)
@@ -217,7 +219,11 @@ public class CameraRendererTests
             rays.AddRange(FullRay(128, 63, 2));
         }
 
-        renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = [.. rays],
+            SampleOffset = 0
+        });
 
         using var image = Decode(renderer.Render());
         Assert.True(HasPixel(image, new Rgba32(76, 178, 255)));
@@ -228,11 +234,11 @@ public class CameraRendererTests
     // ──────────────────────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData(0, 64, 64, 64)]  // [0.5,0.5,0.5] * 32/63
-    [InlineData(1, 103, 90, 90)]  // [0.8,0.7,0.7] * 32/63
-    [InlineData(2, 38, 90, 129)]  // [0.3,0.7,1.0] * 32/63
-    [InlineData(5, 103, 77, 51)]  // [0.8,0.6,0.4] * 32/63
-    [InlineData(7, 129, 12, 12)]  // [1.0,0.1,0.1] * 32/63
+    [InlineData(0, 64, 64, 64)] // [0.5,0.5,0.5] * 32/63
+    [InlineData(1, 103, 90, 90)] // [0.8,0.7,0.7] * 32/63
+    [InlineData(2, 38, 90, 129)] // [0.3,0.7,1.0] * 32/63
+    [InlineData(5, 103, 77, 51)] // [0.8,0.6,0.4] * 32/63
+    [InlineData(7, 129, 12, 12)] // [1.0,0.1,0.1] * 32/63
     public void Material_MidAlignment_ExactPixelColour(int material, byte r, byte g, byte b)
     {
         // b2=32 → alignment=32, t=(0<<2)|(32>>6)=0 → not sky (t≠1023)
@@ -292,10 +298,20 @@ public class CameraRendererTests
     {
         // Drive ToByte's > 255 clamp arm: produce alignmentRaw > 63 via small-delta.
         var renderer = new CameraRenderer(16, 16);
-        var rays = new List<byte> { 255, 0, 63, 6 };
+        var rays = new List<byte>
+        {
+            255,
+            0,
+            63,
+            6
+        };
         rays.AddRange([0x79, 0xFF]);
 
-        renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = [.. rays],
+            SampleOffset = 0
+        });
         var png = renderer.Render();
 
         Assert.NotEmpty(png);
@@ -337,7 +353,11 @@ public class CameraRendererTests
         rays.AddRange([255, 0, 0, 0]);
         rays.AddRange("@\0"u8.ToArray());
 
-        renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = [.. rays],
+            SampleOffset = 0
+        });
         var png = renderer.Render();
 
         Assert.NotEmpty(png);
@@ -384,15 +404,19 @@ public class CameraRendererTests
 
         var rayData = new byte[]
         {
-            255, 128, 63, 2,           // ray 0: full ray
-            41,                         // ray 1: repeat lookback[41]
-            105, 0x80,                  // ray 2: small-delta on lookback[41], g=0x80
-            169, 128,                   // ray 3: medium-delta on lookback[41], g=128
-            0b1100_0001, 0x40, 0x00,   // ray 4: default arm
+            255, 128, 63, 2, // ray 0: full ray
+            41, // ray 1: repeat lookback[41]
+            105, 0x80, // ray 2: small-delta on lookback[41], g=0x80
+            169, 128, // ray 3: medium-delta on lookback[41], g=128
+            0b1100_0001, 0x40, 0x00, // ray 4: default arm
         };
 
         var renderer = new CameraRenderer(4, 4);
-        renderer.AddRays(new CameraFrame { RayData = rayData, SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = rayData,
+            SampleOffset = 0
+        });
 
         using var image = Decode(renderer.Render());
 
@@ -414,7 +438,11 @@ public class CameraRendererTests
         rays.AddRange([0b1000_0000, 0x80]);
         rays.AddRange([0b1100_0001, 0x40, 0x00]);
 
-        renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = [.. rays],
+            SampleOffset = 0
+        });
         var png = renderer.Render();
 
         Assert.NotEmpty(png);
@@ -464,7 +492,7 @@ public class CameraRendererTests
         var renderer = new CameraRenderer(4, 4);
         renderer.AddRays(new CameraFrame
         {
-            RayData = FullRay(128, 63, 0),  // mat0, r=63 → (127,127,127)
+            RayData = FullRay(128, 63, 0), // mat0, r=63 → (127,127,127)
             SampleOffset = 2
         });
 
@@ -483,10 +511,18 @@ public class CameraRendererTests
     {
         // 4×4: 2*width*height = 32. sampleOffset=32 wraps to 0 → same as sampleOffset=0.
         var renderer1 = new CameraRenderer(4, 4);
-        renderer1.AddRays(new CameraFrame { RayData = FullRay(128, 63, 2), SampleOffset = 0 });
+        renderer1.AddRays(new CameraFrame
+        {
+            RayData = FullRay(128, 63, 2),
+            SampleOffset = 0
+        });
 
         var renderer2 = new CameraRenderer(4, 4);
-        renderer2.AddRays(new CameraFrame { RayData = FullRay(128, 63, 2), SampleOffset = 32 });
+        renderer2.AddRays(new CameraFrame
+        {
+            RayData = FullRay(128, 63, 2),
+            SampleOffset = 32
+        });
 
         using var img1 = Decode(renderer1.Render());
         using var img2 = Decode(renderer2.Render());
@@ -504,9 +540,17 @@ public class CameraRendererTests
     {
         var renderer = new CameraRenderer(4, 4);
         // Frame 1: paint image(2,2) with mat2 (76,178,255)
-        renderer.AddRays(new CameraFrame { RayData = FullRay(128, 63, 2), SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = FullRay(128, 63, 2),
+            SampleOffset = 0
+        });
         // Frame 2: repaint image(2,2) with mat0 (127,127,127)
-        renderer.AddRays(new CameraFrame { RayData = FullRay(128, 63, 0), SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = FullRay(128, 63, 0),
+            SampleOffset = 0
+        });
 
         using var image = Decode(renderer.Render());
 
@@ -526,7 +570,7 @@ public class CameraRendererTests
         // Need to use sampleOffset=6 so the ray hits sample[3]
         renderer.AddRays(new CameraFrame
         {
-            RayData = FullRay(128, 63, 3),  // mat3, r=63 → (153,153,153)
+            RayData = FullRay(128, 63, 3), // mat3, r=63 → (153,153,153)
             SampleOffset = 6
         });
 
@@ -545,10 +589,18 @@ public class CameraRendererTests
     {
         // mat=10 should map to same palette as mat=2 (10%8=2)
         var r1 = new CameraRenderer(4, 4);
-        r1.AddRays(new CameraFrame { RayData = FullRay(128, 63, 2), SampleOffset = 0 });
+        r1.AddRays(new CameraFrame
+        {
+            RayData = FullRay(128, 63, 2),
+            SampleOffset = 0
+        });
 
         var r2 = new CameraRenderer(4, 4);
-        r2.AddRays(new CameraFrame { RayData = FullRay(128, 63, 10), SampleOffset = 0 });
+        r2.AddRays(new CameraFrame
+        {
+            RayData = FullRay(128, 63, 10),
+            SampleOffset = 0
+        });
 
         using var img1 = Decode(r1.Render());
         using var img2 = Decode(r2.Render());
@@ -586,7 +638,7 @@ public class CameraRendererTests
         using var image = Decode(renderer.Render());
 
         Assert.Equal(new Rgba32(76, 178, 255), image[2, 2]); // full ray always paints this
-        Assert.Equal(new Rgba32(0, 0, 0, 0), image[3, 0]);   // repeat NOT consumed → transparent
+        Assert.Equal(new Rgba32(0, 0, 0, 0), image[3, 0]); // repeat NOT consumed → transparent
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -707,7 +759,11 @@ public class CameraRendererTests
         }
 
         var exception = Record.Exception(() =>
-            renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 1 }));
+            renderer.AddRays(new CameraFrame
+            {
+                RayData = [.. rays],
+                SampleOffset = 1
+            }));
 
         Assert.Null(exception);
         using var image = Decode(renderer.Render());

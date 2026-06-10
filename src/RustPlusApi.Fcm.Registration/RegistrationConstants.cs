@@ -51,7 +51,8 @@ public static class RegistrationConstants
     public const string FcmRegisterUrl = "https://android.clients.google.com/c2dm/register3";
 
     /// <summary>Firebase Installations Service (FIS) endpoint for the Rust Companion project.</summary>
-    public const string FirebaseInstallationsUrl = "https://firebaseinstallations.googleapis.com/v1/projects/" + ProjectId + "/installations";
+    public const string FirebaseInstallationsUrl =
+        "https://firebaseinstallations.googleapis.com/v1/projects/" + ProjectId + "/installations";
 
     /// <summary>Expo push token exchange endpoint.</summary>
     public const string ExpoPushTokenUrl = "https://exp.host/--/api/v2/push/getExpoPushToken";

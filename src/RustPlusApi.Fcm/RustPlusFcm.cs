@@ -16,7 +16,11 @@ namespace RustPlusApi.Fcm;
 /// <param name="options">Tuning options (heartbeat interval, inactivity timeout); defaults are used when <see langword="null"/>.</param>
 /// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
 /// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
-public class RustPlusFcm(Credentials credentials, ICollection<string>? persistentIds = null, RustPlusFcmSocketOptions? options = null, ILoggerFactory? loggerFactory = null)
+public class RustPlusFcm(
+    Credentials credentials,
+    ICollection<string>? persistentIds = null,
+    RustPlusFcmSocketOptions? options = null,
+    ILoggerFactory? loggerFactory = null)
     : RustPlusFcmSocket(credentials, persistentIds, options, loggerFactory), IRustPlusFcm
 {
     /// <summary>

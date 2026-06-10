@@ -14,7 +14,14 @@ public class MapMarkerDispatchTests
         var m = new AppMapMarkers();
         foreach (var (id, type) in markers)
         {
-            m.Markers.Add(new AppMarker { Id = id, X = 1, Y = 1, Type = type, Name = "n" });
+            m.Markers.Add(new AppMarker
+            {
+                Id = id,
+                X = 1,
+                Y = 1,
+                Type = type,
+                Name = "n"
+            });
         }
 
         return m;

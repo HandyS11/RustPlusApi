@@ -9,7 +9,14 @@ namespace RustPlusApi.Fcm.Extensions.DependencyInjection.UnitTests;
 
 public class RustPlusFcmServiceCollectionExtensionsTests
 {
-    private static Credentials AnyCredentials() => new() { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } };
+    private static Credentials AnyCredentials() => new()
+    {
+        Gcm = new Gcm
+        {
+            AndroidId = 1,
+            SecurityToken = 1
+        }
+    };
 
     [Fact]
     public void AddRustPlusFcm_WithCredentials_RegistersIRustPlusFcmAsSingleton()

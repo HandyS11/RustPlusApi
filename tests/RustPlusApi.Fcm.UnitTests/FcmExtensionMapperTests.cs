@@ -10,7 +10,12 @@ public class FcmExtensionMapperTests
     [Fact]
     public void ToEntityEvent_MapsTypeIdName()
     {
-        var body = new Body { EntityType = 1, EntityId = 42, EntityName = "Switch" };
+        var body = new Body
+        {
+            EntityType = 1,
+            EntityId = 42,
+            EntityName = "Switch"
+        };
         var ev = body.ToEntityEvent();
         Assert.Equal(1, ev.EntityType);
         Assert.Equal(42, ev.EntityId);
@@ -21,7 +26,13 @@ public class FcmExtensionMapperTests
     [Fact]
     public void ToServerEvent_NullEntityName_BecomesEmpty()
     {
-        var body = new Body { Id = Guid.Empty, Ip = "1.2.3.4", Port = 28083, EntityName = null };
+        var body = new Body
+        {
+            Id = Guid.Empty,
+            Ip = "1.2.3.4",
+            Port = 28083,
+            EntityName = null
+        };
         var ev = body.ToServerEvent();
         Assert.Equal(string.Empty, ev.Name);
         Assert.Equal("1.2.3.4", ev.Ip);
@@ -31,14 +42,23 @@ public class FcmExtensionMapperTests
     [Fact]
     public void ToServerEvent_WithEntityName_UsesIt()
     {
-        var body = new Body { EntityName = "My Server", Ip = "1.2.3.4", Port = 1 };
+        var body = new Body
+        {
+            EntityName = "My Server",
+            Ip = "1.2.3.4",
+            Port = 1
+        };
         Assert.Equal("My Server", body.ToServerEvent().Name);
     }
 
     [Fact]
     public void ToAlarmEvent_MapsTitleAndMessage()
     {
-        var data = new MessageData { Title = "Base attacked", Message = "Door opened" };
+        var data = new MessageData
+        {
+            Title = "Base attacked",
+            Message = "Door opened"
+        };
         var ev = data.ToAlarmEvent();
         Assert.Equal("Base attacked", ev.Title);
         Assert.Equal("Door opened", ev.Message);

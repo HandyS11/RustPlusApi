@@ -1,5 +1,6 @@
 using RustPlusApi.Data.Entities;
 using RustPlusContracts;
+
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;
@@ -16,6 +17,7 @@ public static class AppEntityInfoToModel
         {
             throw new InvalidOperationException("Entity type is not a SmartSwitch.");
         }
+
         return new SmartSwitchInfo
         {
             IsActive = entity.Payload.Value
@@ -31,6 +33,7 @@ public static class AppEntityInfoToModel
         {
             throw new InvalidOperationException("Entity type is not an Alarm.");
         }
+
         return new AlarmInfo
         {
             IsActive = entity.Payload.Value
@@ -46,6 +49,7 @@ public static class AppEntityInfoToModel
         {
             throw new InvalidOperationException("Entity type is not a StorageMonitor.");
         }
+
         return new StorageMonitorInfo
         {
             Capacity = entity.Payload.Capacity,
@@ -69,7 +73,8 @@ public static class AppEntityInfoToModel
 
     /// <summary>Maps a sequence of protobuf storage items to <see cref="StorageMonitorItemInfo"/> instances.</summary>
     /// <param name="items">The protobuf storage items to map.</param>
-    public static IEnumerable<StorageMonitorItemInfo> ToStorageMonitorItemsInfo(this IEnumerable<AppEntityPayload.Item> items)
+    public static IEnumerable<StorageMonitorItemInfo> ToStorageMonitorItemsInfo(
+        this IEnumerable<AppEntityPayload.Item> items)
     {
         return items.Select(ToStorageMonitorItemInfo);
     }

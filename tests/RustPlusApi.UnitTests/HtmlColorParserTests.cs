@@ -22,8 +22,8 @@ public class HtmlColorParserTests
     public void ThreeDigitHex_ExpandsNibbles()
     {
         var c = HtmlColorParser.FromHtml("#F80");
-        Assert.Equal(255, c.R);   // 0xF -> 0xFF
-        Assert.Equal(136, c.G);   // 0x8 -> 0x88
+        Assert.Equal(255, c.R); // 0xF -> 0xFF
+        Assert.Equal(136, c.G); // 0x8 -> 0x88
         Assert.Equal(0, c.B);
     }
 
@@ -61,7 +61,7 @@ public class HtmlColorParserTests
         // switch in the netstandard2.0 code path and reaches Color.FromName. Covers the
         // switch default / fall-through branch. The exact colour value is implementation-
         // defined (ColorTranslator or Color.FromName), so we only assert no throw.
-        var ex = Record.Exception(() => HtmlColorParser.FromHtml("#FF"));  // 2 hex digits
+        var ex = Record.Exception(() => HtmlColorParser.FromHtml("#FF")); // 2 hex digits
         Assert.Null(ex);
     }
 }

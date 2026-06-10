@@ -4,6 +4,7 @@ using AppCameraInfo = RustPlusContracts.AppCameraInfo;
 using AppCameraRays = RustPlusContracts.AppCameraRays;
 using ProtoCameraEntity = RustPlusContracts.AppCameraRays.Entity;
 using ProtoVector3 = RustPlusContracts.Vector3;
+
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;
@@ -90,6 +91,11 @@ public static class AppCameraToModel
             return new Vector3();
         }
 
-        return new Vector3 { X = vector.X, Y = vector.Y, Z = vector.Z };
+        return new Vector3
+        {
+            X = vector.X,
+            Y = vector.Y,
+            Z = vector.Z
+        };
     }
 }

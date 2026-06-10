@@ -3,6 +3,7 @@ using RustPlusApi.Data.Events;
 using AppClanChanged = RustPlusContracts.AppClanChanged;
 using AppClanInfo = RustPlusContracts.AppClanInfo;
 using ProtoClanInfo = RustPlusContracts.ClanInfo;
+
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;

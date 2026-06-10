@@ -5,6 +5,7 @@ public enum CameraEntityType
 {
     /// <summary>A tree.</summary>
     Tree = 1,
+
     /// <summary>A player.</summary>
     Player = 2,
 }

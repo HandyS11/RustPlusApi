@@ -26,6 +26,7 @@ internal sealed class EntityIdStore
                 {
                     return remembered;
                 }
+
                 Console.WriteLine("A value is required, please try again.");
                 continue;
             }
@@ -47,6 +48,7 @@ internal sealed class EntityIdStore
             {
                 return id;
             }
+
             Console.WriteLine("Invalid input, please try again.");
             _lastUsed.Remove(kind); // don't keep an unparseable value as "last"
         }

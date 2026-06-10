@@ -53,7 +53,11 @@ public class RustPlusParseNotificationTests
             EntityChanged = new AppEntityChanged
             {
                 EntityId = 42,
-                Payload = new AppEntityPayload { Value = true, Capacity = 0 }
+                Payload = new AppEntityPayload
+                {
+                    Value = true,
+                    Capacity = 0
+                }
             }
         };
 
@@ -75,7 +79,11 @@ public class RustPlusParseNotificationTests
             EntityChanged = new AppEntityChanged
             {
                 EntityId = 1,
-                Payload = new AppEntityPayload { Value = true, Capacity = 0 }
+                Payload = new AppEntityPayload
+                {
+                    Value = true,
+                    Capacity = 0
+                }
             }
         };
 
@@ -94,7 +102,11 @@ public class RustPlusParseNotificationTests
             EntityChanged = new AppEntityChanged
             {
                 EntityId = 2,
-                Payload = new AppEntityPayload { Value = false, Capacity = 48 } // Capacity != 0 → storage monitor
+                Payload = new AppEntityPayload
+                {
+                    Value = false,
+                    Capacity = 48
+                } // Capacity != 0 → storage monitor
             }
         };
 
@@ -162,7 +174,11 @@ public class RustPlusParseNotificationTests
         {
             ClanChanged = new AppClanChanged
             {
-                ClanInfo = new ClanInfo { ClanId = 1, Name = "TestClan" }
+                ClanInfo = new ClanInfo
+                {
+                    ClanId = 1,
+                    Name = "TestClan"
+                }
             }
         };
 

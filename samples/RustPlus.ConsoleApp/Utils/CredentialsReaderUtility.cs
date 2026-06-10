@@ -22,7 +22,8 @@ internal static class CredentialsReaderUtility
         return config;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "Instantiated by JSON deserialization.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1812:AvoidUninstantiatedInternalClasses",
+        Justification = "Instantiated by JSON deserialization.")]
     internal sealed record Credentials
     {
         public required string Ip { get; init; }
