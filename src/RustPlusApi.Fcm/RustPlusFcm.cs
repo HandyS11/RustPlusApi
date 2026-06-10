@@ -1,8 +1,8 @@
-using System.Diagnostics;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Extensions;
 using RustPlusApi.Fcm.Interfaces;
+using System.Diagnostics;
 using static RustPlusApi.Fcm.Utils.ResponseHelper;
 
 namespace RustPlusApi.Fcm;
@@ -13,13 +13,14 @@ namespace RustPlusApi.Fcm;
 /// </summary>
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
 /// <param name="persistentIds">The collection of persistent IDs as <see cref="ICollection{T}"/> of <see cref="string"/>.</param>
-public class RustPlusFcm(Credentials credentials, ICollection<string>? persistentIds = null)
-    : RustPlusFcmSocket(credentials, persistentIds), IRustPlusFcm
+/// <param name="options">Tuning options (heartbeat interval, inactivity timeout); defaults are used when <see langword="null"/>.</param>
+public class RustPlusFcm(Credentials credentials, ICollection<string>? persistentIds = null, RustPlusFcmSocketOptions? options = null)
+    : RustPlusFcmSocket(credentials, persistentIds, options), IRustPlusFcm
 {
     /// <summary>
     /// Occurs when a pairing <see cref="FcmMessage"/> is received.
     /// </summary>
-    public event EventHandler<FcmMessage>? OnParing;
+    public event EventHandler<FcmMessage>? OnPairing;
 
     /// <summary>
     /// Occurs when an entity pairing notification is received.
@@ -27,7 +28,7 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
     /// <remarks>
     /// The event data is a <see cref="Notification{T}"/> containing an <see cref="EntityEvent"/>.
     /// </remarks>
-    public event EventHandler<Notification<EntityEvent?>>? OnEntityParing;
+    public event EventHandler<Notification<EntityEvent?>>? OnEntityPairing;
 
     /// <summary>
     /// Occurs when a server pairing notification is received.
@@ -43,7 +44,7 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
     /// <remarks>
     /// The event data is a <see cref="Notification{T}"/> containing an <see cref="int"/> entity ID.
     /// </remarks>
-    public event EventHandler<Notification<int?>>? OnSmartSwitchParing;
+    public event EventHandler<Notification<int?>>? OnSmartSwitchPairing;
 
     /// <summary>
     /// Occurs when a smart alarm pairing notification is received.
@@ -51,7 +52,7 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
     /// <remarks>
     /// The event data is a <see cref="Notification{T}"/> containing an <see cref="int"/> entity ID.
     /// </remarks>
-    public event EventHandler<Notification<int?>>? OnSmartAlarmParing;
+    public event EventHandler<Notification<int?>>? OnSmartAlarmPairing;
 
     /// <summary>
     /// Occurs when a storage monitor pairing notification is received.
@@ -59,7 +60,7 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
     /// <remarks>
     /// The event data is a <see cref="Notification{T}"/> containing an <see cref="int"/> entity ID.
     /// </remarks>
-    public event EventHandler<Notification<int?>>? OnStorageMonitorParing;
+    public event EventHandler<Notification<int?>>? OnStorageMonitorPairing;
 
     /// <summary>
     /// Occurs when an alarm event is triggered.
@@ -74,14 +75,14 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
     /// </summary>
     /// <param name="message">The <see cref="FcmMessage"/> to parse.</param>
     /// <remarks>
-    /// Invokes <see cref="OnParing"/>, <see cref="OnAlarmTriggered"/>, and calls <see cref="ParsePairing"/> as appropriate.
+    /// Invokes <see cref="OnPairing"/>, <see cref="OnAlarmTriggered"/>, and calls <see cref="ParsePairing"/> as appropriate.
     /// </remarks>
     protected override void ParseNotification(FcmMessage message)
     {
         switch (message.Data.ChannelId)
         {
             case "pairing":
-                OnParing?.Invoke(this, message);
+                OnPairing?.Invoke(this, message);
                 ParsePairing(message.Data.Body);
                 break;
             case "alarm":
@@ -98,7 +99,7 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
     /// </summary>
     /// <param name="body">The <see cref="Body"/> of the notification.</param>
     /// <remarks>
-    /// Invokes <see cref="OnEntityParing"/>, <see cref="OnServerPairing"/>, and calls <see cref="ParsePairingEntity"/>.
+    /// Invokes <see cref="OnEntityPairing"/>, <see cref="OnServerPairing"/>, and calls <see cref="ParsePairingEntity"/>.
     /// </remarks>
     private void ParsePairing(Body body)
     {
@@ -106,7 +107,7 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
         {
             case "entity":
                 var entity = BuildGenericOutput(body, body.ToEntityEvent());
-                OnEntityParing?.Invoke(this, entity);
+                OnEntityPairing?.Invoke(this, entity);
                 ParsePairingEntity(body);
                 break;
             case "server":
@@ -124,7 +125,7 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
     /// </summary>
     /// <param name="body">The <see cref="Body"/> of the notification.</param>
     /// <remarks>
-    /// Invokes <see cref="OnSmartSwitchParing"/>, <see cref="OnSmartAlarmParing"/>, and <see cref="OnStorageMonitorParing"/>.
+    /// Invokes <see cref="OnSmartSwitchPairing"/>, <see cref="OnSmartAlarmPairing"/>, and <see cref="OnStorageMonitorPairing"/>.
     /// </remarks>
     private void ParsePairingEntity(Body body)
     {
@@ -133,13 +134,13 @@ public class RustPlusFcm(Credentials credentials, ICollection<string>? persisten
         switch (body.EntityType)
         {
             case 1:
-                OnSmartSwitchParing?.Invoke(this, response);
+                OnSmartSwitchPairing?.Invoke(this, response);
                 break;
             case 2:
-                OnSmartAlarmParing?.Invoke(this, response);
+                OnSmartAlarmPairing?.Invoke(this, response);
                 break;
             case 3:
-                OnStorageMonitorParing?.Invoke(this, response);
+                OnStorageMonitorPairing?.Invoke(this, response);
                 break;
             default:
                 Debug.WriteLine($"Unknown entity type: {body.EntityType}");

@@ -1,31 +1,34 @@
-using System.Diagnostics;
-
 using RustPlusApi.Data;
 using RustPlusApi.Data.Markers;
-
 using RustPlusContracts;
+using System.Diagnostics;
 
 namespace RustPlusApi.Extensions;
 
+/// <summary>Mapping extensions from protobuf map-marker messages to model types.</summary>
 public static class AppMapMarkerToModel
 {
+    /// <summary>Maps an <see cref="AppMapMarkers"/> response to a <see cref="MapMarkers"/> model, routing each marker to its typed dictionary.</summary>
+    /// <param name="appMapMarker">The protobuf map markers response.</param>
+    /// <exception cref="ArgumentException">Thrown when a marker has an unrecognized type.</exception>
     public static MapMarkers ToMapMarkers(this AppMapMarkers appMapMarker)
     {
-        Dictionary<uint, UnknownMarker> unknownMarkers = [];
-        Dictionary<uint, PlayerMarker> playerMarkers = [];
+        Dictionary<ulong, UnknownMarker> unknownMarkers = [];
+        Dictionary<ulong, PlayerMarker> playerMarkers = [];
         // 2. Explosions: doesn't appear anymore in the API
-        Dictionary<uint, VendingMachineMarker> vendingMachineMarkers = [];
-        Dictionary<uint, Ch47Marker> ch47Markers = [];
-        Dictionary<uint, CargoShipMarker> cargoShipMarkers = [];
+        Dictionary<ulong, VendingMachineMarker> vendingMachineMarkers = [];
+        Dictionary<ulong, Ch47Marker> ch47Markers = [];
+        Dictionary<ulong, CargoShipMarker> cargoShipMarkers = [];
         // 6. Crates: doesn't appear anymore in the API
         // 7. GenericRadius: I don't know what is this
-        Dictionary<uint, PatrolHelicopterMarker> patrolHelicopterMarkers = [];
+        Dictionary<ulong, PatrolHelicopterMarker> patrolHelicopterMarkers = [];
+        Dictionary<ulong, TravellingVendorMarker> travellingVendorMarkers = [];
 
         foreach (var marker in appMapMarker.Markers)
         {
             switch (marker.Type)
             {
-                case AppMarkerType.Unknow:
+                case AppMarkerType.Undefined:
                     unknownMarkers.Add(marker.Id, marker.ToUnknownMarker());
                     break;
                 case AppMarkerType.Player:
@@ -52,6 +55,9 @@ public static class AppMapMarkerToModel
                 case AppMarkerType.PatrolHelicopter:
                     patrolHelicopterMarkers.Add(marker.Id, marker.ToPatrolHelicopterMarker());
                     break;
+                case AppMarkerType.TravellingVendor:
+                    travellingVendorMarkers.Add(marker.Id, marker.ToTravellingVendorMarker());
+                    break;
                 default:
                     throw new ArgumentException($"Unknown marker type: {marker.Type}");
             }
@@ -65,6 +71,7 @@ public static class AppMapMarkerToModel
             Ch47Markers = ch47Markers,
             CargoShipMarkers = cargoShipMarkers,
             PatrolHelicopterMarkers = patrolHelicopterMarkers,
+            TravellingVendorMarkers = travellingVendorMarkers,
         };
     }
 }

@@ -1,7 +1,11 @@
-﻿namespace RustPlusApi.Fcm.Data.Events;
+namespace RustPlusApi.Fcm.Data.Events;
 
+/// <summary>Describes a Rust+ smart alarm that has been triggered.</summary>
 public sealed record AlarmEvent
 {
-    public string Title { get; set; } = null!;
-    public string Message { get; set; } = null!;
+    /// <summary>The alarm title configured in the Rust+ app.</summary>
+    public string Title { get; init; } = null!;
+
+    /// <summary>The alarm message configured in the Rust+ app.</summary>
+    public string Message { get; init; } = null!;
 }

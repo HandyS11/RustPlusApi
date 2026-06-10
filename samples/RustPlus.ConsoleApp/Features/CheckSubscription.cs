@@ -1,11 +1,11 @@
-﻿using RustPlus.ConsoleApp.Utils;
+using RustPlus.ConsoleApp.Utils;
 using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class CheckSubscription(IRustPlus rustPlus)
+internal sealed class CheckSubscription(IRustPlus rustPlus)
 {
-    public async Task  CheckSubscriptionAsync(uint alarmId)  
+    public async Task CheckSubscriptionAsync(ulong alarmId)
     {
         var response = await rustPlus.CheckSubscriptionAsync(alarmId);
         DisplayUtilities.DisplayJson("AlarmInfo", response);

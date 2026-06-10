@@ -1,11 +1,14 @@
-using System.Diagnostics;
 using RustPlusApi.Data;
+using RustPlusApi.Data.Cameras;
+using RustPlusApi.Data.Clans;
 using RustPlusApi.Data.Entities;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Extensions;
 using RustPlusApi.Interfaces;
 using RustPlusApi.Utils;
 using RustPlusContracts;
+using System.Diagnostics;
+using ClanInfo = RustPlusApi.Data.Clans.ClanInfo;
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi;
@@ -19,9 +22,10 @@ namespace RustPlusApi;
 /// <param name="playerId">Your Steam ID.</param>
 /// <param name="playerToken">Your player token acquired with FCM.</param>
 /// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
+/// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
 /// <seealso cref="RustPlusSocket"/>
-public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false)
-    : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy), IRustPlus
+public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false, RustPlusSocketOptions? options = null)
+    : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy, options), IRustPlus
 {
     /// <summary>
     /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or alarm.
@@ -39,26 +43,64 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     public event EventHandler<TeamMessageEventArg>? OnTeamChatReceived;
 
     /// <summary>
+    /// Occurs when a clan chat message is received, providing a <see cref="ClanMessageEventArg"/>.
+    /// </summary>
+    public event EventHandler<ClanMessageEventArg>? OnClanChatReceived;
+
+    /// <summary>
+    /// Occurs when the clan changes (roles, members, MOTD, …), providing a <see cref="ClanChangedEventArg"/>.
+    /// </summary>
+    public event EventHandler<ClanChangedEventArg>? OnClanChanged;
+
+    /// <summary>
+    /// Occurs when a camera frame is received for the subscribed camera, providing a <see cref="CameraRaysEventArg"/>.
+    /// </summary>
+    public event EventHandler<CameraRaysEventArg>? OnCameraRaysReceived;
+
+    /// <summary>
     /// Parses the notification received from the Rust+ server.
     /// </summary>
     /// <param name="broadcast">The broadcast received from the server.</param>
     protected override void ParseNotification(AppBroadcast? broadcast)
     {
-        if (broadcast is null) return;
+        if (broadcast is null)
+        {
+            return;
+        }
 
         if (broadcast.EntityChanged is not null)
         {
             // There is no physical difference between a SmartSwitch and an Alarm
             // If you check the status of an alarm, it will return the same as a smart switch
             if (broadcast.EntityChanged.Payload.Capacity is 0)
+            {
                 OnSmartSwitchTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartSwitchEvent());
+            }
             else
+            {
                 OnStorageMonitorTriggered?.Invoke(this, broadcast.EntityChanged.ToStorageMonitorEvent());
+            }
+
             return;
         }
         if (broadcast.TeamMessage is not null)
         {
             OnTeamChatReceived?.Invoke(this, broadcast.TeamMessage.Message.ToTeamMessageEvent());
+            return;
+        }
+        if (broadcast.ClanMessage is not null)
+        {
+            OnClanChatReceived?.Invoke(this, broadcast.ClanMessage.ToClanMessageEvent());
+            return;
+        }
+        if (broadcast.ClanChanged is not null)
+        {
+            OnClanChanged?.Invoke(this, broadcast.ClanChanged.ToClanChangedEvent());
+            return;
+        }
+        if (broadcast.CameraRays is not null)
+        {
+            OnCameraRaysReceived?.Invoke(this, broadcast.CameraRays.ToCameraRaysEvent());
             return;
         }
         Debug.WriteLine($"Unknown broadcast:\n{broadcast}");
@@ -70,14 +112,34 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <typeparam name="T">The type of the result.</typeparam>
     /// <param name="request">The request to be processed.</param>
     /// <param name="successSelector">The function to select the result from the response.</param>
+    /// <param name="broadcastReplyMatcher">When non-null, the success reply is delivered as a broadcast
+    /// (no seq) and is matched by this predicate, so the selector reads <c>response.Broadcast</c> rather
+    /// than <c>response.Response</c>. Unrelated broadcasts stay pure notifications.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
-    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector)
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector, Func<AppBroadcast, bool>? broadcastReplyMatcher = null, CancellationToken cancellationToken = default)
     {
-        var response = await SendRequestAsync(request);
+        var response = await SendRequestAsync(request, broadcastReplyMatcher, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         return IsError(response)
             ? ResponseHelper.BuildGenericOutput<T>(false, default!, GetErrorMessage(response))
             : ResponseHelper.BuildGenericOutput(true, successSelector(response));
+    }
+
+    /// <summary>
+    /// Processes an acknowledge-only request asynchronously: success is the absence of a server
+    /// error, and no payload is returned.
+    /// </summary>
+    /// <param name="request">The request to be processed.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <returns>A <see cref="Task{TResult}"/> whose result is a payload-free <see cref="Response"/>.</returns>
+    protected async Task<Response> ProcessAckRequestAsync(AppRequest request, CancellationToken cancellationToken = default)
+    {
+        var response = await SendRequestAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        return IsError(response)
+            ? ResponseHelper.BuildAckOutput(false, GetErrorMessage(response))
+            : ResponseHelper.BuildAckOutput(true);
     }
 
     /// <summary>
@@ -87,14 +149,15 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="entityId">The ID of the entity.</param>
     /// <param name="selector">The function to select the entity information from the response.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the entity information.</returns>
-    protected async Task<Response<T?>> GetEntityInfoAsync<T>(uint entityId, Func<AppMessage, T> selector)
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    protected async Task<Response<T?>> GetEntityInfoAsync<T>(ulong entityId, Func<AppMessage, T> selector, CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
             EntityId = entityId,
             GetEntityInfo = new AppEmpty()
         };
-        return await ProcessRequestAsync(request, selector);
+        return await ProcessRequestAsync(request, selector, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -102,7 +165,8 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// </summary>
     /// <param name="alarmId">The ID of the alarm entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the subscription information.</returns>
-    public async Task<Response<SubscriptionInfo?>> CheckSubscriptionAsync(uint alarmId)
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<SubscriptionInfo?>> CheckSubscriptionAsync(ulong alarmId, CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
@@ -111,7 +175,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<SubscriptionInfo?>(
             request,
-            r =>r.Response.Flag.ToSubscriptionInfo());
+            r => r.Response.Flag.ToSubscriptionInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -119,48 +183,193 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// </summary>
     /// <param name="entityId">The ID of the alarm entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the alarm information.</returns>
-    public async Task<Response<AlarmInfo?>> GetAlarmInfoAsync(uint entityId)
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<AlarmInfo?>> GetAlarmInfoAsync(ulong entityId, CancellationToken cancellationToken = default)
     {
-        return await GetEntityInfoAsync<AlarmInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo());
+        return await GetEntityInfoAsync<AlarmInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Retrieves the clan information asynchronously.
+    /// </summary>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the clan information.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<ClanInfo?>> GetClanInfoAsync(CancellationToken cancellationToken = default)
+    {
+        var request = new AppRequest
+        {
+            GetClanInfo = new AppEmpty()
+        };
+        return await ProcessRequestAsync<ClanInfo?>(request, r => r.Response.ClanInfo.ToClanInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Sets the clan message of the day (MOTD) asynchronously.
+    /// </summary>
+    /// <param name="message">The message to set as the clan MOTD.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a payload-free <see cref="Response"/> indicating the success of the operation.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response> SetClanMotdAsync(string message, CancellationToken cancellationToken = default)
+    {
+        var request = new AppRequest
+        {
+            SetClanMotd = new AppSendMessage
+            {
+                Message = message
+            }
+        };
+        return await ProcessAckRequestAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Retrieves the clan chat asynchronously.
+    /// </summary>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the clan chat information.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<ClanChatInfo?>> GetClanChatAsync(CancellationToken cancellationToken = default)
+    {
+        var request = new AppRequest
+        {
+            GetClanChat = new AppEmpty()
+        };
+        return await ProcessRequestAsync<ClanChatInfo?>(request, r => r.Response.ClanChat.ToClanChatInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Sends a clan message asynchronously.
+    /// </summary>
+    /// <param name="message">The message to send.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a payload-free <see cref="Response"/> indicating the success of the operation.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response> SendClanMessageAsync(string message, CancellationToken cancellationToken = default)
+    {
+        var request = new AppRequest
+        {
+            SendClanMessage = new AppSendMessage
+            {
+                Message = message
+            }
+        };
+        return await ProcessAckRequestAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Retrieves the Nexus authentication asynchronously.
+    /// </summary>
+    /// <param name="appKey">The app key for Nexus authentication.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the Nexus authentication.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<NexusAuth?>> GetNexusAuthAsync(string appKey, CancellationToken cancellationToken = default)
+    {
+        var request = new AppRequest
+        {
+            GetNexusAuth = new AppGetNexusAuth
+            {
+                AppKey = appKey
+            }
+        };
+        return await ProcessRequestAsync<NexusAuth?>(request, r => r.Response.NexusAuth.ToNexusAuth(), cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Subscribes to a camera asynchronously, starting the <see cref="OnCameraRaysReceived"/> stream.
+    /// </summary>
+    /// <param name="cameraId">The identifier of the camera/CCTV entity to subscribe to.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the camera information.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<CameraInfo?>> SubscribeToCameraAsync(string cameraId, CancellationToken cancellationToken = default)
+    {
+        var request = new AppRequest
+        {
+            CameraSubscribe = new AppCameraSubscribe
+            {
+                CameraId = cameraId
+            }
+        };
+        return await ProcessRequestAsync<CameraInfo?>(
+            request,
+            r => r.Response.CameraSubscribeInfo.ToCameraInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Sends input (movement/mouse/buttons) to the subscribed camera asynchronously.
+    /// </summary>
+    /// <param name="buttons">The pressed <see cref="CameraButtons"/> bitmask.</param>
+    /// <param name="mouseDeltaX">The horizontal mouse delta.</param>
+    /// <param name="mouseDeltaY">The vertical mouse delta.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a payload-free <see cref="Response"/> indicating the success of the operation.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response> SendCameraInputAsync(CameraButtons buttons, float mouseDeltaX = 0, float mouseDeltaY = 0, CancellationToken cancellationToken = default)
+    {
+        var request = new AppRequest
+        {
+            CameraInput = new AppCameraInput
+            {
+                Buttons = (int)buttons,
+                MouseDelta = new Vector2
+                {
+                    X = mouseDeltaX,
+                    Y = mouseDeltaY
+                }
+            }
+        };
+        return await ProcessAckRequestAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Unsubscribes from the currently subscribed camera asynchronously.
+    /// </summary>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a payload-free <see cref="Response"/> indicating the success of the operation.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response> UnsubscribeFromCameraAsync(CancellationToken cancellationToken = default)
+    {
+        var request = new AppRequest
+        {
+            CameraUnsubscribe = new AppEmpty()
+        };
+        return await ProcessAckRequestAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Retrieves the server information asynchronously.
     /// </summary>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the server information.</returns>
-    public async Task<Response<ServerInfo?>> GetInfoAsync()
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<ServerInfo?>> GetInfoAsync(CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
             GetInfo = new AppEmpty()
         };
-        return await ProcessRequestAsync<ServerInfo?>(request, r => r.Response.Info.ToServerInfo());
+        return await ProcessRequestAsync<ServerInfo?>(request, r => r.Response.Info.ToServerInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Retrieves the server map asynchronously.
     /// </summary>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the server map.</returns>
-    public async Task<Response<ServerMap?>> GetMapAsync()
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<ServerMap?>> GetMapAsync(CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
             GetMap = new AppEmpty()
         };
-        return await ProcessRequestAsync<ServerMap?>(request, r => r.Response.Map.ToServerMap());
+        return await ProcessRequestAsync<ServerMap?>(request, r => r.Response.Map.ToServerMap(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Retrieves the map markers asynchronously.
     /// </summary>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the map markers.</returns>
-    public async Task<Response<MapMarkers?>> GetMapMarkersAsync()
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<MapMarkers?>> GetMapMarkersAsync(CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
             GetMapMarkers = new AppEmpty()
         };
-        return await ProcessRequestAsync<MapMarkers?>(request, r => r.Response.MapMarkers.ToMapMarkers());
+        return await ProcessRequestAsync<MapMarkers?>(request, r => r.Response.MapMarkers.ToMapMarkers(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -168,11 +377,12 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// </summary>
     /// <param name="entityId">The ID of the smart switch entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
-    public async Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(uint entityId)
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(ulong entityId, CancellationToken cancellationToken = default)
     {
         return await GetEntityInfoAsync<SmartSwitchInfo?>(
             entityId,
-            r => r.Response.EntityInfo.ToSmartSwitchInfo());
+            r => r.Response.EntityInfo.ToSmartSwitchInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -180,18 +390,20 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// </summary>
     /// <param name="entityId">The ID of the storage monitor entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the storage monitor information.</returns>
-    public async Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(uint entityId)
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(ulong entityId, CancellationToken cancellationToken = default)
     {
         return await GetEntityInfoAsync<StorageMonitorInfo?>(
             entityId,
-            r => r.Response.EntityInfo.ToStorageMonitorInfo());
+            r => r.Response.EntityInfo.ToStorageMonitorInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Retrieves the team chat information asynchronously.
     /// </summary>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the team chat information.</returns>
-    public async Task<Response<TeamChatInfo?>> GetTeamChatAsync()
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<TeamChatInfo?>> GetTeamChatAsync(CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
@@ -199,41 +411,44 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<TeamChatInfo?>(
             request,
-            r => r.Response.TeamChat.ToTeamChatInfo());
+            r => r.Response.TeamChat.ToTeamChatInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Retrieves the team information asynchronously.
     /// </summary>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the team information.</returns>
-    public async Task<Response<TeamInfo?>> GetTeamInfoAsync()
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<TeamInfo?>> GetTeamInfoAsync(CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
             GetTeamInfo = new AppEmpty()
         };
-        return await ProcessRequestAsync<TeamInfo?>(request, r => r.Response.TeamInfo.ToTeamInfo());
+        return await ProcessRequestAsync<TeamInfo?>(request, r => r.Response.TeamInfo.ToTeamInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Retrieves the current time information asynchronously.
     /// </summary>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the time information.</returns>
-    public async Task<Response<TimeInfo?>> GetTimeAsync()
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<TimeInfo?>> GetTimeAsync(CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
             GetTime = new AppEmpty()
         };
-        return await ProcessRequestAsync<TimeInfo?>(request, r => r.Response.Time.ToTimeInfo());
+        return await ProcessRequestAsync<TimeInfo?>(request, r => r.Response.Time.ToTimeInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Promotes a player to leader asynchronously.
     /// </summary>
     /// <param name="steamId">The Steam ID of the player to promote.</param>
-    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> indicating the success of the operation.</returns>
-    public async Task<Response<bool?>> PromoteToLeaderAsync(ulong steamId)
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a payload-free <see cref="Response"/> indicating the success of the operation.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response> PromoteToLeaderAsync(ulong steamId, CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
@@ -242,7 +457,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
                 SteamId = steamId
             }
         };
-        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+        return await ProcessAckRequestAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -250,7 +465,8 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// </summary>
     /// <param name="message">The message to send.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the team message.</returns>
-    public async Task<Response<TeamMessage?>> SendTeamMessageAsync(string message)
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<TeamMessage?>> SendTeamMessageAsync(string message, CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
@@ -261,7 +477,11 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<TeamMessage?>(
             request,
-            r => r.Broadcast.TeamMessage.Message.ToTeamMessage());
+            r => r.Broadcast.TeamMessage.Message.ToTeamMessage(),
+            // The reply is the team-message broadcast echoing our own message: match on our Steam ID
+            // so another player's message arriving first cannot be mistaken for the reply.
+            broadcastReplyMatcher: b => b.TeamMessage?.Message?.SteamId == PlayerId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -270,7 +490,8 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="smartSwitchId">The ID of the smart switch entity.</param>
     /// <param name="smartSwitchValue">The value to set for the smart switch.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
-    public async Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(uint smartSwitchId, bool smartSwitchValue)
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(ulong smartSwitchId, bool smartSwitchValue, CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
@@ -282,7 +503,11 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
         };
         return await ProcessRequestAsync<SmartSwitchInfo?>(
             request,
-            r => r.Broadcast.EntityChanged.ToSmartSwitchEvent());
+            r => r.Broadcast.EntityChanged.ToSmartSwitchEvent(),
+            // The reply is the EntityChanged broadcast for this switch: match on the entity ID so an
+            // unrelated broadcast (team chat, another entity) cannot resolve this request.
+            broadcastReplyMatcher: b => b.EntityChanged?.EntityId == smartSwitchId,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -290,8 +515,9 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// </summary>
     /// <param name="entityId">The ID of the entity.</param>
     /// <param name="doSubscribe">Specifies whether to subscribe or unsubscribe.</param>
-    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> indicating the success of the operation.</returns>
-    public async Task<Response<bool?>> SetSubscriptionAsync(uint entityId, bool doSubscribe = true)
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a payload-free <see cref="Response"/> indicating the success of the operation.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response> SetSubscriptionAsync(ulong entityId, bool doSubscribe = true, CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
@@ -301,7 +527,7 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
                 Value = doSubscribe
             }
         };
-        return await ProcessRequestAsync<bool?>(request, r => r.Response.Success is not null);
+        return await ProcessAckRequestAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -311,17 +537,22 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// <param name="timeoutMilliseconds">The duration of each state in milliseconds.</param>
     /// <param name="value">The initial value of the smart switch.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
     public async Task<Response<SmartSwitchInfo?>> StrobeSmartSwitchAsync(
-        uint entityId,
+        ulong entityId,
         int timeoutMilliseconds = 1000,
-        bool value = true)
+        bool value = true,
+        CancellationToken cancellationToken = default)
     {
-        var response = await SetSmartSwitchValueAsync(entityId, value);
+        var response = await SetSmartSwitchValueAsync(entityId, value, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        if (!response.IsSuccess) return response;
+        if (!response.IsSuccess)
+        {
+            return response;
+        }
 
-        await Task.Delay(timeoutMilliseconds);
-        return await SetSmartSwitchValueAsync(entityId, !value);
+        await Task.Delay(timeoutMilliseconds, cancellationToken: cancellationToken).ConfigureAwait(false);
+        return await SetSmartSwitchValueAsync(entityId, !value, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -329,13 +560,17 @@ public class RustPlus(string server, int port, ulong playerId, int playerToken, 
     /// </summary>
     /// <param name="entityId">The ID of the smart switch entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
-    public async Task<Response<SmartSwitchInfo?>> ToggleSmartSwitchAsync(uint entityId)
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response<SmartSwitchInfo?>> ToggleSmartSwitchAsync(ulong entityId, CancellationToken cancellationToken = default)
     {
-        var entityInfo = await GetSmartSwitchInfoAsync(entityId);
+        var entityInfo = await GetSmartSwitchInfoAsync(entityId, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        if (!entityInfo.IsSuccess) return entityInfo;
+        if (!entityInfo.IsSuccess)
+        {
+            return entityInfo;
+        }
 
         var value = entityInfo.Data!.IsActive;
-        return await SetSmartSwitchValueAsync(entityId, !value);
+        return await SetSmartSwitchValueAsync(entityId, !value, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 }

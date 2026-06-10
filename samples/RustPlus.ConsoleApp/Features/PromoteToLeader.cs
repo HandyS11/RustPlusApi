@@ -1,9 +1,9 @@
-﻿using RustPlus.ConsoleApp.Utils;
+using RustPlus.ConsoleApp.Utils;
 using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class PromoteToLeader(IRustPlus rustPlus)
+internal sealed class PromoteToLeader(IRustPlus rustPlus)
 {
     public async Task PromoteToLeaderAsync(ulong steamId)
     {

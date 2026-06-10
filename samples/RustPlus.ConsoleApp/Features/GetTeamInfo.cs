@@ -1,9 +1,9 @@
-﻿using RustPlus.ConsoleApp.Utils;
+using RustPlus.ConsoleApp.Utils;
 using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class GetTeamInfo(IRustPlus rustPlus)
+internal sealed class GetTeamInfo(IRustPlus rustPlus)
 {
     public async Task GetTeamInfoAsync()
     {

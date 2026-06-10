@@ -1,8 +1,14 @@
-﻿namespace RustPlusApi.Fcm.Data.Events;
+namespace RustPlusApi.Fcm.Data.Events;
 
+/// <summary>Identifies a Rust+ entity (smart switch, alarm, or storage monitor) in a pairing notification.</summary>
 public sealed record EntityEvent
 {
-    public int? EntityType { get; set; }
-    public int? EntityId { get; set; }
-    public string? EntityName { get; set; }
+    /// <summary>Entity type: 1 = Smart Switch, 2 = Smart Alarm, 3 = Storage Monitor.</summary>
+    public int? EntityType { get; init; }
+
+    /// <summary>The entity's Rust+ ID.</summary>
+    public int? EntityId { get; init; }
+
+    /// <summary>The entity name as configured in the Rust+ app.</summary>
+    public string? EntityName { get; init; }
 }

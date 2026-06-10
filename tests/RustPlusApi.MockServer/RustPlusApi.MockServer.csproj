@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Shares the contract assembly so request/response stay in lockstep with the schema. -->
+        <ProjectReference Include="..\..\src\RustPlusApi\RustPlusApi.csproj" />
+    </ItemGroup>
+
+</Project>

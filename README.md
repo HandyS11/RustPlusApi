@@ -1,310 +1,90 @@
+<div align="center">
+
 # RustPlusApi
 
-![CI](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml/badge.svg)
-![CD](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg)
+**A C# library for the [Rust+](https://rust.facepunch.com/companion) companion API.**
+Query and control your server, render security cameras, listen for FCM notifications, and acquire
+all the required credentials natively — _no Node.js required_.
 
-## Features
+[![CI](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml/badge.svg)](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml)
+[![CD](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg)](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml)
+[![Docs](https://github.com/HandyS11/RustPlusApi/actions/workflows/Documentation.yml/badge.svg)](https://handys11.github.io/RustPlusApi/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![.NET](https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4?logo=dotnet)
+[![codecov](https://codecov.io/gh/HandyS11/RustPlusApi/graph/badge.svg?token=UZCM1A6ERM)](https://codecov.io/gh/HandyS11/RustPlusApi)
+[![Mutation Score](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Fgithub.com%2FHandyS11%2FRustPlusApi%2Fdevelop)](https://dashboard.stryker-mutator.io/reports/github.com/HandyS11/RustPlusApi/develop)
 
-Some of the features that the **RustPlusApi** provides:
+[Documentation](https://handys11.github.io/RustPlusApi/) ·
+[Getting Started](https://handys11.github.io/RustPlusApi/articles/getting-started.html) ·
+[Samples](samples/README.md) ·
 
-- `GetEntityInfo` Get current state of a Smart Device
-- `GetInfo` Get info about the Rust Server
-- `GetMap` Fetch map info, which includes a jpg image
-- `GetMapMarkers` Get map markers
-- `GetTeamInfo` Get a list of team members and positions on the map
-- `GetTime` Get the current in game time
-- `SendTeamMessage` Send messages to Team Chat
-- `SetEntityValue` Set the value of a Smart Device
+</div>
 
-Some of the features that the **RustPlusApi.Fcm** provides:
+## Packages
 
-- `OnServerPairing` Event fired when the server is paired
-- `OnEntityParing` Event fired when an entity is paired
-- `OnAlarmTriggered` Event fired when an alarm is triggered
-
-Feel free to **explore** the `samples/` folder to see how to **use** the API.
+| Package | Version | Downloads | Description |
+| --- | --- | --- | --- |
+| [`RustPlusApi`](src/RustPlusApi/README.md) | [![NuGet](https://img.shields.io/nuget/v/RustPlusApi.svg)](https://www.nuget.org/packages/RustPlusApi) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.svg)](https://www.nuget.org/packages/RustPlusApi) | Core client. Typed `Response<T>` API for info/time/map/markers, team & **clan** chat, **nexus** auth, entities (smart switch / alarm / storage monitor), and the **camera** protocol. |
+| [`RustPlusApi.Fcm`](src/RustPlusApi.Fcm/README.md) | [![NuGet](https://img.shields.io/nuget/v/RustPlusApi.Fcm.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm) | FCM listener — receives server/entity **pairing** and **alarm** notifications. |
+| [`RustPlusApi.Fcm.Registration`](src/RustPlusApi.Fcm.Registration/README.md) | [![NuGet](https://img.shields.io/nuget/v/RustPlusApi.Fcm.Registration.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Registration) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.Registration.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Registration) | **Native credential acquisition** (GCM/Firebase/FCM/Expo + Steam login + Rust Companion). Replaces the `rustplus.js` Node CLI. |
+| [`RustPlusApi.Camera`](src/RustPlusApi.Camera/README.md) | [![NuGet](https://img.shields.io/nuget/v/RustPlusApi.Camera.svg)](https://www.nuget.org/packages/RustPlusApi.Camera) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Camera.svg)](https://www.nuget.org/packages/RustPlusApi.Camera) | Renders camera frames (`AppCameraRays`) into images via ImageSharp. |
 
 ## Versions
 
 ![skills](https://skillicons.dev/icons?i=cs,dotnet)
 
-- [.NET 8](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8) or later
+Targets **.NET Standard 2.0** and **.NET 10** — usable from .NET Framework 4.6.2+, .NET 6/7/8/9/10,
+Mono, and Unity.
 
-## Summary
-
-- [RustPlusApi](#rustplusapi)
-  - [Features](#features)
-  - [Versions](#versions)
-  - [Summary](#summary)
-  - [NuGet](#nuget)
-  - [Usage](#usage)
-    - [RustPlusApi](#rustplusapi-1)
-      - [RustPlusLegacy](#rustpluslegacy)
-      - [RustPlus](#rustplus)
-    - [RustPlusApi.Fcm](#rustplusapifcm)
-  - [Credentials](#credentials)
-  - [Credits](#credits)
-
-The library provides several classes to interact with the Rust+ API:
-`RustPlusLegacy`, `RustPlus`, & `RustPlusFcm`.
-
-- `RustPlusLegacy` is the original implementation based on the `RustPlus.proto` file.
-- `RustPlus` is a new implementation that returns a response based on `./Data/Response.cs` object.
-
-`RustPlusLegacy` is mark as obsolete and will be removed in the future.
-It is recommended to use `RustPlus` for new projects.
-
-- `RustPlusFcm`  is the listener to the FCM socket and handle **paring** and **alarm** notifications.
-
-## NuGet
-
-Use this library in your project by running the following commands:
+## Install
 
 ```bash
 dotnet add package RustPlusApi
+dotnet add package RustPlusApi.Fcm
+dotnet add package RustPlusApi.Fcm.Registration   # native credentials (optional)
+dotnet add package RustPlusApi.Camera             # camera rendering (optional)
 ```
+
+## Quickstart
+
+**1. Get your credentials** (once). Run the registration sample — it logs you into Steam, writes
+`rustplus.config.json`, and prints the `RustPlus(...)` arguments after you pair in game:
 
 ```bash
-dotnet add package RustPlusApi.Fcm
+dotnet run --project samples/RustPlus.Register.ConsoleApp
 ```
 
-## ️Usage
+See [`samples/`](samples/README.md) for the full walkthrough. (You can still use
+`npx @liamcottle/rustplus.js fcm-register` as a fallback.)
 
-### RustPlusApi
-
-#### RustPlusLegacy
-
-![WARNING] Obsolete: This class is marked as obsolete and will be removed in the future. Use `RustPlus` instead.
-
-First, instantiate the `RustPlusLegacy` class with the necessary parameters:
+**2. Talk to the server:**
 
 ```csharp
-var rustPlusApi = new RustPlusLegacy(server, port, playerId, playerToken, useFacepunchProxy);
+using var rustPlus = new RustPlus(server, port, playerId, playerToken);
+await rustPlus.ConnectAsync();
+
+var info = await rustPlus.GetInfoAsync();
+Console.WriteLine(info.Data?.Name);
 ```
 
-Parameters:
-
-- `server`: The IP address of the Rust+ server.
-- `port`: The port dedicated for the Rust+ companion app (not the one used to connect in-game).
-- `playerId`: Your Steam ID.
-- `playerToken`: Your player token acquired with FCM.
-- `useFacepunchProxy`: Specifies whether to use the Facepunch proxy. Default is false.
-
-Then, connect to the Rust+ server:
+**3. Listen for notifications:**
 
 ```csharp
-await rustPlusApi.ConnectAsync();
-```
-
----
-
-There are plenty of methods to interact with the Rust+ server such as:
-
-```csharp
-uint entityId = 123456789;
-var response = await rustPlus.GetEntityInfoLegacyAsync(entityId);
-```
-
-or
-
-```csharp
-var response = await rustPlus.GetInfoLegacyAsync();
-```
-
-you can also make your own request:
-
-```csharp
-var request = new AppRequest
-{
-    GetTime = new AppEmpty()
-};
-await rustPlus.SendRequestAsync(request);
-```
-
-The response with be an **AppMessage** that is a direct representation of `./Protobuf/RustPlus.proto` file.
-
-Feel free to explore the `RustPlusLegacy` class to find all convenient methods to use.
-
----
-
-You can subscribe to events to handle specific actions:
-
-```csharp
-rustPlusApi.Connecting += (sender, _) => { /* handle connecting event */ };
-rustPlusApi.Connected += (sender, _) => { /* handle connected event */ };
-
-rustPlusApi.MessageReceived += (sender, message) => { /* handle every message receive from the socket */ };
-rustPlusApi.NotificationReceived += (sender, message) => { /* handle every notification (no direct request) from the socket */ };
-rustPlusApi.ResponseReceived += (sender, message) => { /* handle every response (answer to a request) from the socket */ };
-
-rustPlusApi.Disconnecting += (sender, _) => { /* handle disconnecting event */ };
-rustPlusApi.Disconnected += (sender, _) => { /* handle disconnected event */ };
-
-rustPlusApi.ErrorOccurred += (sender, ex) => { /* handle error event */ };
-```
-
----
-
-Remember to dispose the `RustPlusLegacy` instance when you're done:
-
-```csharp
-rustPlusApi.DisconnectAsync(); 
-```
-
-### RustPlus
-
-Such as the `RustPlusLegacy`, you need to instantiate the `RustPlus` class with the necessary parameters:
-
-```csharp
-var rustPlusApi = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy);
-```
-
----
-
-There are quite the same methods as `RustPlusLegacy` but the response is a direct representation of `./Data/Response.cs` object.
-
-```csharp
-public class Response<T>
-{
-    public bool IsSuccess { get; set; }
-    public Error? Error { get; set; }
-    public T? Data { get; set; }
-}
-
-public class Error
-{
-    public string? Message { get; set; }
-}
-```
-
-For example, to get the entity info:
-
-```csharp
-uint smartSwitchId = 123456789;
-var response = await rustPlus.GetSmartSwitchInfoAsync(smartSwitchId);
-```
-
-Response will be a `Response<SmartSwitchInfo>` object.
-
-```csharp
-public class SmartSwitchInfo
-{
-    public bool IsActive { get; set; }
-}
-```
-
----
-
-You can also subscribe to more events to handle specific actions:
-
-```csharp
-rustPlusApi.OnSmartSwitchTriggered += (sender, smartSwitch) => { /* handle smart switch triggered event */ };
-rustPlusApi.OnStorageMonitorTriggered += (sender, storageMonitor) => { /* handle storage monitor triggered event */ };
-
-rustPlusApi.OnTeamChatReceived += (sender, message) => { /* handle team chat received event */ };
-```
-
-To be able to receive these events, you need to previously make a request on the given entity or chat.
-
-For example, to receive the smart switch triggered event, you need to make a request on the smart switch entity:
-
-```csharp
-rustPlus.OnSmartSwitchTriggered += (_, message) =>
-{
-    // ...
-};
-
-const uint entityId = 123456789;
-var message = await rustPlus.GetSmartSwitchInfoAsync(entityId);
-```
-
-Each time the smart switch is triggered, the event will be fired.
-
----
-
-Remember to dispose the `RustPlus` instance when you're done (such as `RustPlusLegacy`):
-
-```csharp
-rustPlusApi.DisconnectAsync(); 
-```
-
----
-
-### RustPlusApi.Fcm
-
-#### RustPlusFcm
-
-First, instantiate the `RustPlusFcm` class with the necessary parameters:
-
-```csharp
-var listener = new RustPlusFcm(credentials, notificationIds);
-```
-
-Parameters:
-
-- `credentials`: The FCM credentials\*.
-- `notificationIds`: The notification ids to mark as read.
-
-\* See the [Credentials](#credentials) section below for how to obtain these.
-
----
-
-Then you can connect to the FCM server:
-
-```csharp
+var listener = new RustPlusFcm(credentials);
+listener.OnServerPairing += (_, e) => Console.WriteLine($"Paired: {e.Data?.Ip}");
 await listener.ConnectAsync();
 ```
 
----
+## Documentation
 
-You can subscribe to events to handle specific actions:
-
-```csharp
-listener.OnServerPairing += (sender, e) =>
-{
-    Console.WriteLine($"Server pairing: {e.ServerPairing}");
-};
-
-listener.OnEntityParing += (sender, e) =>
-{
-    Console.WriteLine($"Entity pairing: {e.EntityPairing}");
-};
-
-listener.OnAlarmTriggered += (sender, e) =>
-{
-    Console.WriteLine($"Alarm triggered: {e.Alarm}");
-};
-```
-
----
-
-Remember to disconnect from the FCM server when you're done:
-
-```csharp
-listener.Disconnect();
-```
-
----
-
-## Credentials
-
-Currently, there is no simple way to get the FCM credentials using .NET.
-
-To use this library, you need to get the FCM credentials manually.
-To do, so I recommend you to use [this project](https://github.com/liamcottle/rustplus.js) to get the credentials.
-
-1. Clone the repository.
-2. Install the dependencies using `npm install`.
-3. Run `npm run cli/index.js fcm-register`
-4. Proceed to log in with your Steam account.
-5. The credentials will be in a file named `rustplus.config.json`.
-
-I'm sorry for the inconvenience, but since the API is not fully complete, it's the easiest way.
+Full guides and the API reference live on the **[documentation site](https://handys11.github.io/RustPlusApi/)**
+(built with DocFX). Start with [Getting Started](https://handys11.github.io/RustPlusApi/articles/getting-started.html).
+Runnable examples are in [`samples/`](samples/README.md).
 
 ## Credits
 
-*This project is grandly inspired by [liamcottle/rustplus.js](https://github.com/liamcottle/rustplus.js).*
+_This project is grandly inspired by [liamcottle/rustplus.js](https://github.com/liamcottle/rustplus.js)._
 
-Special thanks to [**Versette**](https://github.com/Versette) for her work on the `RustPlusApi.Fcm` socket.
+Special thanks to [**Versette**](https://github.com/Versette) and [**Devedse**](https://github.com/devedse) for their work on the `RustPlusApi.Fcm` socket.
 
 - Author: [**HandyS11**](https://github.com/HandyS11)

@@ -1,0 +1,63 @@
+name: Mutation Testing
+
+permissions:
+  contents: read
+
+# Mutation runs rebuild + rerun the suite per mutant, so they are slow. Gate them behind
+# manual dispatch and a weekly schedule rather than every PR.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1" # Mondays 03:00 UTC
+
+jobs:
+  stryker:
+    name: Stryker mutation testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # RustPlusApi.csproj (core) is intentionally omitted: Stryker 4.x cannot mutate it
+        # because protobuf-net.BuildTools generates the RustPlusContracts types at compile
+        # time and Stryker's rollback compiler cannot resolve them. The core mappers/client
+        # are covered by exact-assertion unit tests instead. See docs/testing.md.
+        include:
+          - source: RustPlusApi.Fcm.csproj
+            testdir: tests/RustPlusApi.Fcm.UnitTests
+          - source: RustPlusApi.Fcm.Registration.csproj
+            testdir: tests/RustPlusApi.Fcm.Registration.UnitTests
+          - source: RustPlusApi.Camera.csproj
+            testdir: tests/RustPlusApi.Camera.UnitTests
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Stryker (${{ matrix.source }}) with dashboard
+        env:
+          STRYKER_DASHBOARD_API_KEY: ${{ secrets.STRYKER_DASHBOARD_API_KEY }}
+        working-directory: ${{ matrix.testdir }}
+        run: >
+          dotnet stryker
+          --config-file stryker-config.json
+          --project ${{ matrix.source }}
+          --reporter cleartext
+          --reporter html
+          --reporter dashboard
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: stryker-report-${{ matrix.source }}
+          path: ${{ matrix.testdir }}/StrykerOutput/**/reports/mutation-report.html
+          if-no-files-found: ignore

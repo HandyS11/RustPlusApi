@@ -1,0 +1,50 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../src",
+          "files": [ "**/*.csproj" ]
+        }
+      ],
+      "dest": "api",
+      "filter": "filterConfig.yml",
+      "properties": {
+        "TargetFramework": "net10.0"
+      }
+    }
+  ],
+  "build": {
+    "content": [
+      { "files": [ "**/*.{md,yml}" ], "exclude": [ "_site/**", "README.md", "filterConfig.yml" ] }
+    ],
+    "resource": [
+      {
+        "files": [
+          "images/**"
+        ]
+      }
+    ],
+    "globalMetadata": {
+      "_appName": "\u00a0RustPlusApi",
+      "_appTitle": "RustPlusApi",
+      "_appFaviconPath": "images/fav-icon.png",
+      "_appLogoPath": "images/fav-icon.png",
+      "_appFooter": "A C# API for Rust+. It allows you to interact with a Rust (the facepunch game) server using Rust+ API. ",
+      "_enableSearch": true,
+      "_enableNewTab": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/HandyS11/RustPlusApi",
+        "branch": "develop",
+        "apiSpecFolder": "docs/api"
+      },
+      "pdf": false
+    },
+    "template": [
+      "default",
+      "modern"
+    ],
+    "dest": "_site"
+  }
+}

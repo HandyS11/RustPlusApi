@@ -1,0 +1,5 @@
+# Working dirs produced by the pipeline — never committed.
+steamcmd/
+rds/
+decompiled/
+out/

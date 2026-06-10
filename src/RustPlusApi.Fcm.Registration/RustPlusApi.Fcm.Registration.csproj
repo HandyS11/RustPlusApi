@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>netstandard2.0; net10.0</TargetFrameworks>
+        <PackageId>RustPlusApi.Fcm.Registration</PackageId>
+        <IsPackable>true</IsPackable>
+        <Authors>HandyS11</Authors>
+        <Owners>HandyS11</Owners>
+        <Product>Native Rust+ credential acquisition</Product>
+        <Description>Native C# acquisition of FCM + Rust+ credentials (GCM check-in, Firebase install, FCM register, Expo token, Steam login, Rust Companion register) so no Node CLI is needed. Upstream-fragile: depends on live Google/Facepunch services.</Description>
+        <PackageTags>rust rustplus rustplusapi fcm registration credentials</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <LicenseUrl>https://github.com/HandyS11/RustPlusApi/blob/main/LICENSE</LicenseUrl>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+        <RepositoryUrl>https://github.com/HandyS11/RustPlusApi</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageIcon>icon.png</PackageIcon>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="protobuf-net" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="RustPlusApi.Fcm.Registration.UnitTests" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+        <PackageReference Include="System.Text.Json" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\RustPlusApi.Fcm\RustPlusApi.Fcm.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+        <None Include="../../icon.png" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+</Project>

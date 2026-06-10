@@ -1,23 +1,15 @@
-name: Continuous Integration
+name: CI
 
 permissions:
     contents: read
-    
+
 on:
   push:
-    branches:
-      - "develop"
-      - "feature/*"
-      - "fix/*"
-      - "refacto/*"
-      - "refactor/*"
+    branches-ignore:
+      - "main"
   pull_request:
-    branches:
-      - "develop"
-      - "feature/*"
-      - "fix/*"
-      - "refacto/*"
-      - "refactor/*"
+    branches-ignore:
+      - "main"
 
 jobs:
   build-and-deploy:
@@ -25,12 +17,17 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: 8.0.x
+        # net8.0 host resolves the netstandard2.0 build of the libraries; net10.0 host
+        # resolves the net10.0 build. The test project multi-targets both so the same
+        # suite validates both compiled outputs (parity).
+        dotnet-version: |
+          8.0.x
+          10.0.x
 
     - name: Restore dependencies
       run: dotnet restore
@@ -38,5 +35,26 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
 
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+    - name: Test (net8.0 = netstandard2.0 build, and net10.0) with coverage
+      run: >
+        dotnet test --no-build --verbosity normal
+        --settings tests/RustPlusApi.UnitTests/coverlet.runsettings
+        --results-directory ${{ github.workspace }}/TestResults
+
+    - name: Restore .NET tools
+      run: dotnet tool restore
+
+    - name: Merge coverage reports
+      run: >
+        dotnet tool run reportgenerator --
+        "-reports:${{ github.workspace }}/TestResults/**/coverage.opencover.xml"
+        "-targetdir:${{ github.workspace }}/TestResults/merged"
+        "-reporttypes:Cobertura"
+
+    - name: Enforce coverage threshold
+      # Merged aggregate across all 5 test projects and both TFMs (ReportGenerator union).
+      # Metric: ReportGenerator-merged Cobertura line-rate/branch-rate.
+      # Achieved: ~96.7% line / ~91.4% branch. Gate floor: line 95 / branch 90 —
+      # keep in sync with docs/testing.md ("Coverage gate").
+      working-directory: ${{ github.workspace }}
+      run: python3 tools/coverage/check_threshold.py 95 90

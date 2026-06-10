@@ -1,0 +1,32 @@
+namespace RustPlusApi.Camera;
+
+/// <summary>
+/// Seeded xorshift PRNG used to shuffle the camera sample-position buffer. Ported
+/// faithfully from liamcottle/rustplus.js so the shuffle matches the server's layout.
+/// </summary>
+internal sealed class IndexGenerator
+{
+    private int _state;
+
+    public IndexGenerator(int seed)
+    {
+        _state = seed;
+        NextState();
+    }
+
+    public int NextInt(int max) => (int)((NextState() * max) / 4294967295L);
+
+    private long NextState()
+    {
+        unchecked
+        {
+            var e = _state;
+            var t = e;
+            e ^= e << 13;
+            e ^= e >>> 17;
+            e ^= e << 5;
+            _state = e;
+            return t >= 0 ? t : 4294967295L + t - 1;
+        }
+    }
+}

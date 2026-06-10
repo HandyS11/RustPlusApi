@@ -1,0 +1,11 @@
+# DocFX API filter — keeps low-level protocol plumbing out of the published API reference.
+apiRules:
+  # MCS (Chromium push protocol) contracts used internally by the FCM listener.
+  - exclude:
+      uidRegex: ^McsProto
+  # Generated Rust+ wire contracts (AppRequest/AppMessage/…); these are an implementation detail.
+  - exclude:
+      uidRegex: ^RustPlusContracts
+  # GCM check-in protobuf contracts used internally by the registration flow.
+  - exclude:
+      uidRegex: ^RustPlusApi\.Fcm\.Registration\.Protobuf

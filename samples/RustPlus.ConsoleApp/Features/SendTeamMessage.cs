@@ -1,9 +1,9 @@
-﻿using RustPlus.ConsoleApp.Utils;
+using RustPlus.ConsoleApp.Utils;
 using RustPlusApi.Interfaces;
 
 namespace RustPlus.ConsoleApp.Features;
 
-public class SendTeamMessage(IRustPlus rustPlus)
+internal sealed class SendTeamMessage(IRustPlus rustPlus)
 {
     public async Task SendTeamMessageAsync(string message)
     {
