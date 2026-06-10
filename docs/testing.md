@@ -5,33 +5,50 @@ coverage, how to run mutation testing, and why certain members are excluded from
 
 ---
 
+## Test projects
+
+The monolithic test project was split into five focused projects under `tests/`:
+
+| Source project | Unit tests | Integration tests |
+| --- | --- | --- |
+| `RustPlusApi` (core) | `RustPlusApi.UnitTests` | `RustPlusApi.IntegrationTests` |
+| `RustPlusApi.Fcm` | `RustPlusApi.Fcm.UnitTests` | — (none yet) |
+| `RustPlusApi.Fcm.Registration` | `RustPlusApi.Fcm.Registration.UnitTests` | — (none yet) |
+| `RustPlusApi.Camera` | `RustPlusApi.Camera.UnitTests` | — (none yet) |
+
+`RustPlusApi.MockServer` is the shared in-process test server used by integration tests.
+Integration test projects for `RustPlusApi.Fcm`, `RustPlusApi.Fcm.Registration`, and
+`RustPlusApi.Camera` will be added when such tests are written.
+
+---
+
 ## Running the suite
 
 Run all tests (both target-framework hosts, both `netstandard2.0` and `net10.0` builds):
 
 ```bash
-dotnet test tests/RustPlusApi.Tests/RustPlusApi.Tests.csproj
+dotnet test RustPlusApi.sln
 ```
 
 Run a single test class on both TFMs:
 
 ```bash
-dotnet test tests/RustPlusApi.Tests/RustPlusApi.Tests.csproj \
+dotnet test RustPlusApi.sln \
   --filter "FullyQualifiedName~ClassName.MethodName"
 ```
 
 Run only one TFM (useful to debug a netstandard2.0-specific failure):
 
 ```bash
-dotnet test tests/RustPlusApi.Tests/RustPlusApi.Tests.csproj -f net8.0
-dotnet test tests/RustPlusApi.Tests/RustPlusApi.Tests.csproj -f net10.0
+dotnet test RustPlusApi.sln -f net8.0
+dotnet test RustPlusApi.sln -f net10.0
 ```
 
 Run with coverage (requires the runsettings):
 
 ```bash
-dotnet test tests/RustPlusApi.Tests/RustPlusApi.Tests.csproj \
-  --settings tests/RustPlusApi.Tests/coverlet.runsettings \
+dotnet test RustPlusApi.sln \
+  --settings tests/RustPlusApi.UnitTests/coverlet.runsettings \
   --results-directory ./TestResults
 ```
 
@@ -49,7 +66,7 @@ below.
 
 ## Multi-TFM parity mechanism
 
-The test project targets `net8.0;net10.0`. The production libraries target `netstandard2.0;net10.0`.
+The test projects target `net8.0;net10.0`. The production libraries target `netstandard2.0;net10.0`.
 
 When the test runner uses a `net8.0` host, it cannot load the `net10.0` asset of a multi-targeted
 library; the .NET SDK resolves the `netstandard2.0` build instead. When the runner uses a `net10.0`
@@ -67,12 +84,14 @@ implementations are pinned to agree — and the class reaches 100/100 across the
 
 ## Coverage gate
 
-`tools/coverage/report.sh` prints overall `seq=...% branch=...%` per TFM plus every class still
-below 100/100. `tools/coverage/check_threshold.py <line_min> <branch_min>` is the CI gate; it fails
-if either per-TFM report drops below the floor. CI (`.github/workflows/CI.yml`) runs it at
-**line 95 / branch 90**.
+`tools/coverage/report.sh` runs the full test suite, merges the per-project coverage reports via
+ReportGenerator into `TestResults/merged/Cobertura.xml`, prints per-class gaps, and then calls
+`tools/coverage/check_threshold.py <line_min> <branch_min>` as the CI gate. The gate reads the
+**ReportGenerator-merged Cobertura line-rate/branch-rate** (not per-TFM opencover numbers). CI
+(`.github/workflows/CI.yml`) runs it at **line 95 / branch 90**.
 
-Achieved at the time of writing: **≈ 97% line / 94% branch on both TFMs**.
+Achieved at the time of writing: **≈ 96.7% line / 91.4% branch** (merged Cobertura aggregate
+across all test projects and both TFMs).
 The gap to a literal 100% is irreducible and lives mostly in:
 
 - **Compiler-generated async state-machine branches** — the `MoveNext` fault/continuation arcs in
@@ -91,8 +110,9 @@ don't trip the gate.
 
 ## Running mutation testing (Stryker.NET)
 
-The Stryker.NET tool is configured in `tests/RustPlusApi.Tests/stryker-config.json`. It is registered
-as a local .NET tool (see `.config/dotnet-tools.json`).
+Each mutation-tested source project has its own `stryker-config.json` located in its corresponding
+unit test project directory. Stryker.NET is registered as a local .NET tool (see
+`.config/dotnet-tools.json`).
 
 Restore the tool once:
 
@@ -104,9 +124,13 @@ Run mutation testing against a project (from the test-project directory so the r
 `solution` path in the config resolves):
 
 ```bash
-cd tests/RustPlusApi.Tests
+cd tests/RustPlusApi.Fcm.UnitTests
 dotnet stryker --config-file stryker-config.json --project RustPlusApi.Fcm.csproj
+
+cd tests/RustPlusApi.Fcm.Registration.UnitTests
 dotnet stryker --config-file stryker-config.json --project RustPlusApi.Fcm.Registration.csproj
+
+cd tests/RustPlusApi.Camera.UnitTests
 dotnet stryker --config-file stryker-config.json --project RustPlusApi.Camera.csproj
 ```
 
@@ -187,7 +211,9 @@ unit-tested in `RegistrationTests` independently of the live flow.
 
 ### Generated protobuf contract files (via `ExcludeByFile`)
 
-**Configured in:** `tests/RustPlusApi.Tests/coverlet.runsettings`
+**Configured in:** `tests/RustPlusApi.UnitTests/coverlet.runsettings` (identical copies exist in
+each test project; the CI/tooling scripts use the `RustPlusApi.UnitTests` copy as the canonical
+path)
 
 **Files excluded:**
 

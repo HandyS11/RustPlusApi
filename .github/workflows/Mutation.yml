@@ -22,10 +22,13 @@ jobs:
         # because protobuf-net.BuildTools generates the RustPlusContracts types at compile
         # time and Stryker's rollback compiler cannot resolve them. The core mappers/client
         # are covered by exact-assertion unit tests instead. See docs/testing.md.
-        project:
-          - RustPlusApi.Fcm.csproj
-          - RustPlusApi.Fcm.Registration.csproj
-          - RustPlusApi.Camera.csproj
+        include:
+          - source: RustPlusApi.Fcm.csproj
+            testdir: tests/RustPlusApi.Fcm.UnitTests
+          - source: RustPlusApi.Fcm.Registration.csproj
+            testdir: tests/RustPlusApi.Fcm.Registration.UnitTests
+          - source: RustPlusApi.Camera.csproj
+            testdir: tests/RustPlusApi.Camera.UnitTests
     steps:
       - uses: actions/checkout@v6
 
@@ -39,14 +42,14 @@ jobs:
       - name: Restore tools
         run: dotnet tool restore
 
-      - name: Stryker (${{ matrix.project }}) with dashboard
+      - name: Stryker (${{ matrix.source }}) with dashboard
         env:
           STRYKER_DASHBOARD_API_KEY: ${{ secrets.STRYKER_DASHBOARD_API_KEY }}
-        working-directory: tests/RustPlusApi.Tests
+        working-directory: ${{ matrix.testdir }}
         run: >
           dotnet stryker
           --config-file stryker-config.json
-          --project ${{ matrix.project }}
+          --project ${{ matrix.source }}
           --reporter cleartext
           --reporter html
           --reporter dashboard
@@ -55,6 +58,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: stryker-report-${{ matrix.project }}
-          path: tests/RustPlusApi.Tests/StrykerOutput/**/reports/mutation-report.html
+          name: stryker-report-${{ matrix.source }}
+          path: ${{ matrix.testdir }}/StrykerOutput/**/reports/mutation-report.html
           if-no-files-found: ignore

@@ -324,7 +324,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
     /// <summary>Test seam: runs the MCS receive/dispatch loop against an arbitrary stream as a tracked task,
     /// bypassing the live TLS connect, and returns it so tests can await completion or assert teardown awaits
-    /// it. Internal — visible only to RustPlusApi.Tests.</summary>
+    /// it. Internal — visible only to RustPlusApi.Fcm.UnitTests.</summary>
     /// <param name="stream">The stream to read MCS frames from and write responses to.</param>
     /// <returns>The tracked receive-loop task.</returns>
     internal Task RunReceiveLoopOverStreamAsync(Stream stream)
@@ -335,7 +335,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     }
 
     /// <summary>Test seam: runs the heartbeat/watchdog loop against an arbitrary stream as a tracked task,
-    /// bypassing the live TLS connect. Internal — visible only to RustPlusApi.Tests.</summary>
+    /// bypassing the live TLS connect. Internal — visible only to RustPlusApi.Fcm.UnitTests.</summary>
     /// <param name="stream">The stream heartbeat pings are written to.</param>
     /// <returns>The tracked heartbeat-loop task.</returns>
     internal Task RunHeartbeatLoopOverStreamAsync(Stream stream)

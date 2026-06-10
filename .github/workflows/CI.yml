@@ -38,12 +38,23 @@ jobs:
     - name: Test (net8.0 = netstandard2.0 build, and net10.0) with coverage
       run: >
         dotnet test --no-build --verbosity normal
-        --settings tests/RustPlusApi.Tests/coverlet.runsettings
+        --settings tests/RustPlusApi.UnitTests/coverlet.runsettings
         --results-directory ${{ github.workspace }}/TestResults
 
+    - name: Restore .NET tools
+      run: dotnet tool restore
+
+    - name: Merge coverage reports
+      run: >
+        dotnet tool run reportgenerator --
+        "-reports:${{ github.workspace }}/TestResults/**/coverage.opencover.xml"
+        "-targetdir:${{ github.workspace }}/TestResults/merged"
+        "-reporttypes:Cobertura"
+
     - name: Enforce coverage threshold
-      # Achieved: ~99.3-99.6% line / ~97.3-97.6% branch. The gap to 100% is irreducible
-      # (compiler-generated async state-machine branches + live-socket/network lines that
-      # cannot be exercised offline). Gate floor: line 95 / branch 90 — keep in sync with
-      # docs/testing.md ("Coverage gate").
+      # Merged aggregate across all 5 test projects and both TFMs (ReportGenerator union).
+      # Metric: ReportGenerator-merged Cobertura line-rate/branch-rate.
+      # Achieved: ~96.7% line / ~91.4% branch. Gate floor: line 95 / branch 90 —
+      # keep in sync with docs/testing.md ("Coverage gate").
+      working-directory: ${{ github.workspace }}
       run: python3 tools/coverage/check_threshold.py 95 90
