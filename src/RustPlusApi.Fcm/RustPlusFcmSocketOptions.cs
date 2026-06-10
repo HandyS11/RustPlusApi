@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace RustPlusApi.Fcm;
 
 /// <summary>
@@ -18,4 +20,9 @@ public sealed class RustPlusFcmSocketOptions
     /// <see cref="HeartbeatInterval"/> so a single delayed ack doesn't kill a healthy connection.
     /// Default: 12 minutes.</summary>
     public TimeSpan InactivityTimeout { get; init; } = TimeSpan.FromMinutes(12);
+
+    /// <summary>Factory used to create the client's logger. When <see langword="null"/>, logging is
+    /// disabled (a no-op <c>NullLogger</c> is used). Supply one to route diagnostics into your
+    /// logging stack.</summary>
+    public ILoggerFactory? LoggerFactory { get; init; }
 }

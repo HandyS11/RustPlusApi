@@ -1,9 +1,10 @@
 using McsProto;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using ProtoBuf;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Interfaces;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net.Security;
@@ -36,6 +37,11 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
     /// <summary>Tuning values for this instance; options are init-only so the snapshot is stable.</summary>
     private readonly RustPlusFcmSocketOptions _options = options ?? new RustPlusFcmSocketOptions();
+
+    /// <summary>The client's logger; <c>NullLogger</c> when no factory was supplied.
+    /// Exposed to derived classes (e.g. <see cref="RustPlusFcm"/>).</summary>
+    private protected ILogger Logger { get; } =
+        (options?.LoggerFactory ?? NullLoggerFactory.Instance).CreateLogger("RustPlusApi.Fcm.RustPlusFcmSocket");
 
     private TcpClient? _tcpClient;
     private SslStream? _sslStream;
@@ -189,7 +195,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
             _tcpClient = null;
             _transport = null;
 
-            Debug.WriteLine($"Exception occured on ConnectAsync: {ex}");
+            Logger.LogConnectFailed(ex);
             ErrorOccurred?.Invoke(this, ex);
             throw;
         }
@@ -318,7 +324,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         catch (Exception ex)
         {
             // A loop faulted because the transport was disposed mid-read/write: expected during teardown.
-            Debug.WriteLine($"Background loop faulted during teardown (expected): {ex}");
+            Logger.LogTeardownLoopFaulted(ex);
         }
     }
 
@@ -591,9 +597,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
             return;
         }
 
-        Debug.WriteLine($"Responding to ping: Stream ID: {ping.StreamId}," +
-                        $"Last: {ping.LastStreamIdReceived}," +
-                        $"Status: {ping.Status}");
+        Logger.LogRespondingToPing(ping.StreamId, ping.LastStreamIdReceived, ping.Status);
         var pingResponse = new HeartbeatAck
         {
             StreamId = (ping.StreamId ?? 0) + 1,
@@ -630,7 +634,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
             case McsProtoTag.KIqStanzaTag:
                 break;  // To investigate further, if needed
             default:
-                Debug.WriteLine($"Ignoring unrecognized tag: {e.Tag}");
+                Logger.LogUnrecognizedTag(e.Tag);
                 break;
         }
     }
@@ -651,7 +655,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
         if (dataMessage?.AppDatas is not { Count: > 0 })
         {
-            Debug.WriteLine("⚠️ No AppData found in message");
+            Logger.LogNoAppData();
             return;
         }
 
@@ -660,7 +664,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         if (!appDataDict.TryGetValue("channelId", out var channelId) ||
             !appDataDict.TryGetValue("body", out var body))
         {
-            Debug.WriteLine("⚠️ Not a Rust+ notification - missing channelId or body");
+            Logger.LogNotRustNotification();
             return;
         }
 
