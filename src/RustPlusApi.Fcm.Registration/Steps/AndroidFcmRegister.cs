@@ -120,7 +120,8 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
     /// <param name="firebaseInstallationToken">Firebase installation auth token from <see cref="InstallAsync"/>.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <exception cref="InvalidOperationException">Thrown when FCM registration fails after multiple attempts.</exception>
-    public async Task<string> RegisterFcmAsync(Gcm gcm, string firebaseInstallationToken,
+    public async Task<string> RegisterFcmAsync(Gcm gcm,
+        string firebaseInstallationToken,
         CancellationToken cancellationToken = default)
     {
         var form = new Dictionary<string, string>

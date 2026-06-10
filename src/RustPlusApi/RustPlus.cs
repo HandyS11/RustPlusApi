@@ -124,8 +124,10 @@ public class RustPlus(
     /// than <c>response.Response</c>. Unrelated broadcasts stay pure notifications.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request, Func<AppMessage, T> successSelector,
-        Func<AppBroadcast, bool>? broadcastReplyMatcher = null, CancellationToken cancellationToken = default)
+    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request,
+        Func<AppMessage, T> successSelector,
+        Func<AppBroadcast, bool>? broadcastReplyMatcher = null,
+        CancellationToken cancellationToken = default)
     {
         var response = await SendRequestAsync(request, broadcastReplyMatcher, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
@@ -160,7 +162,8 @@ public class RustPlus(
     /// <param name="selector">The function to select the entity information from the response.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the entity information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    protected async Task<Response<T?>> GetEntityInfoAsync<T>(ulong entityId, Func<AppMessage, T> selector,
+    protected async Task<Response<T?>> GetEntityInfoAsync<T>(ulong entityId,
+        Func<AppMessage, T> selector,
         CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
@@ -319,8 +322,10 @@ public class RustPlus(
     /// <param name="mouseDeltaY">The vertical mouse delta.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a payload-free <see cref="Response"/> indicating the success of the operation.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    public async Task<Response> SendCameraInputAsync(CameraButtons buttons, float mouseDeltaX = 0,
-        float mouseDeltaY = 0, CancellationToken cancellationToken = default)
+    public async Task<Response> SendCameraInputAsync(CameraButtons buttons,
+        float mouseDeltaX = 0,
+        float mouseDeltaY = 0,
+        CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
         {
@@ -521,7 +526,8 @@ public class RustPlus(
     /// <param name="smartSwitchValue">The value to set for the smart switch.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    public async Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(ulong smartSwitchId, bool smartSwitchValue,
+    public async Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(ulong smartSwitchId,
+        bool smartSwitchValue,
         CancellationToken cancellationToken = default)
     {
         var request = new AppRequest
@@ -548,7 +554,8 @@ public class RustPlus(
     /// <param name="doSubscribe">Specifies whether to subscribe or unsubscribe.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a payload-free <see cref="Response"/> indicating the success of the operation.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    public async Task<Response> SetSubscriptionAsync(ulong entityId, bool doSubscribe = true,
+    public async Task<Response> SetSubscriptionAsync(ulong entityId,
+        bool doSubscribe = true,
         CancellationToken cancellationToken = default)
     {
         var request = new AppRequest

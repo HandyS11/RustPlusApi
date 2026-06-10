@@ -39,7 +39,8 @@ public sealed class StubHttpMessageHandler(
 
     /// <inheritdoc/>
     protected override async Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request, CancellationToken cancellationToken)
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
     {
         var index = _callIndex++;
         Requests.Add(request);

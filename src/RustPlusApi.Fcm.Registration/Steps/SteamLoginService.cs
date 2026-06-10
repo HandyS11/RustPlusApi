@@ -82,7 +82,8 @@ public sealed class SteamLoginService(int port = 3000)
 
     // --- DevTools protocol ---
 
-    private async Task<ClientWebSocket> ConnectAndInjectAsync(int debugPort, string startUrl,
+    private async Task<ClientWebSocket> ConnectAndInjectAsync(int debugPort,
+        string startUrl,
         CancellationToken cancellationToken)
     {
         var pageWebSocketUrl = await GetPageWebSocketUrlAsync(debugPort, cancellationToken).ConfigureAwait(false);
@@ -160,7 +161,10 @@ public sealed class SteamLoginService(int port = 3000)
         throw new InvalidOperationException("Chrome DevTools endpoint did not become available.");
     }
 
-    private static async Task SendAsync(ClientWebSocket socket, int id, string method, object parameters,
+    private static async Task SendAsync(ClientWebSocket socket,
+        int id,
+        string method,
+        object parameters,
         CancellationToken cancellationToken)
     {
         var payload = JsonSerializer.Serialize(new

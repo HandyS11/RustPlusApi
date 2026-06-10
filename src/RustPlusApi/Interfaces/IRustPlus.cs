@@ -71,7 +71,9 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="mouseDeltaX">Horizontal mouse delta.</param>
     /// <param name="mouseDeltaY">Vertical mouse delta.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response> SendCameraInputAsync(CameraButtons buttons, float mouseDeltaX = 0, float mouseDeltaY = 0,
+    Task<Response> SendCameraInputAsync(CameraButtons buttons,
+        float mouseDeltaX = 0,
+        float mouseDeltaY = 0,
         CancellationToken cancellationToken = default);
 
     /// <summary>Unsubscribes from the currently subscribed camera.</summary>
@@ -128,14 +130,16 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="smartSwitchId">Entity ID of the smart switch.</param>
     /// <param name="smartSwitchValue"><see langword="true"/> to turn on, <see langword="false"/> to turn off.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(ulong smartSwitchId, bool smartSwitchValue,
+    Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(ulong smartSwitchId,
+        bool smartSwitchValue,
         CancellationToken cancellationToken = default);
 
     /// <summary>Subscribes or unsubscribes from push notifications for a smart alarm.</summary>
     /// <param name="entityId">Entity ID of the alarm.</param>
     /// <param name="doSubscribe"><see langword="true"/> to subscribe, <see langword="false"/> to unsubscribe.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response> SetSubscriptionAsync(ulong entityId, bool doSubscribe = true,
+    Task<Response> SetSubscriptionAsync(ulong entityId,
+        bool doSubscribe = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -146,8 +150,10 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="timeoutMilliseconds">Duration to hold the initial state before reverting, in milliseconds.</param>
     /// <param name="value">Initial state to pulse the switch to.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<SmartSwitchInfo?>> StrobeSmartSwitchAsync(ulong entityId, int timeoutMilliseconds = 1000,
-        bool value = true, CancellationToken cancellationToken = default);
+    Task<Response<SmartSwitchInfo?>> StrobeSmartSwitchAsync(ulong entityId,
+        int timeoutMilliseconds = 1000,
+        bool value = true,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Toggles a smart switch — turns it on if off, or off if on.</summary>
     /// <param name="entityId">Entity ID of the smart switch.</param>

@@ -275,7 +275,8 @@ public abstract class RustPlusSocket(
     /// <returns>A task that represents the asynchronous operation and contains the <see cref="AppMessage"/> response.</returns>
     /// <exception cref="TimeoutException">Thrown when no response arrives within the request timeout.</exception>
     public async Task<AppMessage> SendRequestAsync(AppRequest request,
-        Func<AppBroadcast, bool>? broadcastReplyMatcher = null, CancellationToken cancellationToken = default)
+        Func<AppBroadcast, bool>? broadcastReplyMatcher = null,
+        CancellationToken cancellationToken = default)
     {
         // RunContinuationsAsynchronously keeps the receive loop from running awaiters inline when it resolves the TCS.
         var tcs = new TaskCompletionSource<AppMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
