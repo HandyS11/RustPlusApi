@@ -5,7 +5,7 @@ namespace RustPlus.ConsoleApp.Features;
 
 internal sealed class StrobeSmartSwitch(IRustPlus rustPlus)
 {
-    public async Task StrobeSmartSwitchAsync(uint entityId, int timeoutMilliseconds = 1000, bool value = true)
+    public async Task StrobeSmartSwitchAsync(ulong entityId, int timeoutMilliseconds = 1000, bool value = true)
     {
         var response = await rustPlus.StrobeSmartSwitchAsync(entityId, timeoutMilliseconds, value);
 

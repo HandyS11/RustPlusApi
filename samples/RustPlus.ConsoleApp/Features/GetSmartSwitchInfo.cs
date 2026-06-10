@@ -5,7 +5,7 @@ namespace RustPlus.ConsoleApp.Features;
 
 internal sealed class GetSmartSwitchInfo(IRustPlus rustPlus)
 {
-    public async Task GetSmartSwitchInfoAsync(uint entityId)
+    public async Task GetSmartSwitchInfoAsync(ulong entityId)
     {
         var response = await rustPlus.GetSmartSwitchInfoAsync(entityId);
         DisplayUtilities.DisplayJson("SmartSwitchInfo", response);

@@ -76,7 +76,7 @@ public class ClanNexusClientTests
         var response = await client.SetClanMotdAsync("new motd").WaitAsync(Timeout);
 
         Assert.True(response.IsSuccess);
-        Assert.True(response.Data);
+        Assert.Null(response.Error);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class ClanNexusClientTests
         var response = await client.PromoteToLeaderAsync(PlayerId).WaitAsync(Timeout);
 
         Assert.True(response.IsSuccess);
-        Assert.True(response.Data);
+        Assert.Null(response.Error);
     }
 
     [Fact]
@@ -144,6 +144,6 @@ public class ClanNexusClientTests
         var response = await client.SendClanMessageAsync("hello clan").WaitAsync(Timeout);
 
         Assert.True(response.IsSuccess);
-        Assert.True(response.Data);
+        Assert.Null(response.Error);
     }
 }

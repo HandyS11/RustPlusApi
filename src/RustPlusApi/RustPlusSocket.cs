@@ -157,7 +157,7 @@ public abstract class RustPlusSocket(
         }
 #endif
 
-        if (IsConnected())
+        if (IsConnected)
         {
             throw new InvalidOperationException("Already connected. Call DisconnectAsync before reconnecting.");
         }
@@ -247,7 +247,10 @@ public abstract class RustPlusSocket(
     }
 
     /// <summary>
-    /// Sets the player ID and player token for the Rust+ API client.
+    /// Sets the player ID and player token for the Rust+ API client. Only requests sent <i>after</i>
+    /// this call use the new identity — in-flight requests keep the identity they were stamped with
+    /// at send time. The two values are not swapped atomically, so avoid calling this concurrently
+    /// with request sends if mixing old/new credentials on one request would matter.
     /// </summary>
     /// <param name="newPlayerId">The new Steam ID to use.</param>
     /// <param name="newPlayerToken">The new player token acquired with FCM.</param>
@@ -334,7 +337,7 @@ public abstract class RustPlusSocket(
     /// <param name="forceClose">When <see langword="true"/>, skips draining in-flight requests.</param>
     public async Task DisconnectAsync(bool forceClose = false)
     {
-        if (!IsConnected())
+        if (!IsConnected)
         {
             return;
         }
@@ -485,10 +488,10 @@ public abstract class RustPlusSocket(
     }
 
     /// <summary>
-    /// Determines whether the client is currently connected to the Rust+ socket.
+    /// Gets a value indicating whether the client is currently connected to the Rust+ socket
+    /// (the underlying WebSocket is open).
     /// </summary>
-    /// <returns>True if the WebSocket is open; otherwise, false.</returns>
-    public bool IsConnected() => _webSocket is { State: WebSocketState.Open };
+    public bool IsConnected => _webSocket is { State: WebSocketState.Open };
 
     /// <summary>
     /// Parses and handles a broadcast notification received from the Rust+ server.
@@ -518,14 +521,15 @@ public abstract class RustPlusSocket(
     /// </summary>
     /// <param name="response">The <see cref="AppMessage"/> containing the response data.</param>
     /// <returns>
-    /// A string representing the error message if the response contains an error;
-    /// otherwise, returns "value-already-set".
+    /// The server's error string when the response carries an error; otherwise "unknown-error"
+    /// (a response without an error payload should never reach this method, so don't invent a
+    /// specific reason for it).
     /// </returns>
     protected static string GetErrorMessage(AppMessage response)
     {
         return response.Response.Error is not null
             ? response.Response.Error.Error
-            : "value-already-set";
+            : "unknown-error";
     }
 
     /// <summary>

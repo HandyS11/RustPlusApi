@@ -82,7 +82,7 @@ public class SocketErrorTests
 
         var ex = await error.Task.WaitAsync(Timeout);
         Assert.Same(ex, thrown);
-        Assert.False(client.IsConnected());
+        Assert.False(client.IsConnected);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class SocketErrorTests
 
         // Either ErrorOccurred fires or the loop exits cleanly; assert no hang within timeout.
         var fired = await Task.WhenAny(signalled.Task, Task.Delay(2000)) == signalled.Task;
-        Assert.True(fired || !client.IsConnected());
+        Assert.True(fired || !client.IsConnected);
     }
 
     [Fact]
@@ -118,6 +118,6 @@ public class SocketErrorTests
 
         var ex = await error.Task.WaitAsync(Timeout);
         Assert.NotNull(ex);
-        Assert.False(client.IsConnected());
+        Assert.False(client.IsConnected);
     }
 }

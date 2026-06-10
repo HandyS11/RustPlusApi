@@ -22,7 +22,8 @@ namespace RustPlusApi.Fcm;
 /// </summary>
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
 /// <param name="persistentIds">The collection of persistent IDs as <see cref="ICollection{T}"/> of <see cref="string"/>.</param>
-public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<string>? persistentIds = null)
+/// <param name="options">Tuning options (heartbeat interval, inactivity timeout); defaults are used when <see langword="null"/>.</param>
+public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<string>? persistentIds = null, RustPlusFcmSocketOptions? options = null)
     : IRustPlusFcmSocket, IDisposable, IAsyncDisposable
 {
     private const string Host = "mtalk.google.com";
@@ -33,10 +34,17 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// <summary>Bounds teardown waits so a wedged receive loop cannot hang disposal.</summary>
     private static readonly TimeSpan TeardownTimeout = TimeSpan.FromSeconds(5);
 
+    /// <summary>Tuning values for this instance; options are init-only so the snapshot is stable.</summary>
+    private readonly RustPlusFcmSocketOptions _options = options ?? new RustPlusFcmSocketOptions();
+
     private TcpClient? _tcpClient;
     private SslStream? _sslStream;
 
     private Task? _receiveLoop;
+    private Task? _heartbeatLoop;
+
+    /// <summary>UTC timestamp of the last received frame, observed by the inactivity watchdog.</summary>
+    private DateTime _lastTraffic = DateTime.UtcNow;
 
     /// <summary>Serializes writes to the transport so concurrent sends (e.g. a ping-ack racing another
     /// send) cannot interleave bytes on the stream.</summary>
@@ -162,7 +170,12 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
             Connected?.Invoke(this, EventArgs.Empty);
 
             // Truly async: the loop yields at the first awaited read instead of holding a thread-pool thread.
+            _lastTraffic = DateTime.UtcNow;
             _receiveLoop = ReceiveMessagesAsync();
+
+            // Client-initiated heartbeat + inactivity watchdog: a NAT that silently drops the idle
+            // mapping would otherwise leave the blocking read waiting forever with no error.
+            _heartbeatLoop = RunHeartbeatLoopAsync();
         }
         catch (Exception ex)
         {
@@ -277,33 +290,35 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     }
 
     /// <summary>
-    /// Awaits the tracked receive loop, bounded by <see cref="TeardownTimeout"/>. A fault is expected when
-    /// the transport is torn out from under a blocking read, so it is swallowed on teardown.
+    /// Awaits the tracked receive and heartbeat loops, bounded by <see cref="TeardownTimeout"/>. A fault
+    /// is expected when the transport is torn out from under a blocking read, so it is swallowed on teardown.
     /// </summary>
     private async Task WaitForReceiveLoopAsync()
     {
-        var loop = _receiveLoop;
-        if (loop is null)
+        var loops = new[] { _receiveLoop, _heartbeatLoop }
+            .Where(static t => t is not null)
+            .Cast<Task>()
+            .ToArray();
+        if (loops.Length == 0)
         {
             return;
         }
 
-        var completed = await Task.WhenAny(loop, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
-        if (completed != loop)
+        var all = Task.WhenAll(loops);
+        var completed = await Task.WhenAny(all, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
+        if (completed != all)
         {
             return;
         }
 
         try
         {
-#pragma warning disable VSTHRD003 // we own this background task; awaiting it on teardown cannot deadlock
-            await loop.ConfigureAwait(false);
-#pragma warning restore VSTHRD003
+            await all.ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            // The loop faulted because the transport was disposed mid-read: expected during teardown.
-            Debug.WriteLine($"Receive loop faulted during teardown (expected): {ex}");
+            // A loop faulted because the transport was disposed mid-read/write: expected during teardown.
+            Debug.WriteLine($"Background loop faulted during teardown (expected): {ex}");
         }
     }
 
@@ -317,6 +332,59 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
         _transport = stream;
         _receiveLoop = ReceiveMessagesAsync();
         return _receiveLoop;
+    }
+
+    /// <summary>Test seam: runs the heartbeat/watchdog loop against an arbitrary stream as a tracked task,
+    /// bypassing the live TLS connect. Internal — visible only to RustPlusApi.Tests.</summary>
+    /// <param name="stream">The stream heartbeat pings are written to.</param>
+    /// <returns>The tracked heartbeat-loop task.</returns>
+    internal Task RunHeartbeatLoopOverStreamAsync(Stream stream)
+    {
+        _transport = stream;
+        _lastTraffic = DateTime.UtcNow;
+        _heartbeatLoop = RunHeartbeatLoopAsync();
+        return _heartbeatLoop;
+    }
+
+    /// <summary>
+    /// Periodically sends a client-initiated <see cref="HeartbeatPing"/> and watches for inactivity.
+    /// The ping keeps NAT/firewall mappings alive and provokes an ack; if no frame at all arrives for
+    /// <see cref="RustPlusFcmSocketOptions.InactivityTimeout"/>, the connection is presumed silently
+    /// dead — <see cref="ErrorOccurred"/> is raised with a <see cref="TimeoutException"/> and the
+    /// socket is disconnected so the caller can create a fresh instance.
+    /// </summary>
+    private async Task RunHeartbeatLoopAsync()
+    {
+        try
+        {
+            while (!CancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(_options.HeartbeatInterval, CancellationToken).ConfigureAwait(false);
+
+                if (DateTime.UtcNow - _lastTraffic > _options.InactivityTimeout)
+                {
+                    var error = new TimeoutException(
+                        $"No FCM traffic for {_options.InactivityTimeout.TotalMinutes:0.#} min; the connection is presumed dead.");
+                    ErrorOccurred?.Invoke(this, error);
+                    Disconnect();
+                    return;
+                }
+
+                await SendPacketAsync(new HeartbeatPing()).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Disconnect/dispose cancelled the token: clean exit.
+        }
+        catch (Exception ex)
+        {
+            // The transport died under a heartbeat write. Surface it unless we're tearing down.
+            if (!_cancellationTokenSource.IsCancellationRequested)
+            {
+                ErrorOccurred?.Invoke(this, ex);
+            }
+        }
     }
 
     /// <summary>
@@ -385,6 +453,9 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// <param name="type">The type of the protobuf message.</param>
     private async Task OnGotMessageBytesAsync(byte[] data, Type type)
     {
+        // Any decoded frame counts as traffic for the inactivity watchdog.
+        _lastTraffic = DateTime.UtcNow;
+
         try
         {
             var messageTag = GetTagFromProtobufType(type);

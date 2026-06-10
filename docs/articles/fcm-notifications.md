@@ -39,6 +39,21 @@ listener.OnAlarmTriggered += (_, alarm) =>
     Console.WriteLine($"Alarm: {alarm?.Title}");
 ```
 
+## Heartbeat & dead-connection detection
+
+The listener sends its own MCS heartbeat ping every 5 minutes (NATs and firewalls silently drop
+idle TCP mappings) and watches for inactivity: if no frame arrives for 12 minutes, the connection
+is presumed dead — `ErrorOccurred` fires with a `TimeoutException` and the socket disconnects so
+you can create a fresh listener. Both intervals are tunable:
+
+```csharp
+var listener = new RustPlusFcm(credentials, options: new RustPlusFcmSocketOptions
+{
+    HeartbeatInterval = TimeSpan.FromMinutes(2),
+    InactivityTimeout = TimeSpan.FromMinutes(6)
+});
+```
+
 ## One-await pairing
 
 For the common "wait for the next server pairing" case, `RustPlusApi.Fcm.Registration` provides

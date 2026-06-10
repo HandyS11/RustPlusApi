@@ -22,14 +22,14 @@ public class SocketTeardownTests
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.GetInfoAsync().WaitAsync(Timeout);
 
-        Assert.True(client.IsConnected());
+        Assert.True(client.IsConnected);
 
         // DisposeAsync must cancel the instance token and await the tracked loops within a bounded time.
         var disposeTask = client.DisposeAsync().AsTask();
         await disposeTask.WaitAsync(TimeSpan.FromSeconds(5));
 
         Assert.True(disposeTask.IsCompletedSuccessfully);
-        Assert.False(client.IsConnected());
+        Assert.False(client.IsConnected);
 
         // The loops must have actually run to completion, not merely been abandoned by a timeout.
         Assert.True(client.ReceiveLoopForTests!.IsCompleted);

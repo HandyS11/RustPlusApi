@@ -1,4 +1,4 @@
-using RustPlus.ConsoleApp.Features;
+﻿using RustPlus.ConsoleApp.Features;
 using RustPlus.ConsoleApp.Utils;
 
 // Fill credentials.json (copy credentials.sample.json) with the ip/port/playerId/playerToken
@@ -69,7 +69,7 @@ while (isRunning)
     }
 
     Console.WriteLine("\nPress any key to continue...");
-    Console.ReadLine();
+    Console.ReadKey(intercept: true);
 }
 
 await rustPlus.DisconnectAsync();
@@ -110,7 +110,7 @@ async Task CommonFeatureMenuAsync()
         }
 
         Console.WriteLine("\nPress any key to continue...");
-        Console.ReadLine();
+        Console.ReadKey(intercept: true);
     }
 }
 
@@ -163,7 +163,7 @@ async Task TeamFeatureMenuAsync()
         }
 
         Console.WriteLine("\nPress any key to continue...");
-        Console.ReadLine();
+        Console.ReadKey(intercept: true);
     }
 }
 
@@ -221,17 +221,19 @@ async Task ElectricityFeatureMenuAsync()
         }
 
         Console.WriteLine("\nPress any key to continue...");
-        Console.ReadLine();
+        Console.ReadKey(intercept: true);
     }
 }
 
-uint GetEntityId(string type)
+ulong GetEntityId(string type)
 {
-    Console.Write($"\nType the {type}: ");
-    var input = Console.ReadLine();
-    if (!uint.TryParse(input, out var entityId))
+    while (true)
     {
+        Console.Write($"\nType the {type}: ");
+        if (ulong.TryParse(Console.ReadLine(), out var entityId))
+        {
+            return entityId;
+        }
         Console.WriteLine("Invalid input, please try again.");
     }
-    return entityId;
 }

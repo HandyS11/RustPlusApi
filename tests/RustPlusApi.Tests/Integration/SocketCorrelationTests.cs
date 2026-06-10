@@ -169,7 +169,7 @@ public class SocketCorrelationTests
 
         var message = await requestTask.WaitAsync(Timeout);
         Assert.NotNull(message.Response);
-        Assert.True(client.IsConnected()); // the receive loop survived the throwing matcher
+        Assert.True(client.IsConnected); // the receive loop survived the throwing matcher
     }
 
     [Fact]

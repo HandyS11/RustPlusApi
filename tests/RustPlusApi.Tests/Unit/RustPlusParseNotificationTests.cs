@@ -209,10 +209,10 @@ public class RustPlusParseNotificationTests
         Assert.False(result);
     }
 
-    // ── GetErrorMessage: non-error response → "value-already-set" ────────────
+    // ── GetErrorMessage: non-error response → "unknown-error" fallback ───────
 
     [Fact]
-    public void GetErrorMessage_WhenNoError_ReturnsValueAlreadySet()
+    public void GetErrorMessage_WhenNoError_ReturnsUnknownError()
     {
         var message = new AppMessage
         {
@@ -226,7 +226,7 @@ public class RustPlusParseNotificationTests
 
         var result = TestRustPlus.CallGetErrorMessage(message);
 
-        Assert.Equal("value-already-set", result);
+        Assert.Equal("unknown-error", result);
     }
 
     // ── Dispose: calling Dispose after cancel → no throw ─────────────────────

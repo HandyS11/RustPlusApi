@@ -5,7 +5,7 @@ namespace RustPlus.ConsoleApp.Features;
 
 internal sealed class ToggleSmartSwitch(IRustPlus rustPlus)
 {
-    public async Task ToggleSmartSwitchAsync(uint entityId)
+    public async Task ToggleSmartSwitchAsync(ulong entityId)
     {
         var response = await rustPlus.ToggleSmartSwitchAsync(entityId);
 

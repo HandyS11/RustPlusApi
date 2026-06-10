@@ -41,14 +41,14 @@ public interface IRustPlus : IRustPlusSocket
     /// <summary>Sets the clan's message of the day.</summary>
     /// <param name="message">The new MOTD text.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<bool?>> SetClanMotdAsync(string message, CancellationToken cancellationToken = default);
+    Task<Response> SetClanMotdAsync(string message, CancellationToken cancellationToken = default);
     /// <summary>Returns recent clan chat messages.</summary>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
     Task<Response<ClanChatInfo?>> GetClanChatAsync(CancellationToken cancellationToken = default);
     /// <summary>Posts a message to the clan chat.</summary>
     /// <param name="message">The message text to send.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<bool?>> SendClanMessageAsync(string message, CancellationToken cancellationToken = default);
+    Task<Response> SendClanMessageAsync(string message, CancellationToken cancellationToken = default);
     /// <summary>Obtains a Nexus cross-server authentication token.</summary>
     /// <param name="appKey">The application key identifying the target Nexus server.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
@@ -62,10 +62,10 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="mouseDeltaX">Horizontal mouse delta.</param>
     /// <param name="mouseDeltaY">Vertical mouse delta.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<bool?>> SendCameraInputAsync(CameraButtons buttons, float mouseDeltaX = 0, float mouseDeltaY = 0, CancellationToken cancellationToken = default);
+    Task<Response> SendCameraInputAsync(CameraButtons buttons, float mouseDeltaX = 0, float mouseDeltaY = 0, CancellationToken cancellationToken = default);
     /// <summary>Unsubscribes from the currently subscribed camera.</summary>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<bool?>> UnsubscribeFromCameraAsync(CancellationToken cancellationToken = default);
+    Task<Response> UnsubscribeFromCameraAsync(CancellationToken cancellationToken = default);
     /// <summary>Returns server metadata (name, map, player counts, etc.).</summary>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
     Task<Response<ServerInfo?>> GetInfoAsync(CancellationToken cancellationToken = default);
@@ -95,7 +95,7 @@ public interface IRustPlus : IRustPlusSocket
     /// <summary>Promotes a team member to team leader.</summary>
     /// <param name="steamId">Steam64 ID of the member to promote.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<bool?>> PromoteToLeaderAsync(ulong steamId, CancellationToken cancellationToken = default);
+    Task<Response> PromoteToLeaderAsync(ulong steamId, CancellationToken cancellationToken = default);
     /// <summary>Posts a message to the team chat.</summary>
     /// <param name="message">The message text to send.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
@@ -109,7 +109,7 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="entityId">Entity ID of the alarm.</param>
     /// <param name="doSubscribe"><see langword="true"/> to subscribe, <see langword="false"/> to unsubscribe.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<bool?>> SetSubscriptionAsync(ulong entityId, bool doSubscribe = true, CancellationToken cancellationToken = default);
+    Task<Response> SetSubscriptionAsync(ulong entityId, bool doSubscribe = true, CancellationToken cancellationToken = default);
     /// <summary>
     /// Pulses a smart switch on then off (or off then on) with the specified delay, implementing a
     /// simple strobe / one-shot trigger pattern.

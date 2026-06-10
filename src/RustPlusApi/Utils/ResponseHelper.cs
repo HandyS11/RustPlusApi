@@ -22,4 +22,19 @@ public static class ResponseHelper
             Data = data
         };
     }
+
+    /// <summary>
+    /// Builds a payload-free <see cref="Response"/> for acknowledge-only commands.
+    /// </summary>
+    /// <param name="isSuccess">Indicates whether the operation was successful.</param>
+    /// <param name="message">An optional error message. If null, no error is set.</param>
+    /// <returns>A <see cref="Response"/> containing the result of the operation.</returns>
+    public static Response BuildAckOutput(bool isSuccess, string? message = null)
+    {
+        return new Response
+        {
+            IsSuccess = isSuccess,
+            Error = message is null ? null : new ErrorMessage { Message = message }
+        };
+    }
 }

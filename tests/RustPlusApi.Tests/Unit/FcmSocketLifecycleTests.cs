@@ -103,6 +103,65 @@ public class FcmSocketLifecycleTests
     }
 
     [Fact]
+    public async Task HeartbeatLoop_SendsClientPings()
+    {
+        // A healthy connection (recent traffic) must emit client-initiated HeartbeatPing frames.
+        var options = new RustPlusFcmSocketOptions
+        {
+            HeartbeatInterval = TimeSpan.FromMilliseconds(30),
+            InactivityTimeout = TimeSpan.FromSeconds(30)
+        };
+        await using var socket = new OptionsSocket(options);
+        await using var transport = new MemoryStream();
+
+#pragma warning disable CA2025 // the loop is awaited to completion below, before the stream leaves scope
+        var loop = socket.RunHeartbeatLoopOverStreamAsync(transport);
+#pragma warning restore CA2025
+        await Task.Delay(200);
+        socket.Disconnect(); // cancels the token; the loop exits on its next delay
+        await loop.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Frame layout per packet: [version, tag, varint-size, payload]. HeartbeatPing tag = 0.
+        var written = transport.ToArray();
+        Assert.True(written.Length >= 3, "expected at least one heartbeat frame");
+        Assert.Equal(41, written[0]);  // KMcsVersion
+        Assert.Equal(0, written[1]);   // KHeartbeatPingTag
+    }
+
+    [Fact]
+    public async Task HeartbeatLoop_OnInactivity_RaisesTimeoutAndDisconnects()
+    {
+        // No traffic ever arrives and the inactivity window is tiny: the watchdog must presume the
+        // connection dead, raise ErrorOccurred with a TimeoutException, and disconnect.
+        var options = new RustPlusFcmSocketOptions
+        {
+            HeartbeatInterval = TimeSpan.FromMilliseconds(30),
+            InactivityTimeout = TimeSpan.FromMilliseconds(1)
+        };
+        await using var socket = new OptionsSocket(options);
+        await using var transport = new MemoryStream();
+
+        var error = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var disconnected = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        socket.ErrorOccurred += (_, ex) => error.TrySetResult(ex);
+        socket.Disconnected += (_, _) => disconnected.TrySetResult(true);
+
+#pragma warning disable CA2025 // the loop is awaited to completion below, before the stream leaves scope
+        var loop = socket.RunHeartbeatLoopOverStreamAsync(transport);
+#pragma warning restore CA2025
+
+        var ex = await error.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.IsType<TimeoutException>(ex);
+        Assert.True(await disconnected.Task.WaitAsync(TimeSpan.FromSeconds(5)));
+        await loop.WaitAsync(TimeSpan.FromSeconds(5)); // the loop exited after disconnecting
+    }
+
+    /// <summary>Concrete subclass that forwards heartbeat/watchdog tuning options.</summary>
+    /// <param name="options">The heartbeat/watchdog options under test.</param>
+    private sealed class OptionsSocket(RustPlusFcmSocketOptions options)
+        : RustPlusFcmSocket(new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } }, options: options);
+
+    [Fact]
     public void Dispose_IsIdempotent()
     {
         var socket = NewSocket();

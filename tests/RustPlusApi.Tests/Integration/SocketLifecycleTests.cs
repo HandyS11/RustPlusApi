@@ -66,7 +66,7 @@ public class SocketLifecycleTests
     public void IsConnected_BeforeConnect_IsFalse()
     {
         using var client = new RustPlus(MockRustPlusServer.Host, 1, PlayerId, PlayerToken);
-        Assert.False(client.IsConnected());
+        Assert.False(client.IsConnected);
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class SocketLifecycleTests
     {
         await using var client = new RustPlus(MockRustPlusServer.Host, 1, PlayerId, PlayerToken);
         await client.DisconnectAsync().WaitAsync(Timeout); // early return, no throw
-        Assert.False(client.IsConnected());
+        Assert.False(client.IsConnected);
     }
 
     [Fact]
@@ -108,11 +108,11 @@ public class SocketLifecycleTests
         Assert.True(first.IsSuccess);
 
         await client.DisconnectAsync().WaitAsync(Timeout);
-        Assert.False(client.IsConnected());
+        Assert.False(client.IsConnected);
 
         // Same instance reconnects: the previous socket is released and a fresh one serves requests.
         await client.ConnectAsync().WaitAsync(Timeout);
-        Assert.True(client.IsConnected());
+        Assert.True(client.IsConnected);
 
         var second = await client.GetInfoAsync().WaitAsync(Timeout);
         Assert.True(second.IsSuccess);
@@ -128,7 +128,7 @@ public class SocketLifecycleTests
         await client.ConnectAsync().WaitAsync(Timeout);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => client.ConnectAsync().WaitAsync(Timeout));
-        Assert.True(client.IsConnected()); // the live connection is untouched
+        Assert.True(client.IsConnected); // the live connection is untouched
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public class SocketLifecycleTests
         await server.BroadcastAsync(new AppBroadcast());
         await Task.Delay(200);
 
-        Assert.True(client.IsConnected()); // still alive, nothing thrown
+        Assert.True(client.IsConnected); // still alive, nothing thrown
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class SocketLifecycleTests
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.GetInfoAsync().WaitAsync(Timeout);
 
-        Assert.True(client.IsConnected());
+        Assert.True(client.IsConnected);
 
         // Intentionally exercises the synchronous Dispose path (kept for back-compat alongside DisposeAsync).
 #pragma warning disable CA1849, VSTHRD103, S6966 // sync Dispose is the behavior under test here
@@ -202,7 +202,7 @@ public class SocketLifecycleTests
 #pragma warning restore CA1849, VSTHRD103, S6966
 
         await Task.Delay(300);
-        Assert.False(client.IsConnected());
+        Assert.False(client.IsConnected);
     }
 
     [Fact]
@@ -275,6 +275,6 @@ public class SocketLifecycleTests
 
         await Task.WhenAll(requestTask, disconnectTask).WaitAsync(Timeout);
 
-        Assert.False(client.IsConnected());
+        Assert.False(client.IsConnected);
     }
 }
