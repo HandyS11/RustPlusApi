@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Extensions.Logging;
 using RustPlusContracts;
 using Xunit;
@@ -38,7 +39,8 @@ public class RustPlusLoggingTests
 
         client.InvokeParseNotification(new AppBroadcast());
 
-        Assert.Contains(factory.Logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Single(factory.Logger.Entries, e =>
+            e.Level == LogLevel.Warning && e.Message.Contains("Unknown broadcast", StringComparison.Ordinal));
     }
 
     /// <summary>Exposes the protected ParseNotification so the unknown-broadcast path can be driven.</summary>

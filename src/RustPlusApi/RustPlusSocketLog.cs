@@ -43,7 +43,7 @@ internal static partial class RustPlusSocketLog
     [LoggerMessage(Level = LogLevel.Error, Message = "Disconnected from the Rust+ socket due to a WebSocketException.")]
     public static partial void LogReceiveWebSocketFault(this ILogger logger, Exception exception);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Disconnected from the Rust+ socket due to an Exception.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Receive loop encountered a non-fatal exception; backing off before retrying.")]
     public static partial void LogReceiveFault(this ILogger logger, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Broadcast-reply matcher threw; treating as no match.")]
