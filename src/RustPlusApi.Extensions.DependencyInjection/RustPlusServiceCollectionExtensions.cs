@@ -16,6 +16,8 @@ public static class RustPlusServiceCollectionExtensions
     /// clients for connections known only at runtime. The host's <see cref="ILoggerFactory"/> (when
     /// registered) and the configured <see cref="RustPlusSocketOptions"/> are wired into every client.
     /// </summary>
+    /// <remarks>No-op if an <see cref="IRustPlusFactory"/> is already registered (first registration wins);
+    /// <paramref name="configureOptions"/> delegates always compose regardless.</remarks>
     /// <param name="services">The service collection to register into.</param>
     /// <param name="configureOptions">Optional tuning applied to <see cref="RustPlusSocketOptions"/>.</param>
     /// <returns>The same <paramref name="services"/>, for chaining.</returns>
@@ -45,6 +47,8 @@ public static class RustPlusServiceCollectionExtensions
     /// Registers a single configured <see cref="IRustPlus"/> client as a container-disposed singleton.
     /// The client is not connected; call <c>ConnectAsync</c> when ready.
     /// </summary>
+    /// <remarks>No-op if an <see cref="IRustPlus"/> is already registered (first registration wins);
+    /// <paramref name="configureOptions"/> delegates always compose regardless.</remarks>
     /// <param name="services">The service collection to register into.</param>
     /// <param name="connection">The server endpoint and player credentials the client connects as.</param>
     /// <param name="configureOptions">Optional tuning applied to <see cref="RustPlusSocketOptions"/>.</param>
@@ -68,6 +72,8 @@ public static class RustPlusServiceCollectionExtensions
     /// binding its <see cref="RustPlusConnection"/> from <paramref name="connectionSection"/>
     /// (keys: <c>Server</c>, <c>Port</c>, <c>PlayerId</c>, <c>PlayerToken</c>, optional <c>UseFacepunchProxy</c>).
     /// </summary>
+    /// <remarks>No-op if an <see cref="IRustPlus"/> is already registered (first registration wins);
+    /// <paramref name="configureOptions"/> delegates always compose regardless.</remarks>
     /// <param name="services">The service collection to register into.</param>
     /// <param name="connectionSection">The configuration section the connection is bound from.</param>
     /// <param name="configureOptions">Optional tuning applied to <see cref="RustPlusSocketOptions"/>.</param>
@@ -94,6 +100,8 @@ public static class RustPlusServiceCollectionExtensions
     /// Registers a single configured <see cref="IRustPlus"/> client as a container-disposed singleton,
     /// resolving its <see cref="RustPlusConnection"/> from the provider when first requested.
     /// </summary>
+    /// <remarks>No-op if an <see cref="IRustPlus"/> is already registered (first registration wins);
+    /// <paramref name="configureOptions"/> delegates always compose regardless.</remarks>
     /// <param name="services">The service collection to register into.</param>
     /// <param name="connectionFactory">Produces the connection from the built provider.</param>
     /// <param name="configureOptions">Optional tuning applied to <see cref="RustPlusSocketOptions"/>.</param>

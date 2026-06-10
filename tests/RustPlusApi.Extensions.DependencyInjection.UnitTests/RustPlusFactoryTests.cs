@@ -50,9 +50,9 @@ public class RustPlusFactoryTests
         Assert.NotSame(first, second);
 
         // Caller-owned: disposing one leaves the other usable.
-        ((IDisposable)first).Dispose();
+        first.Dispose();
         Assert.False(second.IsConnected);
-        ((IDisposable)second).Dispose();
+        second.Dispose();
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class RustPlusFactoryTests
         await using var provider = services.BuildServiceProvider();
         var factory = provider.GetRequiredService<IRustPlusFactory>();
 
-        using var client = (IDisposable)factory.Create(AnyConnection());
+        await using var client = factory.Create(AnyConnection());
 
         Assert.Contains("RustPlusApi.RustPlusSocket", recorder.Categories);
     }
@@ -78,7 +78,7 @@ public class RustPlusFactoryTests
         await using var provider = services.BuildServiceProvider();
         var factory = provider.GetRequiredService<IRustPlusFactory>();
 
-        using var client = (IDisposable)factory.Create(AnyConnection());
+        await using var client = factory.Create(AnyConnection());
 
         Assert.NotNull(client);
     }

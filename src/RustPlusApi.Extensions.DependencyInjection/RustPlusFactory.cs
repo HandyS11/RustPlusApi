@@ -12,8 +12,7 @@ namespace RustPlusApi.Extensions.DependencyInjection;
 /// <param name="options">The configured socket tuning options.</param>
 internal sealed class RustPlusFactory(ILoggerFactory? loggerFactory, IOptions<RustPlusSocketOptions> options) : IRustPlusFactory
 {
-    /// <inheritdoc cref="IRustPlusFactory.Create" />
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="connection"/> is <see langword="null"/>.</exception>
+    /// <inheritdoc />
     public IRustPlus Create(RustPlusConnection connection)
     {
         if (connection is null)

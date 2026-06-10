@@ -118,6 +118,21 @@ public class RustPlusServiceCollectionExtensionsTests
         services.AddRustPlus(config.GetSection("Missing"));
         await using var provider = services.BuildServiceProvider();
 
+        var ex = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IRustPlus>());
+        Assert.Contains("could not be bound", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AddRustPlus_WithPartialConfigurationSection_ThrowsOnResolve()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Rust:Server"] = "1.2.3.4" })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddRustPlus(config.GetSection("Rust"));
+        await using var provider = services.BuildServiceProvider();
+
+        // The binder itself reports the missing constructor parameter (e.g. 'Port').
         Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IRustPlus>());
     }
 
