@@ -6,7 +6,9 @@ using RustPlusApi;
 using RustPlusApi.Extensions.DependencyInjection;
 using RustPlusApi.Interfaces;
 
+#pragma warning disable IDE0130 // Namespace does not match folder structure — MS convention for DI extension methods
 namespace Microsoft.Extensions.DependencyInjection;
+#pragma warning restore IDE0130
 
 /// <summary>Registers <see cref="IRustPlus"/> clients and the <see cref="IRustPlusFactory"/> into a service collection.</summary>
 public static class RustPlusServiceCollectionExtensions
