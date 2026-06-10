@@ -17,18 +17,30 @@ namespace RustPlusApi;
 /// </summary>
 /// <param name="connection">The server endpoint and player credentials to connect as.</param>
 /// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
+/// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
+/// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
 public abstract class RustPlusSocket(
     RustPlusConnection connection,
-    RustPlusSocketOptions? options = null)
-    : IRustPlusSocket, IDisposable, IAsyncDisposable
+    RustPlusSocketOptions? options = null,
+    ILoggerFactory? loggerFactory = null)
+    : IRustPlusSocket
 {
-    /// <summary>Tuning values for this instance; options are init-only so the snapshot is stable.</summary>
-    private readonly RustPlusSocketOptions _options = options ?? new RustPlusSocketOptions();
+    /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
+    /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>
+    private readonly RustPlusSocketOptions _options = options is null
+        ? new RustPlusSocketOptions()
+        : new()
+        {
+            RequestTimeout = options.RequestTimeout,
+            KeepAliveInterval = options.KeepAliveInterval,
+            TeardownTimeout = options.TeardownTimeout,
+            ReceiveBufferSize = options.ReceiveBufferSize,
+        };
 
     /// <summary>The client logger; <c>NullLogger</c> when no factory was supplied. Exposed to derived
     /// classes (e.g. <see cref="RustPlus"/>) so they log through the same categorised sink.</summary>
     private protected readonly ILogger Logger =
-        (options?.LoggerFactory ?? NullLoggerFactory.Instance).CreateLogger("RustPlusApi.RustPlusSocket");
+        (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger("RustPlusApi.RustPlusSocket");
 
     /// <summary>Backoff applied after a non-fatal receive error so the loop cannot busy-spin on it.</summary>
     private static readonly TimeSpan ReceiveErrorBackoff = TimeSpan.FromMilliseconds(100);
@@ -125,10 +137,10 @@ public abstract class RustPlusSocket(
     /// <summary>Test seam: the tracked send loop, so tests can assert it actually completed on teardown.</summary>
     internal Task? SendLoopForTests { get; private set; }
 
-    private int _playerToken = connection.PlayerToken;
+    private readonly int _playerToken = connection.PlayerToken;
 
-    /// <summary>The Steam ID requests are currently issued as (see <see cref="SetPlayer"/>).</summary>
-    protected ulong PlayerId { get; private set; } = connection.PlayerId;
+    /// <summary>The Steam ID requests are issued as.</summary>
+    protected ulong PlayerId { get; } = connection.PlayerId;
 
     /// <summary>
     /// Asynchronously connects to the Rust+ server using a WebSocket.
@@ -241,20 +253,6 @@ public abstract class RustPlusSocket(
             // The old loop faulting as its socket was torn down is expected; never block a reconnect on it.
             Logger.LogPreviousReceiveLoopFaulted(ex);
         }
-    }
-
-    /// <summary>
-    /// Sets the player ID and player token for the Rust+ API client. Only requests sent <i>after</i>
-    /// this call use the new identity — in-flight requests keep the identity they were stamped with
-    /// at send time. The two values are not swapped atomically, so avoid calling this concurrently
-    /// with request sends if mixing old/new credentials on one request would matter.
-    /// </summary>
-    /// <param name="newPlayerId">The new Steam ID to use.</param>
-    /// <param name="newPlayerToken">The new player token acquired with FCM.</param>
-    public void SetPlayer(ulong newPlayerId, int newPlayerToken)
-    {
-        PlayerId = newPlayerId;
-        _playerToken = newPlayerToken;
     }
 
     /// <summary>

@@ -18,6 +18,8 @@ dotnet add package RustPlusApi
 dotnet add package RustPlusApi.Fcm
 dotnet add package RustPlusApi.Fcm.Registration   # native credentials (optional)
 dotnet add package RustPlusApi.Camera             # camera rendering (optional)
+dotnet add package RustPlusApi.Extensions.DependencyInjection       # DI registration (optional)
+dotnet add package RustPlusApi.Fcm.Extensions.DependencyInjection   # DI registration for FCM (optional)
 ```
 
 ## 1. Get your credentials

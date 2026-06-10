@@ -29,6 +29,10 @@ jobs:
             testdir: tests/RustPlusApi.Fcm.Registration.UnitTests
           - source: RustPlusApi.Camera.csproj
             testdir: tests/RustPlusApi.Camera.UnitTests
+          - source: RustPlusApi.Extensions.DependencyInjection.csproj
+            testdir: tests/RustPlusApi.Extensions.DependencyInjection.UnitTests
+          - source: RustPlusApi.Fcm.Extensions.DependencyInjection.csproj
+            testdir: tests/RustPlusApi.Fcm.Extensions.DependencyInjection.UnitTests
     steps:
       - uses: actions/checkout@v6
 

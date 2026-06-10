@@ -28,8 +28,7 @@ public class FcmLoggingTests
     public void Constructor_WithLoggerFactory_DoesNotThrow()
     {
         var factory = new SpyLoggerFactory();
-        using var socket = new TestSocket(AnyCredentials(),
-            new RustPlusFcmSocketOptions { LoggerFactory = factory });
+        using var socket = new TestSocket(AnyCredentials(), loggerFactory: factory);
         Assert.NotNull(socket);
     }
 
@@ -37,7 +36,7 @@ public class FcmLoggingTests
     public void ParseNotification_UnknownChannel_LogsWarning()
     {
         var factory = new SpyLoggerFactory();
-        using var fcm = new TestableRustPlusFcm(new RustPlusFcmSocketOptions { LoggerFactory = factory });
+        using var fcm = new TestableRustPlusFcm(factory);
 
         fcm.InvokeParseNotification(new FcmMessage
         {
@@ -51,13 +50,14 @@ public class FcmLoggingTests
     /// <summary>Concrete subclass: <see cref="RustPlusFcmSocket"/> is abstract.</summary>
     /// <param name="credentials">The FCM credentials.</param>
     /// <param name="options">Optional socket options.</param>
-    private sealed class TestSocket(Credentials credentials, RustPlusFcmSocketOptions? options)
-        : RustPlusFcmSocket(credentials, options: options);
+    /// <param name="loggerFactory">Optional logger factory.</param>
+    private sealed class TestSocket(Credentials credentials, RustPlusFcmSocketOptions? options = null, ILoggerFactory? loggerFactory = null)
+        : RustPlusFcmSocket(credentials, options: options, loggerFactory: loggerFactory);
 
     /// <summary>Exposes the protected ParseNotification so the unknown-channel path can be driven.</summary>
-    /// <param name="options">Socket options supplying the logger factory under test.</param>
-    private sealed class TestableRustPlusFcm(RustPlusFcmSocketOptions options)
-        : RustPlusFcm(new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } }, options: options)
+    /// <param name="loggerFactory">The logger factory under test.</param>
+    private sealed class TestableRustPlusFcm(ILoggerFactory loggerFactory)
+        : RustPlusFcm(new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } }, loggerFactory: loggerFactory)
     {
         public void InvokeParseNotification(FcmMessage message) => ParseNotification(message);
     }

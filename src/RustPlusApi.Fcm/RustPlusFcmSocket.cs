@@ -24,8 +24,14 @@ namespace RustPlusApi.Fcm;
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
 /// <param name="persistentIds">The collection of persistent IDs as <see cref="ICollection{T}"/> of <see cref="string"/>.</param>
 /// <param name="options">Tuning options (heartbeat interval, inactivity timeout); defaults are used when <see langword="null"/>.</param>
-public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<string>? persistentIds = null, RustPlusFcmSocketOptions? options = null)
-    : IRustPlusFcmSocket, IDisposable, IAsyncDisposable
+/// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
+/// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
+public abstract class RustPlusFcmSocket(
+    Credentials credentials,
+    ICollection<string>? persistentIds = null,
+    RustPlusFcmSocketOptions? options = null,
+    ILoggerFactory? loggerFactory = null)
+    : IRustPlusFcmSocket
 {
     private const string Host = "mtalk.google.com";
     private const int Port = 5228;
@@ -35,13 +41,20 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// <summary>Bounds teardown waits so a wedged receive loop cannot hang disposal.</summary>
     private static readonly TimeSpan TeardownTimeout = TimeSpan.FromSeconds(5);
 
-    /// <summary>Tuning values for this instance; options are init-only so the snapshot is stable.</summary>
-    private readonly RustPlusFcmSocketOptions _options = options ?? new RustPlusFcmSocketOptions();
+    /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
+    /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>
+    private readonly RustPlusFcmSocketOptions _options = options is null
+        ? new RustPlusFcmSocketOptions()
+        : new()
+        {
+            HeartbeatInterval = options.HeartbeatInterval,
+            InactivityTimeout = options.InactivityTimeout,
+        };
 
     /// <summary>The client's logger; <c>NullLogger</c> when no factory was supplied.
-    /// Exposed to derived classes (e.g. <see cref="RustPlusFcm"/>).</summary>
+    /// Exposed to derived classes (e.g. <see cref="RustPlusFcm"/>) so they log through the same categorised sink.</summary>
     private protected readonly ILogger Logger =
-        (options?.LoggerFactory ?? NullLoggerFactory.Instance).CreateLogger("RustPlusApi.Fcm.RustPlusFcmSocket");
+        (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger("RustPlusApi.Fcm.RustPlusFcmSocket");
 
     private TcpClient? _tcpClient;
     private SslStream? _sslStream;

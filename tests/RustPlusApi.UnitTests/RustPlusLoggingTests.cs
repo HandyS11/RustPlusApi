@@ -27,7 +27,7 @@ public class RustPlusLoggingTests
     public void Constructor_WithLoggerFactory_DoesNotThrow()
     {
         var factory = new SpyLoggerFactory();
-        using var client = new RustPlus(AnyConnection(), new RustPlusSocketOptions { LoggerFactory = factory });
+        using var client = new RustPlus(AnyConnection(), loggerFactory: factory);
         Assert.False(client.IsConnected);
     }
 
@@ -35,7 +35,7 @@ public class RustPlusLoggingTests
     public void UnknownBroadcast_LogsWarning()
     {
         var factory = new SpyLoggerFactory();
-        using var client = new TestableRustPlus(new RustPlusSocketOptions { LoggerFactory = factory });
+        using var client = new TestableRustPlus(factory);
 
         client.InvokeParseNotification(new AppBroadcast());
 
@@ -44,9 +44,9 @@ public class RustPlusLoggingTests
     }
 
     /// <summary>Exposes the protected ParseNotification so the unknown-broadcast path can be driven.</summary>
-    /// <param name="options">Socket options to forward to the base constructor.</param>
-    private sealed class TestableRustPlus(RustPlusSocketOptions options)
-        : RustPlus(new RustPlusConnection("127.0.0.1", 1, 1UL, 1), options)
+    /// <param name="loggerFactory">The logger factory under test.</param>
+    private sealed class TestableRustPlus(ILoggerFactory loggerFactory)
+        : RustPlus(new RustPlusConnection("127.0.0.1", 1, 1UL, 1), loggerFactory: loggerFactory)
     {
         public void InvokeParseNotification(AppBroadcast broadcast) => ParseNotification(broadcast);
     }

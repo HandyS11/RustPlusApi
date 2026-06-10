@@ -2,8 +2,9 @@ using RustPlusContracts;
 
 namespace RustPlusApi.Interfaces;
 
-/// <summary>Low-level WebSocket contract — connection lifecycle and raw message events.</summary>
-public interface IRustPlusSocket
+/// <summary>Low-level WebSocket contract — connection lifecycle and raw message events.
+/// Clients are disposable; prefer <see cref="IAsyncDisposable.DisposeAsync"/> so teardown drains background work.</summary>
+public interface IRustPlusSocket : IDisposable, IAsyncDisposable
 {
     /// <summary>Raised just before the WebSocket connection attempt begins.</summary>
     event EventHandler? Connecting;

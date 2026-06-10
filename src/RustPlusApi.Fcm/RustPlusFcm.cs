@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Extensions;
@@ -13,8 +14,10 @@ namespace RustPlusApi.Fcm;
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
 /// <param name="persistentIds">The collection of persistent IDs as <see cref="ICollection{T}"/> of <see cref="string"/>.</param>
 /// <param name="options">Tuning options (heartbeat interval, inactivity timeout); defaults are used when <see langword="null"/>.</param>
-public class RustPlusFcm(Credentials credentials, ICollection<string>? persistentIds = null, RustPlusFcmSocketOptions? options = null)
-    : RustPlusFcmSocket(credentials, persistentIds, options), IRustPlusFcm
+/// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
+/// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
+public class RustPlusFcm(Credentials credentials, ICollection<string>? persistentIds = null, RustPlusFcmSocketOptions? options = null, ILoggerFactory? loggerFactory = null)
+    : RustPlusFcmSocket(credentials, persistentIds, options, loggerFactory), IRustPlusFcm
 {
     /// <summary>
     /// Occurs when a pairing <see cref="FcmMessage"/> is received.

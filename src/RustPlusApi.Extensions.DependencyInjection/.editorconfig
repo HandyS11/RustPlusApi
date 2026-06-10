@@ -1,0 +1,4 @@
+[*.cs]
+# ArgumentNullException.ThrowIfNull (CA1510) is unavailable on netstandard2.0; this package
+# multi-targets, so it uses the classic null-guard pattern.
+dotnet_diagnostic.CA1510.severity = none

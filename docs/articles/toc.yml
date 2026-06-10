@@ -18,6 +18,8 @@
       href: fcm-notifications.md
     - name: Logging
       href: logging.md
+    - name: Dependency Injection
+      href: dependency-injection.md
 - name: Resources
   items:
     - name: Samples

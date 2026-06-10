@@ -7,7 +7,7 @@ coverage, how to run mutation testing, and why certain members are excluded from
 
 ## Test projects
 
-The monolithic test project was split into five focused projects under `tests/`:
+The monolithic test project was split into **seven** focused projects under `tests/`:
 
 | Source project | Unit tests | Integration tests |
 | --- | --- | --- |
@@ -15,6 +15,8 @@ The monolithic test project was split into five focused projects under `tests/`:
 | `RustPlusApi.Fcm` | `RustPlusApi.Fcm.UnitTests` | — (none yet) |
 | `RustPlusApi.Fcm.Registration` | `RustPlusApi.Fcm.Registration.UnitTests` | — (none yet) |
 | `RustPlusApi.Camera` | `RustPlusApi.Camera.UnitTests` | — (none yet) |
+| `RustPlusApi.Extensions.DependencyInjection` | `RustPlusApi.Extensions.DependencyInjection.UnitTests` | — (none yet) |
+| `RustPlusApi.Fcm.Extensions.DependencyInjection` | `RustPlusApi.Fcm.Extensions.DependencyInjection.UnitTests` | — (none yet) |
 
 `RustPlusApi.MockServer` is the shared in-process test server used by integration tests.
 Integration test projects for `RustPlusApi.Fcm`, `RustPlusApi.Fcm.Registration`, and
@@ -132,6 +134,12 @@ dotnet stryker --config-file stryker-config.json --project RustPlusApi.Fcm.Regis
 
 cd tests/RustPlusApi.Camera.UnitTests
 dotnet stryker --config-file stryker-config.json --project RustPlusApi.Camera.csproj
+
+cd tests/RustPlusApi.Extensions.DependencyInjection.UnitTests
+dotnet stryker --config-file stryker-config.json --project RustPlusApi.Extensions.DependencyInjection.csproj
+
+cd tests/RustPlusApi.Fcm.Extensions.DependencyInjection.UnitTests
+dotnet stryker --config-file stryker-config.json --project RustPlusApi.Fcm.Extensions.DependencyInjection.csproj
 ```
 
 To mutate the `netstandard2.0` build (exercising the `#else` sides of `#if` forks), add
@@ -162,6 +170,8 @@ mutation score cannot be measured.
 | `RustPlusApi.Fcm.Registration` | ~84.6% | Remaining: `ConfigureAwait`/`Task.Delay` (equivalent in tests) + `[ExcludeFromCodeCoverage]` Steam surface. |
 | `RustPlusApi.Fcm` | ~78.5% | Remaining: live-socket cleanup and equivalent shift/xor mutants in `McsUtils`; `Log*`/`CreateLogger` calls are suppressed via `ignore-methods`. |
 | `RustPlusApi` (core) | n/a | Cannot run — see limitation above. |
+| `RustPlusApi.Extensions.DependencyInjection` | pending | First measured by the next weekly Mutation.yml run. |
+| `RustPlusApi.Fcm.Extensions.DependencyInjection` | pending | First measured by the next weekly Mutation.yml run. |
 
 ---
 
