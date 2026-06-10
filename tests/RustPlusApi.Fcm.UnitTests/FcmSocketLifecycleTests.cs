@@ -173,6 +173,8 @@ public class FcmSocketLifecycleTests
 
         var ex = await error.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.IsType<TimeoutException>(ex);
+        // Pin the diagnostic message so the string is not an unobservable (survivable) mutation.
+        Assert.Contains("presumed dead", ex.Message, StringComparison.Ordinal);
         Assert.True(await disconnected.Task.WaitAsync(TimeSpan.FromSeconds(5)));
         await loop.WaitAsync(TimeSpan.FromSeconds(5)); // the loop exited after disconnecting
     }

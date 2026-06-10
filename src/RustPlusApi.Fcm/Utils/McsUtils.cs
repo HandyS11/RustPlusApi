@@ -20,9 +20,11 @@ public static class McsUtils
         do
         {
             var b = (byte)(value & 0x7F);
+            // Stryker disable once Assignment: value is guarded non-negative, so >>= and >>>= are equivalent.
             value >>= 7;
             if (value != 0)
             {
+                // Stryker disable once Assignment: b is masked to 0x7F here, so bit 0x80 is clear and |= equals ^=.
                 b |= 0x80;
             }
 

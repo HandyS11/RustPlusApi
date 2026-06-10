@@ -255,7 +255,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await DisposeAsyncCore().ConfigureAwait(false);
+        await DisposeCoreAsync().ConfigureAwait(false);
         SuppressFinalize(this);
     }
 
@@ -263,7 +263,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
     /// Cancels the instance token, tears down the transport to unblock the synchronous read, awaits the
     /// tracked receive loop (bounded), then disposes remaining resources. Override to extend async teardown.
     /// </summary>
-    protected virtual async ValueTask DisposeAsyncCore()
+    protected virtual async ValueTask DisposeCoreAsync()
     {
         if (!_cancellationTokenSource.IsCancellationRequested)
         {
@@ -536,6 +536,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
                 throw new EndOfStreamException(); // stream closed mid-varint
             }
 
+            // Stryker disable once Assignment: each 7-bit group lands in disjoint bit positions, so |= equals ^=.
             result |= (b & 0x7F) << shift;
             if ((b & 0x80) == 0)
             {
