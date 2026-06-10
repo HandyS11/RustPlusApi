@@ -14,18 +14,10 @@ namespace RustPlusApi;
 /// <summary>
 /// A Rust+ API client made in C#.
 /// </summary>
-/// <param name="server">The IP address of the Rust+ server.</param>
-/// <param name="port">The port dedicated for the Rust+ companion app (not the one used to connect in-game).</param>
-/// <param name="playerId">Your Steam ID.</param>
-/// <param name="playerToken">Your player token acquired with FCM.</param>
-/// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
+/// <param name="connection">The server endpoint and player credentials to connect as.</param>
 /// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
 public abstract class RustPlusSocket(
-    string server,
-    int port,
-    ulong playerId,
-    int playerToken,
-    bool useFacepunchProxy = false,
+    RustPlusConnection connection,
     RustPlusSocketOptions? options = null)
     : IRustPlusSocket, IDisposable, IAsyncDisposable
 {
@@ -127,10 +119,10 @@ public abstract class RustPlusSocket(
     /// <summary>Test seam: the tracked send loop, so tests can assert it actually completed on teardown.</summary>
     internal Task? SendLoopForTests { get; private set; }
 
-    private int _playerToken = playerToken;
+    private int _playerToken = connection.PlayerToken;
 
     /// <summary>The Steam ID requests are currently issued as (see <see cref="SetPlayer"/>).</summary>
-    protected ulong PlayerId { get; private set; } = playerId;
+    protected ulong PlayerId { get; private set; } = connection.PlayerId;
 
     /// <summary>
     /// Asynchronously connects to the Rust+ server using a WebSocket.
@@ -173,9 +165,9 @@ public abstract class RustPlusSocket(
         var webSocket = new ClientWebSocket();
         webSocket.Options.KeepAliveInterval = _options.KeepAliveInterval;
 
-        var uri = useFacepunchProxy
-            ? new Uri($"wss://companion-rust.facepunch.com/game/{server}/{port}")
-            : new Uri($"ws://{server}:{port}");
+        var uri = connection.UseFacepunchProxy
+            ? new Uri($"wss://companion-rust.facepunch.com/game/{connection.Server}/{connection.Port}")
+            : new Uri($"ws://{connection.Server}:{connection.Port}");
 
         Connecting?.Invoke(this, EventArgs.Empty);
 

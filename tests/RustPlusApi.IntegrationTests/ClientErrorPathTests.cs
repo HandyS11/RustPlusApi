@@ -17,7 +17,7 @@ public class ClientErrorPathTests
     {
         var server = new MockRustPlusServer(req => MockResponses.Error(req.Seq, "no_permission"));
         server.Start();
-        var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         return (server, client);
     }

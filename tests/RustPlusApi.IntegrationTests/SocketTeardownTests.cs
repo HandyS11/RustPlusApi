@@ -18,7 +18,7 @@ public class SocketTeardownTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.GetInfoAsync().WaitAsync(Timeout);
 

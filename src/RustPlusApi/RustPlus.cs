@@ -17,15 +17,11 @@ namespace RustPlusApi;
 /// Initializes a new instance of the <see cref="RustPlus"/> class,
 /// connecting to a Rust+ server using the specified parameters.
 /// </summary>
-/// <param name="server">The IP address of the Rust+ server.</param>
-/// <param name="port">The port dedicated for the Rust+ companion app (not the one used to connect in-game).</param>
-/// <param name="playerId">Your Steam ID.</param>
-/// <param name="playerToken">Your player token acquired with FCM.</param>
-/// <param name="useFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
+/// <param name="connection">The server endpoint and player credentials to connect as.</param>
 /// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
 /// <seealso cref="RustPlusSocket"/>
-public class RustPlus(string server, int port, ulong playerId, int playerToken, bool useFacepunchProxy = false, RustPlusSocketOptions? options = null)
-    : RustPlusSocket(server, port, playerId, playerToken, useFacepunchProxy, options), IRustPlus
+public class RustPlus(RustPlusConnection connection, RustPlusSocketOptions? options = null)
+    : RustPlusSocket(connection, options), IRustPlus
 {
     /// <summary>
     /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or alarm.

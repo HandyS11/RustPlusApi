@@ -50,7 +50,7 @@ public class EntityClientTests
     {
         var server = new MockRustPlusServer(EntityResponder);
         server.Start();
-        var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         return (server, client);
     }
@@ -59,7 +59,7 @@ public class EntityClientTests
     {
         var server = new MockRustPlusServer();
         server.Start();
-        var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         return (server, client);
     }
@@ -93,7 +93,7 @@ public class EntityClientTests
             return new AppMessage { Response = resp };
         });
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetAlarmInfoAsync(1).WaitAsync(Timeout);
@@ -119,7 +119,7 @@ public class EntityClientTests
             return new AppMessage { Response = resp };
         });
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetStorageMonitorInfoAsync(1).WaitAsync(Timeout);

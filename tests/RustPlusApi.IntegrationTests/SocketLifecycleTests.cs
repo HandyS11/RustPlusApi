@@ -22,7 +22,7 @@ public class SocketLifecycleTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
 
         var events = new List<string>();
         client.Connecting += (_, _) => events.Add("connecting");
@@ -53,7 +53,7 @@ public class SocketLifecycleTests
             return MockResponses.Default(req);
         });
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         client.SetPlayer(42, 7);
@@ -65,14 +65,14 @@ public class SocketLifecycleTests
     [Fact]
     public void IsConnected_BeforeConnect_IsFalse()
     {
-        using var client = new RustPlus(MockRustPlusServer.Host, 1, PlayerId, PlayerToken);
+        using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, 1, PlayerId, PlayerToken));
         Assert.False(client.IsConnected);
     }
 
     [Fact]
     public async Task DisconnectAsync_WhenNotConnected_ReturnsImmediately()
     {
-        await using var client = new RustPlus(MockRustPlusServer.Host, 1, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, 1, PlayerId, PlayerToken));
         await client.DisconnectAsync().WaitAsync(Timeout); // early return, no throw
         Assert.False(client.IsConnected);
     }
@@ -82,7 +82,7 @@ public class SocketLifecycleTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var disconnecting = false;
@@ -101,7 +101,7 @@ public class SocketLifecycleTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
 
         await client.ConnectAsync().WaitAsync(Timeout);
         var first = await client.GetInfoAsync().WaitAsync(Timeout);
@@ -124,7 +124,7 @@ public class SocketLifecycleTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => client.ConnectAsync().WaitAsync(Timeout));
@@ -134,7 +134,7 @@ public class SocketLifecycleTests
     [Fact]
     public async Task ConnectAsync_AfterDispose_ThrowsObjectDisposed()
     {
-        var client = new RustPlus(MockRustPlusServer.Host, 1, PlayerId, PlayerToken);
+        var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, 1, PlayerId, PlayerToken));
         await client.DisposeAsync();
 
         await Assert.ThrowsAsync<ObjectDisposedException>(() => client.ConnectAsync());
@@ -145,7 +145,7 @@ public class SocketLifecycleTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         var received = new TaskCompletionSource<StorageMonitorEventArg>(TaskCreationOptions.RunContinuationsAsynchronously);
         client.OnStorageMonitorTriggered += (_, e) => received.TrySetResult(e);
 
@@ -173,7 +173,7 @@ public class SocketLifecycleTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         // Round-trip so server registers the active socket.
         await client.GetInfoAsync().WaitAsync(Timeout);
@@ -190,7 +190,7 @@ public class SocketLifecycleTests
     {
         await using var server = new MockRustPlusServer();
         server.Start();
-        var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.GetInfoAsync().WaitAsync(Timeout);
 
@@ -261,7 +261,7 @@ public class SocketLifecycleTests
             return MockResponses.Default(req);
         });
         server.Start();
-        await using var client = new RustPlus(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken);
+        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var requestTask = client.GetInfoAsync();
