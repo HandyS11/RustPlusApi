@@ -6,7 +6,7 @@
     "reporters": ["html", "progress", "cleartext"],
     "thresholds": { "high": 90, "low": 80, "break": 75 },
     "mutate": ["!**/obj/**", "!**/bin/**"],
-    "ignore-methods": ["ConfigureAwait", "Debug.WriteLine", "SuppressFinalize"],
+    "ignore-methods": ["ConfigureAwait", "Log*", "CreateLogger", "SuppressFinalize"],
     "ignore-mutations": [],
     "project-info": { "module": "RustPlusApi.Fcm" }
   }
