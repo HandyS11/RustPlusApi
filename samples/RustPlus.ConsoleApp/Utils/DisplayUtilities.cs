@@ -1,4 +1,4 @@
-﻿using RustPlusApi.Data;
+using RustPlusApi.Data;
 using System.Text.Json;
 
 namespace RustPlus.ConsoleApp.Utils;

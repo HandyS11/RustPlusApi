@@ -1,4 +1,4 @@
-﻿using RustPlus.ConsoleApp.Features;
+using RustPlus.ConsoleApp.Features;
 using RustPlus.ConsoleApp.Utils;
 
 // Fill credentials.json (copy credentials.sample.json) with the ip/port/playerId/playerToken

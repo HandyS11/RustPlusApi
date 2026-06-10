@@ -137,4 +137,24 @@ public class RegistrationTests
         Assert.Equal(999, pairing.PlayerToken);
         Assert.Null(pairing.Name);
     }
+
+    /// <summary>
+    /// Covers <see cref="PairingListener"/> construction (it builds the wrapped <c>RustPlusFcm</c>)
+    /// and <see cref="PairingListener.Dispose"/>. Neither touches the network, so Dispose on a
+    /// never-connected listener must be safe and idempotent.
+    /// </summary>
+    [Fact]
+    public void PairingListener_ConstructAndDispose_DoesNotThrow()
+    {
+        var credentials = new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } };
+
+        var listener = new PairingListener(credentials);
+
+        var ex = Record.Exception(() =>
+        {
+            listener.Dispose();
+            listener.Dispose();  // idempotent
+        });
+        Assert.Null(ex);
+    }
 }

@@ -9,14 +9,15 @@ all the required credentials natively — _no Node.js required_.
 [![CI](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml/badge.svg)](https://github.com/HandyS11/RustPlusApi/actions/workflows/CI.yml)
 [![CD](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg)](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml)
 [![Docs](https://github.com/HandyS11/RustPlusApi/actions/workflows/Documentation.yml/badge.svg)](https://handys11.github.io/RustPlusApi/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ![.NET](https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4?logo=dotnet)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![codecov](https://codecov.io/gh/HandyS11/RustPlusApi/graph/badge.svg?token=UZCM1A6ERM)](https://codecov.io/gh/HandyS11/RustPlusApi)
 [![Mutation Score](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Fgithub.com%2FHandyS11%2FRustPlusApi%2Fdevelop)](https://dashboard.stryker-mutator.io/reports/github.com/HandyS11/RustPlusApi/develop)
 
-[Documentation](https://handys11.github.io/RustPlusApi/) ·
 [Getting Started](https://handys11.github.io/RustPlusApi/articles/getting-started.html) ·
-[Samples](samples/README.md) ·
+[Documentation](https://handys11.github.io/RustPlusApi/) ·
+[Samples](samples/README.md)
 
 </div>
 

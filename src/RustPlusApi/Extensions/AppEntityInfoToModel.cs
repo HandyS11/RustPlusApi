@@ -51,7 +51,7 @@ public static class AppEntityInfoToModel
             Capacity = entity.Payload.Capacity,
             HasProtection = entity.Payload.HasProtection,
             ProtectionExpiry = DateTimeOffset.FromUnixTimeSeconds(entity.Payload.ProtectionExpiry).UtcDateTime,
-            Items = [..entity.Payload.Items.ToStorageMonitorItemsInfo()]
+            Items = [.. entity.Payload.Items.ToStorageMonitorItemsInfo()]
         };
     }
 

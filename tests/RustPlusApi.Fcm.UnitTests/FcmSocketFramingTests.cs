@@ -155,7 +155,7 @@ public class FcmSocketFramingTests
     /// <summary>Concatenates the given frames into a single MCS byte script.</summary>
     /// <param name="frames">The frames to concatenate in order.</param>
     private static byte[] Build(params IEnumerable<byte>[] frames) =>
-        [..frames.SelectMany(f => f)];
+        [.. frames.SelectMany(f => f)];
 
     /// <summary>Builds a valid Rust+ data-message stanza (channelId + body present).</summary>
     /// <param name="persistentId">The stanza's persistent id used for de-duplication.</param>

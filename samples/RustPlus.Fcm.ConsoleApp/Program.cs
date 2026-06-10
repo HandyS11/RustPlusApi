@@ -1,4 +1,4 @@
-﻿using RustPlus.Fcm.ConsoleApp.Utils;
+using RustPlus.Fcm.ConsoleApp.Utils;
 using RustPlusApi.Fcm;
 using RustPlusApi.Fcm.Data;
 using System.Diagnostics;
