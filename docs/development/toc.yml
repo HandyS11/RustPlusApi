@@ -1,4 +1,6 @@
 - name: Testing & Quality
   href: testing.md
+- name: Code Formatting
+  href: formatting.md
 - name: Building the Docs
   href: building-docs.md

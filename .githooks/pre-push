@@ -1,0 +1,83 @@
+#!/bin/sh
+# pre-push: run the ReSharper formatter on the files being pushed and block
+# the push when it produces changes, so unformatted code never leaves the
+# machine. Bypass for emergencies with `git push --no-verify`.
+set -u
+
+repo_root=$(git rev-parse --show-toplevel) || exit 1
+cd "$repo_root" || exit 1
+
+default_branch=origin/develop
+
+# Collect the files touched by the commits being pushed (stdin lines:
+# "<local ref> <local sha> <remote ref> <remote sha>").
+changed=""
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+    # Deleting a remote branch pushes the zero sha — nothing to format.
+    case "$local_sha" in
+        *[!0]*) ;;
+        *) continue ;;
+    esac
+
+    case "$remote_sha" in
+        *[!0]*) base=$remote_sha ;;
+        *)
+            # New remote branch: compare against the default branch when
+            # possible, otherwise format everything the branch contains.
+            base=$(git merge-base "$local_sha" "$default_branch" 2>/dev/null) \
+                || base=$(git rev-list --max-parents=0 "$local_sha" | tail -n 1)
+            ;;
+    esac
+
+    files=$(git diff --name-only --diff-filter=ACMR "$base" "$local_sha" -- \
+        '*.cs' '*.csproj' '*.props' '*.targets')
+    changed=$(printf '%s\n%s' "$changed" "$files")
+done
+
+changed=$(printf '%s' "$changed" | sort -u | sed '/^$/d')
+[ -z "$changed" ] && exit 0
+
+# Only files that still exist in the working tree can be cleaned up.
+existing=""
+for f in $changed; do
+    [ -f "$f" ] && existing=$(printf '%s\n%s' "$existing" "$f")
+done
+existing=$(printf '%s' "$existing" | sed '/^$/d')
+[ -z "$existing" ] && exit 0
+
+include=$(printf '%s' "$existing" | paste -sd ';' -)
+
+echo "pre-push: checking ReSharper formatting on $(printf '%s\n' "$existing" | wc -l) file(s)..."
+
+dotnet tool restore >/dev/null || exit 1
+
+# Hash each file's working-tree diff so we can tell exactly which files the
+# formatter modifies (pre-existing local edits must not trip the check).
+hash_diffs() {
+    for f in $existing; do
+        printf '%s %s\n' "$(git diff -- "$f" | git hash-object --stdin)" "$f"
+    done
+}
+
+before=$(hash_diffs)
+
+dotnet jb cleanupcode RustPlusApi.sln \
+    --profile="Built-in: Reformat Code" \
+    --include="$include" \
+    --no-build \
+    --verbosity=ERROR || exit 1
+
+after=$(hash_diffs)
+
+if [ "$before" != "$after" ]; then
+    echo ""
+    echo "pre-push: formatting issues found — the formatter changed:"
+    printf '%s\n%s\n' "$before" "$after" | sort | uniq -u | cut -d' ' -f2- | sort -u | sed 's/^/  /'
+    echo ""
+    echo "Review the changes, amend/commit them, then push again."
+    echo "(Bypass once with: git push --no-verify)"
+    exit 1
+fi
+
+echo "pre-push: formatting OK."
+exit 0

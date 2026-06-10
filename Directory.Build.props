@@ -21,6 +21,17 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <!-- Point git at the committed hooks (.githooks/pre-push formats before pushing).
+       Idempotent and best-effort: skipped on CI and outside a git clone. -->
+  <Target Name="ConfigureGitHooks" BeforeTargets="Build"
+          Condition="'$(CI)' == '' AND '$(ContinuousIntegrationBuild)' != 'true' AND Exists('$(MSBuildThisFileDirectory).git')">
+    <Exec Command="git config core.hooksPath .githooks"
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          ContinueOnError="true"
+          StandardOutputImportance="low"
+          StandardErrorImportance="low" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers">
       <PrivateAssets>all</PrivateAssets>
