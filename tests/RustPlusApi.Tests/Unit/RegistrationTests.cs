@@ -9,9 +9,9 @@ using Xunit;
 namespace RustPlusApi.Tests.Unit;
 
 /// <summary>
-/// Guards the deterministic, offline-testable parts of the native registration flow (v2 §7):
+/// Guards the deterministic, offline-testable parts of the native registration flow:
 /// the check-in protobuf contracts, the FID generation, credential persistence and the
-/// pairing-notification mapping. The live network flow is covered only by the opt-in canary.
+/// pairing-notification mapping. The live network flow is only validatable by a real run.
 /// </summary>
 public class RegistrationTests
 {

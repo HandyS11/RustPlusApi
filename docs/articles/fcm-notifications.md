@@ -23,10 +23,10 @@ listener.Disconnect();
 | Event | Fires when |
 | --- | --- |
 | `OnServerPairing` | You choose *Pair with Server* in game — carries ip/port/playerId/playerToken. |
-| `OnEntityParing` | You pair a smart device. |
-| `OnSmartSwitchParing` / `OnSmartAlarmParing` / `OnStorageMonitorParing` | A specific entity type is paired. |
+| `OnEntityPairing` | You pair a smart device. |
+| `OnSmartSwitchPairing` / `OnSmartAlarmPairing` / `OnStorageMonitorPairing` | A specific entity type is paired. |
 | `OnAlarmTriggered` | A paired smart alarm fires. |
-| `OnParing` | Any pairing notification (raw). |
+| `OnPairing` | Any pairing notification (raw). |
 
 Plus socket lifecycle events: `Connecting`, `Connected`, `SocketClosed`, `Disconnecting`,
 `Disconnected`, `ErrorOccurred`.

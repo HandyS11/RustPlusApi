@@ -7,7 +7,7 @@ using static RustPlusApi.Fcm.Utils.McsUtils;
 namespace RustPlusApi.Tests.Unit;
 
 /// <summary>
-/// Guards the hand-authored code-first MCS contracts (v2 §3): the [ProtoMember] field
+/// Guards the hand-authored code-first MCS contracts: the [ProtoMember] field
 /// numbers are the wire contract, so these round-trips ensure the manual types stay
 /// byte-compatible with the Chromium MCS protocol.
 /// </summary>

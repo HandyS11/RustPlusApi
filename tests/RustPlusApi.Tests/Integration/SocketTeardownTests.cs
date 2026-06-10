@@ -4,7 +4,7 @@ using Xunit;
 namespace RustPlusApi.Tests.Integration;
 
 /// <summary>
-/// Phase 0 teardown guarantees: disposing a connected client must deterministically stop every
+/// Teardown guarantees: disposing a connected client must deterministically stop every
 /// tracked background loop within a bounded time, with the instance token interrupting in-flight I/O.
 /// </summary>
 public class SocketTeardownTests

@@ -604,7 +604,7 @@ public abstract class RustPlusFcmSocket(Credentials credentials, ICollection<str
 
         var fcmMessage = new FcmMessage
         {
-            PersistantId = dataMessage.PersistentId ?? string.Empty,
+            PersistentId = dataMessage.PersistentId ?? string.Empty,
             From = long.Parse(dataMessage.From, CultureInfo.InvariantCulture),
             SentAt = DateTimeOffset.FromUnixTimeMilliseconds(dataMessage.Sent ?? 0).UtcDateTime,
             Data = new MessageData

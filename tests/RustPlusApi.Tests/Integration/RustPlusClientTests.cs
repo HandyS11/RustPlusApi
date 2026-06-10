@@ -6,7 +6,7 @@ namespace RustPlusApi.Tests.Integration;
 
 /// <summary>
 /// End-to-end tests that point a real <see cref="RustPlus"/> client at the in-process
-/// <see cref="MockRustPlusServer"/> (v2 §9). This is the harness the riskier phases
+/// <see cref="MockRustPlusServer"/>. This is the harness the riskier phases
 /// (serializer swap, camera) build on.
 /// </summary>
 public class RustPlusClientTests

@@ -14,8 +14,8 @@ namespace RustPlusApi.Camera;
 /// <param name="height">Camera image height in pixels, from <see cref="CameraInfo.Height"/>.</param>
 /// <remarks>
 /// The ray decode, sample shuffle and colouring are ported from liamcottle/rustplus.js.
-/// They have <b>not yet been validated against a real captured frame</b> (see the v2 plan
-/// §15.4 golden-payload capture); treat image fidelity as experimental until then.
+/// They have <b>not yet been validated against a real captured frame</b>; treat image
+/// fidelity as experimental until a golden-payload capture validates it.
 /// </remarks>
 public sealed class CameraRenderer(int width, int height)
 {

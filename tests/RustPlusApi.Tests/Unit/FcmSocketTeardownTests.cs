@@ -5,7 +5,7 @@ using Xunit;
 namespace RustPlusApi.Tests.Unit;
 
 /// <summary>
-/// Phase 0 teardown guarantee for <see cref="RustPlusFcmSocket"/>: the receive loop is tracked, and
+/// Teardown guarantee for <see cref="RustPlusFcmSocket"/>: the receive loop is tracked, and
 /// <c>DisposeAsync</c> unblocks the in-progress read and awaits the loop to completion within a bounded time.
 /// </summary>
 public class FcmSocketTeardownTests

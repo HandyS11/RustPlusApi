@@ -67,11 +67,11 @@ public class RustPlusFcmDispatchTests
         Notification<int?>? smart = null;
         Notification<int?>? alarm = null;
         Notification<int?>? storage = null;
-        fcm.OnSmartSwitchParing += (_, n) => smart = n;
-        fcm.OnSmartAlarmParing += (_, n) => alarm = n;
-        fcm.OnStorageMonitorParing += (_, n) => storage = n;
+        fcm.OnSmartSwitchPairing += (_, n) => smart = n;
+        fcm.OnSmartAlarmPairing += (_, n) => alarm = n;
+        fcm.OnStorageMonitorPairing += (_, n) => storage = n;
         Notification<EntityEvent?>? entity = null;
-        fcm.OnEntityParing += (_, n) => entity = n;
+        fcm.OnEntityPairing += (_, n) => entity = n;
 
         var serverId = Guid.NewGuid();
         fcm.Feed(Pairing(new Body
@@ -85,7 +85,7 @@ public class RustPlusFcmDispatchTests
             PlayerToken = "5"
         }));
 
-        // OnEntityParing always fires with the mapped EntityEvent + envelope context.
+        // OnEntityPairing always fires with the mapped EntityEvent + envelope context.
         Assert.NotNull(entity);
         Assert.Equal(11ul, entity!.PlayerId);
         Assert.Equal(5, entity.PlayerToken);
@@ -107,14 +107,14 @@ public class RustPlusFcmDispatchTests
     }
 
     [Fact]
-    public void Pairing_RaisesOnParing()
+    public void Pairing_RaisesOnPairing()
     {
         using var fcm = new TestFcm();
         FcmMessage? raised = null;
-        fcm.OnParing += (_, m) => raised = m;
+        fcm.OnPairing += (_, m) => raised = m;
         var message = Pairing(new Body { Type = "server", Ip = "1.1.1.1", Port = 1, PlayerToken = "0" });
         fcm.Feed(message);
-        // OnParing forwards the original FcmMessage instance unchanged.
+        // OnPairing forwards the original FcmMessage instance unchanged.
         Assert.Same(message, raised);
     }
 
@@ -137,7 +137,7 @@ public class RustPlusFcmDispatchTests
     {
         using var fcm = new TestFcm();
         var any = false;
-        fcm.OnParing += (_, _) => any = true;
+        fcm.OnPairing += (_, _) => any = true;
         fcm.OnAlarmTriggered += (_, _) => any = true;
         fcm.Feed(new FcmMessage { Data = new MessageData { ChannelId = "mystery" } });
         Assert.False(any);
@@ -149,7 +149,7 @@ public class RustPlusFcmDispatchTests
         using var fcm = new TestFcm();
         var any = false;
         fcm.OnServerPairing += (_, _) => any = true;
-        fcm.OnSmartSwitchParing += (_, _) => any = true;
+        fcm.OnSmartSwitchPairing += (_, _) => any = true;
         fcm.Feed(Pairing(new Body { Type = "mystery" }));
         fcm.Feed(Pairing(new Body { Type = "entity", EntityType = 99, PlayerToken = "0" }));
         Assert.False(any);
@@ -163,8 +163,8 @@ public class RustPlusFcmDispatchTests
     {
         using var fcm = new TestFcm();
         var raised = false;
-        // Subscribe only OnEntityParing to confirm the entity arm fires, but the typed events are null.
-        fcm.OnEntityParing += (_, _) => raised = true;
+        // Subscribe only OnEntityPairing to confirm the entity arm fires, but the typed events are null.
+        fcm.OnEntityPairing += (_, _) => raised = true;
         fcm.Feed(Pairing(new Body { Type = "entity", EntityType = entityType, EntityId = 1, PlayerToken = "0" }));
         Assert.True(raised);
     }
@@ -174,20 +174,20 @@ public class RustPlusFcmDispatchTests
     {
         using var fcm = new TestFcm();
         var pairingRaised = false;
-        fcm.OnParing += (_, _) => pairingRaised = true;
+        fcm.OnPairing += (_, _) => pairingRaised = true;
         // OnAlarmTriggered not subscribed — verifies null branch of ?.Invoke.
         fcm.Feed(new FcmMessage { Data = new MessageData { ChannelId = "alarm", Title = "t", Message = "m" } });
         Assert.False(pairingRaised);
     }
 
     [Fact]
-    public void Pairing_Server_NoServerPairingHandler_OnlyRaisesOnParing()
+    public void Pairing_Server_NoServerPairingHandler_OnlyRaisesOnPairing()
     {
         using var fcm = new TestFcm();
-        var paringRaised = false;
-        fcm.OnParing += (_, _) => paringRaised = true;
+        var pairingRaised = false;
+        fcm.OnPairing += (_, _) => pairingRaised = true;
         // OnServerPairing not subscribed — verifies null branch of its ?.Invoke.
         fcm.Feed(Pairing(new Body { Type = "server", Ip = "1.2.3.4", Port = 1, PlayerToken = "0" }));
-        Assert.True(paringRaised);
+        Assert.True(pairingRaised);
     }
 }

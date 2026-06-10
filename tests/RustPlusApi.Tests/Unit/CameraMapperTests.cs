@@ -5,7 +5,7 @@ using Xunit;
 
 namespace RustPlusApi.Tests.Unit;
 
-/// <summary>Guards the camera mappers and the control-flag/entity-type enum mapping (v2 §5a).</summary>
+/// <summary>Guards the camera mappers and the control-flag/entity-type enum mapping.</summary>
 public class CameraMapperTests
 {
     [Fact]

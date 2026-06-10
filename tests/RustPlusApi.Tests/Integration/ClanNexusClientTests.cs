@@ -5,7 +5,7 @@ using Xunit;
 namespace RustPlusApi.Tests.Integration;
 
 /// <summary>
-/// End-to-end tests for the clan/nexus surface lifted into the typed API (v2 §5b/§5c), plus
+/// End-to-end tests for the clan/nexus surface lifted into the typed API, plus
 /// the <c>IsError</c> correctness fix that makes success-only responses report success.
 /// </summary>
 public class ClanNexusClientTests

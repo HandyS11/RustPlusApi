@@ -59,8 +59,8 @@ Steam step launches **Google Chrome or Chromium** (native or Flatpak are auto-de
 Every network step depends on live Google, Expo and Facepunch services, whose endpoints and
 constants drift when those apps change. The flow is ported from rustplus.js /
 `@liamcottle/push-receiver`; if registration breaks, re-check `RegistrationConstants` against
-those upstream sources. The offline test suite covers the deterministic parts; an opt-in "canary"
-test exercises the real endpoints.
+those upstream sources. The offline test suite covers the deterministic parts; the live flow is
+validated by running the `RustPlus.Register.ConsoleApp` sample end to end.
 
 ## Loading credentials back
 

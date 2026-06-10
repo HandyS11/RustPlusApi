@@ -9,7 +9,7 @@ using Xunit;
 namespace RustPlusApi.Tests.Unit;
 
 /// <summary>
-/// Guards the deterministic parts of the camera ray decode + render (v2 §5a rendering layer).
+/// Guards the deterministic parts of the camera ray decode + render.
 /// Tests use EXACT (pinned / characterization) assertions so that arithmetic mutations in
 /// CameraRenderer and IndexGenerator change observable output and are killed by Stryker.
 /// <para>
@@ -21,7 +21,7 @@ namespace RustPlusApi.Tests.Unit;
 ///   </list>
 /// </para>
 /// End-to-end fidelity against a real captured frame is still pending the golden-payload
-/// capture (§15.4); these tests lock the full-ray decode math, the sky sentinel,
+/// capture; these tests lock the full-ray decode math, the sky sentinel,
 /// the material colouring, the lookback table, and all four switch arms.
 /// </summary>
 public class CameraRendererTests

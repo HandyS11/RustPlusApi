@@ -6,7 +6,7 @@ namespace RustPlusApi.Tests.Unit;
 
 /// <summary>
 /// Guards the <c>Extensions/*</c> mappers that lift wire types into the typed
-/// <c>Response&lt;T&gt;</c> models (v2 §5d / §2 — the presence-sensitive mapping is the part
+/// <c>Response&lt;T&gt;</c> models (the presence-sensitive mapping is the part
 /// the protobuf-net swap must not break).
 /// </summary>
 public class MapperTests

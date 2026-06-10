@@ -44,5 +44,6 @@ jobs:
     - name: Enforce coverage threshold
       # Achieved: ~99.3-99.6% line / ~97.3-97.6% branch. The gap to 100% is irreducible
       # (compiler-generated async state-machine branches + live-socket/network lines that
-      # cannot be exercised offline). See docs/testing.md. Floor is set just below achieved.
-      run: python3 tools/coverage/check_threshold.py 90 90
+      # cannot be exercised offline). Gate floor: line 95 / branch 90 — keep in sync with
+      # docs/testing.md ("Coverage gate").
+      run: python3 tools/coverage/check_threshold.py 95 90

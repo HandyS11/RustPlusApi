@@ -192,7 +192,7 @@ public class FcmSocketFramingTests
         using var doc = System.Text.Json.JsonDocument.Parse(notification!);
         var root = doc.RootElement;
         Assert.Equal(123456789L, root.GetProperty("From").GetInt64());
-        Assert.Equal("p1", root.GetProperty("PersistantId").GetString());
+        Assert.Equal("p1", root.GetProperty("PersistentId").GetString());
         Assert.Equal("pairing", root.GetProperty("Data").GetProperty("ChannelId").GetString());
     }
 

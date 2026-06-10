@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace RustPlusApi.Fcm.Registration;
 
 /// <summary>
-/// Orchestrates the native credential acquisition flow (v2 §7), replacing the Node CLI.
+/// Orchestrates the native credential acquisition flow, replacing the Node CLI.
 /// </summary>
 /// <param name="httpClient">Optional <see cref="HttpClient"/> to use for all HTTP requests; a new instance is created if <see langword="null"/>.</param>
 /// <param name="steamLoginPort">The loopback port the OAuth callback listener binds to.</param>
@@ -46,7 +46,8 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <exception cref="InvalidOperationException">Thrown when <paramref name="credentials"/> is missing the Expo push token.</exception>
     /// <remarks>Excluded from coverage: post-guard flow drives live Steam login and Companion
-    /// registration; the guard (missing ExpoPushToken) is unit-tested, the remainder is canary-only.</remarks>
+    /// registration; the guard (missing ExpoPushToken) is unit-tested, the remainder is only
+    /// validatable by a real run against the live endpoints.</remarks>
     [ExcludeFromCodeCoverage]
     public async Task<string> RegisterWithRustPlusAsync(Credentials credentials, CancellationToken cancellationToken = default)
     {

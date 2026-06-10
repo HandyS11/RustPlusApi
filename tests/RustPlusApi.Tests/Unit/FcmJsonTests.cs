@@ -5,7 +5,7 @@ using Xunit;
 namespace RustPlusApi.Tests.Unit;
 
 /// <summary>
-/// Guards the v2 §8 JSON cleanup: the bespoke <c>Int32StringConverter</c>/<c>StringToUInt64Converter</c>
+/// Guards the JSON cleanup: the bespoke <c>Int32StringConverter</c>/<c>StringToUInt64Converter</c>
 /// were replaced by STJ's native <c>JsonNumberHandling</c>. Rust+ encodes these numeric body fields
 /// as JSON strings, so reading-from-string (and writing-as-string) must still work.
 /// </summary>

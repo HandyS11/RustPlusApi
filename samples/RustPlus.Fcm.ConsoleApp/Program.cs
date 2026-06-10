@@ -41,7 +41,7 @@ listener.Disconnected += (_, _) => Console.WriteLine($"[DISCONNECTED]: {DateTime
 
 /* Specials events */
 
-listener.OnParing += (_, pairing) =>
+listener.OnPairing += (_, pairing) =>
 {
     // Not display in console to not spam the output.
     Debug.WriteLine($"[PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
@@ -49,15 +49,15 @@ listener.OnParing += (_, pairing) =>
 
 listener.OnServerPairing += (_, pairing) => Console.WriteLine($"[SERVER PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
 
-listener.OnEntityParing += (_, pairing) =>
+listener.OnEntityPairing += (_, pairing) =>
 {
     // Not display in console to not spam the output.
     Debug.WriteLine($"[ENTITY PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
 };
 
-listener.OnSmartSwitchParing += (_, pairing) => Console.WriteLine($"[SMART SWITCH PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
-listener.OnStorageMonitorParing += (_, pairing) => Console.WriteLine($"[STORAGE MONITOR PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
-listener.OnSmartAlarmParing += (_, pairing) => Console.WriteLine($"[SMART ALARM PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
+listener.OnSmartSwitchPairing += (_, pairing) => Console.WriteLine($"[SMART SWITCH PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
+listener.OnStorageMonitorPairing += (_, pairing) => Console.WriteLine($"[STORAGE MONITOR PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
+listener.OnSmartAlarmPairing += (_, pairing) => Console.WriteLine($"[SMART ALARM PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
 listener.OnAlarmTriggered += (_, alarm) => Console.WriteLine($"[ALARM TRIGGERED]:\n{JsonSerializer.Serialize(alarm, JsonUtilities.JsonOptions)}");
 
 try

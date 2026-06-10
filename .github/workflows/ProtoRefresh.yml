@@ -1,7 +1,7 @@
 name: Proto Refresh Check
 
 # Authoritatively checks whether the Rust dedicated server's Companion contracts have drifted
-# from the committed RustPlusContracts.proto (§6, Method A — see tools/update-proto/README.md).
+# from the committed RustPlusContracts.proto (Method A — see tools/update-proto/README.md).
 # On drift it opens (or comments on) a tracking issue with the diff; the regenerated proto is
 # NOT auto-applied because new fields usually need matching model/mapper changes by hand.
 

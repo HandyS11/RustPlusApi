@@ -6,7 +6,7 @@ using Xunit;
 namespace RustPlusApi.Tests.Unit;
 
 /// <summary>
-/// Guards the Google.Protobuf → protobuf-net serializer swap (v2 §2): the contract types must
+/// Guards the Google.Protobuf → protobuf-net serializer swap: the contract types must
 /// round-trip through protobuf-net's binary (field-number) encoding without losing data.
 /// </summary>
 public class ProtobufRoundTripTests

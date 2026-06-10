@@ -4,7 +4,7 @@ using static RustPlusApi.Fcm.Utils.McsUtils;
 namespace RustPlusApi.Tests.Unit;
 
 /// <summary>
-/// Guards the MCS varint framing (v2 §10 item 8 — <c>EncodeVarInt32(0)</c> used to return
+/// Guards the MCS varint framing (regression: <c>EncodeVarInt32(0)</c> used to return
 /// an empty array, corrupting the wire framing for zero-length payloads).
 /// </summary>
 public class VarIntTests

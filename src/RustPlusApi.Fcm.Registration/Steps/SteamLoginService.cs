@@ -23,8 +23,8 @@ namespace RustPlusApi.Fcm.Registration.Steps;
 /// stable Chrome in 137+. CDP injection runs inside the page's own main world before its scripts,
 /// so it sidesteps all of that — the same mechanism Puppeteer/Playwright use. <b>Chrome/Chromium
 /// is required</b> (native or Flatpak are auto-detected; <c>CHROME_PATH</c> overrides discovery).
-/// This step is interactive and only validatable by a real run. Excluded from the coverage gate;
-/// validated by the opt-in <c>SteamInjectionCanaryTests</c> canary instead.
+/// This step is interactive and only validatable by a real run (e.g. the
+/// <c>RustPlus.Register.ConsoleApp</c> sample); it is excluded from the coverage gate.
 /// </remarks>
 [ExcludeFromCodeCoverage]
 public sealed class SteamLoginService(int port = 3000)

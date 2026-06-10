@@ -6,7 +6,7 @@ namespace RustPlusApi.Fcm.Data;
 public sealed record FcmMessage
 {
     /// <summary>FCM persistent ID used to de-duplicate already-processed messages.</summary>
-    public string PersistantId { get; init; } = null!;
+    public string PersistentId { get; init; } = null!;
 
     /// <summary>FCM sender ID (the GCP project number that sent the message).</summary>
     public long From { get; init; }

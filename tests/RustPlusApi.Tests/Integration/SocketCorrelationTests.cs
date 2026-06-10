@@ -5,7 +5,7 @@ using Xunit;
 namespace RustPlusApi.Tests.Integration;
 
 /// <summary>
-/// Phase 2 request/response correlation: responses are matched to their request by sequence number,
+/// Request/response correlation: responses are matched to their request by sequence number,
 /// so an unsolicited broadcast cannot consume a pending request's slot, and a request honors a
 /// cancellation token / removes its pending entry when cancelled.
 /// </summary>

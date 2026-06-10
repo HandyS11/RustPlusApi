@@ -6,7 +6,7 @@ using Xunit;
 namespace RustPlusApi.Tests.Integration;
 
 /// <summary>
-/// End-to-end tests for the camera protocol layer (v2 §5a) against the mock server:
+/// End-to-end tests for the camera protocol layer against the mock server:
 /// subscribe/input/unsubscribe plus the <c>OnCameraRaysReceived</c> stream.
 /// </summary>
 public class CameraClientTests

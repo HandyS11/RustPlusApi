@@ -6,7 +6,7 @@ namespace RustPlusApi.Tests.Unit;
 
 /// <summary>
 /// Guards the clan/nexus mappers lifted from the old <c>RustPlusLegacy</c> raw API into the
-/// typed <c>Response&lt;T&gt;</c> surface (v2 §5b/§5c).
+/// typed <c>Response&lt;T&gt;</c> surface.
 /// </summary>
 public class ClanMapperTests
 {
