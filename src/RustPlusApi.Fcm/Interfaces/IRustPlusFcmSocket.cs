@@ -1,7 +1,8 @@
 namespace RustPlusApi.Fcm.Interfaces;
 
-/// <summary>Defines the connection lifecycle and notification events for a low-level FCM MCS socket.</summary>
-public interface IRustPlusFcmSocket
+/// <summary>Defines the connection lifecycle and notification events for a low-level FCM MCS socket.
+/// Clients are disposable; prefer <see cref="IAsyncDisposable.DisposeAsync"/> so teardown drains background work.</summary>
+public interface IRustPlusFcmSocket : IDisposable, IAsyncDisposable
 {
     /// <summary>Raised when the client begins connecting to the FCM server.</summary>
     event EventHandler? Connecting;

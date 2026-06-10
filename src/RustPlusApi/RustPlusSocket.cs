@@ -23,7 +23,7 @@ public abstract class RustPlusSocket(
     RustPlusConnection connection,
     RustPlusSocketOptions? options = null,
     ILoggerFactory? loggerFactory = null)
-    : IRustPlusSocket, IDisposable, IAsyncDisposable
+    : IRustPlusSocket
 {
     /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
     /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>

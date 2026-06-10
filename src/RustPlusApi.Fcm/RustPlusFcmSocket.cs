@@ -31,7 +31,7 @@ public abstract class RustPlusFcmSocket(
     ICollection<string>? persistentIds = null,
     RustPlusFcmSocketOptions? options = null,
     ILoggerFactory? loggerFactory = null)
-    : IRustPlusFcmSocket, IDisposable, IAsyncDisposable
+    : IRustPlusFcmSocket
 {
     private const string Host = "mtalk.google.com";
     private const int Port = 5228;
