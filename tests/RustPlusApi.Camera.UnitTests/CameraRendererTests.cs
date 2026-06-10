@@ -154,7 +154,7 @@ public class CameraRendererTests
             rays.AddRange(FullRay(255, 192, 0));
         }
 
-        renderer.AddRays(new CameraFrame { RayData = [..rays], SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 0 });
 
         using var image = Decode(renderer.Render());
         Assert.True(HasPixel(image, new Rgba32(208, 230, 252)));
@@ -217,7 +217,7 @@ public class CameraRendererTests
             rays.AddRange(FullRay(128, 63, 2));
         }
 
-        renderer.AddRays(new CameraFrame { RayData = [..rays], SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 0 });
 
         using var image = Decode(renderer.Render());
         Assert.True(HasPixel(image, new Rgba32(76, 178, 255)));
@@ -295,7 +295,7 @@ public class CameraRendererTests
         var rays = new List<byte> { 255, 0, 63, 6 };
         rays.AddRange([0x79, 0xFF]);
 
-        renderer.AddRays(new CameraFrame { RayData = [..rays], SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 0 });
         var png = renderer.Render();
 
         Assert.NotEmpty(png);
@@ -337,7 +337,7 @@ public class CameraRendererTests
         rays.AddRange([255, 0, 0, 0]);
         rays.AddRange("@\0"u8.ToArray());
 
-        renderer.AddRays(new CameraFrame { RayData = [..rays], SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 0 });
         var png = renderer.Render();
 
         Assert.NotEmpty(png);
@@ -414,7 +414,7 @@ public class CameraRendererTests
         rays.AddRange([0b1000_0000, 0x80]);
         rays.AddRange([0b1100_0001, 0x40, 0x00]);
 
-        renderer.AddRays(new CameraFrame { RayData = [..rays], SampleOffset = 0 });
+        renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 0 });
         var png = renderer.Render();
 
         Assert.NotEmpty(png);
@@ -707,7 +707,7 @@ public class CameraRendererTests
         }
 
         var exception = Record.Exception(() =>
-            renderer.AddRays(new CameraFrame { RayData = [..rays], SampleOffset = 1 }));
+            renderer.AddRays(new CameraFrame { RayData = [.. rays], SampleOffset = 1 }));
 
         Assert.Null(exception);
         using var image = Decode(renderer.Render());

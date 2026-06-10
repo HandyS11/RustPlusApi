@@ -69,41 +69,52 @@ internal sealed class ServerParser
         switch (member)
         {
             case TypeDeclarationSyntax cls and (ClassDeclarationSyntax or StructDeclarationSyntax) when IsProtoMessage(cls):
-                {
-                    var simple = cls.Identifier.Text;
-                    var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
-                    _messages[qualified] = new Message { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
-                    Register(simple, qualified);
-
-                    foreach (var inner in cls.Members)
-                    {
-                        Discover(inner, qualified);
-                    }
-
-                    break;
-                }
+                DiscoverMessage(cls, parentQualified);
+                break;
             case EnumDeclarationSyntax en:
-                {
-                    var simple = en.Identifier.Text;
-                    var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
-                    var def = new EnumDef { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
-                    var next = 0;
-                    foreach (var m in en.Members)
-                    {
-                        var val = next;
-                        if (m.EqualsValue?.Value is { } v && TryParseInt(v, out var explicitVal))
-                        {
-                            val = explicitVal;
-                        }
-
-                        def.Values.Add((m.Identifier.Text, val));
-                        next = val + 1;
-                    }
-                    _enums[qualified] = def;
-                    Register(simple, qualified);
-                    break;
-                }
+                DiscoverEnum(en, parentQualified);
+                break;
         }
+    }
+
+    /// <summary>Registers a proto message type and recurses into its members.</summary>
+    /// <param name="cls">The class/struct declaration backing the message.</param>
+    /// <param name="parentQualified">Qualified name of the enclosing type, or null at file scope.</param>
+    private void DiscoverMessage(TypeDeclarationSyntax cls, string? parentQualified)
+    {
+        var simple = cls.Identifier.Text;
+        var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
+        _messages[qualified] = new Message { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
+        Register(simple, qualified);
+
+        foreach (var inner in cls.Members)
+        {
+            Discover(inner, qualified);
+        }
+    }
+
+    /// <summary>Registers an enum type and its (implicit or explicit) member values.</summary>
+    /// <param name="en">The enum declaration to register.</param>
+    /// <param name="parentQualified">Qualified name of the enclosing type, or null at file scope.</param>
+    private void DiscoverEnum(EnumDeclarationSyntax en, string? parentQualified)
+    {
+        var simple = en.Identifier.Text;
+        var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
+        var def = new EnumDef { QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified };
+        var next = 0;
+        foreach (var m in en.Members)
+        {
+            var val = next;
+            if (m.EqualsValue?.Value is { } v && TryParseInt(v, out var explicitVal))
+            {
+                val = explicitVal;
+            }
+
+            def.Values.Add((m.Identifier.Text, val));
+            next = val + 1;
+        }
+        _enums[qualified] = def;
+        Register(simple, qualified);
     }
 
     /// <summary>Second pass: extract fields for one message type (resolves types using the full registry).</summary>
@@ -119,22 +130,7 @@ internal sealed class ServerParser
             return;
         }
 
-        // Declared field types: name -> (csType, repeated, elementType)
-        var decls = new Dictionary<string, (string CsType, bool Repeated, string Element)>(StringComparer.Ordinal);
-        foreach (var fd in cls.Members.OfType<FieldDeclarationSyntax>())
-        {
-            if (fd.Modifiers.Any(SyntaxKind.StaticKeyword) || fd.Modifiers.Any(SyntaxKind.ConstKeyword))
-            {
-                continue;
-            }
-
-            var typeStr = fd.Declaration.Type.ToString();
-            var (repeated, element) = UnwrapList(typeStr);
-            foreach (var v in fd.Declaration.Variables)
-            {
-                decls[v.Identifier.Text] = (typeStr, repeated, element);
-            }
-        }
+        var decls = CollectFieldDeclarations(cls);
 
         var deser = cls.Members.OfType<MethodDeclarationSyntax>().FirstOrDefault(m =>
             m.Identifier.Text == "Deserialize" &&
@@ -152,40 +148,83 @@ internal sealed class ServerParser
             var fieldNumberMode = IsKeyFieldSwitch(sw);
             foreach (var section in sw.Sections)
             {
-                var fieldName = FindFieldName(section);
-                if (fieldName is null || !decls.TryGetValue(fieldName, out var d))
-                {
-                    continue;
-                }
-
-                var readMethod = FindReadMethod(section);
-
-                foreach (var label in section.Labels.OfType<CaseSwitchLabelSyntax>())
-                {
-                    if (!TryParseInt(label.Value, out var raw) || raw <= 0)
-                    {
-                        continue;
-                    }
-
-                    var number = fieldNumberMode ? raw : raw >> 3;
-                    if (number <= 0 || !seen.Add(number))
-                    {
-                        continue;
-                    }
-
-                    var protoType = ResolveProtoType(d.Repeated ? d.Element : d.CsType, readMethod, qualified);
-                    msg.Fields.Add(new Field
-                    {
-                        Name = fieldName,
-                        Number = number,
-                        ProtoType = protoType,
-                        Repeated = d.Repeated,
-                    });
-                }
+                AddFieldsFromSection(section, decls, fieldNumberMode, qualified, msg, seen);
             }
         }
 
         msg.Fields.Sort((a, b) => a.Number.CompareTo(b.Number));
+    }
+
+    /// <summary>Collects the non-static, non-const field declarations of a message as
+    /// name -> (csType, repeated, elementType).</summary>
+    /// <param name="cls">The type declaration to scan.</param>
+    private static Dictionary<string, (string CsType, bool Repeated, string Element)> CollectFieldDeclarations(TypeDeclarationSyntax cls)
+    {
+        var decls = new Dictionary<string, (string CsType, bool Repeated, string Element)>(StringComparer.Ordinal);
+        foreach (var fd in cls.Members.OfType<FieldDeclarationSyntax>())
+        {
+            if (fd.Modifiers.Any(SyntaxKind.StaticKeyword) || fd.Modifiers.Any(SyntaxKind.ConstKeyword))
+            {
+                continue;
+            }
+
+            var typeStr = fd.Declaration.Type.ToString();
+            var (repeated, element) = UnwrapList(typeStr);
+            foreach (var v in fd.Declaration.Variables)
+            {
+                decls[v.Identifier.Text] = (typeStr, repeated, element);
+            }
+        }
+
+        return decls;
+    }
+
+    /// <summary>Recovers every field assigned in one <c>Deserialize</c> switch section and appends it to
+    /// <paramref name="msg"/>, skipping field numbers already <paramref name="seen"/>.</summary>
+    /// <param name="section">The switch section to analyze.</param>
+    /// <param name="decls">Declared field types for the enclosing message.</param>
+    /// <param name="fieldNumberMode">True when case labels are field numbers rather than wire keys.</param>
+    /// <param name="qualified">Qualified name of the message being filled (resolution scope).</param>
+    /// <param name="msg">The message to append recovered fields to.</param>
+    /// <param name="seen">Field numbers already recorded for this message.</param>
+    private void AddFieldsFromSection(
+        SwitchSectionSyntax section,
+        Dictionary<string, (string CsType, bool Repeated, string Element)> decls,
+        bool fieldNumberMode,
+        string qualified,
+        Message msg,
+        HashSet<int> seen)
+    {
+        var fieldName = FindFieldName(section);
+        if (fieldName is null || !decls.TryGetValue(fieldName, out var d))
+        {
+            return;
+        }
+
+        var readMethod = FindReadMethod(section);
+
+        foreach (var label in section.Labels.OfType<CaseSwitchLabelSyntax>())
+        {
+            if (!TryParseInt(label.Value, out var raw) || raw <= 0)
+            {
+                continue;
+            }
+
+            var number = fieldNumberMode ? raw : raw >> 3;
+            if (number <= 0 || !seen.Add(number))
+            {
+                continue;
+            }
+
+            var protoType = ResolveProtoType(d.Repeated ? d.Element : d.CsType, readMethod, qualified);
+            msg.Fields.Add(new Field
+            {
+                Name = fieldName,
+                Number = number,
+                ProtoType = protoType,
+                Repeated = d.Repeated,
+            });
+        }
     }
 
     // ---- helpers ----

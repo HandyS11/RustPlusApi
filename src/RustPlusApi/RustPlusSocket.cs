@@ -128,10 +128,9 @@ public abstract class RustPlusSocket(
     internal Task? SendLoopForTests { get; private set; }
 
     private int _playerToken = playerToken;
-    private ulong _playerId = playerId;
 
     /// <summary>The Steam ID requests are currently issued as (see <see cref="SetPlayer"/>).</summary>
-    protected ulong PlayerId => _playerId;
+    protected ulong PlayerId { get; private set; } = playerId;
 
     /// <summary>
     /// Asynchronously connects to the Rust+ server using a WebSocket.
@@ -256,7 +255,7 @@ public abstract class RustPlusSocket(
     /// <param name="newPlayerToken">The new player token acquired with FCM.</param>
     public void SetPlayer(ulong newPlayerId, int newPlayerToken)
     {
-        _playerId = newPlayerId;
+        PlayerId = newPlayerId;
         _playerToken = newPlayerToken;
     }
 
@@ -280,7 +279,7 @@ public abstract class RustPlusSocket(
 
         var seq = (uint)Interlocked.Increment(ref _seq);
         request.Seq = seq;
-        request.PlayerId = _playerId;
+        request.PlayerId = PlayerId;
         request.PlayerToken = _playerToken;
 
         // Always keyed by seq: even a broadcast-reply request gets a seq-bearing response on error.
@@ -592,53 +591,8 @@ public abstract class RustPlusSocket(
             Debug.WriteLine("Waiting for data...");
             try
             {
-                // Accumulate fragments straight into a stream: no per-read LINQ, no list growth,
-                // and one buffer reused for the connection (map messages span megabytes).
-#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
-                using var messageStream = new MemoryStream();
-#pragma warning restore RCS1261
-                WebSocketReceiveResult result;
-
-                do
-                {
-                    result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken).ConfigureAwait(false);
-#pragma warning disable CA1849, VSTHRD103, S6966 // MemoryStream.Write is in-memory and never blocks; WriteAsync would only add overhead
-                    messageStream.Write(buffer, 0, result.Count);
-#pragma warning restore CA1849, VSTHRD103, S6966
-                } while (!result.EndOfMessage);
-
-                messageStream.Position = 0;
-                var message = Serializer.Deserialize<AppMessage>(messageStream);
-
-                Debug.WriteLine($"Received message:\n{message}");
-                MessageReceived?.Invoke(this, message);
-
-                if (message.Broadcast is not null)
-                {
-                    Debug.WriteLine($"Received notification:\n{message}");
-                    NotificationReceived?.Invoke(this, message);
-                    // Entity type from message.Response.EntityInfo.Type is not yet used.
-                    ParseNotification(message.Broadcast);
-                }
-                else
-                {
-                    Debug.WriteLine($"Received response:\n{message}");
-                    ResponseReceived?.Invoke(this, message);
-                }
-
-                // Correlate the reply. A seq-bearing response resolves the request it answers; a broadcast
-                // resolves the oldest waiter whose matcher accepts it, else it is a pure notification.
-                if (message.Response is not null)
-                {
-                    if (_pendingRequests.TryRemove(message.Response.Seq, out var tcs))
-                    {
-                        tcs.TrySetResult(message);
-                    }
-                }
-                else if (message.Broadcast is not null)
-                {
-                    ResolveBroadcastReply(message);
-                }
+                var message = await ReceiveMessageAsync(webSocket, buffer).ConfigureAwait(false);
+                DispatchMessage(message);
             }
             catch (OperationCanceledException)
             {
@@ -680,6 +634,70 @@ public abstract class RustPlusSocket(
         FailPendingRequests(new WebSocketException(
             WebSocketError.ConnectionClosedPrematurely,
             "The connection closed before a response arrived."));
+    }
+
+    /// <summary>
+    /// Reads a single, possibly fragmented, message off <paramref name="webSocket"/> and deserializes it.
+    /// </summary>
+    /// <param name="webSocket">The connection to read from.</param>
+    /// <param name="buffer">A reusable receive buffer, sized from the options.</param>
+    /// <returns>The fully accumulated and deserialized <see cref="AppMessage"/>.</returns>
+    private async Task<AppMessage> ReceiveMessageAsync(ClientWebSocket webSocket, byte[] buffer)
+    {
+        // Accumulate fragments straight into a stream: no per-read LINQ, no list growth,
+        // and one buffer reused for the connection (map messages span megabytes).
+#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
+        using var messageStream = new MemoryStream();
+#pragma warning restore RCS1261
+        WebSocketReceiveResult result;
+
+        do
+        {
+            result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken).ConfigureAwait(false);
+#pragma warning disable CA1849, VSTHRD103, S6966 // MemoryStream.Write is in-memory and never blocks; WriteAsync would only add overhead
+            messageStream.Write(buffer, 0, result.Count);
+#pragma warning restore CA1849, VSTHRD103, S6966
+        } while (!result.EndOfMessage);
+
+        messageStream.Position = 0;
+        return Serializer.Deserialize<AppMessage>(messageStream);
+    }
+
+    /// <summary>
+    /// Raises the receive events for <paramref name="message"/> and correlates it with any pending request.
+    /// A seq-bearing response resolves the request it answers; a broadcast resolves the oldest waiter whose
+    /// matcher accepts it, else it is a pure notification.
+    /// </summary>
+    /// <param name="message">The message just read off the socket.</param>
+    private void DispatchMessage(AppMessage message)
+    {
+        Debug.WriteLine($"Received message:\n{message}");
+        MessageReceived?.Invoke(this, message);
+
+        if (message.Broadcast is not null)
+        {
+            Debug.WriteLine($"Received notification:\n{message}");
+            NotificationReceived?.Invoke(this, message);
+            // Entity type from message.Response.EntityInfo.Type is not yet used.
+            ParseNotification(message.Broadcast);
+        }
+        else
+        {
+            Debug.WriteLine($"Received response:\n{message}");
+            ResponseReceived?.Invoke(this, message);
+        }
+
+        if (message.Response is not null)
+        {
+            if (_pendingRequests.TryRemove(message.Response.Seq, out var tcs))
+            {
+                tcs.TrySetResult(message);
+            }
+        }
+        else if (message.Broadcast is not null)
+        {
+            ResolveBroadcastReply(message);
+        }
     }
 
     /// <summary>
