@@ -7,6 +7,8 @@ RustPlus.Register.ConsoleApp   ──▶  rustplus.config.json   ──▶  Rust
         (one-time setup)             + RustPlus(...) args   ──▶  RustPlus.ConsoleApp       (query/control the server)
 ```
 
+See the [Samples article](https://handys11.github.io/RustPlusApi/articles/samples.html) on the docs site for a guided walkthrough.
+
 > **Credentials are never committed.** The query and listener apps ship a placeholder template —
 > `RustPlus.ConsoleApp/credentials.sample.json` and `RustPlus.Fcm.ConsoleApp/sample-config.json`.
 > Copy it to the real file locally (`credentials.json` / `rustplus.config.json`), which is

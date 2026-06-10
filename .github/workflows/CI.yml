@@ -55,6 +55,6 @@ jobs:
       # Merged aggregate across all 5 test projects and both TFMs (ReportGenerator union).
       # Metric: ReportGenerator-merged Cobertura line-rate/branch-rate.
       # Achieved: ~96.7% line / ~91.4% branch. Gate floor: line 95 / branch 90 —
-      # keep in sync with docs/testing.md ("Coverage gate").
+      # keep in sync with docs/development/testing.md ("Coverage gate").
       working-directory: ${{ github.workspace }}
       run: python3 tools/coverage/check_threshold.py 95 90

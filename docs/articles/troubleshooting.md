@@ -1,0 +1,182 @@
+# Troubleshooting
+
+Symptoms and fixes for the most common issues.
+
+## Connection refused or times out
+
+**Symptom:** `ConnectAsync` throws or `ErrorOccurred` fires immediately with a connection-refused
+or timeout error.
+
+**Cause:** The `port` you are passing is almost certainly the game's UDP join port (usually 28015),
+not the Rust+ companion port. They are different ports — the companion port is only delivered in
+the server-pairing push notification (`ServerPairing.Port`).
+
+**Fix:**
+
+1. Re-pair the server in game (*Rust+* → *Pair with Server*) and capture the `ServerPairing.Port`
+   value from the notification — not the game join port.
+2. If you are on a network that blocks direct WebSocket connections (corporate firewall, some VPNs),
+   pass `useFacepunchProxy: true` to route traffic through Facepunch's relay:
+
+```csharp
+using var rustPlus = new RustPlus(server, port, playerId, playerToken, useFacepunchProxy: true);
+```
+
+See [Getting Started](getting-started.md) for the full connection example and [Credentials](credentials.md)
+for how to obtain the correct port from the pairing notification.
+
+## The pairing notification never arrives
+
+**Symptom:** You paired in game but `PairingListener.WaitForServerPairingAsync` (or
+`RustPlusFcm.OnServerPairing`) never fires.
+
+**Checklist:**
+
+1. **Complete the registration chain first.** The FCM listener receives nothing until your device is
+   registered with Rust Companion (Step 6 in [Credentials](credentials.md)). If `AcquireCredentialsAsync`
+   or `RegisterWithRustPlusAsync` returned an error, re-run the full registration.
+2. **Connect the listener before pairing in game.** The FCM socket must be connected and waiting
+   before you choose *Pair with Server* — notifications are not queued for offline listeners.
+3. **Check the raw `OnPairing` event.** If the notification is arriving but not surfacing as
+   `OnServerPairing`, subscribe to the lower-level `OnPairing` event (payload: `FcmMessage`) to
+   inspect the raw message. A pairing with `body.Type != "server"` will not fire `OnServerPairing`.
+4. **PersistentIds may be filtering it out.** If you are passing a `persistentIds` collection that
+   already contains the notification's ID, the socket will silently skip it. Clear the collection
+   and reconnect.
+5. **Re-pair in game.** If the listener was not connected when you first chose *Pair with Server*,
+   go back to the in-game Rust+ menu and pair again.
+
+See [FCM Notifications](fcm-notifications.md) for the complete event table and reconnect strategy.
+
+## Chrome/Chromium not found during registration
+
+**Symptom:** `FcmRegistration.RegisterWithRustPlusAsync` throws `InvalidOperationException` with a
+message about not finding Chrome or Chromium.
+
+**Why Chrome is required:** The Facepunch login page hands the Steam auth token to its host via
+`ReactNativeWebView.postMessage`, which can only be intercepted via the Chrome DevTools Protocol.
+`SteamLoginService` injects a shim with `Page.addScriptToEvaluateOnNewDocument` — the same
+mechanism Puppeteer uses — and sidesteps the cross-origin restrictions that blocked older
+approaches. **Firefox and Safari will not work.**
+
+**Browser discovery order** (`SteamLoginService.FindChrome()` tries each in turn):
+
+1. **`CHROME_PATH` environment variable** — if set and the file exists, it is used immediately.
+2. **Native Windows paths** (in order):
+   - `C:\Program Files\Google\Chrome\Application\chrome.exe`
+   - `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
+   - `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`
+3. **Native macOS paths** (in order):
+   - `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+   - `/Applications/Chromium.app/Contents/MacOS/Chromium`
+4. **Linux `PATH` walk** — first match among: `google-chrome`, `google-chrome-stable`, `chromium`,
+   `chromium-browser`, `microsoft-edge`.
+5. **Flatpak** — if no native binary was found, checks for `com.google.Chrome`,
+   `org.chromium.Chromium`, `com.github.Eloston.UngoogledChromium` under the system-wide
+   (`/var/lib/flatpak/app/<id>`) and user (`~/.local/share/flatpak/app/<id>`) Flatpak stores.
+
+**Fix:** Install Google Chrome, Chromium, or Microsoft Edge using any of the above paths, or point
+`CHROME_PATH` to the binary:
+
+```bash
+export CHROME_PATH=/usr/bin/chromium
+dotnet run --project samples/RustPlus.Register.ConsoleApp
+```
+
+See [Credentials](credentials.md#steam-login-requires-chromechromium) for the full discovery-order
+documentation.
+
+## Registration fails partway through the chain
+
+**Symptom:** `AcquireCredentialsAsync` or `RegisterWithRustPlusAsync` throws `HttpRequestException`
+or returns an unexpected response partway through the 6-step chain.
+
+**Cause:** The registration flow hits live Google (GCM/Firebase/FCM), Expo, and Facepunch
+(Rust Companion) endpoints. These constants and endpoints drift when Google or Facepunch update
+their apps — `RegistrationConstants` in `src/RustPlusApi.Fcm.Registration/RegistrationConstants.cs`
+may be out of date.
+
+**Fix:**
+
+1. Re-check `RegistrationConstants` against the upstream sources it is ported from:
+   [rustplus.js](https://github.com/liamcottle/rustplus.js) and
+   [@liamcottle/push-receiver](https://github.com/liamcottle/push-receiver).
+2. As a fallback, run the upstream Node CLI directly:
+
+```bash
+npx @liamcottle/rustplus.js fcm-register
+```
+
+   Its `rustplus.config.json` uses a different layout than `CredentialsStore.Load` expects
+   (`fcm_credentials.*`), but the `RustPlus.Fcm.ConsoleApp` sample ships a loader that accepts
+   both formats — see [Samples](samples.md).
+
+See [Credentials — upstream fragility](credentials.md#upstream-fragility) for more context.
+
+## Entity events never fire
+
+**Symptom:** `OnSmartSwitchTriggered` or `OnStorageMonitorTriggered` never fires even when the
+device changes state in game.
+
+**Cause:** The server only sends broadcasts for entities that your client has explicitly queried.
+You must make at least one request on the entity (any read request) before broadcasts for it start
+arriving.
+
+**Fix:** Call the corresponding info method once after connecting:
+
+```csharp
+// Register the entity with the server — broadcasts start after this call.
+await rustPlus.GetSmartSwitchInfoAsync(entityId);
+
+rustPlus.OnSmartSwitchTriggered += (_, e) =>
+    Console.WriteLine($"Switch {e.Id}: {(e.IsActive ? "on" : "off")}");
+```
+
+> [!NOTE]
+> Camera frames (`OnCameraRaysReceived`) work differently — they start automatically after
+> `SubscribeToCameraAsync`, no extra call needed.
+
+See [RustPlus Client — Events](rustplus-client.md#events) for the full broadcast list.
+
+## `ErrorOccurred` fires with `TimeoutException` after ~12 minutes
+
+**Symptom:** The `RustPlusFcm` listener raises `ErrorOccurred` with a `TimeoutException` after
+roughly 12 minutes of inactivity, even though the network is up.
+
+**Cause:** This is the inactivity watchdog firing by design. The socket sends an MCS heartbeat
+ping every **5 minutes** to keep NAT/firewall mappings alive, and considers the connection dead if
+no frame arrives for **12 minutes**. When the watchdog triggers, `ErrorOccurred` fires and the
+socket disconnects so you can create a fresh listener.
+
+**Fix:** Implement the reconnect loop described in [FCM Notifications — Reconnect strategy](fcm-notifications.md#reconnect-strategy),
+which handles `ErrorOccurred` (including `TimeoutException`) with exponential back-off. If you want
+longer or shorter intervals, tune them via `RustPlusFcmSocketOptions`:
+
+```csharp
+var listener = new RustPlusFcm(credentials, options: new RustPlusFcmSocketOptions
+{
+    HeartbeatInterval  = TimeSpan.FromMinutes(2),
+    InactivityTimeout  = TimeSpan.FromMinutes(20),
+});
+```
+
+## My `playerToken` stopped working
+
+**Symptom:** `ConnectAsync` succeeds but every request returns an auth error, or the connection is
+dropped immediately after the handshake.
+
+**Cause:** Player tokens are per-server and rotate each time you re-pair that server. The old token
+is invalidated as soon as a new pairing is issued.
+
+**Fix:** Re-pair the server in game (*Rust+* → *Pair with Server*) to get a fresh token, then
+update your stored values:
+
+```csharp
+var creds = CredentialsStore.Load("rustplus.config.json");
+using var pairingListener = new PairingListener(creds);
+var pairing = await pairingListener.WaitForServerPairingAsync();
+// pairing.PlayerToken is the fresh token — use it going forward.
+```
+
+See [Credentials](credentials.md) for the full pairing flow and [Getting Started](getting-started.md)
+for how the four constructor values fit together.

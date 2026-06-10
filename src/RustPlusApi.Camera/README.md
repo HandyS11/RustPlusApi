@@ -6,6 +6,8 @@ only if you need rendered frames. Depends on
 [SixLabors.ImageSharp](https://github.com/SixLabors/ImageSharp) (the 2.1.x line, which supports
 `netstandard2.0`).
 
+**Part of [RustPlusApi](https://github.com/HandyS11/RustPlusApi)** · [Documentation](https://handys11.github.io/RustPlusApi/) · [Samples](https://github.com/HandyS11/RustPlusApi/tree/develop/samples)
+
 Targets **.NET Standard 2.0** and **.NET 10**.
 
 ## Install
@@ -38,5 +40,6 @@ Frames accumulate — each `AddRays` fills in more samples, so the image sharpen
 ## Documentation
 
 - [Cameras guide](https://handys11.github.io/RustPlusApi/articles/cameras.html)
+- [Troubleshooting](https://handys11.github.io/RustPlusApi/articles/troubleshooting.html)
 - [API reference](https://handys11.github.io/RustPlusApi/) ·
   [source & samples](https://github.com/HandyS11/RustPlusApi)

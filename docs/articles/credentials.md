@@ -12,6 +12,31 @@ The `RustPlusApi.Fcm.Registration` package acquires both natively, replacing the
 
 ## The flow
 
+```mermaid
+sequenceDiagram
+    participant App as Your app
+    participant G as Google (GCM/Firebase/FCM)
+    participant E as Expo
+    participant St as Steam (via Chrome)
+    participant FP as Facepunch (Rust Companion)
+    participant Game as Rust (in game)
+
+    App->>G: 1. GCM check-in
+    G-->>App: androidId + securityToken
+    App->>G: 2-3. Firebase install + FCM register
+    G-->>App: FCM token
+    App->>E: 4. Expo push token
+    E-->>App: ExponentPushToken[...]
+    App->>St: 5. Interactive Steam login (Chrome DevTools)
+    St-->>App: Steam auth token
+    App->>FP: 6. Register device with Rust Companion
+    FP-->>App: subscribed to pairing pushes
+    Note over App: 7. CredentialsStore.Save("rustplus.config.json")
+    Game->>FP: 8. "Pair with Server" in game
+    FP->>G: push notification
+    G-->>App: ServerPairing (ip/port/playerId/playerToken)
+```
+
 `FcmRegistration` orchestrates the whole chain:
 
 ```csharp
@@ -50,9 +75,40 @@ Steps 1–7 run once. Step 8 happens every time you pair a new server in game.
 ## Steam login requires Chrome/Chromium
 
 The Facepunch login page hands the auth token to its host via `ReactNativeWebView.postMessage`,
-which can only be intercepted in a Chromium browser driven through the DevTools protocol. So the
-Steam step launches **Google Chrome or Chromium** (native or Flatpak are auto-detected; set the
-`CHROME_PATH` environment variable to override). **Firefox and Safari will not work.**
+which can only be intercepted in a Chromium browser driven through the Chrome DevTools Protocol
+(CDP). `SteamLoginService` injects a shim via `Page.addScriptToEvaluateOnNewDocument` — the same
+mechanism Puppeteer and Playwright use — so the shim runs before any page script and sidesteps the
+cross-origin `WindowProxy` restrictions that blocked older techniques. **Firefox and Safari will
+not work.**
+
+### Browser discovery order
+
+`SteamLoginService.FindChrome()` and `SteamLoginService.ResolveChromeLaunch()` locate the browser
+in this exact order (source: `src/RustPlusApi.Fcm.Registration/Steps/SteamLoginService.cs`):
+
+1. **`CHROME_PATH` env var** — if set and the path exists as a file, it is used immediately,
+   bypassing all other discovery.
+2. **Native binary — Windows** (checked via `RuntimeInformation.IsOSPlatform`): looks for the
+   following paths in order:
+   - `C:\Program Files\Google\Chrome\Application\chrome.exe`
+   - `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
+   - `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`
+3. **Native binary — macOS**: checks in order:
+   - `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+   - `/Applications/Chromium.app/Contents/MacOS/Chromium`
+4. **Native binary — Linux (and other platforms)**: walks `PATH` for the first match among these
+   names, in order: `google-chrome`, `google-chrome-stable`, `chromium`, `chromium-browser`,
+   `microsoft-edge`.
+5. **Flatpak** — if no native binary was found and `flatpak` is on `PATH`, checks for installed
+   Flatpak apps in this order: `com.google.Chrome`, `org.chromium.Chromium`,
+   `com.github.Eloston.UngoogledChromium`. Presence is determined by checking whether the app
+   directory exists under `/var/lib/flatpak/app/<id>` (system-wide) or
+   `~/.local/share/flatpak/app/<id>` (user install). When a Flatpak app is found, Chrome is
+   launched as `flatpak run --filesystem=<workDir> <appId>` with a temporary profile directory
+   passed in so Chrome can write its data.
+
+If no browser is found at all, `LaunchChrome` throws `InvalidOperationException` with a message
+that includes instructions to install Chrome/Chromium or set `CHROME_PATH`.
 
 ## Upstream fragility
 

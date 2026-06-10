@@ -1,43 +1,69 @@
-<div align="center">
-
-# RustPlusApi
-
-**A C# library for the [Rust+](https://rust.facepunch.com/companion) companion API.**
-
-Query and control your server, render security cameras, listen for FCM notifications, and acquire
-all the required credentials natively — _no Node.js required_.
-
-[Get Started](articles/getting-started.md) ·
-[Articles](articles/introduction.md) ·
-[API Reference](xref:RustPlusApi) ·
-[GitHub](https://github.com/HandyS11/RustPlusApi)
-
-![.NET](https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4?logo=dotnet)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-
-</div>
-
+---
+_disableToc: true
+_disableAffix: true
+_disableBreadcrumb: true
 ---
 
-## What you can do
+<div class="rp-hero">
+  <img class="rp-hero-logo" src="images/logo.png" alt="RustPlusApi logo" />
+  <h1>RustPlusApi</h1>
+  <p class="rp-tagline">
+    A C# library for the <a href="https://rust.facepunch.com/companion">Rust+</a> companion API.
+    Query and control your server, render security cameras, listen for push notifications, and
+    acquire all the required credentials natively — <em>no Node.js required</em>.
+  </p>
+  <div class="rp-cta">
+    <a class="btn btn-primary" href="articles/getting-started.md">Get Started</a>
+    <a class="btn btn-outline-secondary" href="xref:RustPlusApi">API Reference</a>
+  </div>
+  <p class="rp-badges">
+    <img src="https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4?logo=dotnet" alt=".NET" />
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT" />
+    <img src="https://img.shields.io/nuget/v/RustPlusApi.svg?label=NuGet&color=ce412b" alt="NuGet" />
+  </p>
+</div>
 
-- 🖥️ **Control your server** — info, time, map & markers, smart switches, alarms, storage monitors.
-- 💬 **Team & clan** — read and send chat, manage the clan MOTD, react to broadcasts.
-- 📷 **Cameras** — subscribe to server CCTV/drones, drive them, and render the frames to images.
-- 🔔 **Notifications** — receive pairing and alarm pushes over FCM.
-- 🔑 **Native credentials** — acquire FCM + Rust+ credentials end to end, replacing the Node CLI.
+<div class="rp-grid">
+  <a class="rp-card" href="articles/rustplus-client.md">
+    <div class="rp-card-icon">🖥️</div>
+    <h3>Server control</h3>
+    <p>Info, time, map &amp; markers, smart switches, alarms, storage monitors — one typed <code>Response&lt;T&gt;</code> API.</p>
+  </a>
+  <a class="rp-card" href="articles/clan-and-nexus.md">
+    <div class="rp-card-icon">💬</div>
+    <h3>Team &amp; clan</h3>
+    <p>Read and send team/clan chat, manage the MOTD, react to broadcasts, authenticate with Nexus.</p>
+  </a>
+  <a class="rp-card" href="articles/cameras.md">
+    <div class="rp-card-icon">📷</div>
+    <h3>Cameras</h3>
+    <p>Subscribe to CCTV, drones and turrets, drive them, and render frames to PNG images.</p>
+  </a>
+  <a class="rp-card" href="articles/fcm-notifications.md">
+    <div class="rp-card-icon">🔔</div>
+    <h3>Notifications</h3>
+    <p>Receive pairing and alarm pushes over FCM with automatic heartbeat &amp; dead-connection detection.</p>
+  </a>
+  <a class="rp-card" href="articles/credentials.md">
+    <div class="rp-card-icon">🔑</div>
+    <h3>Native credentials</h3>
+    <p>Acquire FCM + Rust+ credentials end to end in C#, replacing the rustplus.js Node CLI.</p>
+  </a>
+  <a class="rp-card" href="articles/introduction.md">
+    <div class="rp-card-icon">🎯</div>
+    <h3>Broad targeting</h3>
+    <p>.NET Standard 2.0 and .NET 10 — runs on .NET Framework 4.6.2+, .NET 6–10, Mono and Unity.</p>
+  </a>
+</div>
 
 ## Packages
 
-| Package | Description |
-| --- | --- |
-| [`RustPlusApi`](xref:RustPlusApi) | Core client — typed `Response<T>` API, entities, team/clan/nexus, camera protocol. |
-| [`RustPlusApi.Fcm`](xref:RustPlusApi.Fcm) | FCM listener for pairing & alarm notifications. |
-| [`RustPlusApi.Fcm.Registration`](xref:RustPlusApi.Fcm.Registration) | Native credential acquisition (no Node.js). |
-| [`RustPlusApi.Camera`](xref:RustPlusApi.Camera) | Renders camera frames into images (ImageSharp). |
-
-All packages target **.NET Standard 2.0** and **.NET 10** (usable from .NET Framework 4.6.2+,
-.NET 6–10, Mono and Unity).
+| Package | Downloads | Description |
+| --- | --- | --- |
+| **[RustPlusApi](xref:RustPlusApi)** | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.svg)](https://www.nuget.org/packages/RustPlusApi) | Core client — typed `Response<T>` API, entities, team/clan/nexus, camera protocol. |
+| **[RustPlusApi.Fcm](xref:RustPlusApi.Fcm)** | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm) | FCM listener for pairing & alarm notifications. |
+| **[RustPlusApi.Fcm.Registration](xref:RustPlusApi.Fcm.Registration)** | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.Registration.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Registration) | Native credential acquisition (no Node.js). |
+| **[RustPlusApi.Camera](xref:RustPlusApi.Camera)** | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Camera.svg)](https://www.nuget.org/packages/RustPlusApi.Camera) | Renders camera frames into images (ImageSharp). |
 
 ## Quickstart
 
@@ -52,13 +78,5 @@ if (info.IsSuccess)
     Console.WriteLine($"{info.Data!.Name} — {info.Data.PlayerCount}/{info.Data.MaxPlayerCount}");
 ```
 
-Don't have credentials yet? The [Getting Started](articles/getting-started.md) guide walks you
-through acquiring them natively in a couple of minutes.
-
-## Where to next
-
-- **[Getting Started](articles/getting-started.md)** — install, get credentials, first connection.
-- **[Credentials](articles/credentials.md)** — how the native registration flow works.
-- **[RustPlus Client](articles/rustplus-client.md)** · **[Cameras](articles/cameras.md)** ·
-  **[FCM Notifications](articles/fcm-notifications.md)**
-- **[API Reference](xref:RustPlusApi)** — every public type.
+Don't have credentials yet? The **[Getting Started](articles/getting-started.md)** guide walks
+you through acquiring them natively in a couple of minutes.

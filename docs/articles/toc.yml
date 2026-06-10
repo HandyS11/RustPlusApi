@@ -1,16 +1,26 @@
-- name: Introduction
-  href: introduction.md
-- name: Getting Started
-  href: getting-started.md
-- name: Credentials
-  href: credentials.md
-- name: RustPlus Client
-  href: rustplus-client.md
-- name: Clan & Nexus
-  href: clan-and-nexus.md
-- name: Cameras
-  href: cameras.md
-- name: FCM Notifications
-  href: fcm-notifications.md
-- name: Samples
-  href: samples.md
+- name: Get Started
+  items:
+    - name: Introduction
+      href: introduction.md
+    - name: Getting Started
+      href: getting-started.md
+    - name: Credentials
+      href: credentials.md
+- name: Guides
+  items:
+    - name: RustPlus Client
+      href: rustplus-client.md
+    - name: Clan & Nexus
+      href: clan-and-nexus.md
+    - name: Cameras
+      href: cameras.md
+    - name: FCM Notifications
+      href: fcm-notifications.md
+- name: Resources
+  items:
+    - name: Samples
+      href: samples.md
+    - name: Recipes
+      href: recipes.md
+    - name: Troubleshooting
+      href: troubleshooting.md

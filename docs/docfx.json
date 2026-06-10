@@ -16,7 +16,7 @@
   ],
   "build": {
     "content": [
-      { "files": [ "**/*.{md,yml}" ], "exclude": [ "_site/**", "README.md", "filterConfig.yml" ] }
+      { "files": [ "**/*.{md,yml}" ], "exclude": [ "_site/**", "template/**", "superpowers/**", "README.md", "filterConfig.yml" ] }
     ],
     "resource": [
       {
@@ -26,11 +26,11 @@
       }
     ],
     "globalMetadata": {
-      "_appName": "\u00a0RustPlusApi",
+      "_appName": "RustPlusApi",
       "_appTitle": "RustPlusApi",
       "_appFaviconPath": "images/fav-icon.png",
       "_appLogoPath": "images/fav-icon.png",
-      "_appFooter": "A C# API for Rust+. It allows you to interact with a Rust (the facepunch game) server using Rust+ API. ",
+      "_appFooter": "<span>RustPlusApi — a C# client for the Rust+ companion API. MIT licensed. <a href=\"https://github.com/HandyS11/RustPlusApi\">GitHub</a> · <a href=\"https://www.nuget.org/packages/RustPlusApi\">NuGet</a></span>",
       "_enableSearch": true,
       "_enableNewTab": true,
       "_disableContribution": false,
@@ -43,7 +43,8 @@
     },
     "template": [
       "default",
-      "modern"
+      "modern",
+      "template"
     ],
     "dest": "_site"
   }

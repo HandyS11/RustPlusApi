@@ -21,7 +21,7 @@ jobs:
         # RustPlusApi.csproj (core) is intentionally omitted: Stryker 4.x cannot mutate it
         # because protobuf-net.BuildTools generates the RustPlusContracts types at compile
         # time and Stryker's rollback compiler cannot resolve them. The core mappers/client
-        # are covered by exact-assertion unit tests instead. See docs/testing.md.
+        # are covered by exact-assertion unit tests instead. See docs/development/testing.md.
         include:
           - source: RustPlusApi.Fcm.csproj
             testdir: tests/RustPlusApi.Fcm.UnitTests
