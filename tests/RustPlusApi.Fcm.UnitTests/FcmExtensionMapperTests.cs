@@ -22,11 +22,11 @@ public class FcmExtensionMapperTests
     }
 
     [Fact]
-    public void ToServerEvent_NullEntityName_BecomesEmpty()
+    public void ToServerEvent_NullName_BecomesEmpty()
     {
         var body = new Body
         {
-            Id = Guid.Empty, Ip = "1.2.3.4", Port = 28083, EntityName = null
+            Id = Guid.Empty, Ip = "1.2.3.4", Port = 28083
         };
         var ev = body.ToServerEvent();
         Assert.Equal(string.Empty, ev.Name);
@@ -35,11 +35,13 @@ public class FcmExtensionMapperTests
     }
 
     [Fact]
-    public void ToServerEvent_WithEntityName_UsesIt()
+    public void ToServerEvent_UsesServerName_NotEntityName()
     {
+        // Server-pairing bodies carry the server name in "name"; "entityName" is only set
+        // for entity pairings, so it must never leak into the server event.
         var body = new Body
         {
-            EntityName = "My Server", Ip = "1.2.3.4", Port = 1
+            Name = "My Server", EntityName = "Switch", Ip = "1.2.3.4", Port = 1
         };
         Assert.Equal("My Server", body.ToServerEvent().Name);
     }

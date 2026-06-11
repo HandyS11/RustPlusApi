@@ -43,7 +43,7 @@ public class RustPlusFcmDispatchTests
             Id = serverId,
             Ip = "1.2.3.4",
             Port = 28083,
-            EntityName = "My Server",
+            Name = "My Server",
             Desc = "a desc",
             Logo = "logo-url",
             Img = "img-url",

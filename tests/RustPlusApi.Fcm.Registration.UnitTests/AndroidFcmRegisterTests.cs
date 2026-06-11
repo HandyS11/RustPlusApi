@@ -69,6 +69,43 @@ public class AndroidFcmRegisterTests
         Assert.Equal(ChromeBuildProto.ChannelType.Stable, sent.Checkin.ChromeBuild.Channel!.Value);
     }
 
+    /// <summary>
+    /// A periodic check-in for an already-registered device (the reference push-receiver does one
+    /// before every MCS connect) must carry the existing identity so Google refreshes that device's
+    /// registry entry instead of minting a new one.
+    /// </summary>
+    [Fact]
+    public async Task CheckInAsync_WithExistingIdentity_SendsIdAndSecurityToken()
+    {
+        var handler = StubHttpMessageHandler.Always(HttpStatusCode.OK, CheckinResponseBytes(111, 222));
+        var register = new AndroidFcmRegister(handler.CreateClient());
+
+        var gcm = await register.CheckInAsync(new RustPlusApi.Fcm.Data.Gcm
+        {
+            AndroidId = 111, SecurityToken = 222
+        });
+
+        Assert.Equal(111UL, gcm.AndroidId);
+        Assert.Equal(222UL, gcm.SecurityToken);
+        var sent = Serializer.Deserialize<AndroidCheckinRequest>(new MemoryStream(handler.RequestBodies[0]));
+        Assert.Equal(111L, sent.Id);
+        Assert.Equal(222UL, sent.SecurityToken);
+    }
+
+    /// <summary>A first check-in (no identity) must NOT claim an existing Android id / security token.</summary>
+    [Fact]
+    public async Task CheckInAsync_WithoutIdentity_OmitsIdAndSecurityToken()
+    {
+        var handler = StubHttpMessageHandler.Always(HttpStatusCode.OK, CheckinResponseBytes(111, 222));
+        var register = new AndroidFcmRegister(handler.CreateClient());
+
+        await register.CheckInAsync();
+
+        var sent = Serializer.Deserialize<AndroidCheckinRequest>(new MemoryStream(handler.RequestBodies[0]));
+        Assert.Null(sent.Id);
+        Assert.Null(sent.SecurityToken);
+    }
+
     [Fact]
     public async Task InstallAsync_ReturnsAuthToken()
     {

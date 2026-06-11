@@ -961,6 +961,57 @@ public class FcmSocketFramingTests
         Assert.Equal(1, ackCount);
     }
 
+    /// <summary>
+    /// In production nothing awaits the receive-loop task, so a fault that only propagates out of
+    /// the task is invisible — the listener hangs forever. Any unexpected fault (here: an MCS tag
+    /// with no protobuf mapping) must therefore ALSO be surfaced via <see cref="RustPlusFcmSocket.ErrorOccurred"/>.
+    /// </summary>
+    [Fact]
+    public async Task ReceiveLoop_UnknownTag_RaisesErrorOccurred()
+    {
+        await using var socket = NewSocket();
+        Exception? error = null;
+        socket.ErrorOccurred += (_, ex) => error = ex;
+
+        // KMessageStanzaTag has no BuildProtobufFromTag mapping → the loop faults.
+        var unknownTagFrame =
+            new byte[]
+                {
+                    (byte)(int)McsProtoTag.KMessageStanzaTag
+                }
+                .Concat(EncodeVarInt32(0));
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            unknownTagFrame);
+
+        // The fault still propagates to direct awaiters (the seam); production relies on the event.
+        var thrown = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
+
+        Assert.NotNull(thrown);
+        Assert.NotNull(error);
+        Assert.Same(thrown, error);
+    }
+
+    /// <summary>
+    /// The login-handshake validation failure must likewise reach <see cref="RustPlusFcmSocket.ErrorOccurred"/>,
+    /// not just the (unobserved-in-production) receive-loop task.
+    /// </summary>
+    [Fact]
+    public async Task ReceiveLoop_WrongLoginResponse_RaisesErrorOccurred()
+    {
+        await using var socket = NewSocket();
+        Exception? error = null;
+        socket.ErrorOccurred += (_, ex) => error = ex;
+
+        var script = Build(FirstFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification()));
+
+        await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
+
+        Assert.NotNull(error);
+        Assert.IsType<InvalidOperationException>(error);
+    }
+
     [Fact]
     public async Task ReceiveLoop_StreamEndsBetweenFrames_ExitsCleanly()
     {

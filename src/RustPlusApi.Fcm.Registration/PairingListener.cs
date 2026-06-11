@@ -1,6 +1,9 @@
+using Microsoft.Extensions.Logging;
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Data.Events;
+using RustPlusApi.Fcm.Registration.Steps;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Http;
 
 namespace RustPlusApi.Fcm.Registration;
 
@@ -11,15 +14,24 @@ namespace RustPlusApi.Fcm.Registration;
 /// </summary>
 /// <param name="credentials">FCM credentials used to connect and authenticate.</param>
 /// <param name="persistentIds">Already-seen message IDs the FCM listener should skip on reconnect.</param>
+/// <param name="loggerFactory">Routes the wrapped FCM client's diagnostics (including silently
+/// skipped notifications) into your logging stack; logging is disabled when <see langword="null"/>.</param>
+/// <param name="httpClient">Optional <see cref="HttpClient"/> used for the pre-connect GCM check-in;
+/// a new instance is created if <see langword="null"/>.</param>
 /// <remarks>
 /// The event surface (<see cref="Listening"/>, <see cref="Paired"/>, <see cref="Stopped"/>,
 /// <see cref="Failed"/>) is modelled on Pronwan/rustplus-desktop's <c>IPairingListener</c> so
 /// it can drop in as a replacement for that project's Node-process listener.
 /// </remarks>
-public sealed class PairingListener(Credentials credentials, ICollection<string>? persistentIds = null)
+public sealed class PairingListener(
+    Credentials credentials,
+    ICollection<string>? persistentIds = null,
+    ILoggerFactory? loggerFactory = null,
+    HttpClient? httpClient = null)
     : IDisposable
 {
-    private readonly RustPlusFcm _fcm = new(credentials, persistentIds);
+    private readonly RustPlusFcm _fcm = new(credentials, persistentIds, loggerFactory: loggerFactory);
+    private readonly AndroidFcmRegister _androidFcmRegister = new(httpClient);
 
     /// <summary>Raised once the listener is connected and waiting for pairing notifications.</summary>
     public event EventHandler? Listening;
@@ -66,6 +78,9 @@ public sealed class PairingListener(Credentials credentials, ICollection<string>
 
         try
         {
+            // Reference behaviour (push-receiver): re-check-in the device immediately before every
+            // MCS connect so Google's device registry entry is fresh when pushes get routed.
+            await _androidFcmRegister.CheckInAsync(credentials.Gcm, cancellationToken).ConfigureAwait(false);
             await _fcm.ConnectAsync(cancellationToken).ConfigureAwait(false);
             Listening?.Invoke(this, EventArgs.Empty);
             return await completion.Task.ConfigureAwait(false);

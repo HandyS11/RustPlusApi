@@ -25,18 +25,25 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     public async Task<(Gcm Gcm, string FcmToken)> RegisterAsync(CancellationToken cancellationToken = default)
     {
-        var gcm = await CheckInAsync(cancellationToken).ConfigureAwait(false);
+        var gcm = await CheckInAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
         var fisToken = await InstallAsync(cancellationToken).ConfigureAwait(false);
         var fcmToken = await RegisterFcmAsync(gcm, fisToken, cancellationToken).ConfigureAwait(false);
         return (gcm, fcmToken);
     }
 
-    /// <summary>Step 1 — GCM check-in (protobuf) to obtain the Android id + security token.</summary>
+    /// <summary>
+    /// Step 1 — GCM check-in (protobuf) to obtain the Android id + security token.
+    /// Pass <paramref name="identity"/> to re-check-in an already-registered device (the reference
+    /// push-receiver does this before every MCS connect to keep the device registry entry fresh).
+    /// </summary>
+    /// <param name="identity">Existing GCM identity to refresh, or <see langword="null"/> for a first check-in.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    public async Task<Gcm> CheckInAsync(CancellationToken cancellationToken = default)
+    public async Task<Gcm> CheckInAsync(Gcm? identity = null, CancellationToken cancellationToken = default)
     {
         var request = new AndroidCheckinRequest
         {
+            Id = identity is null ? null : (long)identity.AndroidId,
+            SecurityToken = identity?.SecurityToken,
             UserSerialNumber = 0,
             Version = 3,
             Checkin = new AndroidCheckinProto

@@ -475,6 +475,19 @@ public abstract class RustPlusFcmSocket(
         {
             // Teardown cancelled the token mid-read: a cancelled read is a clean exit, not an error.
         }
+        catch (Exception ex)
+        {
+            // Nothing awaits this task in production, so a fault that only propagates out of it is
+            // invisible and the listener hangs forever. Surface it on ErrorOccurred (unless we're
+            // tearing down), then rethrow for direct awaiters (tests via the seam).
+            if (!_cancellationTokenSource.IsCancellationRequested)
+            {
+                Logger.LogReceiveLoopFaulted(ex);
+                ErrorOccurred?.Invoke(this, ex);
+            }
+
+            throw;
+        }
     }
 
     /// <summary>
