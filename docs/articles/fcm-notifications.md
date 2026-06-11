@@ -29,6 +29,7 @@ listener.Disconnect();
 `persistentIds` is an optional `ICollection<string>` of already-seen notification IDs to skip on
 reconnect. Pass the same collection instance across reconnects — the socket appends every newly-seen
 ID to it as they arrive, so passing it back to a new instance automatically deduplicates replays.
+Prefer a `HashSet<string>` — the collection is consulted on every message and grows for the lifetime of the listener, so a `List<string>`'s linear scan degrades over long sessions.
 
 ## Events
 
@@ -88,7 +89,7 @@ notifications already processed are not replayed.
 var credentials = CredentialsStore.Load("rustplus.config.json");
 
 // Persist this collection across reconnects to deduplicate replayed notifications.
-ICollection<string> persistentIds = new List<string>();
+ICollection<string> persistentIds = new HashSet<string>();
 
 RustPlusFcm? listener = null;
 var delay = TimeSpan.FromSeconds(5);

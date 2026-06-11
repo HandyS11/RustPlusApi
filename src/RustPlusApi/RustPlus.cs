@@ -30,12 +30,16 @@ public class RustPlus(
     : RustPlusSocket(connection, options, loggerFactory), IRustPlus
 {
     /// <summary>
-    /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or alarm.
+    /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or a smart
+    /// alarm. The Rust+ protocol does not distinguish the two: an <c>EntityChanged</c> broadcast
+    /// whose payload carries no item capacity is routed here, so alarm state changes also surface
+    /// through this event.
     /// </summary>
     public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered;
 
     /// <summary>
-    /// Occurs when a <see cref="StorageMonitorEventArg"/> is triggered by a storage monitor.
+    /// Occurs when a <see cref="StorageMonitorEventArg"/> is triggered by a storage monitor
+    /// (an <c>EntityChanged</c> broadcast whose payload carries item capacity).
     /// </summary>
     public event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 

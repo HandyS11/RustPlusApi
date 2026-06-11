@@ -12,10 +12,12 @@ public interface IRustPlusSocket : IDisposable, IAsyncDisposable
     /// <summary>Raised when the WebSocket connection is established.</summary>
     event EventHandler? Connected;
 
-    /// <summary>Raised when a request is about to be sent to the server.</summary>
+    /// <summary>Raised when a request is about to be queued for transmission.</summary>
     event EventHandler? SendingRequest;
 
-    /// <summary>Raised after a request has been serialized and sent.</summary>
+    /// <summary>Raised when a request has been queued for transmission. The request is handed to the
+    /// background send loop at this point; the actual WebSocket send happens asynchronously
+    /// shortly after, so this event does not confirm the bytes left the machine.</summary>
     event EventHandler<AppRequest>? RequestSent;
 
     /// <summary>Raised for every inbound <c>AppMessage</c>, before routing.</summary>

@@ -12,7 +12,10 @@ namespace RustPlusApi.Fcm;
 /// Inherits from <see cref="RustPlusFcmSocket"/>.
 /// </summary>
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
-/// <param name="persistentIds">The collection of persistent IDs as <see cref="ICollection{T}"/> of <see cref="string"/>.</param>
+/// <param name="persistentIds">Already-processed message IDs, used for de-duplication. Every data
+/// message is checked against and appended to this collection, so for a long-lived listener prefer
+/// a set-like implementation (e.g. <see cref="HashSet{T}"/>) — with a <see cref="List{T}"/> the
+/// duplicate check is a linear scan that degrades as the collection grows unboundedly.</param>
 /// <param name="options">Tuning options (heartbeat interval, inactivity timeout); defaults are used when <see langword="null"/>.</param>
 /// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
 /// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>

@@ -51,13 +51,15 @@ public abstract class RustPlusSocket(
     public event EventHandler? Connected;
 
     /// <summary>
-    /// Occurs when a request is about to be sent to the Rust+ server.
+    /// Occurs when a request is about to be queued for transmission.
     /// </summary>
     /// <seealso cref="SendRequestAsync"/>
     public event EventHandler? SendingRequest;
 
     /// <summary>
-    /// Occurs after a request has been sent to the Rust+ server.
+    /// Occurs when a request has been queued for transmission. The request is handed to the
+    /// background send loop at this point; the actual WebSocket send happens asynchronously
+    /// shortly after, so this event does not confirm the bytes left the machine.
     /// </summary>
     /// <seealso cref="SendRequestAsync"/>
     public event EventHandler<AppRequest>? RequestSent;
@@ -159,7 +161,8 @@ public abstract class RustPlusSocket(
     /// </summary>
     /// <remarks>Connect/disconnect transitions are serialized internally and are not reentrant:
     /// an event handler (e.g. <see cref="Connected"/>) must not call back into
-    /// <see cref="ConnectAsync"/> or <see cref="DisconnectAsync"/> and wait for it, or it will deadlock.</remarks>
+    /// <see cref="ConnectAsync"/> or <see cref="DisconnectAsync"/> and wait for it, or it will deadlock.
+    /// A lifecycle call racing a concurrent dispose may surface <see cref="ObjectDisposedException"/>.</remarks>
     /// <param name="cancellationToken">A token to cancel the connection attempt.</param>
     /// <exception cref="ObjectDisposedException">Thrown when the client has been disposed.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the client is already connected.</exception>
@@ -375,7 +378,8 @@ public abstract class RustPlusSocket(
     /// </summary>
     /// <remarks>Connect/disconnect transitions are serialized internally and are not reentrant:
     /// an event handler (e.g. <see cref="Disconnected"/>) must not call back into
-    /// <see cref="ConnectAsync"/> or <see cref="DisconnectAsync"/> and wait for it, or it will deadlock.</remarks>
+    /// <see cref="ConnectAsync"/> or <see cref="DisconnectAsync"/> and wait for it, or it will deadlock.
+    /// A lifecycle call racing a concurrent dispose may surface <see cref="ObjectDisposedException"/>.</remarks>
     /// <param name="forceClose">When <see langword="true"/>, skips draining in-flight requests.</param>
     public async Task DisconnectAsync(bool forceClose = false)
     {
