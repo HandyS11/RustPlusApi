@@ -63,7 +63,7 @@ Interactive menu covering the full `IRustPlus` surface:
 
 Entity ids (alarm / smart switch / storage monitor / camera) are remembered for the session —
 press Enter at a prompt to reuse the last value. Camera rendering uses the
-[RustPlusApi.Camera](cameras.md) package and is experimental.
+[RustPlusApi.Camera](cameras.md) package; render fidelity is validated against real captured frames.
 
 ```bash
 # Copy credentials.sample.json to credentials.json and fill in the values

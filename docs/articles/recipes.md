@@ -177,9 +177,9 @@ await tcs.Task;   // wait until the snapshot is saved
 await rustPlus.UnsubscribeFromCameraAsync();
 ```
 
-> [!WARNING]
-> Camera image fidelity is experimental — the decode has not yet been validated against a captured
-> real frame. See [Cameras](cameras.md) for the rendering layer details.
+> [!NOTE]
+> Camera render fidelity is validated against real captured frames. See [Cameras](cameras.md)
+> for the rendering layer details.
 
 ## 5. Persist and reload credentials
 

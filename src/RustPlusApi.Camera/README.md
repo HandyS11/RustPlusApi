@@ -33,9 +33,9 @@ rustPlus.OnCameraRaysReceived += (_, frame) =>
 
 Frames accumulate — each `AddRays` fills in more samples, so the image sharpens over time.
 
-> **Experimental.** The ray decode, sample shuffle and colouring are ported faithfully from
-> rustplus.js but have not yet been validated against a captured real frame. Treat image fidelity
-> as experimental until that validation lands.
+> Validated against real captured frames: a golden render test pins the decode output to a
+> frame sequence captured from a live server. Refresh the fixture any time with the sample's
+> headless capture mode (`RustPlus.ConsoleApp … capture <cameraId> <seconds> [outDir]`).
 
 ## Documentation
 

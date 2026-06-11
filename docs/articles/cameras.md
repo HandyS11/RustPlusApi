@@ -7,10 +7,10 @@ RustPlusApi splits this into two layers:
 - **Rendering layer** (in `RustPlusApi.Camera`) — turn frames into images. Optional, so the core
   stays image-free.
 
-> [!WARNING]
-> The decode, sample shuffle and colouring are ported faithfully from rustplus.js but not yet
-> validated against a captured real frame. Treat image fidelity as experimental until that
-> validation lands.
+> [!NOTE]
+> Render fidelity is validated against real captured frames — a golden test in
+> `RustPlusApi.Camera.UnitTests` pins the decode output to a frame sequence captured from a
+> live server (2026-06-12).
 
 ## Data flow
 
@@ -106,6 +106,36 @@ Each `CameraFrame` (delivered via `OnCameraRaysReceived`) contains:
 - `Entities` — list of `CameraEntity` objects visible in the frame (id, type, position/rotation/size, name).
 - `TimeOfDay` — in-game time of day when captured (`null` if not reported).
 - `CameraPosition` / `CameraRotation` — world-space position and rotation (`null` if not reported).
+
+## CameraController
+
+`SubscribeToCameraAsync` alone is not enough for long sessions: the server stops streaming
+rays for subscriptions that are not renewed. `CameraController` (in the core `RustPlusApi`
+package) wraps the full session — it re-subscribes every 10 seconds (configurable), forwards
+frames, and exposes the press-and-release gestures PTZ cameras and auto-turrets expect:
+
+```csharp
+var response = await CameraController.SubscribeAsync(rustPlus, "TURRET01");
+if (!response.IsSuccess) return;
+
+await using var turret = response.Data!;
+turret.OnFrameReceived += (_, frame) => renderer.AddRays(frame);
+
+if (turret.IsAutoTurret)        // ControlFlags has Crosshair
+{
+    await turret.ShootAsync();  // FirePrimary press + release
+    await turret.ReloadAsync(); // Reload press + release
+}
+
+await turret.ZoomAsync();       // PTZ zoom: 4 levels, wraps to 1 from max
+```
+
+Disposing the controller stops the keep-alive and unsubscribes. Create at most one live
+controller per client — the server tracks a single camera subscription per connection.
+
+> [!NOTE]
+> Cameras are only reachable while the paired player is connected to the server: subscribing
+> while the player is offline fails with `RustPlusErrorCode.NoPlayer` (`no_player`).
 
 ## Rendering layer (RustPlusApi.Camera)
 

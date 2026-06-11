@@ -15,7 +15,7 @@ internal sealed class CameraSession(IRustPlus rustPlus, EntityIdStore ids)
     public async Task RunAsync()
     {
         Console.Clear();
-        Console.WriteLine("Camera (rendering is experimental).");
+        Console.WriteLine("Camera.");
         var cameraId = ids.GetString("cameraId");
 
         var response = await CameraController.SubscribeAsync(rustPlus, cameraId);
