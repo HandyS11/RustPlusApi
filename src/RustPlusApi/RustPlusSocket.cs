@@ -402,10 +402,11 @@ public abstract class RustPlusSocket(
             }
 
             // Bound the close handshake: a dead peer that never acks must not hang teardown.
-            using var closeTimeout = new CancellationTokenSource(_options.TeardownTimeout);
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
             try
             {
+                using var closeTimeout = new CancellationTokenSource(_options.TeardownTimeout);
+                using var linked =
+                    CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
                 await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, linked.Token)
                     .ConfigureAwait(false);
             }
@@ -416,6 +417,11 @@ public abstract class RustPlusSocket(
             catch (WebSocketException)
             {
                 // Peer already gone; nothing to close gracefully.
+            }
+            catch (ObjectDisposedException)
+            {
+                // A concurrent dispose released the instance token source or the socket while this
+                // disconnect was draining its in-flight requests: there is nothing left to close.
             }
 
             Disconnected?.Invoke(this, EventArgs.Empty);
