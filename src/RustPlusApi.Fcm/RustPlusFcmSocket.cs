@@ -43,12 +43,7 @@ public abstract class RustPlusFcmSocket(
 
     /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
     /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>
-    private readonly RustPlusFcmSocketOptions _options = options is null
-        ? new RustPlusFcmSocketOptions()
-        : new()
-        {
-            HeartbeatInterval = options.HeartbeatInterval, InactivityTimeout = options.InactivityTimeout,
-        };
+    private readonly RustPlusFcmSocketOptions _options = options?.Clone() ?? new RustPlusFcmSocketOptions();
 
     /// <summary>The client's logger; <c>NullLogger</c> when no factory was supplied.
     /// Exposed to derived classes (e.g. <see cref="RustPlusFcm"/>) so they log through the same categorised sink.</summary>

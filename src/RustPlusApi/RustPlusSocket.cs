@@ -28,15 +28,7 @@ public abstract class RustPlusSocket(
 {
     /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
     /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>
-    private readonly RustPlusSocketOptions _options = options is null
-        ? new RustPlusSocketOptions()
-        : new()
-        {
-            RequestTimeout = options.RequestTimeout,
-            KeepAliveInterval = options.KeepAliveInterval,
-            TeardownTimeout = options.TeardownTimeout,
-            ReceiveBufferSize = options.ReceiveBufferSize,
-        };
+    private readonly RustPlusSocketOptions _options = options?.Clone() ?? new RustPlusSocketOptions();
 
     /// <summary>The client logger; <c>NullLogger</c> when no factory was supplied. Exposed to derived
     /// classes (e.g. <see cref="RustPlus"/>) so they log through the same categorised sink.</summary>

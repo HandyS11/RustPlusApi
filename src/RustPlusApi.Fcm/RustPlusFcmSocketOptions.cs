@@ -18,4 +18,12 @@ public sealed class RustPlusFcmSocketOptions
     /// <see cref="HeartbeatInterval"/> so a single delayed ack doesn't kill a healthy connection.
     /// Default: 12 minutes.</summary>
     public TimeSpan InactivityTimeout { get; set; } = TimeSpan.FromMinutes(12);
+
+    /// <summary>Creates a copy of this instance — the single place that knows every option, so the
+    /// per-socket snapshot cannot silently miss a newly added property.</summary>
+    internal RustPlusFcmSocketOptions Clone() => new()
+    {
+        HeartbeatInterval = HeartbeatInterval,
+        InactivityTimeout = InactivityTimeout,
+    };
 }
