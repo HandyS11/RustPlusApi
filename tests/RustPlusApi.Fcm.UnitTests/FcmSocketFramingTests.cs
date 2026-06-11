@@ -1108,7 +1108,8 @@ public class FcmSocketFramingTests
             unknownTagFrame);
 
         // The fault still propagates to direct awaiters (the seam); production relies on the event.
-        var thrown = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
+        var thrown =
+            await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
 
         Assert.NotNull(thrown);
         Assert.NotNull(error);
