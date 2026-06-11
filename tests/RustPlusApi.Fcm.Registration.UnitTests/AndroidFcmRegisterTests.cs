@@ -271,6 +271,52 @@ public class AndroidFcmRegisterTests
     }
 
     [Fact]
+    public async Task RegisterFcmAsync_TokenContainingEquals_ReturnsFullToken()
+    {
+        // The token is everything after the FIRST '=': a base64-ish token with '=' padding
+        // must not be truncated at its own '='.
+        var handler = StubHttpMessageHandler.Always(HttpStatusCode.OK, "token=abc=def==");
+        var register = new AndroidFcmRegister(handler.CreateClient());
+
+        var token = await register.RegisterFcmAsync(
+            new RustPlusApi.Fcm.Data.Gcm { AndroidId = 42, SecurityToken = 99 },
+            "fis-auth-token");
+
+        Assert.Equal("abc=def==", token);
+    }
+
+    [Fact]
+    public async Task RegisterFcmAsync_TokenContainingErrorSubstring_Succeeds()
+    {
+        // Only the "Error=" key marks a failure; a token that merely contains the substring
+        // "Error" is a valid success response and must not trigger the retry loop.
+        var handler = StubHttpMessageHandler.Always(HttpStatusCode.OK, "token=AErrorB");
+        var register = new AndroidFcmRegister(handler.CreateClient());
+
+        var token = await register.RegisterFcmAsync(
+            new RustPlusApi.Fcm.Data.Gcm { AndroidId = 42, SecurityToken = 99 },
+            "fis-auth-token");
+
+        Assert.Equal("AErrorB", token);
+        Assert.Single(handler.Requests); // success on the first attempt, no spurious retry
+    }
+
+    [Fact]
+    [Trait("Category", "Slow")]
+    public async Task RegisterFcmAsync_ResponseWithoutEquals_RetriesThenThrows()
+    {
+        // A malformed response with no key/value shape used to crash with an index-out-of-range
+        // exception; it must instead be treated like an error response: retried, then surfaced cleanly.
+        var handler = StubHttpMessageHandler.Always(HttpStatusCode.OK, "garbage");
+        var register = new AndroidFcmRegister(handler.CreateClient());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => register.RegisterFcmAsync(
+                new RustPlusApi.Fcm.Data.Gcm { AndroidId = 42, SecurityToken = 99 },
+                "fis-auth-token"));
+    }
+
+    [Fact]
     public void GenerateFirebaseId_ProducesUnpaddedBase64UrlWithLeadingFidNibble()
     {
         var id = AndroidFcmRegister.GenerateFirebaseId();
