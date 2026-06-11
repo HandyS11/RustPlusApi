@@ -30,7 +30,7 @@ public static class BodyToEventModel
         return new ServerEvent
         {
             Id = body.Id,
-            Name = body.EntityName ?? string.Empty,
+            Name = body.Name ?? string.Empty,
             Ip = body.Ip,
             Port = body.Port,
             Desc = body.Desc,

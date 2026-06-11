@@ -14,6 +14,9 @@ internal static partial class RustPlusFcmSocketLog
     [LoggerMessage(Level = LogLevel.Warning, Message = "Background loop faulted during teardown (expected).")]
     public static partial void LogTeardownLoopFaulted(this ILogger logger, Exception exception);
 
+    [LoggerMessage(Level = LogLevel.Error, Message = "Receive loop faulted; the connection is no longer being read.")]
+    public static partial void LogReceiveLoopFaulted(this ILogger logger, Exception exception);
+
     [LoggerMessage(Level = LogLevel.Trace,
         Message = "Responding to ping: StreamId={StreamId}, Last={Last}, Status={Status}")]
     public static partial void LogRespondingToPing(this ILogger logger, int? streamId, int? last, long? status);

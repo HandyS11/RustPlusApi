@@ -509,9 +509,18 @@ public class RustPlus(
         };
         return await ProcessRequestAsync<TeamMessage?>(
             request,
-            r => r.Broadcast.TeamMessage.Message.ToTeamMessage(),
-            // The reply is the team-message broadcast echoing our own message: match on our Steam ID
-            // so another player's message arriving first cannot be mistaken for the reply.
+            // The live server acks sendTeamMessage with an immediate seq success {}; the team-chat
+            // broadcast echoing the message follows separately. Whichever resolves the request first
+            // must produce a result: the echo carries the full message (name, colour, server time),
+            // the bare ack means the message was accepted, so reconstruct it from what we sent.
+            r => r.Broadcast?.TeamMessage?.Message is { } echoed
+                ? echoed.ToTeamMessage()
+                : new TeamMessage
+                {
+                    SteamId = PlayerId, Name = string.Empty, Message = message, Time = DateTime.UtcNow
+                },
+            // Match only the broadcast echoing our own message (our Steam ID): another player's
+            // message arriving first cannot be mistaken for the reply.
             broadcastReplyMatcher: b => b.TeamMessage?.Message?.SteamId == PlayerId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -537,9 +546,18 @@ public class RustPlus(
         };
         return await ProcessRequestAsync<SmartSwitchInfo?>(
             request,
-            r => r.Broadcast.EntityChanged.ToSmartSwitchEvent(),
-            // The reply is the EntityChanged broadcast for this switch: match on the entity ID so an
-            // unrelated broadcast (team chat, another entity) cannot resolve this request.
+            // The live server acks setEntityValue with an immediate seq success {}; the EntityChanged
+            // broadcast follows separately — and not at all when the state did not change. Whichever
+            // resolves the request first must produce a result: the broadcast carries the authoritative
+            // state, the bare ack means the server accepted the set, so the state is the requested value.
+            r => r.Broadcast?.EntityChanged is { } entityChanged
+                ? entityChanged.ToSmartSwitchEvent()
+                : new SmartSwitchEventArg
+                {
+                    Id = smartSwitchId, IsActive = smartSwitchValue
+                },
+            // Match only the EntityChanged broadcast for this switch: an unrelated broadcast
+            // (team chat, another entity) cannot resolve this request.
             broadcastReplyMatcher: b => b.EntityChanged?.EntityId == smartSwitchId,
             cancellationToken: cancellationToken).ConfigureAwait(false);
     }

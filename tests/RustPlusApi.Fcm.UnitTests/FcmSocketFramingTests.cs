@@ -20,8 +20,12 @@ public class FcmSocketFramingTests
     /// <summary>Concrete subclass: <see cref="RustPlusFcmSocket"/> is abstract.</summary>
     /// <param name="credentials">The FCM credentials.</param>
     /// <param name="persistentIds">The de-duplication set of already-seen persistent ids.</param>
-    private sealed class TestSocket(Credentials credentials, ICollection<string>? persistentIds = null)
-        : RustPlusFcmSocket(credentials, persistentIds);
+    /// <param name="options">Optional heartbeat/watchdog tuning.</param>
+    private sealed class TestSocket(
+        Credentials credentials,
+        ICollection<string>? persistentIds = null,
+        RustPlusFcmSocketOptions? options = null)
+        : RustPlusFcmSocket(credentials, persistentIds, options);
 
     private static Credentials NewCredentials() =>
         new()
@@ -44,7 +48,15 @@ public class FcmSocketFramingTests
     private sealed class ScriptedStream(byte[] script) : Stream
     {
         private readonly MemoryStream _reads = new(script);
+
+        private readonly TaskCompletionSource<bool> _firstWrite =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public MemoryStream Writes { get; } = new();
+
+        /// <summary>Completes once at least one frame has been written — lets tests wait on the
+        /// actual condition instead of a fixed delay that flakes under parallel runs.</summary>
+        public Task FirstWrite => _firstWrite.Task;
 
         public override bool CanRead => true;
         public override bool CanWrite => true;
@@ -59,10 +71,49 @@ public class FcmSocketFramingTests
 
         public override int Read(byte[] buffer, int offset, int count) => _reads.Read(buffer, offset, count);
         public override int ReadByte() => _reads.ReadByte();
-        public override void Write(byte[] buffer, int offset, int count) => Writes.Write(buffer, offset, count);
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            Writes.Write(buffer, offset, count);
+            _firstWrite.TrySetResult(true);
+        }
+
         public override void Flush() { }
         public override void SetLength(long value) => throw new NotSupportedException();
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Splits the client-written byte stream into MCS frames. Client frames after the login
+    /// request are bare <c>[tag][varint-size][payload]</c> — no version byte.
+    /// </summary>
+    /// <param name="written">The raw bytes the socket wrote.</param>
+    private static List<(int Tag, byte[] Payload)> ParseClientFrames(byte[] written)
+    {
+        var frames = new List<(int, byte[])>();
+        var i = 0;
+        while (i < written.Length)
+        {
+            int tag = written[i++];
+            var size = 0;
+            var shift = 0;
+            while (true)
+            {
+                var b = written[i++];
+                size |= (b & 0x7F) << shift;
+                if ((b & 0x80) == 0)
+                {
+                    break;
+                }
+
+                shift += 7;
+            }
+
+            frames.Add((tag, written.Skip(i).Take(size).ToArray()));
+            i += size;
+        }
+
+        return frames;
     }
 
     /// <summary>
@@ -249,26 +300,107 @@ public class FcmSocketFramingTests
 
         await socket.RunReceiveLoopOverStreamAsync(stream);
 
-        // Decode the bytes the socket wrote back: [version][tag] varint(size) payload.
-        var written = stream.Writes.ToArray();
-        Assert.True(written.Length >= 2);
-        Assert.Equal(KMcsVersion, written[0]);
-        Assert.Equal((byte)(int)McsProtoTag.KHeartbeatAckTag, written[1]);
+        // Post-login client frames are bare [tag][varint-size][payload]: the MCS version byte is
+        // only ever sent with the initial LoginRequest. A stray version byte here desyncs the
+        // server's parser and gets the connection closed.
+        var (tag, payload) = Assert.Single(ParseClientFrames(stream.Writes.ToArray()));
+        Assert.Equal((int)McsProtoTag.KHeartbeatAckTag, tag);
 
-        // Skip the varint size, then deserialize the HeartbeatAck payload.
-        var idx = 2;
-        while ((written[idx] & 0x80) != 0)
+        var ack = Serializer.Deserialize<HeartbeatAck>(new MemoryStream(payload));
+        // The ack reports OUR incoming stream position (LoginResponse = 1, ping = 2), not an echo
+        // of the ping's own ids — that's what tells the server its frames were received.
+        Assert.Equal(2, ack.LastStreamIdReceived);
+        Assert.Null(ack.StreamId); // outgoing stream ids are implicit (frame count), never set
+    }
+
+    /// <summary>
+    /// Receiving a <see cref="DataMessageStanza"/> must be acknowledged with a StreamAck IqStanza
+    /// carrying <c>LastStreamIdReceived</c>. Without it the server treats the message as undelivered:
+    /// it closes the connection after ~5 minutes to force redelivery, and replays the message on
+    /// the next connect — both observed live.
+    /// </summary>
+    [Fact]
+    public async Task DataMessage_WritesStreamAckAcknowledgingReceivedFrames()
+    {
+        await using var socket = NewSocket();
+
+        var stream = new ScriptedStream(Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification()),
+            NextFrame(McsProtoTag.KCloseTag, new Close())));
+
+        await socket.RunReceiveLoopOverStreamAsync(stream);
+
+        var (tag, payload) = Assert.Single(ParseClientFrames(stream.Writes.ToArray()));
+        Assert.Equal((int)McsProtoTag.KIqStanzaTag, tag);
+
+        var iq = Serializer.Deserialize<IqStanza>(new MemoryStream(payload));
+        Assert.Equal(IqStanza.IqType.Set, iq.Type);
+        Assert.Equal(string.Empty, iq.Id);
+        Assert.NotNull(iq.Extension);
+        Assert.Equal(13, iq.Extension!.Id); // kStreamAck extension id (Chromium mcs_client)
+        Assert.Equal(2, iq.LastStreamIdReceived); // LoginResponse = 1, DataMessageStanza = 2
+    }
+
+    /// <summary>
+    /// The periodic client heartbeat must piggyback <c>LastStreamIdReceived</c> so the server sees
+    /// its frames acknowledged even when no StreamAck happened to be sent since.
+    /// </summary>
+    [Fact]
+    public async Task HeartbeatPing_AfterReceivedFrames_CarriesLastStreamIdReceived()
+    {
+        var options = new RustPlusFcmSocketOptions
         {
-            idx++;
-        }
+            HeartbeatInterval = TimeSpan.FromMilliseconds(30), InactivityTimeout = TimeSpan.FromSeconds(30)
+        };
+        await using var socket = new TestSocket(NewCredentials(), null, options);
 
-        idx++;
-#pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
-        using var payload = new MemoryStream(written, idx, written.Length - idx);
-#pragma warning restore RCS1261
-        var ack = Serializer.Deserialize<HeartbeatAck>(payload);
-        Assert.Equal(8, ack.StreamId); // ping.StreamId (7) + 1
-        Assert.Equal(7, ack.LastStreamIdReceived);
+        // Phase 1: receive login + data over the seam. No Close frame, so the instance token stays
+        // live (the stream just hits EOF) and the heartbeat loop can run afterwards.
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification()))));
+
+        // Phase 2: run the heartbeat loop over a fresh capture stream and grab the first ping.
+        var transport = new ScriptedStream([]);
+#pragma warning disable CA2025 // the loop is awaited to completion below, before the stream leaves scope
+        var loop = socket.RunHeartbeatLoopOverStreamAsync(transport);
+#pragma warning restore CA2025
+        await transport.FirstWrite.WaitAsync(TimeSpan.FromSeconds(10));
+        socket.Disconnect(); // cancels the token; the loop exits on its next delay
+        await loop.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var frames = ParseClientFrames(transport.Writes.ToArray());
+        Assert.NotEmpty(frames);
+        Assert.Equal((int)McsProtoTag.KHeartbeatPingTag, frames[0].Tag);
+        var ping = Serializer.Deserialize<HeartbeatPing>(new MemoryStream(frames[0].Payload));
+        Assert.Equal(2, ping.LastStreamIdReceived); // LoginResponse = 1, DataMessageStanza = 2
+    }
+
+    /// <summary>
+    /// The MCS version byte accompanies ONLY the initial LoginRequest frame; every later client
+    /// frame is bare [tag][size][payload]. (The reference JS ports never hit this because they
+    /// never send a second client frame at all.)
+    /// </summary>
+    [Fact]
+    public void BuildClientFrame_LoginRequest_IncludesVersionByte()
+    {
+        var frame = RustPlusFcmSocket.BuildClientFrame(McsProtoTag.KLoginRequestTag, [0x0A]);
+        Assert.Equal(new byte[]
+        {
+            KMcsVersion, (byte)(int)McsProtoTag.KLoginRequestTag, 1, 0x0A
+        }, frame);
+    }
+
+    /// <summary>See <see cref="BuildClientFrame_LoginRequest_IncludesVersionByte"/>.</summary>
+    [Fact]
+    public void BuildClientFrame_NonLoginPacket_OmitsVersionByte()
+    {
+        var frame = RustPlusFcmSocket.BuildClientFrame(McsProtoTag.KHeartbeatPingTag, [0x08, 0x01]);
+        Assert.Equal(new byte[]
+        {
+            (byte)(int)McsProtoTag.KHeartbeatPingTag, 2, 0x08, 0x01
+        }, frame);
     }
 
     [Fact]
@@ -944,21 +1076,63 @@ public class FcmSocketFramingTests
 
         await socket.RunReceiveLoopOverStreamAsync(stream);
 
-        // Parse writes: [version][tag] varint(size) payload.
         // If return; is removed, HandlePing is called twice → two HeartbeatAck writes.
-        var written = stream.Writes.ToArray();
-        // Count HeartbeatAck frames: each starts with [KMcsVersion][KHeartbeatAckTag].
-        const byte ackTag = (byte)(int)McsProtoTag.KHeartbeatAckTag;
-        var ackCount = 0;
-        for (var i = 0; i < written.Length - 1; i++)
-        {
-            if (written[i] == KMcsVersion && written[i + 1] == ackTag)
-            {
-                ackCount++;
-            }
-        }
+        var ackCount = ParseClientFrames(stream.Writes.ToArray())
+            .Count(static frame => frame.Tag == (int)McsProtoTag.KHeartbeatAckTag);
 
         Assert.Equal(1, ackCount);
+    }
+
+    /// <summary>
+    /// In production nothing awaits the receive-loop task, so a fault that only propagates out of
+    /// the task is invisible — the listener hangs forever. Any unexpected fault (here: an MCS tag
+    /// with no protobuf mapping) must therefore ALSO be surfaced via <see cref="RustPlusFcmSocket.ErrorOccurred"/>.
+    /// </summary>
+    [Fact]
+    public async Task ReceiveLoop_UnknownTag_RaisesErrorOccurred()
+    {
+        await using var socket = NewSocket();
+        Exception? error = null;
+        socket.ErrorOccurred += (_, ex) => error = ex;
+
+        // KMessageStanzaTag has no BuildProtobufFromTag mapping → the loop faults.
+        var unknownTagFrame =
+            new byte[]
+                {
+                    (byte)(int)McsProtoTag.KMessageStanzaTag
+                }
+                .Concat(EncodeVarInt32(0));
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            unknownTagFrame);
+
+        // The fault still propagates to direct awaiters (the seam); production relies on the event.
+        var thrown =
+            await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
+
+        Assert.NotNull(thrown);
+        Assert.NotNull(error);
+        Assert.Same(thrown, error);
+    }
+
+    /// <summary>
+    /// The login-handshake validation failure must likewise reach <see cref="RustPlusFcmSocket.ErrorOccurred"/>,
+    /// not just the (unobserved-in-production) receive-loop task.
+    /// </summary>
+    [Fact]
+    public async Task ReceiveLoop_WrongLoginResponse_RaisesErrorOccurred()
+    {
+        await using var socket = NewSocket();
+        Exception? error = null;
+        socket.ErrorOccurred += (_, ex) => error = ex;
+
+        var script = Build(FirstFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification()));
+
+        await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
+
+        Assert.NotNull(error);
+        Assert.IsType<InvalidOperationException>(error);
     }
 
     [Fact]

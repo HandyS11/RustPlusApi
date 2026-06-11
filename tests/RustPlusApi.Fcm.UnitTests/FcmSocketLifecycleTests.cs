@@ -152,11 +152,11 @@ public class FcmSocketLifecycleTests
         socket.Disconnect(); // cancels the token; the loop exits on its next delay
         await loop.WaitAsync(TimeSpan.FromSeconds(5));
 
-        // Frame layout per packet: [version, tag, varint-size, payload]. HeartbeatPing tag = 0.
+        // Post-login client frames are bare [tag, varint-size, payload] — the MCS version byte
+        // accompanies only the initial LoginRequest. HeartbeatPing tag = 0.
         var written = transport.ToArray();
-        Assert.True(written.Length >= 3, "expected at least one heartbeat frame");
-        Assert.Equal(41, written[0]); // KMcsVersion
-        Assert.Equal(0, written[1]); // KHeartbeatPingTag
+        Assert.True(written.Length >= 2, "expected at least one heartbeat frame");
+        Assert.Equal(0, written[0]); // KHeartbeatPingTag
     }
 
     [Fact]
