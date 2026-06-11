@@ -12,21 +12,24 @@ namespace RustPlusApi.Fcm.UnitTests;
 public class FcmJsonTests
 {
     /// <summary>Mirrors RustPlusFcmSocket's parsing options (Rust+ sends camelCase keys).</summary>
-    private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     private const string PairingBodyJson = """
-        {
-          "id": "11111111-1111-1111-1111-111111111111",
-          "ip": "1.2.3.4",
-          "port": "28083",
-          "name": "Mock Server",
-          "playerId": "76561198000000000",
-          "playerToken": "123456789",
-          "type": "entity",
-          "entityType": "1",
-          "entityId": "98765"
-        }
-        """;
+                                           {
+                                             "id": "11111111-1111-1111-1111-111111111111",
+                                             "ip": "1.2.3.4",
+                                             "port": "28083",
+                                             "name": "Mock Server",
+                                             "playerId": "76561198000000000",
+                                             "playerToken": "123456789",
+                                             "type": "entity",
+                                             "entityType": "1",
+                                             "entityId": "98765"
+                                           }
+                                           """;
 
     [Fact]
     public void Body_ReadsNumericFieldsEncodedAsStrings()
@@ -60,7 +63,8 @@ public class FcmJsonTests
     public void Body_AcceptsNumericJsonToo()
     {
         // Defensive: also accept real JSON numbers, not only strings.
-        const string json = """{ "ip": "1.2.3.4", "port": 28083, "playerId": 42, "name": "n", "playerToken": "t", "type": "server" }""";
+        const string json =
+            """{ "ip": "1.2.3.4", "port": 28083, "playerId": 42, "name": "n", "playerToken": "t", "type": "server" }""";
 
         var body = JsonSerializer.Deserialize<Body>(json, Options);
 

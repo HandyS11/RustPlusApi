@@ -1,9 +1,8 @@
 using RustPlusApi.Data;
 using RustPlusApi.Data.Notes;
-
 using RustPlusContracts;
-
 using static RustPlusContracts.AppTeamInfo;
+
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;
@@ -74,8 +73,7 @@ public static class AppTeamInfoToModel
     {
         return new DeathNote
         {
-            X = note.X,
-            Y = note.Y,
+            X = note.X, Y = note.Y,
         };
     }
 

@@ -15,17 +15,48 @@ public class TeamInfoMapperTests
         var info = new AppTeamInfo
         {
             LeaderSteamId = 76561198000000001,
-            Members = { new AppTeamInfo.Member
+            Members =
             {
-                SteamId = 76561198000000001, Name = "Leader", X = 10, Y = 20,
-                IsOnline = true, SpawnTime = 1_600_000_000, IsAlive = true, DeathTime = 1_600_000_500
-            }},
+                new AppTeamInfo.Member
+                {
+                    SteamId = 76561198000000001,
+                    Name = "Leader",
+                    X = 10,
+                    Y = 20,
+                    IsOnline = true,
+                    SpawnTime = 1_600_000_000,
+                    IsAlive = true,
+                    DeathTime = 1_600_000_500
+                }
+            },
             MapNotes =
             {
-                new AppTeamInfo.Note { Type = 0, X = 1, Y = 2 },
-                new AppTeamInfo.Note { Type = 1, X = 3, Y = 4, Icon = 2, ColourIndex = 1, Label = "base" }
+                new AppTeamInfo.Note
+                {
+                    Type = 0, X = 1, Y = 2
+                },
+                new AppTeamInfo.Note
+                {
+                    Type = 1,
+                    X = 3,
+                    Y = 4,
+                    Icon = 2,
+                    ColourIndex = 1,
+                    Label = "base"
+                }
             },
-            LeaderMapNotes = { new AppTeamInfo.Note { Type = 1, X = 5, Y = 6, Icon = 0, ColourIndex = 0, Label = "rally" } }
+            LeaderMapNotes =
+            {
+                new AppTeamInfo.Note
+                {
+                    Type = 1,
+                    X = 5,
+                    Y = 6,
+                    Icon = 0,
+                    ColourIndex = 0,
+                    Label = "rally"
+                }
+            }
         };
 
         var model = info.ToTeamInfo();
@@ -46,14 +77,32 @@ public class TeamInfoMapperTests
     [Fact]
     public void ToTeamInfo_UnknownNoteType_Throws()
     {
-        var info = new AppTeamInfo { MapNotes = { new AppTeamInfo.Note { Type = 99 } } };
+        var info = new AppTeamInfo
+        {
+            MapNotes =
+            {
+                new AppTeamInfo.Note
+                {
+                    Type = 99
+                }
+            }
+        };
         Assert.Throws<ArgumentException>(info.ToTeamInfo);
     }
 
     [Fact]
     public void ToTeamInfo_NoDeathNote_LeavesDeathNoteNull()
     {
-        var info = new AppTeamInfo { MapNotes = { new AppTeamInfo.Note { Type = 1, Label = "x" } } };
+        var info = new AppTeamInfo
+        {
+            MapNotes =
+            {
+                new AppTeamInfo.Note
+                {
+                    Type = 1, Label = "x"
+                }
+            }
+        };
         Assert.Null(info.ToTeamInfo().DeathNote);
     }
 }

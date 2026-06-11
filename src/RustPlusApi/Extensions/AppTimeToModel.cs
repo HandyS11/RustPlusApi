@@ -1,5 +1,4 @@
 using RustPlusApi.Data;
-
 using RustPlusContracts;
 
 namespace RustPlusApi.Extensions;

@@ -1,9 +1,8 @@
 using RustPlusApi.Data;
 using RustPlusApi.Data.Markers;
-
 using RustPlusContracts;
-
 using static RustPlusContracts.AppMarker;
+
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;
@@ -17,9 +16,7 @@ public static class AppMarkerToModel
     {
         return new UnknownMarker
         {
-            Id = marker.Id,
-            X = marker.X,
-            Y = marker.Y
+            Id = marker.Id, X = marker.X, Y = marker.Y
         };
     }
 
@@ -84,9 +81,7 @@ public static class AppMarkerToModel
     {
         return new Ch47Marker
         {
-            Id = marker.Id,
-            X = marker.X,
-            Y = marker.Y
+            Id = marker.Id, X = marker.X, Y = marker.Y
         };
     }
 
@@ -96,9 +91,7 @@ public static class AppMarkerToModel
     {
         return new CargoShipMarker
         {
-            Id = marker.Id,
-            X = marker.X,
-            Y = marker.Y
+            Id = marker.Id, X = marker.X, Y = marker.Y
         };
     }
 
@@ -108,9 +101,7 @@ public static class AppMarkerToModel
     {
         return new PatrolHelicopterMarker
         {
-            Id = marker.Id,
-            X = marker.X,
-            Y = marker.Y
+            Id = marker.Id, X = marker.X, Y = marker.Y
         };
     }
 
@@ -120,9 +111,7 @@ public static class AppMarkerToModel
     {
         return new TravellingVendorMarker
         {
-            Id = marker.Id,
-            X = marker.X,
-            Y = marker.Y
+            Id = marker.Id, X = marker.X, Y = marker.Y
         };
     }
 }

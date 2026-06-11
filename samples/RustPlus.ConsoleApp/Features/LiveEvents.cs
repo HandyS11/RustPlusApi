@@ -8,8 +8,12 @@ internal sealed class LiveEvents(IRustPlus rustPlus)
 {
     public Task RunAsync()
     {
-        void OnSmartSwitch(object? _, SmartSwitchEventArg e) => DisplayUtilities.DisplayEvent("SmartSwitchTriggered", e);
-        void OnStorageMonitor(object? _, StorageMonitorEventArg e) => DisplayUtilities.DisplayEvent("StorageMonitorTriggered", e);
+        void OnSmartSwitch(object? _, SmartSwitchEventArg e) =>
+            DisplayUtilities.DisplayEvent("SmartSwitchTriggered", e);
+
+        void OnStorageMonitor(object? _, StorageMonitorEventArg e) =>
+            DisplayUtilities.DisplayEvent("StorageMonitorTriggered", e);
+
         void OnTeamChat(object? _, TeamMessageEventArg e) => DisplayUtilities.DisplayEvent("TeamChatReceived", e);
         void OnClanChat(object? _, ClanMessageEventArg e) => DisplayUtilities.DisplayEvent("ClanChatReceived", e);
         void OnClanChanged(object? _, ClanChangedEventArg e) => DisplayUtilities.DisplayEvent("ClanChanged", e);

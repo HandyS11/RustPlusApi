@@ -126,7 +126,10 @@ public class RustPlusServiceCollectionExtensionsTests
     public async Task AddRustPlus_WithPartialConfigurationSection_ThrowsOnResolve()
     {
         var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["Rust:Server"] = "1.2.3.4" })
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Rust:Server"] = "1.2.3.4"
+            })
             .Build();
         var services = new ServiceCollection();
         services.AddRustPlus(config.GetSection("Rust"));
@@ -168,6 +171,7 @@ public class RustPlusServiceCollectionExtensionsTests
         Assert.Throws<ArgumentNullException>(() => ((IServiceCollection)null!).AddRustPlus(AnyConnection()));
         Assert.Throws<ArgumentNullException>(() => services.AddRustPlus((RustPlusConnection)null!));
         Assert.Throws<ArgumentNullException>(() => services.AddRustPlus((IConfiguration)null!));
-        Assert.Throws<ArgumentNullException>(() => services.AddRustPlus((Func<IServiceProvider, RustPlusConnection>)null!));
+        Assert.Throws<ArgumentNullException>(() =>
+            services.AddRustPlus((Func<IServiceProvider, RustPlusConnection>)null!));
     }
 }

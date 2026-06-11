@@ -11,7 +11,8 @@ namespace RustPlusApi.Fcm.Extensions.DependencyInjection;
 /// </summary>
 /// <param name="loggerFactory">The host's logger factory; <see langword="null"/> disables listener logging.</param>
 /// <param name="options">The configured tuning options.</param>
-internal sealed class RustPlusFcmFactory(ILoggerFactory? loggerFactory, IOptions<RustPlusFcmSocketOptions> options) : IRustPlusFcmFactory
+internal sealed class RustPlusFcmFactory(ILoggerFactory? loggerFactory, IOptions<RustPlusFcmSocketOptions> options)
+    : IRustPlusFcmFactory
 {
     /// <inheritdoc />
     public IRustPlusFcm Create(Credentials credentials, ICollection<string>? persistentIds = null)

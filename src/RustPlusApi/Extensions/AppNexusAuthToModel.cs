@@ -1,5 +1,4 @@
 using RustPlusApi.Data;
-
 using RustPlusContracts;
 
 namespace RustPlusApi.Extensions;
@@ -13,8 +12,7 @@ public static class AppNexusAuthToModel
     {
         return new NexusAuth
         {
-            ServerId = appNexusAuth.ServerId,
-            PlayerToken = appNexusAuth.PlayerToken
+            ServerId = appNexusAuth.ServerId, PlayerToken = appNexusAuth.PlayerToken
         };
     }
 }

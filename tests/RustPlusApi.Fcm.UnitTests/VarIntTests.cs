@@ -14,15 +14,33 @@ public class VarIntTests
     {
         var encoded = EncodeVarInt32(0);
 
-        Assert.Equal(new byte[] { 0x00 }, encoded);
+        Assert.Equal(new byte[]
+        {
+            0x00
+        }, encoded);
     }
 
     [Theory]
-    [InlineData(1, new byte[] { 0x01 })]
-    [InlineData(127, new byte[] { 0x7F })]
-    [InlineData(128, new byte[] { 0x80, 0x01 })]
-    [InlineData(300, new byte[] { 0xAC, 0x02 })]
-    [InlineData(16384, new byte[] { 0x80, 0x80, 0x01 })]
+    [InlineData(1, new byte[]
+    {
+        0x01
+    })]
+    [InlineData(127, new byte[]
+    {
+        0x7F
+    })]
+    [InlineData(128, new byte[]
+    {
+        0x80, 0x01
+    })]
+    [InlineData(300, new byte[]
+    {
+        0xAC, 0x02
+    })]
+    [InlineData(16384, new byte[]
+    {
+        0x80, 0x80, 0x01
+    })]
     public void EncodeVarInt32_KnownValues_MatchProtobufEncoding(int value, byte[] expected)
     {
         var encoded = EncodeVarInt32(value);
@@ -33,7 +51,10 @@ public class VarIntTests
     [Fact]
     public void EncodeVarInt32_RoundTrips_ThroughManualDecode()
     {
-        foreach (var value in new[] { 0, 1, 5, 127, 128, 255, 300, 65_535, 1_000_000 })
+        foreach (var value in new[]
+                 {
+                     0, 1, 5, 127, 128, 255, 300, 65_535, 1_000_000
+                 })
         {
             var decoded = DecodeVarInt32(EncodeVarInt32(value));
             Assert.Equal(value, decoded);
@@ -54,6 +75,7 @@ public class VarIntTests
 
             shift += 7;
         }
+
         return result;
     }
 }

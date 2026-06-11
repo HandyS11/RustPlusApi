@@ -13,7 +13,13 @@ public class FcmSocketTeardownTests
     private sealed class TestSocket(Credentials credentials) : RustPlusFcmSocket(credentials);
 
     private static TestSocket NewSocket() =>
-        new(new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } });
+        new(new Credentials
+        {
+            Gcm = new Gcm
+            {
+                AndroidId = 1, SecurityToken = 1
+            }
+        });
 
     [Fact]
     public async Task DisposeAsync_AwaitsTrackedReceiveLoop_StopsPromptly()
@@ -51,7 +57,12 @@ public class FcmSocketTeardownTests
         public override bool CanWrite => true;
         public override bool CanSeek => false;
         public override long Length => throw new NotSupportedException();
-        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
 
         public override int ReadByte()
         {
@@ -78,6 +89,7 @@ public class FcmSocketTeardownTests
                 {
                     buffer[offset + n++] = (byte)_initial.Dequeue();
                 }
+
                 return n;
             }
 
@@ -97,6 +109,7 @@ public class FcmSocketTeardownTests
             {
                 _gate.Dispose();
             }
+
             base.Dispose(disposing);
         }
     }

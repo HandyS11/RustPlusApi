@@ -20,8 +20,10 @@ try
 catch (FileNotFoundException)
 {
     Console.WriteLine($"Config file not found at: {configPath}");
-    Console.WriteLine("Run the RustPlus.Register.ConsoleApp sample first (or 'npx @liamcottle/rustplus.js fcm-register'),");
-    Console.WriteLine("then copy the resulting rustplus.config.json next to this project (or pass its path as an argument).");
+    Console.WriteLine(
+        "Run the RustPlus.Register.ConsoleApp sample first (or 'npx @liamcottle/rustplus.js fcm-register'),");
+    Console.WriteLine(
+        "then copy the resulting rustplus.config.json next to this project (or pass its path as an argument).");
     return;
 }
 catch (Exception ex)
@@ -47,7 +49,8 @@ listener.OnPairing += (_, pairing) =>
     Debug.WriteLine($"[PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
 };
 
-listener.OnServerPairing += (_, pairing) => Console.WriteLine($"[SERVER PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
+listener.OnServerPairing += (_, pairing) =>
+    Console.WriteLine($"[SERVER PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
 
 listener.OnEntityPairing += (_, pairing) =>
 {
@@ -55,10 +58,14 @@ listener.OnEntityPairing += (_, pairing) =>
     Debug.WriteLine($"[ENTITY PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
 };
 
-listener.OnSmartSwitchPairing += (_, pairing) => Console.WriteLine($"[SMART SWITCH PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
-listener.OnStorageMonitorPairing += (_, pairing) => Console.WriteLine($"[STORAGE MONITOR PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
-listener.OnSmartAlarmPairing += (_, pairing) => Console.WriteLine($"[SMART ALARM PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
-listener.OnAlarmTriggered += (_, alarm) => Console.WriteLine($"[ALARM TRIGGERED]:\n{JsonSerializer.Serialize(alarm, JsonUtilities.JsonOptions)}");
+listener.OnSmartSwitchPairing += (_, pairing) =>
+    Console.WriteLine($"[SMART SWITCH PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
+listener.OnStorageMonitorPairing += (_, pairing) =>
+    Console.WriteLine($"[STORAGE MONITOR PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
+listener.OnSmartAlarmPairing += (_, pairing) =>
+    Console.WriteLine($"[SMART ALARM PAIRING]:\n{JsonSerializer.Serialize(pairing, JsonUtilities.JsonOptions)}");
+listener.OnAlarmTriggered += (_, alarm) =>
+    Console.WriteLine($"[ALARM TRIGGERED]:\n{JsonSerializer.Serialize(alarm, JsonUtilities.JsonOptions)}");
 
 try
 {

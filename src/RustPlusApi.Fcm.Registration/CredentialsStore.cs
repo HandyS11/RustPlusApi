@@ -9,7 +9,10 @@ namespace RustPlusApi.Fcm.Registration;
 /// </summary>
 public static class CredentialsStore
 {
-    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        WriteIndented = true
+    };
 
     /// <summary>Serializes <paramref name="credentials"/> to an indented JSON string.</summary>
     /// <param name="credentials">The credentials to serialize.</param>

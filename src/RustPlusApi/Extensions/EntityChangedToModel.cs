@@ -1,5 +1,4 @@
 using RustPlusApi.Data.Events;
-
 using RustPlusContracts;
 
 namespace RustPlusApi.Extensions;
@@ -13,8 +12,7 @@ public static class EntityChangedToModel
     {
         return new SmartSwitchEventArg
         {
-            Id = entityChanged.EntityId,
-            IsActive = entityChanged.Payload.Value
+            Id = entityChanged.EntityId, IsActive = entityChanged.Payload.Value
         };
     }
 

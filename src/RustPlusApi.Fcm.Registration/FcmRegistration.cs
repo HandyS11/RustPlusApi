@@ -33,7 +33,10 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
         return new Credentials
         {
             Gcm = gcm,
-            Fcm = new FcmToken { Token = fcmToken },
+            Fcm = new FcmToken
+            {
+                Token = fcmToken
+            },
             ExpoPushToken = expoToken
         };
     }
@@ -49,11 +52,13 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
     /// registration; the guard (missing ExpoPushToken) is unit-tested, the remainder is only
     /// validatable by a real run against the live endpoints.</remarks>
     [ExcludeFromCodeCoverage]
-    public async Task<string> RegisterWithRustPlusAsync(Credentials credentials, CancellationToken cancellationToken = default)
+    public async Task<string> RegisterWithRustPlusAsync(Credentials credentials,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(credentials.ExpoPushToken))
         {
-            throw new InvalidOperationException("Credentials are missing the Expo push token; call AcquireCredentialsAsync first.");
+            throw new InvalidOperationException(
+                "Credentials are missing the Expo push token; call AcquireCredentialsAsync first.");
         }
 
         var steamToken = await _steamLoginService.LoginAsync(cancellationToken).ConfigureAwait(false);

@@ -164,13 +164,6 @@ header {
 
 .rp-card:hover {
   color: inherit;
-}
-
-.rp-card h3 {
-  color: rgb(var(--bs-link-color-rgb));
-}
-
-.rp-card:hover {
   border-color: var(--rp-rust);
   box-shadow: 0 0 20px rgba(206, 65, 43, 0.25);
   transform: translateY(-2px);
@@ -183,6 +176,7 @@ header {
 }
 
 .rp-card h3 {
+  color: rgb(var(--bs-link-color-rgb));
   font-size: 1.05rem;
   margin: 0 0 0.4rem;
 }
@@ -192,7 +186,6 @@ header {
   margin: 0;
   opacity: 0.85;
 }
-
 
 /* ---------- tables ---------- */
 .table thead th {

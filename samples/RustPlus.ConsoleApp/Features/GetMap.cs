@@ -15,8 +15,10 @@ internal sealed class GetMap(IRustPlus rustPlus)
 
         var map = response.Data!;
         Console.WriteLine("Map:");
-        Console.WriteLine($"  Size:        {map.Width?.ToString("D", System.Globalization.CultureInfo.InvariantCulture) ?? "?"} x {map.Height?.ToString("D", System.Globalization.CultureInfo.InvariantCulture) ?? "?"} game units");
-        Console.WriteLine($"  Ocean margin: {map.OceanMargin?.ToString("D", System.Globalization.CultureInfo.InvariantCulture) ?? "?"}");
+        Console.WriteLine(
+            $"  Size:        {map.Width?.ToString("D", System.Globalization.CultureInfo.InvariantCulture) ?? "?"} x {map.Height?.ToString("D", System.Globalization.CultureInfo.InvariantCulture) ?? "?"} game units");
+        Console.WriteLine(
+            $"  Ocean margin: {map.OceanMargin?.ToString("D", System.Globalization.CultureInfo.InvariantCulture) ?? "?"}");
         Console.WriteLine($"  Monuments:   {map.Monuments?.Count ?? 0}");
 
         if (map.JpgImage is { Length: > 0 })

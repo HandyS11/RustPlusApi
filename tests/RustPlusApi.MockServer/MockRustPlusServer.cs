@@ -57,7 +57,7 @@ public sealed class MockRustPlusServer : IAsyncDisposable
     public Task BroadcastAsync(AppBroadcast broadcast)
     {
         var socket = _activeSocket
-            ?? throw new InvalidOperationException("No client is connected to the mock server.");
+                     ?? throw new InvalidOperationException("No client is connected to the mock server.");
         return SendAsync(socket, MockResponses.Broadcast(broadcast), _cts.Token);
     }
 
@@ -106,6 +106,7 @@ public sealed class MockRustPlusServer : IAsyncDisposable
                         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, ct);
                         return;
                     }
+
                     await message.WriteAsync(buffer.AsMemory(0, result.Count), ct);
                 } while (!result.EndOfMessage);
             }
@@ -172,8 +173,13 @@ public sealed class MockRustPlusServer : IAsyncDisposable
         if (_acceptLoop is not null)
         {
             try
-            { await _acceptLoop; }
-            catch (OperationCanceledException) { /* expected on shutdown */ }
+            {
+                await _acceptLoop;
+            }
+            catch (OperationCanceledException)
+            {
+                /* expected on shutdown */
+            }
         }
 
         _cts.Dispose();

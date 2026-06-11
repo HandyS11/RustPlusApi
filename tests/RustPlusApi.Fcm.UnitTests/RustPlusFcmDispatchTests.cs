@@ -9,13 +9,25 @@ namespace RustPlusApi.Fcm.UnitTests;
 /// subclass that exposes the protected <c>ParseNotification</c> hook — no socket needed.</summary>
 public class RustPlusFcmDispatchTests
 {
-    private sealed class TestFcm() : RustPlusFcm(new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } })
+    private sealed class TestFcm() : RustPlusFcm(new Credentials
+    {
+        Gcm = new Gcm
+        {
+            AndroidId = 1, SecurityToken = 1
+        }
+    })
     {
         public void Feed(FcmMessage message) => ParseNotification(message);
     }
 
     private static FcmMessage Pairing(Body body) =>
-        new() { Data = new MessageData { ChannelId = "pairing", Body = body } };
+        new()
+        {
+            Data = new MessageData
+            {
+                ChannelId = "pairing", Body = body
+            }
+        };
 
     [Fact]
     public void Pairing_Server_RaisesOnServerPairing()
@@ -95,7 +107,10 @@ public class RustPlusFcmDispatchTests
         Assert.Equal("switch-1", entity.Data.EntityName);
 
         // Exactly one typed event fires, carrying the entity id (42) as its payload.
-        var fired = new[] { smart, alarm, storage };
+        var fired = new[]
+        {
+            smart, alarm, storage
+        };
         var raised = Assert.Single(fired, n => n is not null);
         Assert.Equal(42, raised!.Data);
         Assert.Equal(serverId, raised.ServerId);
@@ -112,7 +127,10 @@ public class RustPlusFcmDispatchTests
         using var fcm = new TestFcm();
         FcmMessage? raised = null;
         fcm.OnPairing += (_, m) => raised = m;
-        var message = Pairing(new Body { Type = "server", Ip = "1.1.1.1", Port = 1, PlayerToken = "0" });
+        var message = Pairing(new Body
+        {
+            Type = "server", Ip = "1.1.1.1", Port = 1, PlayerToken = "0"
+        });
         fcm.Feed(message);
         // OnPairing forwards the original FcmMessage instance unchanged.
         Assert.Same(message, raised);
@@ -125,7 +143,13 @@ public class RustPlusFcmDispatchTests
         AlarmEvent? captured = null;
         fcm.OnAlarmTriggered += (_, e) => captured = e;
 
-        fcm.Feed(new FcmMessage { Data = new MessageData { ChannelId = "alarm", Title = "the title", Message = "the message" } });
+        fcm.Feed(new FcmMessage
+        {
+            Data = new MessageData
+            {
+                ChannelId = "alarm", Title = "the title", Message = "the message"
+            }
+        });
 
         Assert.NotNull(captured);
         Assert.Equal("the title", captured!.Title);
@@ -139,7 +163,13 @@ public class RustPlusFcmDispatchTests
         var any = false;
         fcm.OnPairing += (_, _) => any = true;
         fcm.OnAlarmTriggered += (_, _) => any = true;
-        fcm.Feed(new FcmMessage { Data = new MessageData { ChannelId = "mystery" } });
+        fcm.Feed(new FcmMessage
+        {
+            Data = new MessageData
+            {
+                ChannelId = "mystery"
+            }
+        });
         Assert.False(any);
     }
 
@@ -150,8 +180,14 @@ public class RustPlusFcmDispatchTests
         var any = false;
         fcm.OnServerPairing += (_, _) => any = true;
         fcm.OnSmartSwitchPairing += (_, _) => any = true;
-        fcm.Feed(Pairing(new Body { Type = "mystery" }));
-        fcm.Feed(Pairing(new Body { Type = "entity", EntityType = 99, PlayerToken = "0" }));
+        fcm.Feed(Pairing(new Body
+        {
+            Type = "mystery"
+        }));
+        fcm.Feed(Pairing(new Body
+        {
+            Type = "entity", EntityType = 99, PlayerToken = "0"
+        }));
         Assert.False(any);
     }
 
@@ -165,7 +201,10 @@ public class RustPlusFcmDispatchTests
         var raised = false;
         // Subscribe only OnEntityPairing to confirm the entity arm fires, but the typed events are null.
         fcm.OnEntityPairing += (_, _) => raised = true;
-        fcm.Feed(Pairing(new Body { Type = "entity", EntityType = entityType, EntityId = 1, PlayerToken = "0" }));
+        fcm.Feed(Pairing(new Body
+        {
+            Type = "entity", EntityType = entityType, EntityId = 1, PlayerToken = "0"
+        }));
         Assert.True(raised);
     }
 
@@ -176,7 +215,13 @@ public class RustPlusFcmDispatchTests
         var pairingRaised = false;
         fcm.OnPairing += (_, _) => pairingRaised = true;
         // OnAlarmTriggered not subscribed — verifies null branch of ?.Invoke.
-        fcm.Feed(new FcmMessage { Data = new MessageData { ChannelId = "alarm", Title = "t", Message = "m" } });
+        fcm.Feed(new FcmMessage
+        {
+            Data = new MessageData
+            {
+                ChannelId = "alarm", Title = "t", Message = "m"
+            }
+        });
         Assert.False(pairingRaised);
     }
 
@@ -187,7 +232,10 @@ public class RustPlusFcmDispatchTests
         var pairingRaised = false;
         fcm.OnPairing += (_, _) => pairingRaised = true;
         // OnServerPairing not subscribed — verifies null branch of its ?.Invoke.
-        fcm.Feed(Pairing(new Body { Type = "server", Ip = "1.2.3.4", Port = 1, PlayerToken = "0" }));
+        fcm.Feed(Pairing(new Body
+        {
+            Type = "server", Ip = "1.2.3.4", Port = 1, PlayerToken = "0"
+        }));
         Assert.True(pairingRaised);
     }
 }

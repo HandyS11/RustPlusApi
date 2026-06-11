@@ -12,8 +12,7 @@ public static class MessageDataToEventModel
     {
         return new AlarmEvent
         {
-            Title = data.Title,
-            Message = data.Message
+            Title = data.Title, Message = data.Message
         };
     }
 }

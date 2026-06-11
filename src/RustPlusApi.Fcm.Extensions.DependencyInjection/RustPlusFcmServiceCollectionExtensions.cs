@@ -6,7 +6,9 @@ using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Extensions.DependencyInjection;
 using RustPlusApi.Fcm.Interfaces;
 
+#pragma warning disable IDE0130 // Namespace does not match folder structure — MS convention for DI extension methods
 namespace Microsoft.Extensions.DependencyInjection;
+#pragma warning restore IDE0130
 
 /// <summary>Registers <see cref="IRustPlusFcm"/> listeners and the <see cref="IRustPlusFcmFactory"/> into a service collection.</summary>
 public static class RustPlusFcmServiceCollectionExtensions

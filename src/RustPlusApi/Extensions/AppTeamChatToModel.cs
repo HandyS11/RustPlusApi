@@ -3,6 +3,7 @@ using RustPlusApi.Data.Events;
 using RustPlusApi.Utils;
 using RustPlusContracts;
 using System.Drawing;
+
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;

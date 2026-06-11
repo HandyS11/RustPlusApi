@@ -29,7 +29,10 @@ public class CameraMapperTests
         var frame = rays.ToCameraRaysEvent();
 
         Assert.Equal(65f, frame.VerticalFov);
-        Assert.Equal(new byte[] { 0, 1, 2, 3, 4 }, frame.RayData);
+        Assert.Equal(new byte[]
+        {
+            0, 1, 2, 3, 4
+        }, frame.RayData);
         var entity = Assert.Single(frame.Entities);
         Assert.Equal(99u, entity.EntityId);
         Assert.Equal(CameraEntityType.Player, entity.Type);

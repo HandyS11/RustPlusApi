@@ -23,17 +23,24 @@ public sealed class StubHttpMessageHandler(
     /// <param name="status">The HTTP status code to return for every request.</param>
     /// <param name="body">The raw byte body to include in every response.</param>
     public static StubHttpMessageHandler Always(HttpStatusCode status, byte[] body) =>
-        new((_, _) => new HttpResponseMessage(status) { Content = new ByteArrayContent(body) });
+        new((_, _) => new HttpResponseMessage(status)
+        {
+            Content = new ByteArrayContent(body)
+        });
 
     /// <summary>Convenience ctor: always return the same status + string body.</summary>
     /// <param name="status">The HTTP status code to return for every request.</param>
     /// <param name="body">The string body to include in every response.</param>
     public static StubHttpMessageHandler Always(HttpStatusCode status, string body) =>
-        new((_, _) => new HttpResponseMessage(status) { Content = new StringContent(body) });
+        new((_, _) => new HttpResponseMessage(status)
+        {
+            Content = new StringContent(body)
+        });
 
     /// <inheritdoc/>
     protected override async Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request, CancellationToken cancellationToken)
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
     {
         var index = _callIndex++;
         Requests.Add(request);

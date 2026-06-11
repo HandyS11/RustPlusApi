@@ -24,7 +24,13 @@ public class FcmSocketFramingTests
         : RustPlusFcmSocket(credentials, persistentIds);
 
     private static Credentials NewCredentials() =>
-        new() { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } };
+        new()
+        {
+            Gcm = new Gcm
+            {
+                AndroidId = 1, SecurityToken = 1
+            }
+        };
 
     private static TestSocket NewSocket(ICollection<string>? persistentIds = null) =>
         new(NewCredentials(), persistentIds);
@@ -44,7 +50,12 @@ public class FcmSocketFramingTests
         public override bool CanWrite => true;
         public override bool CanSeek => false;
         public override long Length => throw new NotSupportedException();
-        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
 
         public override int Read(byte[] buffer, int offset, int count) => _reads.Read(buffer, offset, count);
         public override int ReadByte() => _reads.ReadByte();
@@ -70,11 +81,20 @@ public class FcmSocketFramingTests
         public override bool CanWrite => true;
         public override bool CanSeek => false;
         public override long Length => throw new NotSupportedException();
-        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
-        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException("synchronous Read is not allowed");
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            throw new NotSupportedException("synchronous Read is not allowed");
+
         public override int ReadByte() => throw new NotSupportedException("synchronous ReadByte is not allowed");
-        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException("synchronous Write is not allowed");
+
+        public override void Write(byte[] buffer, int offset, int count) =>
+            throw new NotSupportedException("synchronous Write is not allowed");
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             => _reads.ReadAsync(buffer, offset, count, cancellationToken);
@@ -98,7 +118,10 @@ public class FcmSocketFramingTests
         var stream = new AsyncOnlyStream(Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification()),
-            NextFrame(McsProtoTag.KHeartbeatPingTag, new HeartbeatPing { StreamId = 1, Status = 0 }),
+            NextFrame(McsProtoTag.KHeartbeatPingTag, new HeartbeatPing
+            {
+                StreamId = 1, Status = 0
+            }),
             NextFrame(McsProtoTag.KCloseTag, new Close())));
 
         // Must complete using async I/O only: synchronous Read/Write on AsyncOnlyStream throw.
@@ -124,7 +147,10 @@ public class FcmSocketFramingTests
     private static IEnumerable<byte> FirstFrame(McsProtoTag tag, object message)
     {
         var payload = PayloadOf(message);
-        return new byte[] { KMcsVersion, (byte)(int)tag }
+        return new byte[]
+            {
+                KMcsVersion, (byte)(int)tag
+            }
             .Concat(EncodeVarInt32(payload.Length))
             .Concat(payload);
     }
@@ -136,7 +162,10 @@ public class FcmSocketFramingTests
     private static IEnumerable<byte> FirstFrame(int version, McsProtoTag tag, object message)
     {
         var payload = PayloadOf(message);
-        return new byte[] { (byte)version, (byte)(int)tag }
+        return new byte[]
+            {
+                (byte)version, (byte)(int)tag
+            }
             .Concat(EncodeVarInt32(payload.Length))
             .Concat(payload);
     }
@@ -147,7 +176,10 @@ public class FcmSocketFramingTests
     private static IEnumerable<byte> NextFrame(McsProtoTag tag, object message)
     {
         var payload = PayloadOf(message);
-        return new byte[] { (byte)(int)tag }
+        return new byte[]
+            {
+                (byte)(int)tag
+            }
             .Concat(EncodeVarInt32(payload.Length))
             .Concat(payload);
     }
@@ -168,8 +200,14 @@ public class FcmSocketFramingTests
             Sent = 1_700_000_000_000,
             AppDatas =
             {
-                new AppData { Key = "channelId", Value = "pairing" },
-                new AppData { Key = "body", Value = body },
+                new AppData
+                {
+                    Key = "channelId", Value = "pairing"
+                },
+                new AppData
+                {
+                    Key = "body", Value = body
+                },
             }
         };
 
@@ -203,7 +241,10 @@ public class FcmSocketFramingTests
 
         var stream = new ScriptedStream(Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
-            NextFrame(McsProtoTag.KHeartbeatPingTag, new HeartbeatPing { StreamId = 7, Status = 0 }),
+            NextFrame(McsProtoTag.KHeartbeatPingTag, new HeartbeatPing
+            {
+                StreamId = 7, Status = 0
+            }),
             NextFrame(McsProtoTag.KCloseTag, new Close())));
 
         await socket.RunReceiveLoopOverStreamAsync(stream);
@@ -226,7 +267,7 @@ public class FcmSocketFramingTests
         using var payload = new MemoryStream(written, idx, written.Length - idx);
 #pragma warning restore RCS1261
         var ack = Serializer.Deserialize<HeartbeatAck>(payload);
-        Assert.Equal(8, ack.StreamId);           // ping.StreamId (7) + 1
+        Assert.Equal(8, ack.StreamId); // ping.StreamId (7) + 1
         Assert.Equal(7, ack.LastStreamIdReceived);
     }
 
@@ -256,8 +297,8 @@ public class FcmSocketFramingTests
 
         var script = Build(FirstFrame(37, McsProtoTag.KLoginResponseTag, new LoginResponse()));
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
         Assert.Contains("unsupported", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -268,8 +309,8 @@ public class FcmSocketFramingTests
 
         var script = Build(FirstFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification()));
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
         Assert.Contains(nameof(LoginResponse), ex.Message, StringComparison.Ordinal);
     }
 
@@ -284,7 +325,13 @@ public class FcmSocketFramingTests
         {
             From = "1",
             PersistentId = "p-missing",
-            AppDatas = { new AppData { Key = "body", Value = "{}" } }   // no channelId
+            AppDatas =
+            {
+                new AppData
+                {
+                    Key = "body", Value = "{}"
+                }
+            } // no channelId
         };
 
         var script = Build(
@@ -308,7 +355,13 @@ public class FcmSocketFramingTests
         {
             From = "1",
             PersistentId = "p-missing-body",
-            AppDatas = { new AppData { Key = "channelId", Value = "pairing" } }   // no body
+            AppDatas =
+            {
+                new AppData
+                {
+                    Key = "channelId", Value = "pairing"
+                }
+            } // no body
         };
 
         var script = Build(
@@ -338,7 +391,7 @@ public class FcmSocketFramingTests
 
         await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
-        Assert.Equal(1, count);   // first delivered, duplicate skipped
+        Assert.Equal(1, count); // first delivered, duplicate skipped
     }
 
     [Fact]
@@ -359,8 +412,14 @@ public class FcmSocketFramingTests
             Sent = 1_700_000_000_000,
             AppDatas =
             {
-                new AppData { Key = "channelId", Value = "pairing" },
-                new AppData { Key = "body", Value = longBody },
+                new AppData
+                {
+                    Key = "channelId", Value = "pairing"
+                },
+                new AppData
+                {
+                    Key = "body", Value = longBody
+                },
             }
         };
 
@@ -389,11 +448,17 @@ public class FcmSocketFramingTests
         socket.ErrorOccurred += (_, ex) => error = ex;
 
         // Manually build a frame: [tag][varint(size)][corrupt-payload]
-        var corruptPayload = new byte[] { 0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9 };
+        var corruptPayload = new byte[]
+        {
+            0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9
+        };
         var corruptFrame =
-            new byte[] { (byte)(int)McsProtoTag.KDataMessageStanzaTag }
-            .Concat(EncodeVarInt32(corruptPayload.Length))
-            .Concat(corruptPayload);
+            new byte[]
+                {
+                    (byte)(int)McsProtoTag.KDataMessageStanzaTag
+                }
+                .Concat(EncodeVarInt32(corruptPayload.Length))
+                .Concat(corruptPayload);
 
         var script = Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
@@ -463,13 +528,34 @@ public class FcmSocketFramingTests
             Sent = 1_700_000_000_000,
             AppDatas =
             {
-                new AppData { Key = "channelId", Value = "pairing" },
-                new AppData { Key = "body", Value = "{}" },
-                new AppData { Key = "title", Value = "Test Title" },
-                new AppData { Key = "projectId", Value = "00000000-0000-0000-0000-000000000001" },
-                new AppData { Key = "experienceId", Value = "@scope/exp" },
-                new AppData { Key = "scopeKey", Value = "myScope" },
-                new AppData { Key = "message", Value = "hello world" },
+                new AppData
+                {
+                    Key = "channelId", Value = "pairing"
+                },
+                new AppData
+                {
+                    Key = "body", Value = "{}"
+                },
+                new AppData
+                {
+                    Key = "title", Value = "Test Title"
+                },
+                new AppData
+                {
+                    Key = "projectId", Value = "00000000-0000-0000-0000-000000000001"
+                },
+                new AppData
+                {
+                    Key = "experienceId", Value = "@scope/exp"
+                },
+                new AppData
+                {
+                    Key = "scopeKey", Value = "myScope"
+                },
+                new AppData
+                {
+                    Key = "message", Value = "hello world"
+                },
             }
         };
 
@@ -507,8 +593,14 @@ public class FcmSocketFramingTests
             Sent = 1_700_000_000_000,
             AppDatas =
             {
-                new AppData { Key = "channelId", Value = "pairing" },
-                new AppData { Key = "body", Value = "{}" },
+                new AppData
+                {
+                    Key = "channelId", Value = "pairing"
+                },
+                new AppData
+                {
+                    Key = "body", Value = "{}"
+                },
             }
         };
 
@@ -519,8 +611,8 @@ public class FcmSocketFramingTests
 
         await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
-        Assert.Equal(1, count);           // message was delivered
-        Assert.Empty(ids);                // nothing added to the dedupe set
+        Assert.Equal(1, count); // message was delivered
+        Assert.Empty(ids); // nothing added to the dedupe set
     }
 
     /// <summary>
@@ -541,8 +633,14 @@ public class FcmSocketFramingTests
             // Sent deliberately not set (null)
             AppDatas =
             {
-                new AppData { Key = "channelId", Value = "pairing" },
-                new AppData { Key = "body", Value = "{}" },
+                new AppData
+                {
+                    Key = "channelId", Value = "pairing"
+                },
+                new AppData
+                {
+                    Key = "body", Value = "{}"
+                },
             }
         };
 
@@ -593,8 +691,11 @@ public class FcmSocketFramingTests
         socket.NotificationReceived += (_, _) => raised = true;
 
         var emptyFrame =
-            new byte[] { (byte)(int)McsProtoTag.KHeartbeatAckTag }
-            .Concat(EncodeVarInt32(0));   // zero-length payload
+            new byte[]
+                {
+                    (byte)(int)McsProtoTag.KHeartbeatAckTag
+                }
+                .Concat(EncodeVarInt32(0)); // zero-length payload
 
         var script = Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
@@ -604,7 +705,7 @@ public class FcmSocketFramingTests
         var ex = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
 
         Assert.Null(ex);
-        Assert.False(raised);   // HeartbeatAck hits the default arm → ignored, no notification
+        Assert.False(raised); // HeartbeatAck hits the default arm → ignored, no notification
     }
 
     /// <summary>
@@ -618,11 +719,17 @@ public class FcmSocketFramingTests
         await using var socket = NewSocket();
         // ErrorOccurred intentionally NOT subscribed
 
-        var corruptPayload = new byte[] { 0xFF, 0xFE, 0xFD, 0xFC };
+        var corruptPayload = new byte[]
+        {
+            0xFF, 0xFE, 0xFD, 0xFC
+        };
         var corruptFrame =
-            new byte[] { (byte)(int)McsProtoTag.KDataMessageStanzaTag }
-            .Concat(EncodeVarInt32(corruptPayload.Length))
-            .Concat(corruptPayload);
+            new byte[]
+                {
+                    (byte)(int)McsProtoTag.KDataMessageStanzaTag
+                }
+                .Concat(EncodeVarInt32(corruptPayload.Length))
+                .Concat(corruptPayload);
 
         var script = Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
@@ -631,7 +738,7 @@ public class FcmSocketFramingTests
 
         var ex = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
 
-        Assert.Null(ex);   // catch absorbs exception; no subscriber → no rethrow
+        Assert.Null(ex); // catch absorbs exception; no subscriber → no rethrow
     }
 
     /// <summary>
@@ -651,8 +758,11 @@ public class FcmSocketFramingTests
         socket.NotificationReceived += (_, _) => raised = true;
 
         var zeroLengthDataFrame =
-            new byte[] { (byte)(int)McsProtoTag.KDataMessageStanzaTag }
-            .Concat(EncodeVarInt32(0));
+            new byte[]
+                {
+                    (byte)(int)McsProtoTag.KDataMessageStanzaTag
+                }
+                .Concat(EncodeVarInt32(0));
 
         var script = Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
@@ -685,7 +795,7 @@ public class FcmSocketFramingTests
 
         await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
-        Assert.Equal(2, count);   // both delivered; no deduplication without the set
+        Assert.Equal(2, count); // both delivered; no deduplication without the set
     }
 
     /// <summary>
@@ -698,7 +808,10 @@ public class FcmSocketFramingTests
     {
         // Pre-seed the set with a known ID so that, WITHOUT clearing, the second delivery
         // would be skipped by the dedup check.
-        var ids = new List<string> { "pre-existing-id" };
+        var ids = new List<string>
+        {
+            "pre-existing-id"
+        };
         await using var socket = NewSocket(ids);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
@@ -732,8 +845,8 @@ public class FcmSocketFramingTests
         // Body JSON with lowercase keys — requires PropertyNameCaseInsensitive = true to bind
         // "ip" → Body.Ip, "port" → Body.Port, "type" → Body.Type, etc.
         const string lowerCaseBody = """
-            {"ip":"10.0.0.1","port":28082,"type":"server","playerToken":"42","playerId":"7"}
-            """;
+                                     {"ip":"10.0.0.1","port":28082,"type":"server","playerToken":"42","playerId":"7"}
+                                     """;
 
         var stanza = new DataMessageStanza
         {
@@ -742,8 +855,14 @@ public class FcmSocketFramingTests
             Sent = 1_700_000_000_000,
             AppDatas =
             {
-                new AppData { Key = "channelId", Value = "pairing" },
-                new AppData { Key = "body", Value = lowerCaseBody },
+                new AppData
+                {
+                    Key = "channelId", Value = "pairing"
+                },
+                new AppData
+                {
+                    Key = "body", Value = lowerCaseBody
+                },
             }
         };
 
@@ -774,7 +893,10 @@ public class FcmSocketFramingTests
     [Fact]
     public async Task LoginResponse_DispatchedViaOnGotMessageBytes_ClearsPersistentIds()
     {
-        var ids = new List<string> { "old-id" };
+        var ids = new List<string>
+        {
+            "old-id"
+        };
         await using var socket = NewSocket(ids);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
@@ -809,8 +931,11 @@ public class FcmSocketFramingTests
         // HeartbeatPing with zero-length payload (Activator.CreateInstance returns default instance
         // with null StreamId).
         var emptyPingFrame =
-            new byte[] { (byte)(int)McsProtoTag.KHeartbeatPingTag }
-            .Concat(EncodeVarInt32(0));   // zero-length payload
+            new byte[]
+                {
+                    (byte)(int)McsProtoTag.KHeartbeatPingTag
+                }
+                .Concat(EncodeVarInt32(0)); // zero-length payload
 
         var stream = new ScriptedStream(Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
@@ -832,6 +957,7 @@ public class FcmSocketFramingTests
                 ackCount++;
             }
         }
+
         Assert.Equal(1, ackCount);
     }
 
@@ -877,9 +1003,15 @@ public class FcmSocketFramingTests
         // EOF (underlying Read returns 0) and throws EndOfStreamException rather than busy-looping
         // forever; the receive loop swallows it for a clean exit.
         var truncatedFrame =
-            new byte[] { (byte)(int)McsProtoTag.KDataMessageStanzaTag }
-            .Concat(EncodeVarInt32(10))
-            .Concat(new byte[] { 1, 2, 3 });
+            new byte[]
+                {
+                    (byte)(int)McsProtoTag.KDataMessageStanzaTag
+                }
+                .Concat(EncodeVarInt32(10))
+                .Concat(new byte[]
+                {
+                    1, 2, 3
+                });
 
         var stream = new ScriptedStream(Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),

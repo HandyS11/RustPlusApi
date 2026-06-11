@@ -50,9 +50,7 @@ public class RegistrationTests
     {
         var response = new AndroidCheckinResponse
         {
-            StatsOk = true,
-            AndroidId = 1234567890123UL,
-            SecurityToken = 9876543210987UL
+            StatsOk = true, AndroidId = 1234567890123UL, SecurityToken = 9876543210987UL
         };
 
         using var stream = new MemoryStream();
@@ -84,8 +82,14 @@ public class RegistrationTests
     {
         var credentials = new Credentials
         {
-            Gcm = new Gcm { AndroidId = 42, SecurityToken = 7 },
-            Fcm = new FcmToken { Token = "fcm-token" },
+            Gcm = new Gcm
+            {
+                AndroidId = 42, SecurityToken = 7
+            },
+            Fcm = new FcmToken
+            {
+                Token = "fcm-token"
+            },
             ExpoPushToken = "ExponentPushToken[abc]"
         };
 
@@ -103,7 +107,10 @@ public class RegistrationTests
         {
             PlayerId = 76561198000000000,
             PlayerToken = 123456789,
-            Data = new ServerEvent { Ip = "1.2.3.4", Port = 28083, Name = "My Server" }
+            Data = new ServerEvent
+            {
+                Ip = "1.2.3.4", Port = 28083, Name = "My Server"
+            }
         };
 
         var pairing = PairingListener.ToServerPairing(notification);
@@ -126,7 +133,7 @@ public class RegistrationTests
         {
             PlayerId = 76561198000000000,
             PlayerToken = 999,
-            Data = null  // server is null → all server?.Xxx produce null → ?? fallbacks used
+            Data = null // server is null → all server?.Xxx produce null → ?? fallbacks used
         };
 
         var pairing = PairingListener.ToServerPairing(notification);
@@ -146,14 +153,20 @@ public class RegistrationTests
     [Fact]
     public void PairingListener_ConstructAndDispose_DoesNotThrow()
     {
-        var credentials = new Credentials { Gcm = new Gcm { AndroidId = 1, SecurityToken = 1 } };
+        var credentials = new Credentials
+        {
+            Gcm = new Gcm
+            {
+                AndroidId = 1, SecurityToken = 1
+            }
+        };
 
         var listener = new PairingListener(credentials);
 
         var ex = Record.Exception(() =>
         {
             listener.Dispose();
-            listener.Dispose();  // idempotent
+            listener.Dispose(); // idempotent
         });
         Assert.Null(ex);
     }

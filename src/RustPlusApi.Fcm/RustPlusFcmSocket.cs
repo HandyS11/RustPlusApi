@@ -47,8 +47,7 @@ public abstract class RustPlusFcmSocket(
         ? new RustPlusFcmSocketOptions()
         : new()
         {
-            HeartbeatInterval = options.HeartbeatInterval,
-            InactivityTimeout = options.InactivityTimeout,
+            HeartbeatInterval = options.HeartbeatInterval, InactivityTimeout = options.InactivityTimeout,
         };
 
     /// <summary>The client's logger; <c>NullLogger</c> when no factory was supplied.
@@ -79,8 +78,7 @@ public abstract class RustPlusFcmSocket(
 
     private readonly JsonSerializerOptions _parsingOptions = new()
     {
-        PropertyNameCaseInsensitive = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        PropertyNameCaseInsensitive = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     /// <summary>
@@ -170,13 +168,23 @@ public abstract class RustPlusFcmSocket(
                 AuthToken = credentials.Gcm.SecurityToken.ToString(CultureInfo.InvariantCulture),
                 Id = "chrome-63.0.3234.0",
                 Domain = "mcs.android.com",
-                DeviceId = $"android-{BigInteger.Parse(credentials.Gcm.AndroidId.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture):X}",
+                DeviceId =
+                    $"android-{BigInteger.Parse(credentials.Gcm.AndroidId.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture):X}",
                 NetworkType = 1,
                 Resource = credentials.Gcm.AndroidId.ToString(CultureInfo.InvariantCulture),
                 User = credentials.Gcm.AndroidId.ToString(CultureInfo.InvariantCulture),
                 UseRmq2 = true,
-                Settings = { new Setting { Name = "new_vc", Value = "1" } },
-                ClientEvents = { new ClientEvent() },
+                Settings =
+                {
+                    new Setting
+                    {
+                        Name = "new_vc", Value = "1"
+                    }
+                },
+                ClientEvents =
+                {
+                    new ClientEvent()
+                },
             };
 
             if (persistentIds != null)
@@ -314,7 +322,10 @@ public abstract class RustPlusFcmSocket(
     /// </summary>
     private async Task WaitForReceiveLoopAsync()
     {
-        var loops = new[] { _receiveLoop, _heartbeatLoop }
+        var loops = new[]
+            {
+                _receiveLoop, _heartbeatLoop
+            }
             .Where(static t => t is not null)
             .Cast<Task>()
             .ToArray();
@@ -433,7 +444,8 @@ public abstract class RustPlusFcmSocket(
 
             if (type != typeof(LoginResponse))
             {
-                throw new InvalidOperationException($"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
+                throw new InvalidOperationException(
+                    $"Got wrong login response. Expected {nameof(LoginResponse)}, got {type.Name}");
             }
 
             await OnGotMessageBytesAsync(payload, type).ConfigureAwait(false);
@@ -481,7 +493,10 @@ public abstract class RustPlusFcmSocket(
 
             if (data.Length == 0)
             {
-                await OnMessageAsync(new MessageEventArgs { Tag = messageTag, Object = Activator.CreateInstance(type) }).ConfigureAwait(false);
+                await OnMessageAsync(new MessageEventArgs
+                {
+                    Tag = messageTag, Object = Activator.CreateInstance(type)
+                }).ConfigureAwait(false);
                 return;
             }
 
@@ -490,7 +505,10 @@ public abstract class RustPlusFcmSocket(
 #pragma warning restore RCS1261
             var message = Serializer.NonGeneric.Deserialize(type, stream);
 
-            await OnMessageAsync(new MessageEventArgs { Tag = messageTag, Object = message }).ConfigureAwait(false);
+            await OnMessageAsync(new MessageEventArgs
+            {
+                Tag = messageTag, Object = message
+            }).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -512,7 +530,8 @@ public abstract class RustPlusFcmSocket(
         {
             // byte[] overload is intentional: the Memory<byte> overload (preferred by CA1835) is unavailable on netstandard2.0.
 #pragma warning disable CA1835
-            var read = await _transport!.ReadAsync(buffer, bytesRead, size - bytesRead, CancellationToken).ConfigureAwait(false);
+            var read = await _transport!.ReadAsync(buffer, bytesRead, size - bytesRead, CancellationToken)
+                .ConfigureAwait(false);
 #pragma warning restore CA1835
             if (read == 0)
             {
@@ -521,6 +540,7 @@ public abstract class RustPlusFcmSocket(
 
             bytesRead += read;
         }
+
         return buffer;
     }
 
@@ -564,6 +584,7 @@ public abstract class RustPlusFcmSocket(
 
             shift += 7;
         }
+
         return result;
     }
 
@@ -575,7 +596,10 @@ public abstract class RustPlusFcmSocket(
     private async Task SendPacketAsync(object packet)
     {
         var tagEnum = GetTagFromProtobufType(packet.GetType());
-        var header = new byte[] { KMcsVersion, (byte)(int)tagEnum };
+        var header = new byte[]
+        {
+            KMcsVersion, (byte)(int)tagEnum
+        };
 
 #pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
         using var ms = new MemoryStream();
@@ -613,9 +637,7 @@ public abstract class RustPlusFcmSocket(
         Logger.LogRespondingToPing(ping.StreamId, ping.LastStreamIdReceived, ping.Status);
         var pingResponse = new HeartbeatAck
         {
-            StreamId = (ping.StreamId ?? 0) + 1,
-            LastStreamIdReceived = ping.StreamId,
-            Status = ping.Status
+            StreamId = (ping.StreamId ?? 0) + 1, LastStreamIdReceived = ping.StreamId, Status = ping.Status
         };
 
         await SendPacketAsync(pingResponse).ConfigureAwait(false);
@@ -645,7 +667,7 @@ public abstract class RustPlusFcmSocket(
                 Disconnect();
                 break;
             case McsProtoTag.KIqStanzaTag:
-                break;  // To investigate further, if needed
+                break; // To investigate further, if needed
             default:
                 Logger.LogUnrecognizedTag(e.Tag);
                 break;

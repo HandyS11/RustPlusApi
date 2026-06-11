@@ -9,12 +9,18 @@ namespace RustPlusApi.UnitTests;
 public class EntityInfoMapperTests
 {
     private static AppEntityInfo Entity(AppEntityType type, AppEntityPayload payload) =>
-        new() { Type = type, Payload = payload };
+        new()
+        {
+            Type = type, Payload = payload
+        };
 
     [Fact]
     public void ToSmartSwitchInfo_MapsActiveState()
     {
-        var info = Entity(AppEntityType.Switch, new AppEntityPayload { Value = true }).ToSmartSwitchInfo();
+        var info = Entity(AppEntityType.Switch, new AppEntityPayload
+        {
+            Value = true
+        }).ToSmartSwitchInfo();
         Assert.True(info.IsActive);
     }
 
@@ -26,7 +32,10 @@ public class EntityInfoMapperTests
     [Fact]
     public void ToAlarmInfo_MapsActiveState()
     {
-        var info = Entity(AppEntityType.Alarm, new AppEntityPayload { Value = true }).ToAlarmInfo();
+        var info = Entity(AppEntityType.Alarm, new AppEntityPayload
+        {
+            Value = true
+        }).ToAlarmInfo();
         Assert.True(info.IsActive);
     }
 
@@ -43,7 +52,13 @@ public class EntityInfoMapperTests
             Capacity = 48,
             HasProtection = true,
             ProtectionExpiry = 1_700_000_000,
-            Items = { new AppEntityPayload.Item { ItemId = 1, Quantity = 5, ItemIsBlueprint = true } }
+            Items =
+            {
+                new AppEntityPayload.Item
+                {
+                    ItemId = 1, Quantity = 5, ItemIsBlueprint = true
+                }
+            }
         };
 
         var info = Entity(AppEntityType.StorageMonitor, payload).ToStorageMonitorInfo();

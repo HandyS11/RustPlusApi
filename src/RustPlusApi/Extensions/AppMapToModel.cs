@@ -3,6 +3,7 @@ using RustPlusApi.Utils;
 using RustPlusContracts;
 using System.Drawing;
 using static RustPlusContracts.AppMap;
+
 // ReSharper disable MemberCanBePrivate.Global
 
 namespace RustPlusApi.Extensions;
@@ -32,9 +33,7 @@ public static class AppMapToModel
         return new ServerMapMonument
         {
             // Server field is `token` (a localization key, e.g. "lighthouse"); exposed as Name.
-            Name = appMapMonument.Token,
-            X = appMapMonument.X,
-            Y = appMapMonument.Y
+            Name = appMapMonument.Token, X = appMapMonument.X, Y = appMapMonument.Y
         };
     }
 

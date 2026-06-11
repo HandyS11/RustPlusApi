@@ -82,7 +82,9 @@ public sealed class SteamLoginService(int port = 3000)
 
     // --- DevTools protocol ---
 
-    private async Task<ClientWebSocket> ConnectAndInjectAsync(int debugPort, string startUrl, CancellationToken cancellationToken)
+    private async Task<ClientWebSocket> ConnectAndInjectAsync(int debugPort,
+        string startUrl,
+        CancellationToken cancellationToken)
     {
         var pageWebSocketUrl = await GetPageWebSocketUrlAsync(debugPort, cancellationToken).ConfigureAwait(false);
 
@@ -104,31 +106,45 @@ public sealed class SteamLoginService(int port = 3000)
             $".catch(function () {{ window.location.href = '{callback}?token=' + encodeURIComponent(a.Token); }});" +
             " } } catch (e) {} } };";
 
-        await SendAsync(socket, 1, "Page.enable", new { }, cancellationToken).ConfigureAwait(false);
-        await SendAsync(socket, 2, "Page.addScriptToEvaluateOnNewDocument", new { source = shim }, cancellationToken).ConfigureAwait(false);
-        await SendAsync(socket, 3, "Page.navigate", new { url = startUrl }, cancellationToken).ConfigureAwait(false);
+        await SendAsync(socket, 1, "Page.enable", new
+        {
+        }, cancellationToken).ConfigureAwait(false);
+        await SendAsync(socket, 2, "Page.addScriptToEvaluateOnNewDocument", new
+        {
+            source = shim
+        }, cancellationToken).ConfigureAwait(false);
+        await SendAsync(socket, 3, "Page.navigate", new
+        {
+            url = startUrl
+        }, cancellationToken).ConfigureAwait(false);
 
         return socket;
     }
 
     private static async Task<string> GetPageWebSocketUrlAsync(int debugPort, CancellationToken cancellationToken)
     {
-        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        using var http = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(5)
+        };
 
         for (var attempt = 0; attempt < 50; attempt++)
         {
             try
             {
 #if NET10_0_OR_GREATER
-                var json = await http.GetStringAsync(new Uri($"http://localhost:{debugPort}/json"), cancellationToken).ConfigureAwait(false);
+                var json = await http.GetStringAsync(new Uri($"http://localhost:{debugPort}/json"), cancellationToken)
+                    .ConfigureAwait(false);
 #else
-                var json = await http.GetStringAsync(new Uri($"http://localhost:{debugPort}/json")).ConfigureAwait(false);
+                var json =
+                    await http.GetStringAsync(new Uri($"http://localhost:{debugPort}/json")).ConfigureAwait(false);
 #endif
                 using var document = JsonDocument.Parse(json);
                 foreach (var target in document.RootElement.EnumerateArray())
                 {
                     if (target.TryGetProperty("type", out var type) && type.GetString() == "page"
-                        && target.TryGetProperty("webSocketDebuggerUrl", out var url))
+                                                                    && target.TryGetProperty("webSocketDebuggerUrl",
+                                                                        out var url))
                     {
                         return url.GetString()!;
                     }
@@ -145,11 +161,19 @@ public sealed class SteamLoginService(int port = 3000)
         throw new InvalidOperationException("Chrome DevTools endpoint did not become available.");
     }
 
-    private static async Task SendAsync(ClientWebSocket socket, int id, string method, object parameters, CancellationToken cancellationToken)
+    private static async Task SendAsync(ClientWebSocket socket,
+        int id,
+        string method,
+        object parameters,
+        CancellationToken cancellationToken)
     {
-        var payload = JsonSerializer.Serialize(new { id, method, @params = parameters });
+        var payload = JsonSerializer.Serialize(new
+        {
+            id, method, @params = parameters
+        });
         var bytes = Encoding.UTF8.GetBytes(payload);
-        await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cancellationToken).ConfigureAwait(false);
+        await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static async Task DrainAsync(ClientWebSocket socket, CancellationToken cancellationToken)
@@ -159,7 +183,8 @@ public sealed class SteamLoginService(int port = 3000)
         {
             while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
             {
-                var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken).ConfigureAwait(false);
+                var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken)
+                    .ConfigureAwait(false);
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     break;
@@ -177,10 +202,10 @@ public sealed class SteamLoginService(int port = 3000)
     private static Process LaunchChrome(string workDir, string profileDir, int debugPort)
     {
         var (executable, prefixArguments) = ResolveChromeLaunch(workDir)
-            ?? throw new InvalidOperationException(
-                "Could not find Chrome/Chromium, which is required for the Steam login step. " +
-                "Install Google Chrome or Chromium (native or Flatpak), or set the CHROME_PATH " +
-                "environment variable to the executable.");
+                                            ?? throw new InvalidOperationException(
+                                                "Could not find Chrome/Chromium, which is required for the Steam login step. " +
+                                                "Install Google Chrome or Chromium (native or Flatpak), or set the CHROME_PATH " +
+                                                "environment variable to the executable.");
 
         Directory.CreateDirectory(profileDir);
 
@@ -188,13 +213,14 @@ public sealed class SteamLoginService(int port = 3000)
         {
             $"--user-data-dir={profileDir}",
             $"--remote-debugging-port={debugPort.ToString(System.Globalization.CultureInfo.InvariantCulture)}",
-            "--no-first-run",
-            "--no-default-browser-check",
-            "about:blank"
+            "--no-first-run", "--no-default-browser-check", "about:blank"
         };
         var arguments = prefixArguments.Concat(chromeArguments).ToArray();
 
-        var startInfo = new ProcessStartInfo(executable) { UseShellExecute = false };
+        var startInfo = new ProcessStartInfo(executable)
+        {
+            UseShellExecute = false
+        };
 #if NET10_0_OR_GREATER
         foreach (var argument in arguments)
         {
@@ -208,7 +234,8 @@ public sealed class SteamLoginService(int port = 3000)
                ?? throw new InvalidOperationException("Failed to launch Chrome/Chromium.");
     }
 
-    private static readonly string[] FlatpakAppIds = ["com.google.Chrome", "org.chromium.Chromium", "com.github.Eloston.UngoogledChromium"];
+    private static readonly string[] FlatpakAppIds =
+        ["com.google.Chrome", "org.chromium.Chromium", "com.github.Eloston.UngoogledChromium"];
 
     /// <summary>Resolves a native Chrome/Chromium binary, or a Flatpak launcher, with any prefix args.</summary>
     /// <param name="workDir">Temporary working directory passed to Flatpak's <c>--filesystem</c> flag when needed.</param>
@@ -238,8 +265,7 @@ public sealed class SteamLoginService(int port = 3000)
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var locations = new[]
         {
-            $"/var/lib/flatpak/app/{appId}",
-            Path.Combine(home, ".local", "share", "flatpak", "app", appId),
+            $"/var/lib/flatpak/app/{appId}", Path.Combine(home, ".local", "share", "flatpak", "app", appId),
         };
         return Array.Exists(locations, Directory.Exists);
     }
@@ -361,7 +387,9 @@ public sealed class SteamLoginService(int port = 3000)
     private static void TryDisposeSocket(ClientWebSocket? socket)
     {
         try
-        { socket?.Dispose(); }
+        {
+            socket?.Dispose();
+        }
         catch (Exception ex) { Debug.WriteLine($"[{nameof(SteamLoginService)}] Socket dispose failed: {ex.Message}"); }
     }
 

@@ -17,9 +17,7 @@ public class AndroidFcmRegisterTests
         using var ms = new MemoryStream();
         Serializer.Serialize(ms, new AndroidCheckinResponse
         {
-            StatsOk = true,
-            AndroidId = androidId,
-            SecurityToken = securityToken
+            StatsOk = true, AndroidId = androidId, SecurityToken = securityToken
         });
         return ms.ToArray();
     }
@@ -35,7 +33,7 @@ public class AndroidFcmRegisterTests
         return text.Split('&', StringSplitOptions.RemoveEmptyEntries)
             .Select(pair => pair.Split('=', 2))
             .ToDictionary(parts => Decode(parts[0]),
-                          parts => parts.Length > 1 ? Decode(parts[1]) : string.Empty);
+                parts => parts.Length > 1 ? Decode(parts[1]) : string.Empty);
     }
 
     /// <summary>Asserts the request carries exactly one value for <paramref name="name"/> and returns it.</summary>
@@ -120,7 +118,10 @@ public class AndroidFcmRegisterTests
         var register = new AndroidFcmRegister(handler.CreateClient());
 
         var token = await register.RegisterFcmAsync(
-            new RustPlusApi.Fcm.Data.Gcm { AndroidId = 42, SecurityToken = 99 }, "fis-auth-token");
+            new RustPlusApi.Fcm.Data.Gcm
+            {
+                AndroidId = 42, SecurityToken = 99
+            }, "fis-auth-token");
 
         Assert.Equal("the-fcm-token", token);
 
@@ -146,7 +147,8 @@ public class AndroidFcmRegisterTests
         Assert.Equal("*", form["X-scope"]);
         Assert.Equal("fis-auth-token", form["X-Goog-Firebase-Installations-Auth"]);
         Assert.Equal(RegistrationConstants.GmsAppId, form["X-gms_app_id"]);
-        Assert.Equal("fire-abt/21.1.1 fire-installations/17.0.0 fire-android/ fire-core/20.3.1", form["X-Firebase-Client"]);
+        Assert.Equal("fire-abt/21.1.1 fire-installations/17.0.0 fire-android/ fire-core/20.3.1",
+            form["X-Firebase-Client"]);
         Assert.Equal("R1dAH9Ui7M-ynoznwBdw01tLxhI", form["X-firebase-app-name-hash"]);
         Assert.Equal("FIS_v2", form["X-Goog-Firebase-Installations-Auth-Version"]);
         Assert.Equal(RegistrationConstants.GcmSenderId, form["sender"]);
@@ -161,7 +163,10 @@ public class AndroidFcmRegisterTests
         var register = new AndroidFcmRegister(handler.CreateClient());
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            register.RegisterFcmAsync(new RustPlusApi.Fcm.Data.Gcm { AndroidId = 1, SecurityToken = 2 }, "fis"));
+            register.RegisterFcmAsync(new RustPlusApi.Fcm.Data.Gcm
+            {
+                AndroidId = 1, SecurityToken = 2
+            }, "fis"));
         Assert.Equal(5, handler.Requests.Count); // five attempts
     }
 
@@ -175,7 +180,10 @@ public class AndroidFcmRegisterTests
         });
         var register = new AndroidFcmRegister(handler.CreateClient());
 
-        var token = await register.RegisterFcmAsync(new RustPlusApi.Fcm.Data.Gcm { AndroidId = 1, SecurityToken = 2 }, "fis");
+        var token = await register.RegisterFcmAsync(new RustPlusApi.Fcm.Data.Gcm
+        {
+            AndroidId = 1, SecurityToken = 2
+        }, "fis");
 
         Assert.Equal("ok", token);
         Assert.Equal(3, handler.Requests.Count);
@@ -189,15 +197,24 @@ public class AndroidFcmRegisterTests
             var url = req.RequestUri!.ToString();
             if (url.Contains("checkin", StringComparison.Ordinal))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(CheckinResponseBytes(5, 6)) };
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new ByteArrayContent(CheckinResponseBytes(5, 6))
+                };
             }
 
             if (url.Contains("installations", StringComparison.Ordinal))
             {
-                return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("""{ "authToken": { "token": "fis" } }""") };
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""{ "authToken": { "token": "fis" } }""")
+                };
             }
 
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("token=final") };
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("token=final")
+            };
         });
         var register = new AndroidFcmRegister(handler.CreateClient());
 
@@ -301,7 +318,10 @@ public class AndroidFcmRegisterTests
         var handler = StubHttpMessageHandler.Always(HttpStatusCode.OK, "Error=PHONE_REGISTRATION_ERROR");
         var register = new AndroidFcmRegister(handler.CreateClient());
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            register.RegisterFcmAsync(new RustPlusApi.Fcm.Data.Gcm { AndroidId = 1, SecurityToken = 2 }, "fis"));
+            register.RegisterFcmAsync(new RustPlusApi.Fcm.Data.Gcm
+            {
+                AndroidId = 1, SecurityToken = 2
+            }, "fis"));
         Assert.False(string.IsNullOrEmpty(ex.Message));
         Assert.Contains("attempts", ex.Message, StringComparison.OrdinalIgnoreCase);
     }

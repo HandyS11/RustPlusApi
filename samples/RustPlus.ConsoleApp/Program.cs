@@ -25,7 +25,8 @@ catch (Exception ex)
     return;
 }
 
-using var rustPlus = new RustPlusApi.RustPlus(new RustPlusApi.RustPlusConnection(credentials.Ip, credentials.Port, credentials.PlayerId, credentials.PlayerToken));
+using var rustPlus = new RustPlusApi.RustPlus(new RustPlusApi.RustPlusConnection(credentials.Ip, credentials.Port,
+    credentials.PlayerId, credentials.PlayerToken));
 
 try
 {
@@ -55,6 +56,7 @@ await Menu.RunAsync("Main menu",
                 Console.WriteLine("App key cannot be empty.");
                 return Task.CompletedTask;
             }
+
             return new GetNexusAuth(rustPlus).GetNexusAuthAsync(appKey);
         }))),
     new MenuItem("Team Features", () => Menu.RunAsync("Team",
@@ -71,6 +73,7 @@ await Menu.RunAsync("Main menu",
                 Console.WriteLine("Message cannot be empty.");
                 return Task.CompletedTask;
             }
+
             return new SendTeamMessage(rustPlus).SendTeamMessageAsync(message);
         }))),
     new MenuItem("Clan Features", () => Menu.RunAsync("Clan",
@@ -85,6 +88,7 @@ await Menu.RunAsync("Main menu",
                 Console.WriteLine("Message cannot be empty.");
                 return Task.CompletedTask;
             }
+
             return new SendClanMessage(rustPlus).SendClanMessageAsync(message);
         }),
         new MenuItem("Set Clan MOTD", () =>
@@ -96,6 +100,7 @@ await Menu.RunAsync("Main menu",
                 Console.WriteLine("Message cannot be empty.");
                 return Task.CompletedTask;
             }
+
             return new SetClanMotd(rustPlus).SetClanMotdAsync(message);
         }))),
     new MenuItem("Electricity Features", () => Menu.RunAsync("Electricity",

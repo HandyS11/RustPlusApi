@@ -18,7 +18,12 @@ public static class ResponseHelper
         return new Response<T?>
         {
             IsSuccess = isSuccess,
-            Error = message is null ? null : new ErrorMessage { Message = message },
+            Error = message is null
+                ? null
+                : new ErrorMessage
+                {
+                    Message = message
+                },
             Data = data
         };
     }
@@ -34,7 +39,12 @@ public static class ResponseHelper
         return new Response
         {
             IsSuccess = isSuccess,
-            Error = message is null ? null : new ErrorMessage { Message = message }
+            Error = message is null
+                ? null
+                : new ErrorMessage
+                {
+                    Message = message
+                }
         };
     }
 }

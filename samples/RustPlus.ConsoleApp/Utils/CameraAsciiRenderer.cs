@@ -29,6 +29,7 @@ internal static class CameraAsciiRenderer
                 var index = (int)(luminance * (Ramp.Length - 1));
                 line[x] = Ramp[index];
             }
+
             Console.WriteLine(new string(line));
         }
     }

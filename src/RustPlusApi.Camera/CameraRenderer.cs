@@ -1,5 +1,4 @@
 using RustPlusApi.Data.Cameras;
-
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -28,6 +27,7 @@ public sealed class CameraRenderer(int width, int height)
     private static readonly Rgba32 SkyColour = new(208, 230, 252);
 
     private readonly short[] _samplePositionBuffer = BuildSamplePositionBuffer(width, height);
+
     /// <summary>Raw decoded samples (distance 0-1023, alignment 0-63, material). Normalised at render time.</summary>
     private readonly (int Distance, int Alignment, int Material)?[] _output = new (int, int, int)?[width * height];
 

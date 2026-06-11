@@ -20,7 +20,10 @@ public static class MockResponses
     /// <param name="request">The incoming request to respond to.</param>
     public static AppMessage Default(AppRequest request)
     {
-        var response = new AppResponse { Seq = request.Seq };
+        var response = new AppResponse
+        {
+            Seq = request.Seq
+        };
 
         if (request.GetInfo is not null)
         {
@@ -52,7 +55,10 @@ public static class MockResponses
         }
         else if (request.CheckSubscription is not null)
         {
-            response.Flag = new AppFlag { Value = true };
+            response.Flag = new AppFlag
+            {
+                Value = true
+            };
         }
         else if (request.GetClanInfo is not null)
         {
@@ -72,26 +78,45 @@ public static class MockResponses
         }
         else if (request.SendTeamMessage is not null)
         {
-            return new AppMessage { Broadcast = TeamMessageSendBroadcast(request.PlayerId, request.SendTeamMessage.Message) };
+            return new AppMessage
+            {
+                Broadcast = TeamMessageSendBroadcast(request.PlayerId, request.SendTeamMessage.Message)
+            };
         }
         else
         {
             response.Success = new AppSuccess();
         }
 
-        return new AppMessage { Response = response };
+        return new AppMessage
+        {
+            Response = response
+        };
     }
 
     /// <summary>Builds an error <see cref="AppMessage"/> carrying the given error string.</summary>
     /// <param name="seq">The sequence number to echo back in the response.</param>
     /// <param name="error">The error string to embed.</param>
     public static AppMessage Error(uint seq, string error) =>
-        new() { Response = new AppResponse { Seq = seq, Error = new AppError { Error = error } } };
+        new()
+        {
+            Response = new AppResponse
+            {
+                Seq = seq,
+                Error = new AppError
+                {
+                    Error = error
+                }
+            }
+        };
 
     /// <summary>Wraps a broadcast in an <see cref="AppMessage"/> for injection.</summary>
     /// <param name="broadcast">The broadcast payload to wrap.</param>
     public static AppMessage Broadcast(AppBroadcast broadcast) =>
-        new() { Broadcast = broadcast };
+        new()
+        {
+            Broadcast = broadcast
+        };
 
     /// <summary>A team-chat broadcast, for testing <c>OnTeamChatReceived</c>.</summary>
     /// <param name="steamId">Sender's Steam 64-bit ID.</param>
@@ -122,7 +147,10 @@ public static class MockResponses
             EntityChanged = new AppEntityChanged
             {
                 EntityId = entityId,
-                Payload = new AppEntityPayload { Value = value, Capacity = 0 }
+                Payload = new AppEntityPayload
+                {
+                    Value = value, Capacity = 0
+                }
             }
         };
 
@@ -139,17 +167,20 @@ public static class MockResponses
                 ClanId = clanId,
                 Message = new AppClanMessage
                 {
-                    SteamId = steamId,
-                    Name = name,
-                    Message = message,
-                    Time = 1_700_000_000
+                    SteamId = steamId, Name = name, Message = message, Time = 1_700_000_000
                 }
             }
         };
 
     /// <summary>A clan-changed broadcast, for testing <c>OnClanChanged</c>.</summary>
     public static AppBroadcast ClanChangedBroadcast() =>
-        new() { ClanChanged = new AppClanChanged { ClanInfo = SampleClan() } };
+        new()
+        {
+            ClanChanged = new AppClanChanged
+            {
+                ClanInfo = SampleClan()
+            }
+        };
 
     /// <summary>A camera-rays broadcast, for testing <c>OnCameraRaysReceived</c>.</summary>
     public static AppBroadcast CameraRaysBroadcast() =>
@@ -167,9 +198,18 @@ public static class MockResponses
                     {
                         EntityId = 99,
                         Type = AppCameraRays.EntityType.Player,
-                        Position = new Vector3 { X = 1, Y = 2, Z = 3 },
-                        Rotation = new Vector3 { X = 0, Y = 90, Z = 0 },
-                        Size = new Vector3 { X = 1, Y = 1, Z = 1 },
+                        Position = new Vector3
+                        {
+                            X = 1, Y = 2, Z = 3
+                        },
+                        Rotation = new Vector3
+                        {
+                            X = 0, Y = 90, Z = 0
+                        },
+                        Size = new Vector3
+                        {
+                            X = 1, Y = 1, Z = 1
+                        },
                         Name = "Survivor"
                     }
                 }
@@ -215,10 +255,16 @@ public static class MockResponses
     public static AppEntityInfo SampleSmartSwitch(bool value) => new()
     {
         Type = AppEntityType.Switch,
-        Payload = new AppEntityPayload { Value = value, Capacity = 0 }
+        Payload = new AppEntityPayload
+        {
+            Value = value, Capacity = 0
+        }
     };
 
-    public static AppClanInfo SampleClanInfo() => new() { ClanInfo = SampleClan() };
+    public static AppClanInfo SampleClanInfo() => new()
+    {
+        ClanInfo = SampleClan()
+    };
 
     public static ClanInfo SampleClan() => new()
     {
@@ -250,18 +296,14 @@ public static class MockResponses
         {
             new AppClanMessage
             {
-                SteamId = 76561198000000001,
-                Name = "Tester",
-                Message = "clan chat fixture",
-                Time = 1_700_000_000
+                SteamId = 76561198000000001, Name = "Tester", Message = "clan chat fixture", Time = 1_700_000_000
             }
         }
     };
 
     public static AppNexusAuth SampleNexusAuth() => new()
     {
-        ServerId = "mock-server-id",
-        PlayerToken = 987654321
+        ServerId = "mock-server-id", PlayerToken = 987654321
     };
 
     public static AppCameraInfo SampleCameraInfo() => new()
@@ -340,7 +382,10 @@ public static class MockResponses
             ProtectionExpiry = 0,
             Items =
             {
-                new AppEntityPayload.Item { ItemId = 1, Quantity = 5, ItemIsBlueprint = false }
+                new AppEntityPayload.Item
+                {
+                    ItemId = 1, Quantity = 5, ItemIsBlueprint = false
+                }
             }
         }
     };
@@ -352,7 +397,10 @@ public static class MockResponses
     public static AppEntityInfo SampleAlarm(bool value = false) => new()
     {
         Type = AppEntityType.Alarm,
-        Payload = new AppEntityPayload { Value = value, Capacity = 0 }
+        Payload = new AppEntityPayload
+        {
+            Value = value, Capacity = 0
+        }
     };
 
     /// <summary>

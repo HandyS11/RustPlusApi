@@ -18,12 +18,19 @@ public class EntityClientTests
     /// <param name="request">The incoming request to respond to.</param>
     private static AppMessage? EntityResponder(AppRequest request)
     {
-        var response = new AppResponse { Seq = request.Seq };
+        var response = new AppResponse
+        {
+            Seq = request.Seq
+        };
         if (request.GetEntityInfo is not null)
         {
             response.EntityInfo = MockResponses.SampleSmartSwitch(value: true);
-            return new AppMessage { Response = response };
+            return new AppMessage
+            {
+                Response = response
+            };
         }
+
         if (request.SetEntityValue is not null)
         {
             // SetSmartSwitchValueAsync selects r.Broadcast.EntityChanged.
@@ -32,18 +39,33 @@ public class EntityClientTests
                 Broadcast = MockResponses.SmartSwitchBroadcast((uint)request.EntityId, request.SetEntityValue.Value)
             };
         }
+
         if (request.CheckSubscription is not null)
         {
-            response.Flag = new AppFlag { Value = true };
-            return new AppMessage { Response = response };
+            response.Flag = new AppFlag
+            {
+                Value = true
+            };
+            return new AppMessage
+            {
+                Response = response
+            };
         }
+
         if (request.SendTeamMessage is not null)
         {
             // SendTeamMessageAsync selects r.Broadcast.TeamMessage.Message.ToTeamMessage()
-            return new AppMessage { Broadcast = MockResponses.TeamMessageSendBroadcast(request.PlayerId, request.SendTeamMessage.Message) };
+            return new AppMessage
+            {
+                Broadcast = MockResponses.TeamMessageSendBroadcast(request.PlayerId, request.SendTeamMessage.Message)
+            };
         }
+
         response.Success = new AppSuccess();
-        return new AppMessage { Response = response };
+        return new AppMessage
+        {
+            Response = response
+        };
     }
 
     private static async Task<(MockRustPlusServer, RustPlus)> ConnectEntityAsync()
@@ -80,7 +102,10 @@ public class EntityClientTests
     {
         await using var server = new MockRustPlusServer(req =>
         {
-            var resp = new AppResponse { Seq = req.Seq };
+            var resp = new AppResponse
+            {
+                Seq = req.Seq
+            };
             if (req.GetEntityInfo is not null)
             {
                 resp.EntityInfo = MockResponses.SampleAlarm(value: false);
@@ -90,10 +115,14 @@ public class EntityClientTests
                 resp.Success = new AppSuccess();
             }
 
-            return new AppMessage { Response = resp };
+            return new AppMessage
+            {
+                Response = resp
+            };
         });
         server.Start();
-        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetAlarmInfoAsync(1).WaitAsync(Timeout);
@@ -106,7 +135,10 @@ public class EntityClientTests
     {
         await using var server = new MockRustPlusServer(req =>
         {
-            var resp = new AppResponse { Seq = req.Seq };
+            var resp = new AppResponse
+            {
+                Seq = req.Seq
+            };
             if (req.GetEntityInfo is not null)
             {
                 resp.EntityInfo = MockResponses.SampleStorageMonitor();
@@ -116,10 +148,14 @@ public class EntityClientTests
                 resp.Success = new AppSuccess();
             }
 
-            return new AppMessage { Response = resp };
+            return new AppMessage
+            {
+                Response = resp
+            };
         });
         server.Start();
-        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetStorageMonitorInfoAsync(1).WaitAsync(Timeout);

@@ -28,7 +28,10 @@ public class RustPlusConnectionTests
     {
         var a = new RustPlusConnection("host", 1, 2UL, 3);
         var b = new RustPlusConnection("host", 1, 2UL, 3);
-        var differentToken = a with { PlayerToken = 99 };
+        var differentToken = a with
+        {
+            PlayerToken = 99
+        };
 
         Assert.Equal(a, b);
         Assert.Equal(a.GetHashCode(), b.GetHashCode());

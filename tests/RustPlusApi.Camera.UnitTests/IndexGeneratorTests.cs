@@ -132,7 +132,10 @@ public class IndexGeneratorTests
     {
         // Captures the exact 0/1 stream for seed 1337, killing the divisor mutation.
         var g = new IndexGenerator(1337);
-        foreach (var exp in new int[] { 0, 1, 1, 0, 1, 1, 0, 0, 1, 0 })
+        foreach (var exp in new int[]
+                 {
+                     0, 1, 1, 0, 1, 1, 0, 0, 1, 0
+                 })
         {
             Assert.Equal(exp, g.NextInt(2));
         }

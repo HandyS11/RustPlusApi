@@ -6,13 +6,17 @@ using ProtoGen;
 
 if (args.Length != 3)
 {
-    await Console.Error.WriteLineAsync("usage: ProtoGen <decompiled.cs> <committed.proto> <output.proto>").ConfigureAwait(false);
+    await Console.Error.WriteLineAsync("usage: ProtoGen <decompiled.cs> <committed.proto> <output.proto>")
+        .ConfigureAwait(false);
     return 2;
 }
 
 var (decompiledPath, committedPath, outputPath) = (args[0], args[1], args[2]);
 
-foreach (var (label, path) in new[] { ("decompiled", decompiledPath), ("committed proto", committedPath) })
+foreach (var (label, path) in new[]
+         {
+             ("decompiled", decompiledPath), ("committed proto", committedPath)
+         })
 {
     if (!File.Exists(path))
     {
@@ -23,7 +27,9 @@ foreach (var (label, path) in new[] { ("decompiled", decompiledPath), ("committe
 
 await Console.Error.WriteLineAsync($">> parsing server contracts: {decompiledPath}").ConfigureAwait(false);
 var server = ServerParser.Parse(decompiledPath);
-await Console.Error.WriteLineAsync($">> parsed {server.Messages.Count} messages, {server.Enums.Count} enums (namespace ProtoBuf)").ConfigureAwait(false);
+await Console.Error
+    .WriteLineAsync($">> parsed {server.Messages.Count} messages, {server.Enums.Count} enums (namespace ProtoBuf)")
+    .ConfigureAwait(false);
 
 var committed = CommittedProto.Parse(committedPath);
 

@@ -73,8 +73,7 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
 
         return new Gcm
         {
-            AndroidId = response.AndroidId ?? 0,
-            SecurityToken = response.SecurityToken ?? 0
+            AndroidId = response.AndroidId ?? 0, SecurityToken = response.SecurityToken ?? 0
         };
     }
 
@@ -94,7 +93,10 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
         });
 
         using var content = new StringContent(body, Encoding.UTF8, "application/json");
-        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = content
+        };
         requestMessage.Headers.TryAddWithoutValidation("x-goog-api-key", RegistrationConstants.ApiKey);
         requestMessage.Headers.TryAddWithoutValidation("X-Android-Package", RegistrationConstants.AndroidPackageName);
         requestMessage.Headers.TryAddWithoutValidation("X-Android-Cert", RegistrationConstants.AndroidPackageCert);
@@ -117,7 +119,9 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
     /// <param name="firebaseInstallationToken">Firebase installation auth token from <see cref="InstallAsync"/>.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <exception cref="InvalidOperationException">Thrown when FCM registration fails after multiple attempts.</exception>
-    public async Task<string> RegisterFcmAsync(Gcm gcm, string firebaseInstallationToken, CancellationToken cancellationToken = default)
+    public async Task<string> RegisterFcmAsync(Gcm gcm,
+        string firebaseInstallationToken,
+        CancellationToken cancellationToken = default)
     {
         var form = new Dictionary<string, string>
         {
@@ -151,7 +155,8 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
             var securityToken = gcm.SecurityToken.ToString(CultureInfo.InvariantCulture);
             requestMessage.Headers.TryAddWithoutValidation("Authorization", $"AidLogin {androidId}:{securityToken}");
 
-            using var httpResponse = await _httpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
+            using var httpResponse =
+                await _httpClient.SendAsync(requestMessage, cancellationToken).ConfigureAwait(false);
 #if NET10_0_OR_GREATER
             var responseText = await httpResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 #else
