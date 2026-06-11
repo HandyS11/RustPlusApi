@@ -1,5 +1,6 @@
 using RustPlusApi.MockServer;
 using RustPlusContracts;
+using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using Xunit;
 
@@ -211,5 +212,48 @@ public class SocketErrorTests
             $"Unexpected fault type: {observed.GetType()}");
         // The loop exited through the fault handler instead of dying mid-iteration unobserved.
         await client.SendLoopForTests!.WaitAsync(Timeout);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_AfterSendLoopFault_DoesNotReplayStaleBacklog()
+    {
+        // Requests still queued when the send loop faults have had their waiters failed; replaying
+        // them on a later reconnect would fire stale, out-of-context requests nobody awaits. The
+        // reconnect must drop that backlog before starting the new send loop.
+        var received = new ConcurrentBag<AppRequest>();
+        await using var server = new MockRustPlusServer(req =>
+        {
+            received.Add(req);
+            return MockResponses.Default(req);
+        });
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+        await client.DisconnectAsync();
+
+        // Fault the still-running send loop: a send attempt on the closed socket kills it.
+        var errorTcs = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.ErrorOccurred += (_, ex) => errorTcs.TrySetResult(ex);
+        client.EnqueueRequestForTests(new AppRequest
+        {
+            GetTime = new AppEmpty()
+        });
+        await errorTcs.Task.WaitAsync(Timeout);
+        await client.SendLoopForTests!.WaitAsync(Timeout);
+
+        // With the loop dead, this request parks in the channel as stale backlog.
+        client.EnqueueRequestForTests(new AppRequest
+        {
+            GetTime = new AppEmpty()
+        });
+
+        await client.ConnectAsync().WaitAsync(Timeout);
+        var response = await client.GetInfoAsync().WaitAsync(Timeout);
+
+        // The channel is FIFO: had the backlog survived, the server would have seen the stale
+        // GetTime before answering the GetInfo round-trip above.
+        Assert.True(response.IsSuccess);
+        Assert.DoesNotContain(received, static r => r.GetTime is not null);
     }
 }

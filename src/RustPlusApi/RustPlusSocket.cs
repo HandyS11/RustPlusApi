@@ -224,6 +224,19 @@ public abstract class RustPlusSocket(
                 throw;
             }
 
+            // Anything still queued belongs to the previous connection: its waiters were already
+            // failed (or timed out), so replaying it now would fire stale, out-of-context requests
+            // nobody awaits. Sends cannot race this drain — the connected-state guard rejects
+            // callers until the new socket is published below.
+            // Anything still queued belongs to the previous connection: its waiters were already
+            // failed (or timed out), so replaying it now would fire stale, out-of-context requests
+            // nobody awaits. Sends cannot race this drain — the connected-state guard rejects
+            // callers until the new socket is published below.
+            while (_sendChannel.Reader.TryRead(out _))
+            {
+                // Discard the stale backlog item.
+            }
+
             _webSocket = webSocket;
 
             // The background loops outlive the connect call, so they track the instance token only.
