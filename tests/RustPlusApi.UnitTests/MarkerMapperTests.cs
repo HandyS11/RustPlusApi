@@ -70,10 +70,7 @@ public class MarkerMapperTests
         // PriceMultiplier left default => ShouldSerializePriceMultiplier() is false => null.
         var order = new SellOrder
         {
-            ItemId = 9,
-            Quantity = 1,
-            CostPerItem = 1,
-            AmountInStock = 1
+            ItemId = 9, Quantity = 1, CostPerItem = 1, AmountInStock = 1
         };
         var item = order.ToVendingMachineItem();
         Assert.Null(item.PriceMultiplier);

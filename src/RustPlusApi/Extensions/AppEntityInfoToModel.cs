@@ -65,9 +65,7 @@ public static class AppEntityInfoToModel
     {
         return new StorageMonitorItemInfo
         {
-            Id = item.ItemId,
-            Quantity = item.Quantity,
-            IsItemBlueprint = item.ItemIsBlueprint,
+            Id = item.ItemId, Quantity = item.Quantity, IsItemBlueprint = item.ItemIsBlueprint,
         };
     }
 

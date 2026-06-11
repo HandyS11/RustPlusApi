@@ -33,9 +33,7 @@ public class TeamInfoMapperTests
             {
                 new AppTeamInfo.Note
                 {
-                    Type = 0,
-                    X = 1,
-                    Y = 2
+                    Type = 0, X = 1, Y = 2
                 },
                 new AppTeamInfo.Note
                 {
@@ -101,8 +99,7 @@ public class TeamInfoMapperTests
             {
                 new AppTeamInfo.Note
                 {
-                    Type = 1,
-                    Label = "x"
+                    Type = 1, Label = "x"
                 }
             }
         };

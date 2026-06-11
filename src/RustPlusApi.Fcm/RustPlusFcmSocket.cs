@@ -47,8 +47,7 @@ public abstract class RustPlusFcmSocket(
         ? new RustPlusFcmSocketOptions()
         : new()
         {
-            HeartbeatInterval = options.HeartbeatInterval,
-            InactivityTimeout = options.InactivityTimeout,
+            HeartbeatInterval = options.HeartbeatInterval, InactivityTimeout = options.InactivityTimeout,
         };
 
     /// <summary>The client's logger; <c>NullLogger</c> when no factory was supplied.
@@ -79,8 +78,7 @@ public abstract class RustPlusFcmSocket(
 
     private readonly JsonSerializerOptions _parsingOptions = new()
     {
-        PropertyNameCaseInsensitive = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        PropertyNameCaseInsensitive = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     /// <summary>
@@ -180,8 +178,7 @@ public abstract class RustPlusFcmSocket(
                 {
                     new Setting
                     {
-                        Name = "new_vc",
-                        Value = "1"
+                        Name = "new_vc", Value = "1"
                     }
                 },
                 ClientEvents =
@@ -498,8 +495,7 @@ public abstract class RustPlusFcmSocket(
             {
                 await OnMessageAsync(new MessageEventArgs
                 {
-                    Tag = messageTag,
-                    Object = Activator.CreateInstance(type)
+                    Tag = messageTag, Object = Activator.CreateInstance(type)
                 }).ConfigureAwait(false);
                 return;
             }
@@ -511,8 +507,7 @@ public abstract class RustPlusFcmSocket(
 
             await OnMessageAsync(new MessageEventArgs
             {
-                Tag = messageTag,
-                Object = message
+                Tag = messageTag, Object = message
             }).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -642,9 +637,7 @@ public abstract class RustPlusFcmSocket(
         Logger.LogRespondingToPing(ping.StreamId, ping.LastStreamIdReceived, ping.Status);
         var pingResponse = new HeartbeatAck
         {
-            StreamId = (ping.StreamId ?? 0) + 1,
-            LastStreamIdReceived = ping.StreamId,
-            Status = ping.Status
+            StreamId = (ping.StreamId ?? 0) + 1, LastStreamIdReceived = ping.StreamId, Status = ping.Status
         };
 
         await SendPacketAsync(pingResponse).ConfigureAwait(false);

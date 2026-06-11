@@ -73,8 +73,7 @@ public static class AppTeamInfoToModel
     {
         return new DeathNote
         {
-            X = note.X,
-            Y = note.Y,
+            X = note.X, Y = note.Y,
         };
     }
 

@@ -17,8 +17,7 @@ public class FcmSocketTeardownTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 1
+                AndroidId = 1, SecurityToken = 1
             }
         });
 

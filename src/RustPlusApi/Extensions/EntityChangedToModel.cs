@@ -12,8 +12,7 @@ public static class EntityChangedToModel
     {
         return new SmartSwitchEventArg
         {
-            Id = entityChanged.EntityId,
-            IsActive = entityChanged.Payload.Value
+            Id = entityChanged.EntityId, IsActive = entityChanged.Payload.Value
         };
     }
 

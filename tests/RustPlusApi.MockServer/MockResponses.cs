@@ -149,8 +149,7 @@ public static class MockResponses
                 EntityId = entityId,
                 Payload = new AppEntityPayload
                 {
-                    Value = value,
-                    Capacity = 0
+                    Value = value, Capacity = 0
                 }
             }
         };
@@ -168,10 +167,7 @@ public static class MockResponses
                 ClanId = clanId,
                 Message = new AppClanMessage
                 {
-                    SteamId = steamId,
-                    Name = name,
-                    Message = message,
-                    Time = 1_700_000_000
+                    SteamId = steamId, Name = name, Message = message, Time = 1_700_000_000
                 }
             }
         };
@@ -204,21 +200,15 @@ public static class MockResponses
                         Type = AppCameraRays.EntityType.Player,
                         Position = new Vector3
                         {
-                            X = 1,
-                            Y = 2,
-                            Z = 3
+                            X = 1, Y = 2, Z = 3
                         },
                         Rotation = new Vector3
                         {
-                            X = 0,
-                            Y = 90,
-                            Z = 0
+                            X = 0, Y = 90, Z = 0
                         },
                         Size = new Vector3
                         {
-                            X = 1,
-                            Y = 1,
-                            Z = 1
+                            X = 1, Y = 1, Z = 1
                         },
                         Name = "Survivor"
                     }
@@ -267,8 +257,7 @@ public static class MockResponses
         Type = AppEntityType.Switch,
         Payload = new AppEntityPayload
         {
-            Value = value,
-            Capacity = 0
+            Value = value, Capacity = 0
         }
     };
 
@@ -307,18 +296,14 @@ public static class MockResponses
         {
             new AppClanMessage
             {
-                SteamId = 76561198000000001,
-                Name = "Tester",
-                Message = "clan chat fixture",
-                Time = 1_700_000_000
+                SteamId = 76561198000000001, Name = "Tester", Message = "clan chat fixture", Time = 1_700_000_000
             }
         }
     };
 
     public static AppNexusAuth SampleNexusAuth() => new()
     {
-        ServerId = "mock-server-id",
-        PlayerToken = 987654321
+        ServerId = "mock-server-id", PlayerToken = 987654321
     };
 
     public static AppCameraInfo SampleCameraInfo() => new()
@@ -399,9 +384,7 @@ public static class MockResponses
             {
                 new AppEntityPayload.Item
                 {
-                    ItemId = 1,
-                    Quantity = 5,
-                    ItemIsBlueprint = false
+                    ItemId = 1, Quantity = 5, ItemIsBlueprint = false
                 }
             }
         }
@@ -416,8 +399,7 @@ public static class MockResponses
         Type = AppEntityType.Alarm,
         Payload = new AppEntityPayload
         {
-            Value = value,
-            Capacity = 0
+            Value = value, Capacity = 0
         }
     };
 

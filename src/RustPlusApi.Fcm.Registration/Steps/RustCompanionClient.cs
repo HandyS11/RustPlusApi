@@ -26,10 +26,7 @@ public sealed class RustCompanionClient(HttpClient? httpClient = null)
     {
         var body = JsonSerializer.Serialize(new
         {
-            AuthToken = steamAuthToken,
-            DeviceId = deviceId,
-            PushKind = 3,
-            PushToken = expoPushToken
+            AuthToken = steamAuthToken, DeviceId = deviceId, PushKind = 3, PushToken = expoPushToken
         });
 
         using var content = new StringContent(body, Encoding.UTF8, "application/json");

@@ -12,8 +12,7 @@ public class FcmLoggingTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 1
+                AndroidId = 1, SecurityToken = 1
             }
         };
 
@@ -74,8 +73,7 @@ public class FcmLoggingTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 1
+                AndroidId = 1, SecurityToken = 1
             }
         }, loggerFactory: loggerFactory)
     {

@@ -28,8 +28,7 @@ public class FcmSocketFramingTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 1
+                AndroidId = 1, SecurityToken = 1
             }
         };
 
@@ -121,8 +120,7 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification()),
             NextFrame(McsProtoTag.KHeartbeatPingTag, new HeartbeatPing
             {
-                StreamId = 1,
-                Status = 0
+                StreamId = 1, Status = 0
             }),
             NextFrame(McsProtoTag.KCloseTag, new Close())));
 
@@ -204,13 +202,11 @@ public class FcmSocketFramingTests
             {
                 new AppData
                 {
-                    Key = "channelId",
-                    Value = "pairing"
+                    Key = "channelId", Value = "pairing"
                 },
                 new AppData
                 {
-                    Key = "body",
-                    Value = body
+                    Key = "body", Value = body
                 },
             }
         };
@@ -247,8 +243,7 @@ public class FcmSocketFramingTests
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
             NextFrame(McsProtoTag.KHeartbeatPingTag, new HeartbeatPing
             {
-                StreamId = 7,
-                Status = 0
+                StreamId = 7, Status = 0
             }),
             NextFrame(McsProtoTag.KCloseTag, new Close())));
 
@@ -334,8 +329,7 @@ public class FcmSocketFramingTests
             {
                 new AppData
                 {
-                    Key = "body",
-                    Value = "{}"
+                    Key = "body", Value = "{}"
                 }
             } // no channelId
         };
@@ -365,8 +359,7 @@ public class FcmSocketFramingTests
             {
                 new AppData
                 {
-                    Key = "channelId",
-                    Value = "pairing"
+                    Key = "channelId", Value = "pairing"
                 }
             } // no body
         };
@@ -421,13 +414,11 @@ public class FcmSocketFramingTests
             {
                 new AppData
                 {
-                    Key = "channelId",
-                    Value = "pairing"
+                    Key = "channelId", Value = "pairing"
                 },
                 new AppData
                 {
-                    Key = "body",
-                    Value = longBody
+                    Key = "body", Value = longBody
                 },
             }
         };
@@ -539,38 +530,31 @@ public class FcmSocketFramingTests
             {
                 new AppData
                 {
-                    Key = "channelId",
-                    Value = "pairing"
+                    Key = "channelId", Value = "pairing"
                 },
                 new AppData
                 {
-                    Key = "body",
-                    Value = "{}"
+                    Key = "body", Value = "{}"
                 },
                 new AppData
                 {
-                    Key = "title",
-                    Value = "Test Title"
+                    Key = "title", Value = "Test Title"
                 },
                 new AppData
                 {
-                    Key = "projectId",
-                    Value = "00000000-0000-0000-0000-000000000001"
+                    Key = "projectId", Value = "00000000-0000-0000-0000-000000000001"
                 },
                 new AppData
                 {
-                    Key = "experienceId",
-                    Value = "@scope/exp"
+                    Key = "experienceId", Value = "@scope/exp"
                 },
                 new AppData
                 {
-                    Key = "scopeKey",
-                    Value = "myScope"
+                    Key = "scopeKey", Value = "myScope"
                 },
                 new AppData
                 {
-                    Key = "message",
-                    Value = "hello world"
+                    Key = "message", Value = "hello world"
                 },
             }
         };
@@ -611,13 +595,11 @@ public class FcmSocketFramingTests
             {
                 new AppData
                 {
-                    Key = "channelId",
-                    Value = "pairing"
+                    Key = "channelId", Value = "pairing"
                 },
                 new AppData
                 {
-                    Key = "body",
-                    Value = "{}"
+                    Key = "body", Value = "{}"
                 },
             }
         };
@@ -653,13 +635,11 @@ public class FcmSocketFramingTests
             {
                 new AppData
                 {
-                    Key = "channelId",
-                    Value = "pairing"
+                    Key = "channelId", Value = "pairing"
                 },
                 new AppData
                 {
-                    Key = "body",
-                    Value = "{}"
+                    Key = "body", Value = "{}"
                 },
             }
         };
@@ -877,13 +857,11 @@ public class FcmSocketFramingTests
             {
                 new AppData
                 {
-                    Key = "channelId",
-                    Value = "pairing"
+                    Key = "channelId", Value = "pairing"
                 },
                 new AppData
                 {
-                    Key = "body",
-                    Value = lowerCaseBody
+                    Key = "body", Value = lowerCaseBody
                 },
             }
         };

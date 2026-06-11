@@ -88,9 +88,7 @@ internal sealed class ServerParser
         var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
         _messages[qualified] = new Message
         {
-            QualifiedName = qualified,
-            SimpleName = simple,
-            ParentQualifiedName = parentQualified
+            QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified
         };
         Register(simple, qualified);
 
@@ -109,9 +107,7 @@ internal sealed class ServerParser
         var qualified = parentQualified is null ? simple : $"{parentQualified}.{simple}";
         var def = new EnumDef
         {
-            QualifiedName = qualified,
-            SimpleName = simple,
-            ParentQualifiedName = parentQualified
+            QualifiedName = qualified, SimpleName = simple, ParentQualifiedName = parentQualified
         };
         var next = 0;
         foreach (var m in en.Members)
@@ -233,10 +229,7 @@ internal sealed class ServerParser
             var protoType = ResolveProtoType(d.Repeated ? d.Element : d.CsType, readMethod, qualified);
             msg.Fields.Add(new Field
             {
-                Name = fieldName,
-                Number = number,
-                ProtoType = protoType,
-                Repeated = d.Repeated,
+                Name = fieldName, Number = number, ProtoType = protoType, Repeated = d.Repeated,
             });
         }
     }

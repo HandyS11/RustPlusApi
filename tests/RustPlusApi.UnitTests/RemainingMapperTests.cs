@@ -14,9 +14,7 @@ public class RemainingMapperTests
         var map = MockResponses.SampleMap();
         map.Monuments.Add(new AppMap.Monument
         {
-            Token = "cave",
-            X = 1,
-            Y = 2
+            Token = "cave", X = 1, Y = 2
         });
 
         var model = map.ToServerMap();
@@ -70,8 +68,7 @@ public class RemainingMapperTests
                 {
                     new AppEntityPayload.Item
                     {
-                        ItemId = 1,
-                        Quantity = 2
+                        ItemId = 1, Quantity = 2
                     }
                 }
             }
@@ -164,10 +161,7 @@ public class RemainingMapperTests
     {
         var proto = new AppClanMessage
         {
-            SteamId = 1,
-            Name = "D",
-            Message = "hey",
-            Time = 1_700_000_000
+            SteamId = 1, Name = "D", Message = "hey", Time = 1_700_000_000
         };
         var msg = proto.ToClanMessage();
         Assert.Equal(1ul, msg.SteamId);
@@ -183,10 +177,7 @@ public class RemainingMapperTests
             ClanId = 42,
             Message = new AppClanMessage
             {
-                SteamId = 7,
-                Name = "Eve",
-                Message = "sup",
-                Time = 1_600_000_000
+                SteamId = 7, Name = "Eve", Message = "sup", Time = 1_600_000_000
             }
         };
 

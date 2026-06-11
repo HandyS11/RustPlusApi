@@ -26,9 +26,7 @@ public class McsRoundTripTests
     {
         var result = RoundTrip(new HeartbeatPing
         {
-            StreamId = 5,
-            LastStreamIdReceived = 4,
-            Status = 1
+            StreamId = 5, LastStreamIdReceived = 4, Status = 1
         });
 
         Assert.Equal(5, result.StreamId);
@@ -62,14 +60,12 @@ public class McsRoundTripTests
             {
                 new Setting
                 {
-                    Name = "new_vc",
-                    Value = "1"
+                    Name = "new_vc", Value = "1"
                 }
             },
             ReceivedPersistentIds =
             {
-                "abc",
-                "def"
+                "abc", "def"
             }
         };
 
@@ -96,13 +92,11 @@ public class McsRoundTripTests
             {
                 new AppData
                 {
-                    Key = "channelId",
-                    Value = "rust"
+                    Key = "channelId", Value = "rust"
                 },
                 new AppData
                 {
-                    Key = "body",
-                    Value = "{}"
+                    Key = "body", Value = "{}"
                 }
             }
         };

@@ -11,8 +11,7 @@ public class EntityInfoMapperTests
     private static AppEntityInfo Entity(AppEntityType type, AppEntityPayload payload) =>
         new()
         {
-            Type = type,
-            Payload = payload
+            Type = type, Payload = payload
         };
 
     [Fact]
@@ -57,9 +56,7 @@ public class EntityInfoMapperTests
             {
                 new AppEntityPayload.Item
                 {
-                    ItemId = 1,
-                    Quantity = 5,
-                    ItemIsBlueprint = true
+                    ItemId = 1, Quantity = 5, ItemIsBlueprint = true
                 }
             }
         };

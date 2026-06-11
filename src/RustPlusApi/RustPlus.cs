@@ -168,8 +168,7 @@ public class RustPlus(
     {
         var request = new AppRequest
         {
-            EntityId = entityId,
-            GetEntityInfo = new AppEmpty()
+            EntityId = entityId, GetEntityInfo = new AppEmpty()
         };
         return await ProcessRequestAsync(request, selector, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -185,8 +184,7 @@ public class RustPlus(
     {
         var request = new AppRequest
         {
-            CheckSubscription = new AppEmpty(),
-            EntityId = alarmId
+            CheckSubscription = new AppEmpty(), EntityId = alarmId
         };
         return await ProcessRequestAsync<SubscriptionInfo?>(
             request,
@@ -334,8 +332,7 @@ public class RustPlus(
                 Buttons = (int)buttons,
                 MouseDelta = new Vector2
                 {
-                    X = mouseDeltaX,
-                    Y = mouseDeltaY
+                    X = mouseDeltaX, Y = mouseDeltaY
                 }
             }
         };

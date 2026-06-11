@@ -25,9 +25,7 @@ public class FcmRegistrationTests
                 using var ms = new MemoryStream();
                 Serializer.Serialize(ms, new AndroidCheckinResponse
                 {
-                    StatsOk = true,
-                    AndroidId = 9,
-                    SecurityToken = 8
+                    StatsOk = true, AndroidId = 9, SecurityToken = 8
                 });
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
@@ -86,8 +84,7 @@ public class FcmRegistrationTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 1
+                AndroidId = 1, SecurityToken = 1
             },
             ExpoPushToken = null
         };

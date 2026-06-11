@@ -17,8 +17,7 @@ public class CredentialsStoreFileTests
             {
                 Gcm = new Gcm
                 {
-                    AndroidId = 1,
-                    SecurityToken = 2
+                    AndroidId = 1, SecurityToken = 2
                 },
                 Fcm = new FcmToken
                 {
@@ -55,8 +54,7 @@ public class CredentialsStoreFileTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 7,
-                SecurityToken = 3
+                AndroidId = 7, SecurityToken = 3
             }
         };
 

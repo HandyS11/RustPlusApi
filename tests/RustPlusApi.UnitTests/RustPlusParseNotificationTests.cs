@@ -55,8 +55,7 @@ public class RustPlusParseNotificationTests
                 EntityId = 42,
                 Payload = new AppEntityPayload
                 {
-                    Value = true,
-                    Capacity = 0
+                    Value = true, Capacity = 0
                 }
             }
         };
@@ -81,8 +80,7 @@ public class RustPlusParseNotificationTests
                 EntityId = 1,
                 Payload = new AppEntityPayload
                 {
-                    Value = true,
-                    Capacity = 0
+                    Value = true, Capacity = 0
                 }
             }
         };
@@ -104,8 +102,7 @@ public class RustPlusParseNotificationTests
                 EntityId = 2,
                 Payload = new AppEntityPayload
                 {
-                    Value = false,
-                    Capacity = 48
+                    Value = false, Capacity = 48
                 } // Capacity != 0 → storage monitor
             }
         };
@@ -152,10 +149,7 @@ public class RustPlusParseNotificationTests
                 ClanId = 42,
                 Message = new AppClanMessage
                 {
-                    SteamId = 76561198000000001,
-                    Name = "Bob",
-                    Message = "clan chat",
-                    Time = 1_700_000_000
+                    SteamId = 76561198000000001, Name = "Bob", Message = "clan chat", Time = 1_700_000_000
                 }
             }
         };
@@ -176,8 +170,7 @@ public class RustPlusParseNotificationTests
             {
                 ClanInfo = new ClanInfo
                 {
-                    ClanId = 1,
-                    Name = "TestClan"
+                    ClanId = 1, Name = "TestClan"
                 }
             }
         };
@@ -196,10 +189,7 @@ public class RustPlusParseNotificationTests
         {
             CameraRays = new AppCameraRays
             {
-                VerticalFov = 65f,
-                SampleOffset = 0,
-                RayData = [0, 1, 2],
-                Distance = 50f
+                VerticalFov = 65f, SampleOffset = 0, RayData = [0, 1, 2], Distance = 50f
             }
         };
 
@@ -234,8 +224,7 @@ public class RustPlusParseNotificationTests
         {
             Response = new AppResponse
             {
-                Seq = 1,
-                Success = new AppSuccess()
+                Seq = 1, Success = new AppSuccess()
                 // Error is null
             }
         };

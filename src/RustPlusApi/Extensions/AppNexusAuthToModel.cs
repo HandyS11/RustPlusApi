@@ -12,8 +12,7 @@ public static class AppNexusAuthToModel
     {
         return new NexusAuth
         {
-            ServerId = appNexusAuth.ServerId,
-            PlayerToken = appNexusAuth.PlayerToken
+            ServerId = appNexusAuth.ServerId, PlayerToken = appNexusAuth.PlayerToken
         };
     }
 }

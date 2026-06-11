@@ -50,9 +50,7 @@ public class RegistrationTests
     {
         var response = new AndroidCheckinResponse
         {
-            StatsOk = true,
-            AndroidId = 1234567890123UL,
-            SecurityToken = 9876543210987UL
+            StatsOk = true, AndroidId = 1234567890123UL, SecurityToken = 9876543210987UL
         };
 
         using var stream = new MemoryStream();
@@ -86,8 +84,7 @@ public class RegistrationTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 42,
-                SecurityToken = 7
+                AndroidId = 42, SecurityToken = 7
             },
             Fcm = new FcmToken
             {
@@ -112,9 +109,7 @@ public class RegistrationTests
             PlayerToken = 123456789,
             Data = new ServerEvent
             {
-                Ip = "1.2.3.4",
-                Port = 28083,
-                Name = "My Server"
+                Ip = "1.2.3.4", Port = 28083, Name = "My Server"
             }
         };
 
@@ -162,8 +157,7 @@ public class RegistrationTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 1
+                AndroidId = 1, SecurityToken = 1
             }
         };
 

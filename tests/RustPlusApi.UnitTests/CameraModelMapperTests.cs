@@ -23,10 +23,7 @@ public class CameraModelMapperTests
     {
         var rays = new AppCameraRays
         {
-            VerticalFov = 90f,
-            SampleOffset = 1,
-            Distance = 50f,
-            RayData = null
+            VerticalFov = 90f, SampleOffset = 1, Distance = 50f, RayData = null
         };
 
         var frame = rays.ToCameraFrame();
@@ -48,15 +45,11 @@ public class CameraModelMapperTests
             TimeOfDay = 0.5f,
             CameraPosition = new ProtoVector3
             {
-                X = 1,
-                Y = 2,
-                Z = 3
+                X = 1, Y = 2, Z = 3
             },
             CameraRotation = new ProtoVector3
             {
-                X = 4,
-                Y = 5,
-                Z = 6
+                X = 4, Y = 5, Z = 6
             }
         };
 
@@ -72,10 +65,7 @@ public class CameraModelMapperTests
     {
         var rays = new AppCameraRays
         {
-            VerticalFov = 90f,
-            SampleOffset = 1,
-            Distance = 50f,
-            RayData = null
+            VerticalFov = 90f, SampleOffset = 1, Distance = 50f, RayData = null
         };
 
         var frame = rays.ToCameraRaysEvent();
@@ -96,15 +86,11 @@ public class CameraModelMapperTests
             TimeOfDay = 0.75f,
             CameraPosition = new ProtoVector3
             {
-                X = 10,
-                Y = 20,
-                Z = 30
+                X = 10, Y = 20, Z = 30
             },
             CameraRotation = new ProtoVector3
             {
-                X = 1,
-                Y = 2,
-                Z = 3
+                X = 1, Y = 2, Z = 3
             }
         };
 

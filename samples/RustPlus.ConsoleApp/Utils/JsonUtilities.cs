@@ -7,8 +7,7 @@ internal static class JsonUtilities
 {
     public static readonly JsonSerializerOptions JsonOptions = new()
     {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        WriteIndented = true
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, WriteIndented = true
     };
 
     public static readonly JsonSerializerOptions JsonConfigOptions = new()

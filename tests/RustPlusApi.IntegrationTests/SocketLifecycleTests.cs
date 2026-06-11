@@ -149,8 +149,7 @@ public class SocketLifecycleTests
                 EntityId = 5,
                 Payload = new AppEntityPayload
                 {
-                    Capacity = 24,
-                    Value = false
+                    Capacity = 24, Value = false
                 }
             }
         });
@@ -221,10 +220,7 @@ public class SocketLifecycleTests
             await using var request = new MemoryStream();
             Serializer.Serialize(request, new AppRequest
             {
-                Seq = 1,
-                PlayerId = PlayerId,
-                PlayerToken = PlayerToken,
-                GetInfo = new AppEmpty()
+                Seq = 1, PlayerId = PlayerId, PlayerToken = PlayerToken, GetInfo = new AppEmpty()
             });
             await peer.SendAsync(request.ToArray(), WebSocketMessageType.Binary, true, CancellationToken.None)
                 .WaitAsync(Timeout);

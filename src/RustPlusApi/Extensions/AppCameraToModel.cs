@@ -93,9 +93,7 @@ public static class AppCameraToModel
 
         return new Vector3
         {
-            X = vector.X,
-            Y = vector.Y,
-            Z = vector.Z
+            X = vector.X, Y = vector.Y, Z = vector.Z
         };
     }
 }

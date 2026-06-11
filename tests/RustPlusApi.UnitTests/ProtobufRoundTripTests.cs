@@ -47,8 +47,7 @@ public class ProtobufRoundTripTests
         {
             Response = new AppResponse
             {
-                Seq = 3,
-                Info = MockResponses.SampleInfo()
+                Seq = 3, Info = MockResponses.SampleInfo()
             }
         };
 
@@ -90,10 +89,7 @@ public class ProtobufRoundTripTests
         };
         var withoutMotd = new ClanInfo
         {
-            ClanId = 1,
-            Name = "c",
-            Created = 0,
-            Creator = 0
+            ClanId = 1, Name = "c", Created = 0, Creator = 0
         };
 
         Assert.True(RoundTrip(withMotd).ShouldSerializeMotd());

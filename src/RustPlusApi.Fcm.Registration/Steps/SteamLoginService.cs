@@ -169,9 +169,7 @@ public sealed class SteamLoginService(int port = 3000)
     {
         var payload = JsonSerializer.Serialize(new
         {
-            id,
-            method,
-            @params = parameters
+            id, method, @params = parameters
         });
         var bytes = Encoding.UTF8.GetBytes(payload);
         await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cancellationToken)

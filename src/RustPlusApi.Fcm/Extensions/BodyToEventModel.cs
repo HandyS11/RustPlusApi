@@ -19,9 +19,7 @@ public static class BodyToEventModel
     {
         return new EntityEvent
         {
-            EntityType = body.EntityType,
-            EntityId = body.EntityId,
-            EntityName = body.EntityName
+            EntityType = body.EntityType, EntityId = body.EntityId, EntityName = body.EntityName
         };
     }
 

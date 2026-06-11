@@ -10,10 +10,7 @@ public class ClanInfoPresenceTests
 {
     private static ProtoClanInfo Minimal() => new()
     {
-        ClanId = 1,
-        Name = "c",
-        Created = 0,
-        Creator = 0
+        ClanId = 1, Name = "c", Created = 0, Creator = 0
     };
 
     [Fact]
@@ -56,14 +53,11 @@ public class ClanInfoPresenceTests
     {
         var setTrue = new ProtoClanInfo.Role
         {
-            RoleId = 1,
-            Name = "r",
-            CanAccessScoreEvents = true
+            RoleId = 1, Name = "r", CanAccessScoreEvents = true
         };
         var unset = new ProtoClanInfo.Role
         {
-            RoleId = 2,
-            Name = "r"
+            RoleId = 2, Name = "r"
         };
         Assert.True(setTrue.ToClanRole().CanAccessScoreEvents);
         Assert.False(unset.ToClanRole().CanAccessScoreEvents);
@@ -74,9 +68,7 @@ public class ClanInfoPresenceTests
     {
         var withOpts = new ProtoClanInfo.Member
         {
-            SteamId = 1,
-            Notes = "hi",
-            Online = true
+            SteamId = 1, Notes = "hi", Online = true
         };
         var without = new ProtoClanInfo.Member
         {
@@ -93,9 +85,7 @@ public class ClanInfoPresenceTests
     {
         var invite = new ProtoClanInfo.Invite
         {
-            SteamId = 1,
-            Recruiter = 2,
-            Timestamp = 1_700_000_000
+            SteamId = 1, Recruiter = 2, Timestamp = 1_700_000_000
         };
         var model = invite.ToClanInvite();
         Assert.Equal(1ul, model.SteamId);

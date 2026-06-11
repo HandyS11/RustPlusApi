@@ -17,9 +17,7 @@ public class AndroidFcmRegisterTests
         using var ms = new MemoryStream();
         Serializer.Serialize(ms, new AndroidCheckinResponse
         {
-            StatsOk = true,
-            AndroidId = androidId,
-            SecurityToken = securityToken
+            StatsOk = true, AndroidId = androidId, SecurityToken = securityToken
         });
         return ms.ToArray();
     }
@@ -122,8 +120,7 @@ public class AndroidFcmRegisterTests
         var token = await register.RegisterFcmAsync(
             new RustPlusApi.Fcm.Data.Gcm
             {
-                AndroidId = 42,
-                SecurityToken = 99
+                AndroidId = 42, SecurityToken = 99
             }, "fis-auth-token");
 
         Assert.Equal("the-fcm-token", token);
@@ -168,8 +165,7 @@ public class AndroidFcmRegisterTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             register.RegisterFcmAsync(new RustPlusApi.Fcm.Data.Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 2
+                AndroidId = 1, SecurityToken = 2
             }, "fis"));
         Assert.Equal(5, handler.Requests.Count); // five attempts
     }
@@ -186,8 +182,7 @@ public class AndroidFcmRegisterTests
 
         var token = await register.RegisterFcmAsync(new RustPlusApi.Fcm.Data.Gcm
         {
-            AndroidId = 1,
-            SecurityToken = 2
+            AndroidId = 1, SecurityToken = 2
         }, "fis");
 
         Assert.Equal("ok", token);
@@ -325,8 +320,7 @@ public class AndroidFcmRegisterTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             register.RegisterFcmAsync(new RustPlusApi.Fcm.Data.Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 2
+                AndroidId = 1, SecurityToken = 2
             }, "fis"));
         Assert.False(string.IsNullOrEmpty(ex.Message));
         Assert.Contains("attempts", ex.Message, StringComparison.OrdinalIgnoreCase);

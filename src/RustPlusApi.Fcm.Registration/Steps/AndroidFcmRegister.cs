@@ -73,8 +73,7 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
 
         return new Gcm
         {
-            AndroidId = response.AndroidId ?? 0,
-            SecurityToken = response.SecurityToken ?? 0
+            AndroidId = response.AndroidId ?? 0, SecurityToken = response.SecurityToken ?? 0
         };
     }
 

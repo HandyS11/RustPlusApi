@@ -35,8 +35,7 @@ public class FcmSocketLifecycleTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 1
+                AndroidId = 1, SecurityToken = 1
             }
         });
 
@@ -139,8 +138,7 @@ public class FcmSocketLifecycleTests
         // A healthy connection (recent traffic) must emit client-initiated HeartbeatPing frames.
         var options = new RustPlusFcmSocketOptions
         {
-            HeartbeatInterval = TimeSpan.FromMilliseconds(30),
-            InactivityTimeout = TimeSpan.FromSeconds(30)
+            HeartbeatInterval = TimeSpan.FromMilliseconds(30), InactivityTimeout = TimeSpan.FromSeconds(30)
         };
         await using var socket = new OptionsSocket(options);
         await using var transport = new SignalingMemoryStream();
@@ -168,8 +166,7 @@ public class FcmSocketLifecycleTests
         // connection dead, raise ErrorOccurred with a TimeoutException, and disconnect.
         var options = new RustPlusFcmSocketOptions
         {
-            HeartbeatInterval = TimeSpan.FromMilliseconds(30),
-            InactivityTimeout = TimeSpan.FromMilliseconds(1)
+            HeartbeatInterval = TimeSpan.FromMilliseconds(30), InactivityTimeout = TimeSpan.FromMilliseconds(1)
         };
         await using var socket = new OptionsSocket(options);
         await using var transport = new MemoryStream();
@@ -198,8 +195,7 @@ public class FcmSocketLifecycleTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 1
+                AndroidId = 1, SecurityToken = 1
             }
         }, options: options);
 
@@ -237,8 +233,7 @@ public class FcmSocketLifecycleTests
         {
             Gcm = new Gcm
             {
-                AndroidId = 1,
-                SecurityToken = 1
+                AndroidId = 1, SecurityToken = 1
             }
         };
         var spy = new SpySocket(creds);

@@ -12,9 +12,7 @@ public class FcmExtensionMapperTests
     {
         var body = new Body
         {
-            EntityType = 1,
-            EntityId = 42,
-            EntityName = "Switch"
+            EntityType = 1, EntityId = 42, EntityName = "Switch"
         };
         var ev = body.ToEntityEvent();
         Assert.Equal(1, ev.EntityType);
@@ -28,10 +26,7 @@ public class FcmExtensionMapperTests
     {
         var body = new Body
         {
-            Id = Guid.Empty,
-            Ip = "1.2.3.4",
-            Port = 28083,
-            EntityName = null
+            Id = Guid.Empty, Ip = "1.2.3.4", Port = 28083, EntityName = null
         };
         var ev = body.ToServerEvent();
         Assert.Equal(string.Empty, ev.Name);
@@ -44,9 +39,7 @@ public class FcmExtensionMapperTests
     {
         var body = new Body
         {
-            EntityName = "My Server",
-            Ip = "1.2.3.4",
-            Port = 1
+            EntityName = "My Server", Ip = "1.2.3.4", Port = 1
         };
         Assert.Equal("My Server", body.ToServerEvent().Name);
     }
@@ -56,8 +49,7 @@ public class FcmExtensionMapperTests
     {
         var data = new MessageData
         {
-            Title = "Base attacked",
-            Message = "Door opened"
+            Title = "Base attacked", Message = "Door opened"
         };
         var ev = data.ToAlarmEvent();
         Assert.Equal("Base attacked", ev.Title);
