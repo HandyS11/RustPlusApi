@@ -209,6 +209,63 @@ public class EntityClientTests
         Assert.True(response.IsSuccess);
     }
 
+    /// <summary>
+    /// The live server acknowledges <c>setEntityValue</c> with an immediate seq-correlated
+    /// <c>success {}</c>; the EntityChanged broadcast follows separately — and not at all when the
+    /// state did not change. The request must resolve from the ack with the requested state
+    /// instead of crashing on a broadcast that is not there.
+    /// </summary>
+    [Fact]
+    public async Task SetSmartSwitchValueAsync_SuccessAckReply_ReturnsRequestedState()
+    {
+        await using var server = new MockRustPlusServer(static req => req.SetEntityValue is not null
+            ? new AppMessage
+            {
+                Response = new AppResponse
+                {
+                    Seq = req.Seq, Success = new AppSuccess()
+                }
+            }
+            : MockResponses.Default(req));
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        var response = await client.SetSmartSwitchValueAsync(42, true).WaitAsync(Timeout);
+
+        Assert.True(response.IsSuccess);
+        Assert.True(response.Data!.IsActive);
+    }
+
+    /// <summary>
+    /// The live repro behind the sample's "Strobe Smart Switch" crash: both flips resolve from
+    /// success acks (no EntityChanged broadcast in sight) and must report the final state.
+    /// </summary>
+    [Fact]
+    public async Task StrobeSmartSwitchAsync_SuccessAckReplies_CompletesWithFinalState()
+    {
+        await using var server = new MockRustPlusServer(static req => req.SetEntityValue is not null
+            ? new AppMessage
+            {
+                Response = new AppResponse
+                {
+                    Seq = req.Seq, Success = new AppSuccess()
+                }
+            }
+            : MockResponses.Default(req));
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        var response = await client.StrobeSmartSwitchAsync(42, timeoutMilliseconds: 10, value: true)
+            .WaitAsync(Timeout);
+
+        Assert.True(response.IsSuccess);
+        Assert.False(response.Data!.IsActive); // strobe ends on the negated value
+    }
+
     [Fact]
     public async Task SetSubscriptionAsync_ReportsSuccess()
     {

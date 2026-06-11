@@ -144,6 +144,35 @@ public class SocketCorrelationTests
         Assert.Equal("mine", response.Data!.Message);
     }
 
+    /// <summary>
+    /// The live server acks <c>sendTeamMessage</c> with an immediate seq-correlated <c>success {}</c>
+    /// (the team-chat broadcast echoing the message follows separately). The request must resolve
+    /// from the ack with the sent message instead of crashing on a broadcast that is not there.
+    /// </summary>
+    [Fact]
+    public async Task SendTeamMessageAsync_SuccessAckReply_ReturnsSentMessage()
+    {
+        await using var server = new MockRustPlusServer(static req => req.SendTeamMessage is not null
+            ? new AppMessage
+            {
+                Response = new AppResponse
+                {
+                    Seq = req.Seq, Success = new AppSuccess()
+                }
+            }
+            : MockResponses.Default(req));
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        var response = await client.SendTeamMessageAsync("hello team").WaitAsync(Timeout);
+
+        Assert.True(response.IsSuccess);
+        Assert.Equal("hello team", response.Data!.Message);
+        Assert.Equal(PlayerId, response.Data.SteamId);
+    }
+
     [Fact]
     public async Task BroadcastReply_ThrowingMatcher_CountsAsNoMatchAndKeepsReceiveLoopAlive()
     {
