@@ -26,11 +26,21 @@ public static class CredentialsStore
         JsonSerializer.Deserialize<Credentials>(json)
         ?? throw new InvalidOperationException("Could not deserialize credentials.");
 
-    /// <summary>Serializes <paramref name="credentials"/> and writes the result to <paramref name="path"/>.</summary>
+    /// <summary>Serializes <paramref name="credentials"/> and writes the result to <paramref name="path"/>.
+    /// The file contains long-lived push credentials (GCM security token, FCM/Expo tokens) in plain
+    /// JSON — treat it like a password file. On .NET 10+ on Unix it is restricted to owner read/write.</summary>
     /// <param name="path">The file path to write to.</param>
     /// <param name="credentials">The credentials to persist.</param>
-    public static void Save(string path, Credentials credentials) =>
+    public static void Save(string path, Credentials credentials)
+    {
         File.WriteAllText(path, Serialize(credentials));
+#if NET10_0_OR_GREATER
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+#endif
+    }
 
     /// <summary>Reads the file at <paramref name="path"/> and deserializes it into a <see cref="Credentials"/> instance.</summary>
     /// <param name="path">The file path previously written by <see cref="Save"/>.</param>
