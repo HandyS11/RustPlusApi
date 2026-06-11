@@ -33,13 +33,27 @@ public static class CredentialsStore
     /// <param name="credentials">The credentials to persist.</param>
     public static void Save(string path, Credentials credentials)
     {
-        File.WriteAllText(path, Serialize(credentials));
 #if NET10_0_OR_GREATER
         if (!OperatingSystem.IsWindows())
         {
-            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            // Create the file with the restrictive mode from the first byte, so it is never
+            // observable with the umask default. The create mode only applies to new files —
+            // overwriting keeps the existing inode's mode — so tighten it afterwards as well.
+            const UnixFileMode ownerReadWrite = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            using (var stream = new FileStream(path, new FileStreamOptions
+                   {
+                       Mode = FileMode.Create, Access = FileAccess.Write, UnixCreateMode = ownerReadWrite,
+                   }))
+            using (var writer = new StreamWriter(stream))
+            {
+                writer.Write(Serialize(credentials));
+            }
+
+            File.SetUnixFileMode(path, ownerReadWrite);
+            return;
         }
 #endif
+        File.WriteAllText(path, Serialize(credentials));
     }
 
     /// <summary>Reads the file at <paramref name="path"/> and deserializes it into a <see cref="Credentials"/> instance.</summary>

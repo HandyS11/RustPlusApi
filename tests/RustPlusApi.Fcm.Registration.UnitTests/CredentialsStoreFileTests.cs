@@ -105,5 +105,41 @@ public class CredentialsStoreFileTests
             }
         }
     }
+
+    [Fact]
+    public void Save_OverExistingWorldReadableFile_TightensFileMode()
+    {
+        // Overwriting keeps the existing inode's mode during the write, so Save must tighten a
+        // pre-existing broader mode afterwards.
+        if (OperatingSystem.IsWindows())
+        {
+            return; // Windows has no unix file modes; ACLs are out of scope.
+        }
+
+        var path = Path.Combine(Path.GetTempPath(), $"creds-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(path, "{}");
+            File.SetUnixFileMode(path,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
+
+            CredentialsStore.Save(path, new Credentials
+            {
+                Gcm = new Gcm
+                {
+                    AndroidId = 1, SecurityToken = 2
+                }
+            });
+
+            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(path));
+        }
+        finally
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 #endif
 }
