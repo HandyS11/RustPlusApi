@@ -61,8 +61,17 @@ public abstract class RustPlusFcmSocket(
     private Task? _receiveLoop;
     private Task? _heartbeatLoop;
 
-    /// <summary>UTC timestamp of the last received frame, observed by the inactivity watchdog.</summary>
-    private DateTime _lastTraffic = DateTime.UtcNow;
+    /// <summary>UTC tick count of the last received frame, observed by the inactivity watchdog.
+    /// Stored as ticks behind <see cref="Volatile"/> because the watchdog reads it from another
+    /// thread, and a non-volatile 64-bit read can tear on 32-bit netstandard2.0 hosts.</summary>
+    private long _lastTrafficTicks = DateTime.UtcNow.Ticks;
+
+    /// <summary>Tear-free accessor over <see cref="_lastTrafficTicks"/>.</summary>
+    private DateTime LastTrafficUtc
+    {
+        get => new(Volatile.Read(ref _lastTrafficTicks), DateTimeKind.Utc);
+        set => Volatile.Write(ref _lastTrafficTicks, value.Ticks);
+    }
 
     /// <summary>Incoming MCS stream position: the count of frames received since login (the
     /// LoginResponse is 1). Reported back to the server as <c>LastStreamIdReceived</c> on stream
@@ -206,7 +215,7 @@ public abstract class RustPlusFcmSocket(
             Connected?.Invoke(this, EventArgs.Empty);
 
             // Truly async: the loop yields at the first awaited read instead of holding a thread-pool thread.
-            _lastTraffic = DateTime.UtcNow;
+            LastTrafficUtc = DateTime.UtcNow;
             _receiveLoop = ReceiveMessagesAsync();
 
             // Client-initiated heartbeat + inactivity watchdog: a NAT that silently drops the idle
@@ -380,7 +389,7 @@ public abstract class RustPlusFcmSocket(
     internal Task RunHeartbeatLoopOverStreamAsync(Stream stream)
     {
         _transport = stream;
-        _lastTraffic = DateTime.UtcNow;
+        LastTrafficUtc = DateTime.UtcNow;
         _heartbeatLoop = RunHeartbeatLoopAsync();
         return _heartbeatLoop;
     }
@@ -400,7 +409,7 @@ public abstract class RustPlusFcmSocket(
             {
                 await Task.Delay(_options.HeartbeatInterval, CancellationToken).ConfigureAwait(false);
 
-                if (DateTime.UtcNow - _lastTraffic > _options.InactivityTimeout)
+                if (DateTime.UtcNow - LastTrafficUtc > _options.InactivityTimeout)
                 {
                     var error = new TimeoutException(
                         $"No FCM traffic for {_options.InactivityTimeout.TotalMinutes:0.#} min; the connection is presumed dead.");
@@ -513,7 +522,7 @@ public abstract class RustPlusFcmSocket(
     {
         // Any decoded frame counts as traffic for the inactivity watchdog,
         // and advances the incoming stream position the server expects us to ack.
-        _lastTraffic = DateTime.UtcNow;
+        LastTrafficUtc = DateTime.UtcNow;
         _streamIdIn++;
 
         try
