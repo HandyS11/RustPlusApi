@@ -17,9 +17,7 @@ public static class ResponseHelper
     {
         return new Response<T?>
         {
-            IsSuccess = isSuccess,
-            Error = BuildError(message),
-            Data = data
+            IsSuccess = isSuccess, Error = BuildError(message), Data = data
         };
     }
 
@@ -33,8 +31,7 @@ public static class ResponseHelper
     {
         return new Response
         {
-            IsSuccess = isSuccess,
-            Error = BuildError(message)
+            IsSuccess = isSuccess, Error = BuildError(message)
         };
     }
 
@@ -46,8 +43,7 @@ public static class ResponseHelper
             ? null
             : new ErrorMessage
             {
-                Message = message,
-                Code = ParseErrorCode(message)
+                Message = message, Code = ParseErrorCode(message)
             };
 
     /// <summary>Maps a raw Rust+ server error identifier to its <see cref="RustPlusErrorCode"/>;

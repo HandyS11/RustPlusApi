@@ -210,7 +210,8 @@ public abstract class RustPlusSocket(
             try
             {
                 // Either the caller's token or the instance token can cancel the connect handshake.
-                using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
+                using var linked =
+                    CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
                 await webSocket.ConnectAsync(uri, linked.Token).ConfigureAwait(false);
             }
             catch (Exception ex)

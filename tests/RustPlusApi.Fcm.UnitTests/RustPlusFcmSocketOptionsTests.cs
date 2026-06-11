@@ -11,8 +11,7 @@ public class RustPlusFcmSocketOptionsTests
     {
         var options = new RustPlusFcmSocketOptions
         {
-            HeartbeatInterval = TimeSpan.FromMinutes(1),
-            InactivityTimeout = TimeSpan.FromMinutes(2),
+            HeartbeatInterval = TimeSpan.FromMinutes(1), InactivityTimeout = TimeSpan.FromMinutes(2),
         };
 
         var clone = options.Clone();

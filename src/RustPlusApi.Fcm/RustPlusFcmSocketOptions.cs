@@ -23,7 +23,6 @@ public sealed class RustPlusFcmSocketOptions
     /// per-socket snapshot cannot silently miss a newly added property.</summary>
     internal RustPlusFcmSocketOptions Clone() => new()
     {
-        HeartbeatInterval = HeartbeatInterval,
-        InactivityTimeout = InactivityTimeout,
+        HeartbeatInterval = HeartbeatInterval, InactivityTimeout = InactivityTimeout,
     };
 }

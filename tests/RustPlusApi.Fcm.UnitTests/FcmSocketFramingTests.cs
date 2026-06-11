@@ -303,7 +303,7 @@ public class FcmSocketFramingTests
         await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.Null(notification); // skipped, not dispatched with a null Body
-        Assert.Null(error);        // and skipped cleanly, not via the catch-all
+        Assert.Null(error); // and skipped cleanly, not via the catch-all
     }
 
     [Fact]

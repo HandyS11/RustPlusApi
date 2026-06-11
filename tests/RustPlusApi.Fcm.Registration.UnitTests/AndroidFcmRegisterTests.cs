@@ -279,7 +279,10 @@ public class AndroidFcmRegisterTests
         var register = new AndroidFcmRegister(handler.CreateClient());
 
         var token = await register.RegisterFcmAsync(
-            new RustPlusApi.Fcm.Data.Gcm { AndroidId = 42, SecurityToken = 99 },
+            new RustPlusApi.Fcm.Data.Gcm
+            {
+                AndroidId = 42, SecurityToken = 99
+            },
             "fis-auth-token");
 
         Assert.Equal("abc=def==", token);
@@ -294,7 +297,10 @@ public class AndroidFcmRegisterTests
         var register = new AndroidFcmRegister(handler.CreateClient());
 
         var token = await register.RegisterFcmAsync(
-            new RustPlusApi.Fcm.Data.Gcm { AndroidId = 42, SecurityToken = 99 },
+            new RustPlusApi.Fcm.Data.Gcm
+            {
+                AndroidId = 42, SecurityToken = 99
+            },
             "fis-auth-token");
 
         Assert.Equal("AErrorB", token);
@@ -310,10 +316,12 @@ public class AndroidFcmRegisterTests
         var handler = StubHttpMessageHandler.Always(HttpStatusCode.OK, "garbage");
         var register = new AndroidFcmRegister(handler.CreateClient());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => register.RegisterFcmAsync(
-                new RustPlusApi.Fcm.Data.Gcm { AndroidId = 42, SecurityToken = 99 },
-                "fis-auth-token"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => register.RegisterFcmAsync(
+            new RustPlusApi.Fcm.Data.Gcm
+            {
+                AndroidId = 42, SecurityToken = 99
+            },
+            "fis-auth-token"));
     }
 
     [Fact]
