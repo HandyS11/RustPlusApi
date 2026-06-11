@@ -64,6 +64,15 @@ public abstract class RustPlusFcmSocket(
     /// <summary>UTC timestamp of the last received frame, observed by the inactivity watchdog.</summary>
     private DateTime _lastTraffic = DateTime.UtcNow;
 
+    /// <summary>Incoming MCS stream position: the count of frames received since login (the
+    /// LoginResponse is 1). Reported back to the server as <c>LastStreamIdReceived</c> on stream
+    /// acks and heartbeats — without it the server treats delivered messages as unacknowledged,
+    /// closes the connection after a few minutes and redelivers them on the next connect.</summary>
+    private int _streamIdIn;
+
+    /// <summary>MCS StreamAck extension id (Chromium <c>mcs_client</c> kStreamAck).</summary>
+    private const int KStreamAckExtensionId = 13;
+
     /// <summary>Serializes writes to the transport so concurrent sends (e.g. a ping-ack racing another
     /// send) cannot interleave bytes on the stream.</summary>
     private readonly SemaphoreSlim _sendLock = new(1, 1);
@@ -400,7 +409,12 @@ public abstract class RustPlusFcmSocket(
                     return;
                 }
 
-                await SendPacketAsync(new HeartbeatPing()).ConfigureAwait(false);
+                // Piggyback our incoming stream position so the server sees its frames acked even
+                // when no StreamAck was sent since (mirrors Chromium's mcs_client heartbeat).
+                await SendPacketAsync(new HeartbeatPing
+                {
+                    LastStreamIdReceived = _streamIdIn
+                }).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -497,8 +511,10 @@ public abstract class RustPlusFcmSocket(
     /// <param name="type">The type of the protobuf message.</param>
     private async Task OnGotMessageBytesAsync(byte[] data, Type type)
     {
-        // Any decoded frame counts as traffic for the inactivity watchdog.
+        // Any decoded frame counts as traffic for the inactivity watchdog,
+        // and advances the incoming stream position the server expects us to ack.
         _lastTraffic = DateTime.UtcNow;
+        _streamIdIn++;
 
         try
         {
@@ -609,18 +625,13 @@ public abstract class RustPlusFcmSocket(
     private async Task SendPacketAsync(object packet)
     {
         var tagEnum = GetTagFromProtobufType(packet.GetType());
-        var header = new byte[]
-        {
-            KMcsVersion, (byte)(int)tagEnum
-        };
 
 #pragma warning disable RCS1261 // MemoryStream.DisposeAsync is a no-op; await using not available in netstandard2.0
         using var ms = new MemoryStream();
 #pragma warning restore RCS1261
         Serializer.Serialize(ms, packet);
 
-        var payload = ms.ToArray();
-        byte[] frame = [.. header, .. EncodeVarInt32(payload.Length), .. payload];
+        var frame = BuildClientFrame(tagEnum, ms.ToArray());
 
         await _sendLock.WaitAsync(CancellationToken).ConfigureAwait(false);
         try
@@ -637,7 +648,26 @@ public abstract class RustPlusFcmSocket(
     }
 
     /// <summary>
-    /// Handles an incoming FCM heartbeat ping by sending a corresponding heartbeat acknowledgment.
+    /// Frames an MCS packet for the wire. The protocol version byte accompanies ONLY the initial
+    /// <see cref="LoginRequest"/>; every later client frame is bare <c>[tag][varint-size][payload]</c>.
+    /// A stray version byte on a post-login frame desyncs the server's parser and gets the
+    /// connection closed. Internal — visible to RustPlusApi.Fcm.UnitTests.
+    /// </summary>
+    /// <param name="tag">The MCS tag identifying the packet type.</param>
+    /// <param name="payload">The serialized protobuf payload.</param>
+    internal static byte[] BuildClientFrame(McsProtoTag tag, byte[] payload)
+    {
+        byte[] header = tag == McsProtoTag.KLoginRequestTag
+            ? [KMcsVersion, (byte)(int)tag]
+            : [(byte)(int)tag];
+
+        return [.. header, .. EncodeVarInt32(payload.Length), .. payload];
+    }
+
+    /// <summary>
+    /// Handles an incoming FCM heartbeat ping by sending a heartbeat acknowledgment that reports
+    /// our incoming stream position (<see cref="_streamIdIn"/>) — the MCS contract for telling the
+    /// server its frames were received. Outgoing stream ids are implicit (frame count), never set.
     /// </summary>
     /// <param name="ping">The <see cref="HeartbeatPing"/> message received from the server.</param>
     private async Task HandlePingAsync(HeartbeatPing? ping)
@@ -650,10 +680,32 @@ public abstract class RustPlusFcmSocket(
         Logger.LogRespondingToPing(ping.StreamId, ping.LastStreamIdReceived, ping.Status);
         var pingResponse = new HeartbeatAck
         {
-            StreamId = (ping.StreamId ?? 0) + 1, LastStreamIdReceived = ping.StreamId, Status = ping.Status
+            LastStreamIdReceived = _streamIdIn
         };
 
         await SendPacketAsync(pingResponse).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Acknowledges received reliable frames with a StreamAck IqStanza carrying
+    /// <see cref="_streamIdIn"/>. Sent after every <see cref="DataMessageStanza"/>: without the
+    /// ack the server treats the message as undelivered, closes the connection after a few
+    /// minutes to force redelivery, and replays the message on the next connect.
+    /// </summary>
+    private async Task SendStreamAckAsync()
+    {
+        var streamAck = new IqStanza
+        {
+            Type = IqStanza.IqType.Set,
+            Id = string.Empty,
+            Extension = new Extension
+            {
+                Id = KStreamAckExtensionId, Data = []
+            },
+            LastStreamIdReceived = _streamIdIn
+        };
+
+        await SendPacketAsync(streamAck).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -671,6 +723,7 @@ public abstract class RustPlusFcmSocket(
                 break;
             case McsProtoTag.KDataMessageStanzaTag:
                 OnDataMessage(e.Object as DataMessageStanza);
+                await SendStreamAckAsync().ConfigureAwait(false);
                 break;
             case McsProtoTag.KHeartbeatPingTag:
                 await HandlePingAsync(e.Object as HeartbeatPing).ConfigureAwait(false);
