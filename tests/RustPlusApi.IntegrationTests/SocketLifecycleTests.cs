@@ -289,4 +289,68 @@ public class SocketLifecycleTests
         Assert.Equal(PlayerId, observedId);
         Assert.Equal(PlayerToken, observedToken);
     }
+
+    [Fact]
+    public async Task ConnectAsync_ConcurrentCalls_ExactlyOneSucceeds()
+    {
+        // Lifecycle transitions are serialized: of two racing connects, one wins and the other
+        // observes the connected state and throws — neither leaks a socket nor starts a second
+        // receive loop.
+        await using var server = new MockRustPlusServer(MockResponses.Default);
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+
+        var outcomes = await Task.WhenAll(
+            ObserveAsync(client.ConnectAsync()),
+            ObserveAsync(client.ConnectAsync()));
+
+        Assert.True(client.IsConnected);
+        Assert.Equal(1, outcomes.Count(static e => e is null));
+        Assert.Equal(1, outcomes.Count(static e => e is InvalidOperationException));
+    }
+
+    [Fact]
+    public async Task DisposeAsync_RacingParkedDisconnect_NeitherThrows()
+    {
+        // A graceful disconnect parks inside the pending-request drain while holding the
+        // lifecycle lock; a concurrent dispose must neither deadlock nor cause the lock-release
+        // in the disconnect path to throw when the semaphore has already been torn down.
+        // The server never replies, so its responder always returns null.
+        await using var server = new MockRustPlusServer(_ => null);
+        server.Start();
+        var client = new RustPlus(
+            new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken),
+            new RustPlusSocketOptions
+            {
+                TeardownTimeout = TimeSpan.FromMilliseconds(500)
+            });
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        // A request the server never answers keeps the disconnect drain parked.
+        var pending = client.GetInfoAsync();
+
+        var disconnectTask = client.DisconnectAsync();
+        await client.DisposeAsync().AsTask().WaitAsync(Timeout);
+
+        await disconnectTask.WaitAsync(Timeout); // must complete without throwing
+
+        // The orphaned request fails via cancellation/teardown; observe it so nothing is unobserved.
+        await Assert.ThrowsAnyAsync<Exception>(() => pending.WaitAsync(Timeout));
+    }
+
+    /// <summary>Awaits <paramref name="task"/> and returns its exception instead of throwing.</summary>
+    /// <param name="task">The task whose outcome to observe.</param>
+    private static async Task<Exception?> ObserveAsync(Task task)
+    {
+        try
+        {
+            await task;
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex;
+        }
+    }
 }

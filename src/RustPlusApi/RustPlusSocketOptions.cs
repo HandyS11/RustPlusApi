@@ -22,4 +22,14 @@ public sealed class RustPlusSocketOptions
     /// <summary>The receive buffer size in bytes. Map images arrive as multi-megabyte messages, so
     /// a larger buffer means far fewer reads per message. Default: 64 KB.</summary>
     public int ReceiveBufferSize { get; set; } = 64 * 1024;
+
+    /// <summary>Creates a copy of this instance — the single place that knows every option, so the
+    /// per-socket snapshot cannot silently miss a newly added property.</summary>
+    internal RustPlusSocketOptions Clone() => new()
+    {
+        RequestTimeout = RequestTimeout,
+        KeepAliveInterval = KeepAliveInterval,
+        TeardownTimeout = TeardownTimeout,
+        ReceiveBufferSize = ReceiveBufferSize,
+    };
 }

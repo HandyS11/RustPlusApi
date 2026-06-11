@@ -26,11 +26,35 @@ public static class CredentialsStore
         JsonSerializer.Deserialize<Credentials>(json)
         ?? throw new InvalidOperationException("Could not deserialize credentials.");
 
-    /// <summary>Serializes <paramref name="credentials"/> and writes the result to <paramref name="path"/>.</summary>
+    /// <summary>Serializes <paramref name="credentials"/> and writes the result to <paramref name="path"/>.
+    /// The file contains long-lived push credentials (GCM security token, FCM/Expo tokens) in plain
+    /// JSON — treat it like a password file. On .NET 10+ on Unix it is restricted to owner read/write.</summary>
     /// <param name="path">The file path to write to.</param>
     /// <param name="credentials">The credentials to persist.</param>
-    public static void Save(string path, Credentials credentials) =>
+    public static void Save(string path, Credentials credentials)
+    {
+#if NET10_0_OR_GREATER
+        if (!OperatingSystem.IsWindows())
+        {
+            // Create the file with the restrictive mode from the first byte, so it is never
+            // observable with the umask default. The create mode only applies to new files —
+            // overwriting keeps the existing inode's mode — so tighten it afterwards as well.
+            const UnixFileMode ownerReadWrite = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+            using (var stream = new FileStream(path, new FileStreamOptions
+                   {
+                       Mode = FileMode.Create, Access = FileAccess.Write, UnixCreateMode = ownerReadWrite,
+                   }))
+            using (var writer = new StreamWriter(stream))
+            {
+                writer.Write(Serialize(credentials));
+            }
+
+            File.SetUnixFileMode(path, ownerReadWrite);
+            return;
+        }
+#endif
         File.WriteAllText(path, Serialize(credentials));
+    }
 
     /// <summary>Reads the file at <paramref name="path"/> and deserializes it into a <see cref="Credentials"/> instance.</summary>
     /// <param name="path">The file path previously written by <see cref="Save"/>.</param>

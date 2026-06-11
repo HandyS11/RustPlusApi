@@ -22,7 +22,10 @@ namespace RustPlusApi.Fcm;
 /// Represents a RustPlus FCM listener client for handling FCM connections and notifications.
 /// </summary>
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
-/// <param name="persistentIds">The collection of persistent IDs as <see cref="ICollection{T}"/> of <see cref="string"/>.</param>
+/// <param name="persistentIds">Already-processed message IDs, used for de-duplication. Every data
+/// message is checked against and appended to this collection, so for a long-lived listener prefer
+/// a set-like implementation (e.g. <see cref="HashSet{T}"/>) — with a <see cref="List{T}"/> the
+/// duplicate check is a linear scan that degrades as the collection grows unboundedly.</param>
 /// <param name="options">Tuning options (heartbeat interval, inactivity timeout); defaults are used when <see langword="null"/>.</param>
 /// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
 /// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
@@ -43,12 +46,7 @@ public abstract class RustPlusFcmSocket(
 
     /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
     /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>
-    private readonly RustPlusFcmSocketOptions _options = options is null
-        ? new RustPlusFcmSocketOptions()
-        : new()
-        {
-            HeartbeatInterval = options.HeartbeatInterval, InactivityTimeout = options.InactivityTimeout,
-        };
+    private readonly RustPlusFcmSocketOptions _options = options?.Clone() ?? new RustPlusFcmSocketOptions();
 
     /// <summary>The client's logger; <c>NullLogger</c> when no factory was supplied.
     /// Exposed to derived classes (e.g. <see cref="RustPlusFcm"/>) so they log through the same categorised sink.</summary>
@@ -61,8 +59,17 @@ public abstract class RustPlusFcmSocket(
     private Task? _receiveLoop;
     private Task? _heartbeatLoop;
 
-    /// <summary>UTC timestamp of the last received frame, observed by the inactivity watchdog.</summary>
-    private DateTime _lastTraffic = DateTime.UtcNow;
+    /// <summary>UTC tick count of the last received frame, observed by the inactivity watchdog.
+    /// Stored as ticks behind <see cref="Volatile"/> because the watchdog reads it from another
+    /// thread, and a non-volatile 64-bit read can tear on 32-bit netstandard2.0 hosts.</summary>
+    private long _lastTrafficTicks = DateTime.UtcNow.Ticks;
+
+    /// <summary>Tear-free accessor over <see cref="_lastTrafficTicks"/>.</summary>
+    private DateTime LastTrafficUtc
+    {
+        get => new(Volatile.Read(ref _lastTrafficTicks), DateTimeKind.Utc);
+        set => Volatile.Write(ref _lastTrafficTicks, value.Ticks);
+    }
 
     /// <summary>Incoming MCS stream position: the count of frames received since login (the
     /// LoginResponse is 1). Reported back to the server as <c>LastStreamIdReceived</c> on stream
@@ -206,7 +213,7 @@ public abstract class RustPlusFcmSocket(
             Connected?.Invoke(this, EventArgs.Empty);
 
             // Truly async: the loop yields at the first awaited read instead of holding a thread-pool thread.
-            _lastTraffic = DateTime.UtcNow;
+            LastTrafficUtc = DateTime.UtcNow;
             _receiveLoop = ReceiveMessagesAsync();
 
             // Client-initiated heartbeat + inactivity watchdog: a NAT that silently drops the idle
@@ -380,7 +387,7 @@ public abstract class RustPlusFcmSocket(
     internal Task RunHeartbeatLoopOverStreamAsync(Stream stream)
     {
         _transport = stream;
-        _lastTraffic = DateTime.UtcNow;
+        LastTrafficUtc = DateTime.UtcNow;
         _heartbeatLoop = RunHeartbeatLoopAsync();
         return _heartbeatLoop;
     }
@@ -400,7 +407,7 @@ public abstract class RustPlusFcmSocket(
             {
                 await Task.Delay(_options.HeartbeatInterval, CancellationToken).ConfigureAwait(false);
 
-                if (DateTime.UtcNow - _lastTraffic > _options.InactivityTimeout)
+                if (DateTime.UtcNow - LastTrafficUtc > _options.InactivityTimeout)
                 {
                     var error = new TimeoutException(
                         $"No FCM traffic for {_options.InactivityTimeout.TotalMinutes:0.#} min; the connection is presumed dead.");
@@ -513,7 +520,7 @@ public abstract class RustPlusFcmSocket(
     {
         // Any decoded frame counts as traffic for the inactivity watchdog,
         // and advances the incoming stream position the server expects us to ack.
-        _lastTraffic = DateTime.UtcNow;
+        LastTrafficUtc = DateTime.UtcNow;
         _streamIdIn++;
 
         try
@@ -777,6 +784,14 @@ public abstract class RustPlusFcmSocket(
 
         var bodyData = JsonSerializer.Deserialize<Body>(body, _parsingOptions);
 
+        if (bodyData is null)
+        {
+            // A JSON-literal null body deserializes to null without throwing; skip it here
+            // instead of deferring a NullReferenceException into downstream event handlers.
+            Logger.LogNullNotificationBody();
+            return;
+        }
+
         var fcmMessage = new FcmMessage
         {
             PersistentId = dataMessage.PersistentId ?? string.Empty,
@@ -786,7 +801,7 @@ public abstract class RustPlusFcmSocket(
             {
                 ChannelId = channelId,
                 ProjectId = Guid.Parse(projectId ?? Guid.Empty.ToString()),
-                Body = bodyData!,
+                Body = bodyData,
                 Title = title ?? string.Empty,
                 Message = message ?? string.Empty,
                 ExperienceId = experienceId ?? string.Empty,

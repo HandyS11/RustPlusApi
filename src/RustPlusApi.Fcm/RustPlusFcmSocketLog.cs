@@ -30,6 +30,9 @@ internal static partial class RustPlusFcmSocketLog
     [LoggerMessage(Level = LogLevel.Warning, Message = "Not a Rust+ notification - missing channelId or body.")]
     public static partial void LogNotRustNotification(this ILogger logger);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Notification body deserialized to null; message skipped.")]
+    public static partial void LogNullNotificationBody(this ILogger logger);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "Unknown channel: {ChannelId}")]
     public static partial void LogUnknownChannel(this ILogger logger, string channelId);
 

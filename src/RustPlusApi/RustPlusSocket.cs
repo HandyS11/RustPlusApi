@@ -28,15 +28,7 @@ public abstract class RustPlusSocket(
 {
     /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
     /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>
-    private readonly RustPlusSocketOptions _options = options is null
-        ? new RustPlusSocketOptions()
-        : new()
-        {
-            RequestTimeout = options.RequestTimeout,
-            KeepAliveInterval = options.KeepAliveInterval,
-            TeardownTimeout = options.TeardownTimeout,
-            ReceiveBufferSize = options.ReceiveBufferSize,
-        };
+    private readonly RustPlusSocketOptions _options = options?.Clone() ?? new RustPlusSocketOptions();
 
     /// <summary>The client logger; <c>NullLogger</c> when no factory was supplied. Exposed to derived
     /// classes (e.g. <see cref="RustPlus"/>) so they log through the same categorised sink.</summary>
@@ -59,13 +51,15 @@ public abstract class RustPlusSocket(
     public event EventHandler? Connected;
 
     /// <summary>
-    /// Occurs when a request is about to be sent to the Rust+ server.
+    /// Occurs when a request is about to be queued for transmission.
     /// </summary>
     /// <seealso cref="SendRequestAsync"/>
     public event EventHandler? SendingRequest;
 
     /// <summary>
-    /// Occurs after a request has been sent to the Rust+ server.
+    /// Occurs when a request has been queued for transmission. The request is handed to the
+    /// background send loop at this point; the actual WebSocket send happens asynchronously
+    /// shortly after, so this event does not confirm the bytes left the machine.
     /// </summary>
     /// <seealso cref="SendRequestAsync"/>
     public event EventHandler<AppRequest>? RequestSent;
@@ -134,8 +128,17 @@ public abstract class RustPlusSocket(
     /// <summary>Test seam: the number of in-flight requests awaiting a seq-bearing response.</summary>
     internal int PendingRequestCountForTests => _pendingRequests.Count;
 
+    /// <summary>Test seam: enqueues a request directly onto the send channel, bypassing
+    /// <see cref="SendRequestAsync"/>'s state checks, to exercise the send loop's fault path.</summary>
+    /// <param name="request">The request to enqueue.</param>
+    internal void EnqueueRequestForTests(AppRequest request) => _sendChannel.Writer.TryWrite(request);
+
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
+
+    /// <summary>Serializes connect/disconnect transitions so concurrent lifecycle calls cannot race
+    /// on <see cref="_webSocket"/> (leaking a connection or briefly running two receive loops).</summary>
+    private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
 
     /// <summary>Test seam: the tracked receive loop, so tests can assert it actually completed on teardown.</summary>
     internal Task? ReceiveLoopForTests { get; private set; }
@@ -156,10 +159,16 @@ public abstract class RustPlusSocket(
     /// An instance can reconnect: after <see cref="DisconnectAsync"/> (or a dropped connection), calling
     /// this again opens a fresh socket; the previous one is released, never leaked.
     /// </summary>
+    /// <remarks>Connect/disconnect transitions are serialized internally and are not reentrant:
+    /// an event handler (e.g. <see cref="Connected"/>) must not call back into
+    /// <see cref="ConnectAsync"/> or <see cref="DisconnectAsync"/> and wait for it, or it will deadlock.
+    /// A lifecycle call racing a concurrent dispose may surface <see cref="ObjectDisposedException"/>.</remarks>
     /// <param name="cancellationToken">A token to cancel the connection attempt.</param>
     /// <exception cref="ObjectDisposedException">Thrown when the client has been disposed.</exception>
     /// <exception cref="InvalidOperationException">Thrown when the client is already connected.</exception>
     /// <exception cref="WebSocketException">Thrown when the WebSocket connect fails (also raised via <see cref="ErrorOccurred"/>).</exception>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is
+    /// cancelled while waiting for a concurrent lifecycle transition or during the connect handshake.</exception>
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
     {
 #if NET10_0_OR_GREATER
@@ -172,61 +181,92 @@ public abstract class RustPlusSocket(
         }
 #endif
 
-        if (IsConnected)
-        {
-            throw new InvalidOperationException("Already connected. Call DisconnectAsync before reconnecting.");
-        }
-
-        // Reconnect support: release the previous (closed/dead) socket so it is never leaked, and
-        // make sure its receive loop has exited so two loops can never read concurrently.
-        if (_webSocket is not null)
-        {
-            _webSocket.Dispose();
-            _webSocket = null;
-            await WaitForReceiveLoopExitAsync().ConfigureAwait(false);
-        }
-
-        var webSocket = new ClientWebSocket();
-        webSocket.Options.KeepAliveInterval = _options.KeepAliveInterval;
-
-        var uri = connection.UseFacepunchProxy
-            ? new Uri($"wss://companion-rust.facepunch.com/game/{connection.Server}/{connection.Port}")
-            : new Uri($"ws://{connection.Server}:{connection.Port}");
-
-        Connecting?.Invoke(this, EventArgs.Empty);
-
+        await _lifecycleLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // Either the caller's token or the instance token can cancel the connect handshake.
-            using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
-            await webSocket.ConnectAsync(uri, linked.Token).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            // Surface the failure on the event *and* to the caller: awaiting ConnectAsync must never
-            // "succeed" against a server that was never reached.
-            webSocket.Dispose();
-            Logger.LogConnectFailed(ex);
-            ErrorOccurred?.Invoke(this, ex);
-            throw;
-        }
+            if (IsConnected)
+            {
+                throw new InvalidOperationException("Already connected. Call DisconnectAsync before reconnecting.");
+            }
 
-        _webSocket = webSocket;
+            // Reconnect support: release the previous (closed/dead) socket so it is never leaked, and
+            // make sure its receive loop has exited so two loops can never read concurrently.
+            if (_webSocket is not null)
+            {
+                _webSocket.Dispose();
+                _webSocket = null;
+                await WaitForReceiveLoopExitAsync().ConfigureAwait(false);
+            }
 
-        // The background loops outlive the connect call, so they track the instance token only.
-        // The receive loop is bound to its own socket so a stale loop can never read a newer connection.
+            var webSocket = new ClientWebSocket();
+            webSocket.Options.KeepAliveInterval = _options.KeepAliveInterval;
+
+            var uri = connection.UseFacepunchProxy
+                ? new Uri($"wss://companion-rust.facepunch.com/game/{connection.Server}/{connection.Port}")
+                : new Uri($"ws://{connection.Server}:{connection.Port}");
+
+            Connecting?.Invoke(this, EventArgs.Empty);
+
+            try
+            {
+                // Either the caller's token or the instance token can cancel the connect handshake.
+                using var linked =
+                    CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
+                await webSocket.ConnectAsync(uri, linked.Token).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // Surface the failure on the event *and* to the caller: awaiting ConnectAsync must never
+                // "succeed" against a server that was never reached.
+                webSocket.Dispose();
+                Logger.LogConnectFailed(ex);
+                ErrorOccurred?.Invoke(this, ex);
+                throw;
+            }
+
+            // Anything still queued belongs to the previous connection: its waiters were already
+            // failed (or timed out), so replaying it now would fire stale, out-of-context requests
+            // nobody awaits. Sends cannot race this drain — the connected-state guard rejects
+            // callers until the new socket is published below.
+            // Anything still queued belongs to the previous connection: its waiters were already
+            // failed (or timed out), so replaying it now would fire stale, out-of-context requests
+            // nobody awaits. Sends cannot race this drain — the connected-state guard rejects
+            // callers until the new socket is published below.
+            while (_sendChannel.Reader.TryRead(out _))
+            {
+                // Discard the stale backlog item.
+            }
+
+            _webSocket = webSocket;
+
+            // The background loops outlive the connect call, so they track the instance token only.
+            // The receive loop is bound to its own socket so a stale loop can never read a newer connection.
 #pragma warning disable CA2025 // the loop owns this socket's read side by design; teardown/reconnect awaits the loop before disposing it
-        ReceiveLoopForTests = Task.Run(() => ReceiveAsync(webSocket), CancellationToken);
+            ReceiveLoopForTests = Task.Run(() => ReceiveAsync(webSocket), CancellationToken);
 #pragma warning restore CA2025
 
-        // The send loop drains a single channel across reconnects; only start it if it is not running
-        // (first connect, or it exited when a previous connection broke mid-send).
-        if (SendLoopForTests is not { IsCompleted: false })
-        {
-            SendLoopForTests = Task.Run(ProcessSendQueueAsync, CancellationToken);
-        }
+            // The send loop drains a single channel across reconnects; only start it if it is not running
+            // (first connect, or it exited when a previous connection broke mid-send).
+            if (SendLoopForTests is not { IsCompleted: false })
+            {
+                SendLoopForTests = Task.Run(ProcessSendQueueAsync, CancellationToken);
+            }
 
-        Connected?.Invoke(this, EventArgs.Empty);
+            Connected?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            try
+            {
+                _lifecycleLock.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+                // A concurrent dispose tore the instance down mid-transition. Disposal is
+                // deliberately not serialized behind this lock — teardown must stay bounded —
+                // so the semaphore can be gone by the time this transition unwinds.
+            }
+        }
     }
 
     /// <summary>
@@ -273,11 +313,21 @@ public abstract class RustPlusSocket(
     /// broadcasts (other players' messages, other entities) are left to the notification pipeline.</param>
     /// <param name="cancellationToken">A token to cancel waiting for the response.</param>
     /// <returns>A task that represents the asynchronous operation and contains the <see cref="AppMessage"/> response.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the client is not connected.</exception>
     /// <exception cref="TimeoutException">Thrown when no response arrives within the request timeout.</exception>
     public async Task<AppMessage> SendRequestAsync(AppRequest request,
         Func<AppBroadcast, bool>? broadcastReplyMatcher = null,
         CancellationToken cancellationToken = default)
     {
+        if (!IsConnected)
+        {
+            // Queueing here would mean a generic 30s timeout now and a stale, out-of-context
+            // request transmitted on the next reconnect — fail fast instead. The socket can still
+            // die between this check and the actual send — that residual race is owned by the
+            // send loop's fault handler, which fails the pending requests immediately.
+            throw new InvalidOperationException("Not connected. Call ConnectAsync before sending requests.");
+        }
+
         // RunContinuationsAsynchronously keeps the receive loop from running awaiters inline when it resolves the TCS.
         var tcs = new TaskCompletionSource<AppMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -340,41 +390,68 @@ public abstract class RustPlusSocket(
     /// Asynchronously disconnects from the Rust+ server, waiting for pending responses unless <paramref name="forceClose"/> is true.
     /// Raises <c>Disconnecting</c> before disconnecting and <c>Disconnected</c> after.
     /// </summary>
+    /// <remarks>Connect/disconnect transitions are serialized internally and are not reentrant:
+    /// an event handler (e.g. <see cref="Disconnected"/>) must not call back into
+    /// <see cref="ConnectAsync"/> or <see cref="DisconnectAsync"/> and wait for it, or it will deadlock.
+    /// A lifecycle call racing a concurrent dispose may surface <see cref="ObjectDisposedException"/>.</remarks>
     /// <param name="forceClose">When <see langword="true"/>, skips draining in-flight requests.</param>
     public async Task DisconnectAsync(bool forceClose = false)
     {
-        if (!IsConnected)
-        {
-            return;
-        }
-
-        Disconnecting?.Invoke(this, EventArgs.Empty);
-
-        if (!forceClose)
-        {
-            // Drain by awaiting the in-flight requests' completion (bounded), instead of polling a queue
-            // and sleeping a fixed second before closing.
-            await WaitForPendingRequestsAsync().ConfigureAwait(false);
-        }
-
-        // Bound the close handshake: a dead peer that never acks must not hang teardown.
-        using var closeTimeout = new CancellationTokenSource(_options.TeardownTimeout);
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
+        await _lifecycleLock.WaitAsync().ConfigureAwait(false);
         try
         {
-            await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, linked.Token)
-                .ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // Bounded close timed out (or the instance token was cancelled): drop the socket regardless.
-        }
-        catch (WebSocketException)
-        {
-            // Peer already gone; nothing to close gracefully.
-        }
+            if (!IsConnected)
+            {
+                return;
+            }
 
-        Disconnected?.Invoke(this, EventArgs.Empty);
+            Disconnecting?.Invoke(this, EventArgs.Empty);
+
+            if (!forceClose)
+            {
+                // Drain by awaiting the in-flight requests' completion (bounded), instead of polling a queue
+                // and sleeping a fixed second before closing.
+                await WaitForPendingRequestsAsync().ConfigureAwait(false);
+            }
+
+            // Bound the close handshake: a dead peer that never acks must not hang teardown.
+            try
+            {
+                using var closeTimeout = new CancellationTokenSource(_options.TeardownTimeout);
+                using var linked =
+                    CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
+                await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, linked.Token)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Bounded close timed out (or the instance token was cancelled): drop the socket regardless.
+            }
+            catch (WebSocketException)
+            {
+                // Peer already gone; nothing to close gracefully.
+            }
+            catch (ObjectDisposedException)
+            {
+                // A concurrent dispose released the instance token source or the socket while this
+                // disconnect was draining its in-flight requests: there is nothing left to close.
+            }
+
+            Disconnected?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            try
+            {
+                _lifecycleLock.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+                // A concurrent dispose tore the instance down mid-transition. Disposal is
+                // deliberately not serialized behind this lock — teardown must stay bounded —
+                // so the semaphore can be gone by the time this transition unwinds.
+            }
+        }
     }
 
     /// <summary>
@@ -408,6 +485,7 @@ public abstract class RustPlusSocket(
         _sendChannel.Writer.TryComplete();
         _webSocket?.Dispose();
         _cancellationTokenSource.Dispose();
+        _lifecycleLock.Dispose();
     }
 
     /// <summary>
@@ -442,6 +520,7 @@ public abstract class RustPlusSocket(
 
         _webSocket?.Dispose();
         _cancellationTokenSource.Dispose();
+        _lifecycleLock.Dispose();
     }
 
     /// <summary>
@@ -573,6 +652,18 @@ public abstract class RustPlusSocket(
         {
             // The socket broke under us (e.g. peer closed): surface it, stop draining, and fail the
             // in-flight requests now — none of them can ever be answered on this connection.
+            Logger.LogSendLoopFaulted(ex);
+            ErrorOccurred?.Invoke(this, ex);
+            FailPendingRequests(ex);
+        }
+        catch (Exception ex)
+        {
+            // A concurrent reconnect can dispose/null _webSocket while this loop is draining
+            // (NullReferenceException / ObjectDisposedException). Left uncaught, the loop dies
+            // invisibly and every pending request waits out its full timeout — surface the fault
+            // and fail them now instead. The receive loop's generic catch backs off and retries,
+            // but exiting is correct here because the faulted socket cannot send anything again —
+            // ConnectAsync restarts a completed send loop on the next connect.
             Logger.LogSendLoopFaulted(ex);
             ErrorOccurred?.Invoke(this, ex);
             FailPendingRequests(ex);

@@ -30,12 +30,16 @@ public class RustPlus(
     : RustPlusSocket(connection, options, loggerFactory), IRustPlus
 {
     /// <summary>
-    /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or alarm.
+    /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or a smart
+    /// alarm. The Rust+ protocol does not distinguish the two: an <c>EntityChanged</c> broadcast
+    /// whose payload carries no item capacity is routed here, so alarm state changes also surface
+    /// through this event.
     /// </summary>
     public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered;
 
     /// <summary>
-    /// Occurs when a <see cref="StorageMonitorEventArg"/> is triggered by a storage monitor.
+    /// Occurs when a <see cref="StorageMonitorEventArg"/> is triggered by a storage monitor
+    /// (an <c>EntityChanged</c> broadcast whose payload carries item capacity).
     /// </summary>
     public event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 
@@ -124,6 +128,7 @@ public class RustPlus(
     /// than <c>response.Response</c>. Unrelated broadcasts stay pure notifications.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the client is not connected.</exception>
     protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request,
         Func<AppMessage, T> successSelector,
         Func<AppBroadcast, bool>? broadcastReplyMatcher = null,
@@ -144,6 +149,7 @@ public class RustPlus(
     /// <param name="request">The request to be processed.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
     /// <returns>A <see cref="Task{TResult}"/> whose result is a payload-free <see cref="Response"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the client is not connected.</exception>
     protected async Task<Response> ProcessAckRequestAsync(AppRequest request,
         CancellationToken cancellationToken = default)
     {

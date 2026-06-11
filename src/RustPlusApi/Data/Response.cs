@@ -30,4 +30,8 @@ public sealed record ErrorMessage
 {
     /// <summary>Human-readable description of the error returned by the server.</summary>
     public string? Message { get; init; }
+
+    /// <summary>Machine-readable identifier parsed from <see cref="Message"/>;
+    /// <see cref="RustPlusErrorCode.Unknown"/> when the identifier is not recognized.</summary>
+    public RustPlusErrorCode Code { get; init; }
 }

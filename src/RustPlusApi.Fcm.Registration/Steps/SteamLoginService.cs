@@ -44,6 +44,11 @@ public sealed class SteamLoginService(int port = 3000)
         using var listener = new HttpListener();
         listener.Prefixes.Add($"http://localhost:{port}/");
         listener.Start();
+        // GetContextAsync takes no cancellation token: stopping the listener is the only way to
+        // unblock the wait promptly, so cancellation must not have to wait for the next request.
+#pragma warning disable RCS1261 // CancellationTokenRegistration.DisposeAsync is not available on netstandard2.0
+        using var cancellationRegistration = cancellationToken.Register(listener.Stop);
+#pragma warning restore RCS1261
 
         var workDir = Path.Combine(Path.GetTempPath(), "rustplusapi-" + Guid.NewGuid().ToString("N"));
         var profileDir = Path.Combine(workDir, "profile");
@@ -60,7 +65,19 @@ public sealed class SteamLoginService(int port = 3000)
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var context = await listener.GetContextAsync().ConfigureAwait(false);
+                HttpListenerContext context;
+                try
+                {
+                    context = await listener.GetContextAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException)
+                {
+                    // The listener was stopped under the wait — by the cancellation registration
+                    // above (expected; rethrow as cancellation) or by an unrelated teardown.
+                    cancellationToken.ThrowIfCancellationRequested();
+                    throw;
+                }
+
                 var token = await ReadTokenAsync(context.Request).ConfigureAwait(false);
                 await RespondAsync(context, "<h1>Done. You can close this window.</h1>").ConfigureAwait(false);
                 if (!string.IsNullOrEmpty(token))

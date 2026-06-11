@@ -170,9 +170,15 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
             var responseText = await httpResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
 #endif
 
-            if (!responseText.Contains("Error", StringComparison.Ordinal))
+            // Success is "token=<value>", failure is "Error=<reason>". Prefix-match the error key
+            // and cut at the FIRST '=' so a token that itself contains '=' or the substring
+            // "Error" is never mangled. A response without '=' is treated as a failure to retry.
+#pragma warning disable CA1307 // the StringComparison overload of IndexOf(char) is unavailable on netstandard2.0; a char search is already ordinal
+            var separatorIndex = responseText.IndexOf('=');
+#pragma warning restore CA1307
+            if (!responseText.StartsWith("Error=", StringComparison.Ordinal) && separatorIndex >= 0)
             {
-                return responseText.Split('=')[1];
+                return responseText.Substring(separatorIndex + 1);
             }
 
             await Task.Delay(1000, cancellationToken).ConfigureAwait(false);

@@ -126,3 +126,10 @@ var listener = new RustPlusFcm(credentials);
 ```
 
 The legacy rustplus.js `rustplus.config.json` format is also accepted by the FCM sample's loader.
+
+> [!WARNING]
+> `rustplus.config.json` contains long-lived push credentials (the GCM security token and
+> FCM/Expo tokens) in plain JSON — anyone who can read the file can receive your pairing
+> notifications. Treat it like a password file: keep it out of version control and shared
+> directories. On .NET 10+ on Linux/macOS, `CredentialsStore.Save` restricts it to owner
+> read/write; on other targets, restrict permissions yourself.

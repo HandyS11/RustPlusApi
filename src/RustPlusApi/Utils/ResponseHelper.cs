@@ -17,14 +17,7 @@ public static class ResponseHelper
     {
         return new Response<T?>
         {
-            IsSuccess = isSuccess,
-            Error = message is null
-                ? null
-                : new ErrorMessage
-                {
-                    Message = message
-                },
-            Data = data
+            IsSuccess = isSuccess, Error = BuildError(message), Data = data
         };
     }
 
@@ -38,13 +31,40 @@ public static class ResponseHelper
     {
         return new Response
         {
-            IsSuccess = isSuccess,
-            Error = message is null
-                ? null
-                : new ErrorMessage
-                {
-                    Message = message
-                }
+            IsSuccess = isSuccess, Error = BuildError(message)
         };
     }
+
+    /// <summary>Builds the <see cref="ErrorMessage"/> for a raw server identifier, or
+    /// <see langword="null"/> when there is no error.</summary>
+    /// <param name="message">The raw server error identifier, or <see langword="null"/>.</param>
+    private static ErrorMessage? BuildError(string? message) =>
+        message is null
+            ? null
+            : new ErrorMessage
+            {
+                Message = message, Code = ParseErrorCode(message)
+            };
+
+    /// <summary>Maps a raw Rust+ server error identifier to its <see cref="RustPlusErrorCode"/>;
+    /// unrecognized identifiers map to <see cref="RustPlusErrorCode.Unknown"/>. The match is
+    /// deliberately exact and case-sensitive — the wire identifiers are stable lowercase strings.
+    /// Keep these arms in sync with the <see cref="RustPlusErrorCode"/> members.</summary>
+    /// <param name="message">The raw server error identifier.</param>
+    private static RustPlusErrorCode ParseErrorCode(string message) => message switch
+    {
+        "server_error" => RustPlusErrorCode.ServerError,
+        "banned" => RustPlusErrorCode.Banned,
+        "rate_limit" => RustPlusErrorCode.RateLimit,
+        "not_found" => RustPlusErrorCode.NotFound,
+        "wrong_type" => RustPlusErrorCode.WrongType,
+        "no_team" => RustPlusErrorCode.NoTeam,
+        "no_clan" => RustPlusErrorCode.NoClan,
+        "no_map" => RustPlusErrorCode.NoMap,
+        "access_denied" => RustPlusErrorCode.AccessDenied,
+        "message_not_sent" => RustPlusErrorCode.MessageNotSent,
+        "too_many_subscribers" => RustPlusErrorCode.TooManySubscribers,
+        "not_enabled" => RustPlusErrorCode.NotEnabled,
+        _ => RustPlusErrorCode.Unknown
+    };
 }
