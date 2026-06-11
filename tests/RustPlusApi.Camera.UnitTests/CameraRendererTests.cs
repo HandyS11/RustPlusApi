@@ -469,8 +469,8 @@ public class CameraRendererTests
     [Fact]
     public void AddRays_NonZeroSampleOffset_PaintsCorrectPixel()
     {
-        // sampleOffset=2 skips sample[0] and starts at sample[1] in 4×4.
-        // sample[1] = linear 15 → image(3, 0).
+        // sampleOffset=2 (in samples) skips sample[0] and sample[1] and starts at
+        // sample[2] in 4×4 → image(0, 1).
         var renderer = new CameraRenderer(4, 4);
         renderer.AddRays(new CameraFrame
         {
@@ -480,18 +480,73 @@ public class CameraRendererTests
 
         using var image = Decode(renderer.Render());
 
-        Assert.Equal(new Rgba32(127, 127, 127), image[3, 0]);
+        Assert.Equal(new Rgba32(127, 127, 127), image[0, 1]);
         Assert.Equal(new Rgba32(0, 0, 0, 0), image[2, 2]); // sample[0] not touched
+        Assert.Equal(new Rgba32(0, 0, 0, 0), image[3, 0]); // sample[1] not touched
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // SampleOffset wrap-around (% 2*width*height)
+    // SampleOffset unit: the frame's SampleOffset counts SAMPLES, not buffer
+    // slots — the reference (rustplus.js _renderCameraFrame) starts decoding at
+    // `2 * frame.sampleOffset` because the position buffer stores (x,y) pairs.
+    // Using it un-doubled halves the offset and (when odd) de-pairs the reads,
+    // which scrambled every live frame into noise.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void AddRays_SampleOffsetCountsSamples_NotBufferSlots()
+    {
+        // SampleOffset = 1 → buffer offset 2 → sample[1] → image(3, 0) in 4×4.
+        var renderer = new CameraRenderer(4, 4);
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = FullRay(128, 63, 2), SampleOffset = 1
+        });
+
+        using var image = Decode(renderer.Render());
+
+        Assert.Equal(new Rgba32(76, 178, 255), image[3, 0]); // sample[1]
+        Assert.Equal(new Rgba32(0, 0, 0, 0), image[2, 2]); // sample[0] untouched
+    }
+
+    /// <summary>
+    /// With pair-aligned reads, every sample of a full frame maps inside the image —
+    /// a frame's worth of rays must paint every pixel exactly once.
+    /// </summary>
+    [Fact]
+    public void AddRays_FullFrameOfRays_PaintsEveryPixel()
+    {
+        var renderer = new CameraRenderer(4, 4);
+        var rays = new List<byte>();
+        for (var n = 0; n < 16; n++)
+        {
+            rays.AddRange(FullRay(128, 63, 2));
+        }
+
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = [.. rays], SampleOffset = 0
+        });
+
+        using var image = Decode(renderer.Render());
+        for (var y = 0; y < 4; y++)
+        {
+            for (var x = 0; x < 4; x++)
+            {
+                Assert.Equal(new Rgba32(76, 178, 255), image[x, y]);
+            }
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SampleOffset wrap-around (% width*height in samples)
     // ──────────────────────────────────────────────────────────────────────────
 
     [Fact]
     public void AddRays_SampleOffsetWraps_PaintsCorrectPixel()
     {
-        // 4×4: 2*width*height = 32. sampleOffset=32 wraps to 0 → same as sampleOffset=0.
+        // 4×4: one frame is width*height = 16 samples. sampleOffset=32 (two full frames,
+        // buffer cursor 64 % 32 = 0) wraps to sample[0] → same pixel as sampleOffset=0.
         var renderer1 = new CameraRenderer(4, 4);
         renderer1.AddRays(new CameraFrame
         {
@@ -545,11 +600,11 @@ public class CameraRendererTests
     {
         // sample[3] in 4×4 → linear=0 → x=0, image_y=height-1-0=3 → image(0,3)
         var renderer = new CameraRenderer(4, 4);
-        // Need to use sampleOffset=6 so the ray hits sample[3]
+        // sampleOffset=3 (in samples) so the ray hits sample[3]
         renderer.AddRays(new CameraFrame
         {
             RayData = FullRay(128, 63, 3), // mat3, r=63 → (153,153,153)
-            SampleOffset = 6
+            SampleOffset = 3
         });
 
         using var image = Decode(renderer.Render());
@@ -710,19 +765,16 @@ public class CameraRendererTests
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Malformed-frame robustness: SampleOffset is server/network-supplied.
-    // An odd offset swaps the (x,y) read roles so a sample can map outside the
-    // image buffer; AddRays must drop it (bounds guard) rather than throw.
+    // Odd sample offsets are ordinary sample counts: the buffer cursor (2×offset)
+    // stays pair-aligned, so every sample maps inside the image on any geometry.
     // ──────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void AddRays_OddSampleOffset_DropsOutOfRangeSamplesWithoutThrowing()
+    public void AddRays_OddSampleOffset_AllSamplesLandInsideImage()
     {
-        // 4×2 (width > height) + odd offset makes some samples map to an index
-        // >= width*height (out of range). Seven rays guarantee at least one such
-        // sample (the x-component read reaches 2 or 3), exercising the guard's
-        // false branch. The offset stays below the buffer boundary, so the only
-        // thing under test is the out-of-range image-index guard.
+        // 4×2 (width > height) with an odd offset; under the old un-doubled-cursor bug this
+        // de-paired the (x,y) reads and produced out-of-range indices. Now every ray must
+        // land on a real pixel: 7 rays from offset 1 fill samples 1..7 of the 8-pixel image.
         var renderer = new CameraRenderer(4, 2);
         var rays = new List<byte>();
         for (var n = 0; n < 7; n++)
@@ -730,16 +782,25 @@ public class CameraRendererTests
             rays.AddRange(FullRay(128, 63, 2));
         }
 
-        var exception = Record.Exception(() =>
-            renderer.AddRays(new CameraFrame
-            {
-                RayData = [.. rays], SampleOffset = 1
-            }));
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = [.. rays], SampleOffset = 1
+        });
 
-        Assert.Null(exception);
         using var image = Decode(renderer.Render());
-        Assert.Equal(4, image.Width);
-        Assert.Equal(2, image.Height);
+        var painted = 0;
+        for (var y = 0; y < 2; y++)
+        {
+            for (var x = 0; x < 4; x++)
+            {
+                if (image[x, y] == new Rgba32(76, 178, 255))
+                {
+                    painted++;
+                }
+            }
+        }
+
+        Assert.Equal(7, painted); // all 7 rays landed, none dropped
     }
 
     // ──────────────────────────────────────────────────────────────────────────

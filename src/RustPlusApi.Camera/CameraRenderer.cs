@@ -36,7 +36,11 @@ public sealed class CameraRenderer(int width, int height)
     public void AddRays(CameraFrame frame)
     {
         var rayData = frame.RayData;
-        var sampleOffset = frame.SampleOffset;
+        // The frame's SampleOffset counts SAMPLES; the position buffer stores (x,y) PAIRS, so the
+        // read cursor is twice the offset (reference: rustplus.js `2 * frame.sampleOffset`).
+        // Un-doubled it lands on the wrong positions — and de-pairs the reads when odd —
+        // scrambling the whole image into noise.
+        var sampleOffset = 2 * frame.SampleOffset;
 
         var lookback = new int[64][];
         for (var k = 0; k < lookback.Length; k++)
@@ -86,14 +90,10 @@ public sealed class CameraRenderer(int width, int height)
             }
 
             sampleOffset %= 2 * width * height;
+            // Pair-aligned reads (the cursor starts even and advances by 2) always yield
+            // x < width and y < height, so the index is in range by construction.
             var index = _samplePositionBuffer[sampleOffset++] + (_samplePositionBuffer[sampleOffset++] * width);
-            // SampleOffset is server/network-supplied; a malformed (e.g. odd) offset can map a
-            // sample past the end of the image buffer. Drop those rather than throw. (index is a
-            // sum of non-negative sample-buffer values, so it can only ever be too large, never < 0.)
-            if (index < _output.Length)
-            {
-                _output[index] = (t, r, i);
-            }
+            _output[index] = (t, r, i);
         }
     }
 
