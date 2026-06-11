@@ -26,7 +26,8 @@ public class CameraRendererGoldenTests
     public void Render_RealCapturedFrames_MatchesApprovedGoldenImage()
     {
         var fixture = JsonSerializer.Deserialize<CaptureFixture>(
-            File.ReadAllText(Path.Combine("Fixtures", "cam02-frames.json")))!;
+                          File.ReadAllText(Path.Combine("Fixtures", "cam02-frames.json")))
+                      ?? throw new InvalidOperationException("cam02-frames.json deserialized to null");
 
         var renderer = new CameraRenderer(fixture.Width, fixture.Height);
         foreach (var frame in fixture.Frames)
