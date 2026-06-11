@@ -134,6 +134,11 @@ public abstract class RustPlusSocket(
     /// <summary>Test seam: the number of in-flight requests awaiting a seq-bearing response.</summary>
     internal int PendingRequestCountForTests => _pendingRequests.Count;
 
+    /// <summary>Test seam: enqueues a request directly onto the send channel, bypassing
+    /// <see cref="SendRequestAsync"/>'s state checks, to exercise the send loop's fault path.</summary>
+    /// <param name="request">The request to enqueue.</param>
+    internal void EnqueueRequestForTests(AppRequest request) => _sendChannel.Writer.TryWrite(request);
+
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
@@ -573,6 +578,18 @@ public abstract class RustPlusSocket(
         {
             // The socket broke under us (e.g. peer closed): surface it, stop draining, and fail the
             // in-flight requests now — none of them can ever be answered on this connection.
+            Logger.LogSendLoopFaulted(ex);
+            ErrorOccurred?.Invoke(this, ex);
+            FailPendingRequests(ex);
+        }
+        catch (Exception ex)
+        {
+            // A concurrent reconnect can dispose/null _webSocket while this loop is draining
+            // (NullReferenceException / ObjectDisposedException). Left uncaught, the loop dies
+            // invisibly and every pending request waits out its full timeout — surface the fault
+            // and fail them now instead. The receive loop's generic catch backs off and retries,
+            // but exiting is correct here because the faulted socket cannot send anything again —
+            // ConnectAsync restarts a completed send loop on the next connect.
             Logger.LogSendLoopFaulted(ex);
             ErrorOccurred?.Invoke(this, ex);
             FailPendingRequests(ex);

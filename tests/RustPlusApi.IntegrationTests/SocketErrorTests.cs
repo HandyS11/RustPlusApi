@@ -11,6 +11,8 @@ namespace RustPlusApi.IntegrationTests;
 /// </summary>
 public class SocketErrorTests
 {
+    private const ulong PlayerId = 76561198000000000;
+    private const int PlayerToken = 123456789;
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
     [Fact]
@@ -130,5 +132,39 @@ public class SocketErrorTests
         var ex = await error.Task.WaitAsync(Timeout);
         Assert.NotNull(ex);
         Assert.False(client.IsConnected);
+    }
+
+    [Fact]
+    public async Task SendLoop_NonWebSocketFault_RaisesErrorOccurredAndExits()
+    {
+        // A failed reconnect leaves _webSocket null while the send loop (started by the first
+        // connect) is still draining the channel. A request entering the channel in that window
+        // must surface on ErrorOccurred and exit the loop cleanly — not kill it silently.
+        var server = new MockRustPlusServer(MockResponses.Default);
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+
+        await client.ConnectAsync().WaitAsync(Timeout);
+        await client.DisconnectAsync();
+        await server.DisposeAsync(); // free the endpoint so the reconnect below is refused
+
+        // The reconnect disposes/nulls the old socket, then fails; the send loop stays alive.
+        await Assert.ThrowsAnyAsync<Exception>(() => client.ConnectAsync().WaitAsync(Timeout));
+
+        // Subscribe only now, so the connect failure above cannot satisfy the assertion.
+        var errorTcs = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.ErrorOccurred += (_, ex) => errorTcs.TrySetResult(ex);
+
+        client.EnqueueRequestForTests(new AppRequest
+        {
+            GetInfo = new AppEmpty()
+        });
+
+        var observed = await errorTcs.Task.WaitAsync(Timeout);
+        Assert.True(observed is NullReferenceException or ObjectDisposedException,
+            $"Unexpected fault type: {observed.GetType()}");
+        // The loop exited through the fault handler instead of dying mid-iteration unobserved.
+        await client.SendLoopForTests!.WaitAsync(Timeout);
     }
 }
