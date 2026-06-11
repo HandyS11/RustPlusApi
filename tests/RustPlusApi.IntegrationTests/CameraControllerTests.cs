@@ -234,6 +234,37 @@ public class CameraControllerTests
         Assert.Equal("CAM01", controller.CameraId);
     }
 
+    [Theory]
+    // Turret-shaped flags: Mouse | Fire | Reload | Crosshair — Reload marks the turret.
+    [InlineData(2 | 8 | 16 | 32, true, false)]
+    // Drone-shaped flags: Movement | Mouse | SprintAndDuck | Crosshair — a drone may render
+    // a crosshair too, so Crosshair must NOT count as a turret; SprintAndDuck marks the drone.
+    [InlineData(1 | 2 | 4 | 32, false, true)]
+    // Static CCTV: no controls at all.
+    [InlineData(0, false, false)]
+    public async Task DeviceKindFlags_MapToIsAutoTurretAndIsDrone(int controlFlags, bool isAutoTurret, bool isDrone)
+    {
+        var server = new MockRustPlusServer(request =>
+        {
+            var message = MockResponses.Default(request);
+            if (request.CameraSubscribe is not null)
+            {
+                message!.Response.CameraSubscribeInfo.ControlFlags = controlFlags;
+            }
+
+            return message;
+        });
+        await using var _ = server;
+        server.Start();
+        await using var client = await ConnectAsync(server);
+
+        var response = await CameraController.SubscribeAsync(client, "DEVICE01").WaitAsync(Timeout);
+        await using var controller = response.Data!;
+
+        Assert.Equal(isAutoTurret, controller.IsAutoTurret);
+        Assert.Equal(isDrone, controller.IsDrone);
+    }
+
     [Fact]
     public async Task SubscribeAsync_FailureResponse_ReturnsErrorWithoutController()
     {

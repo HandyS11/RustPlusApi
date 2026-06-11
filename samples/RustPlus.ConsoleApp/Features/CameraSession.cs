@@ -77,7 +77,17 @@ internal sealed class CameraSession(IRustPlus rustPlus, EntityIdStore ids)
                 // The server silently ignores inputs the camera does not advertise: WASD only moves
                 // drones (Movement flag), mouse-look only turns PTZ-style cameras (Mouse flag) —
                 // a static CCTV reports None and never reacts, even though the input is acked.
-                Console.WriteLine($"Supported controls: {(info.ControlFlags == CameraControlFlags.None ? "none (static camera)" : info.ControlFlags)}{(controller.IsAutoTurret ? " — auto-turret" : "")}");
+                var deviceKind = "";
+                if (controller.IsAutoTurret)
+                {
+                    deviceKind = " — auto-turret";
+                }
+                else if (controller.IsDrone)
+                {
+                    deviceKind = " — drone";
+                }
+
+                Console.WriteLine($"Supported controls: {(info.ControlFlags == CameraControlFlags.None ? "none (static camera)" : info.ControlFlags)}{deviceKind}");
                 Console.WriteLine("  p       : render an ASCII preview now");
                 Console.WriteLine("  o       : save the current frame as a PNG");
                 Console.WriteLine("  w/a/s/d : move (forward/left/back/right) — drones");

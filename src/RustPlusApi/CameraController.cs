@@ -31,9 +31,16 @@ public sealed class CameraController : IAsyncDisposable
     /// <summary>Camera description from the most recent successful subscribe.</summary>
     public CameraInfo Info { get; private set; }
 
-    /// <summary>Whether the camera is an auto-turret (advertises the
-    /// <see cref="CameraControlFlags.Crosshair"/> flag, as in rustplus.js <c>isAutoTurret</c>).</summary>
-    public bool IsAutoTurret => Info.ControlFlags.HasFlag(CameraControlFlags.Crosshair);
+    /// <summary>Whether the camera is an auto-turret. Detected via the
+    /// <see cref="CameraControlFlags.Reload"/> flag — only turrets expose a reload input.
+    /// (rustplus.js checks <see cref="CameraControlFlags.Crosshair"/> instead, but a drone
+    /// may also render a crosshair, so <c>Reload</c> is the safer discriminator.)</summary>
+    public bool IsAutoTurret => Info.ControlFlags.HasFlag(CameraControlFlags.Reload);
+
+    /// <summary>Whether the camera is a drone (advertises the
+    /// <see cref="CameraControlFlags.SprintAndDuck"/> flag, which carries the drone's
+    /// vertical movement controls).</summary>
+    public bool IsDrone => Info.ControlFlags.HasFlag(CameraControlFlags.SprintAndDuck);
 
     /// <summary>Occurs when a ray frame for the subscribed camera is received.</summary>
     public event EventHandler<CameraRaysEventArg>? OnFrameReceived;

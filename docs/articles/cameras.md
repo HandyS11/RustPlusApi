@@ -70,7 +70,7 @@ await rustPlus.UnsubscribeFromCameraAsync();
 | `None` | `0` | No controls available. |
 | `Movement` | `1` | WASD movement is supported. |
 | `Mouse` | `2` | Mouse look is supported. |
-| `SprintAndDuck` | `4` | Sprint and duck inputs are supported. |
+| `SprintAndDuck` | `4` | Sprint and duck inputs are supported (drones: vertical movement). |
 | `Fire` | `8` | Fire inputs are supported. |
 | `Reload` | `16` | Reload input is supported. |
 | `Crosshair` | `32` | The camera renders a crosshair overlay. |
@@ -121,7 +121,7 @@ if (!response.IsSuccess) return;
 await using var turret = response.Data!;
 turret.OnFrameReceived += (_, frame) => renderer.AddRays(frame);
 
-if (turret.IsAutoTurret)        // ControlFlags has Crosshair
+if (turret.IsAutoTurret)        // ControlFlags has Reload (turret-only input)
 {
     await turret.ShootAsync();  // FirePrimary press + release
     await turret.ReloadAsync(); // Reload press + release
@@ -133,6 +133,10 @@ else
     await turret.ZoomAsync();
 }
 ```
+
+`IsAutoTurret` keys off the `Reload` flag (only turrets expose a reload input — a drone may
+render a crosshair too, so `Crosshair` is not a reliable turret marker), and `IsDrone` keys
+off `SprintAndDuck` (the drone's vertical movement controls).
 
 Disposing the controller stops the keep-alive and unsubscribes. Create at most one live
 controller per client — the server tracks a single camera subscription per connection.
