@@ -193,10 +193,24 @@ public sealed class CameraController : IAsyncDisposable
         while (!_cts.IsCancellationRequested)
         {
             await Task.Delay(interval, _cts.Token).ConfigureAwait(false);
-            var response = await _rustPlus.SubscribeToCameraAsync(CameraId, _cts.Token).ConfigureAwait(false);
-            if (response is { IsSuccess: true, Data: not null })
+            try
             {
-                Info = response.Data;
+                var response = await _rustPlus.SubscribeToCameraAsync(CameraId, _cts.Token).ConfigureAwait(false);
+                if (response is { IsSuccess: true, Data: not null })
+                {
+                    Info = response.Data;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+#pragma warning disable RCS1075 // best-effort renewal: a disconnected client throws instead of returning a failed Response; keep looping so the next renewal succeeds after a reconnect
+            catch (Exception)
+#pragma warning restore RCS1075
+            {
+                // Renewal is best-effort: a disconnected client throws instead of returning a
+                // failed Response; keep looping so the next renewal succeeds after a reconnect.
             }
         }
     }

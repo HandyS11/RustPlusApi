@@ -208,6 +208,33 @@ public class CameraControllerTests
     }
 
     [Fact]
+    public async Task DisposeAsync_AfterClientDisconnects_DoesNotThrow()
+    {
+        await using var server = new MockRustPlusServer();
+        server.Start();
+        var client = await ConnectAsync(server);
+
+        var response = await CameraController
+            .SubscribeAsync(client, "CAM01", resubscribeInterval: TimeSpan.FromMilliseconds(50))
+            .WaitAsync(Timeout);
+        var controller = response.Data!;
+
+        await client.DisconnectAsync();
+
+        // Let the keep-alive loop hit the throwing path several times.
+        await Task.Delay(300);
+
+        // DisposeAsync must complete without throwing even though the client is disconnected.
+        await controller.DisposeAsync();
+
+        // Second call verifies idempotence after the fault path.
+        await controller.DisposeAsync();
+
+        // If we reach this point, dispose never threw — that is the assertion.
+        Assert.Equal("CAM01", controller.CameraId);
+    }
+
+    [Fact]
     public async Task SubscribeAsync_FailureResponse_ReturnsErrorWithoutController()
     {
         var server = new MockRustPlusServer(request =>
