@@ -138,8 +138,10 @@ Disposing the controller stops the keep-alive and unsubscribes. Create at most o
 controller per client — the server tracks a single camera subscription per connection.
 
 > [!NOTE]
-> Cameras are only reachable while the paired player is connected to the server: subscribing
-> while the player is offline fails with `RustPlusErrorCode.NoPlayer` (`no_player`).
+> Cameras are accessed while the paired player is **disconnected** from the server, but the
+> player's character (sleeper) must still exist in the world. If the character is gone — for
+> example it was killed while away — subscribing fails with `RustPlusErrorCode.NoPlayer`
+> (`no_player`) until the player reconnects and respawns.
 
 ## Rendering layer (RustPlusApi.Camera)
 
