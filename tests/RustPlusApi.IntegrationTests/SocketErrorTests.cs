@@ -135,6 +135,51 @@ public class SocketErrorTests
     }
 
     [Fact]
+    public async Task SendRequestAsync_NeverConnected_ThrowsInvalidOperationException()
+    {
+        // Fail fast with a clear error instead of queueing into a 30s TimeoutException
+        // (and instead of transmitting the stale request on a later reconnect).
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, 1, PlayerId, PlayerToken));
+
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetInfoAsync());
+        Assert.Contains("Not connected", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SendRequestAsync_AfterDisconnect_ThrowsInvalidOperationException()
+    {
+        await using var server = new MockRustPlusServer(MockResponses.Default);
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+        await client.DisconnectAsync();
+
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetInfoAsync());
+        Assert.Contains("Not connected", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task SendRequestAsync_AfterFailedReconnect_ThrowsInvalidOperationException()
+    {
+        // After a failed reconnect the socket reference is gone but the client is not disposed:
+        // the guard must treat this exactly like never-connected instead of queueing.
+        var server = new MockRustPlusServer(MockResponses.Default);
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+        await client.DisconnectAsync();
+        await server.DisposeAsync(); // free the endpoint so the reconnect below is refused
+
+        await Assert.ThrowsAnyAsync<Exception>(() => client.ConnectAsync().WaitAsync(Timeout));
+
+        var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetInfoAsync());
+        Assert.Contains("Not connected", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task SendLoop_NonWebSocketFault_RaisesErrorOccurredAndExits()
     {
         // A failed reconnect leaves _webSocket null while the send loop (started by the first

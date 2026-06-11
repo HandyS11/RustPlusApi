@@ -278,11 +278,21 @@ public abstract class RustPlusSocket(
     /// broadcasts (other players' messages, other entities) are left to the notification pipeline.</param>
     /// <param name="cancellationToken">A token to cancel waiting for the response.</param>
     /// <returns>A task that represents the asynchronous operation and contains the <see cref="AppMessage"/> response.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the client is not connected.</exception>
     /// <exception cref="TimeoutException">Thrown when no response arrives within the request timeout.</exception>
     public async Task<AppMessage> SendRequestAsync(AppRequest request,
         Func<AppBroadcast, bool>? broadcastReplyMatcher = null,
         CancellationToken cancellationToken = default)
     {
+        if (!IsConnected)
+        {
+            // Queueing here would mean a generic 30s timeout now and a stale, out-of-context
+            // request transmitted on the next reconnect — fail fast instead. The socket can still
+            // die between this check and the actual send — that residual race is owned by the
+            // send loop's fault handler, which fails the pending requests immediately.
+            throw new InvalidOperationException("Not connected. Call ConnectAsync before sending requests.");
+        }
+
         // RunContinuationsAsynchronously keeps the receive loop from running awaiters inline when it resolves the TCS.
         var tcs = new TaskCompletionSource<AppMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
 
