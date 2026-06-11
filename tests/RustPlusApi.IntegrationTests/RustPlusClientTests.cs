@@ -1,3 +1,4 @@
+using RustPlusApi.Data;
 using RustPlusApi.Data.Events;
 using RustPlusApi.MockServer;
 using Xunit;
@@ -65,6 +66,7 @@ public class RustPlusClientTests
         Assert.False(response.IsSuccess);
         Assert.NotNull(response.Error);
         Assert.Equal("not_found", response.Error!.Message);
+        Assert.Equal(RustPlusErrorCode.NotFound, response.Error.Code);
     }
 
     [Fact]
