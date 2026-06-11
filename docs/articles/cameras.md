@@ -126,8 +126,12 @@ if (turret.IsAutoTurret)        // ControlFlags has Crosshair
     await turret.ShootAsync();  // FirePrimary press + release
     await turret.ReloadAsync(); // Reload press + release
 }
-
-await turret.ZoomAsync();       // PTZ zoom: 4 levels, wraps to 1 from max
+else
+{
+    // PTZ cameras only — zoom shares the FirePrimary button, so on a
+    // turret this would fire instead. Cycles the zoom levels and wraps.
+    await turret.ZoomAsync();
+}
 ```
 
 Disposing the controller stops the keep-alive and unsubscribes. Create at most one live
