@@ -1,4 +1,5 @@
 using RustPlus.ConsoleApp.Utils;
+using RustPlusApi;
 using RustPlusApi.Camera;
 using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Events;
@@ -17,18 +18,54 @@ internal sealed class CameraSession(IRustPlus rustPlus, EntityIdStore ids)
         Console.WriteLine("Camera (rendering is experimental).");
         var cameraId = ids.GetString("cameraId");
 
-        var response = await rustPlus.SubscribeToCameraAsync(cameraId);
+        var response = await CameraController.SubscribeAsync(rustPlus, cameraId);
         if (!response.IsSuccess)
         {
             DisplayUtilities.DisplayJson("SubscribeToCamera", response);
             return;
         }
 
-        var info = response.Data!;
+        await using var controller = response.Data!;
+        var info = controller.Info;
         var renderer = new CameraRenderer(info.Width, info.Height);
+        var renderLock = new object();
 
-        void OnRays(object? _, CameraRaysEventArg frame) => renderer.AddRays(frame);
-        rustPlus.OnCameraRaysReceived += OnRays;
+        controller.OnFrameReceived += OnRays;
+
+        void OnRays(object? _, CameraRaysEventArg frame)
+        {
+            lock (renderLock)
+            {
+                renderer.AddRays(frame);
+            }
+        }
+
+        async Task MoveAsync(CameraButtons buttons) =>
+            await SendButtonAsync(buttons, CameraControlFlags.Movement);
+
+        async Task SendButtonAsync(CameraButtons buttons, CameraControlFlags? requiredFlag)
+        {
+            if (requiredFlag is { } flag && !info.ControlFlags.HasFlag(flag))
+            {
+                Console.WriteLine(
+                    $"Note: this camera does not support {flag} (controls: {info.ControlFlags}); the server will ignore the input.");
+            }
+
+            var r = await controller.SendInputAsync(buttons);
+            DisplayUtilities.DisplayJson($"SendCameraInput({buttons})", r);
+        }
+
+        async Task LookAsync(float deltaX, float deltaY)
+        {
+            if (!info.ControlFlags.HasFlag(CameraControlFlags.Mouse))
+            {
+                Console.WriteLine(
+                    $"Note: this camera does not support mouse look (controls: {info.ControlFlags}); the server will ignore the input.");
+            }
+
+            var r = await controller.SendInputAsync(CameraButtons.None, deltaX, deltaY);
+            DisplayUtilities.DisplayJson($"SendCameraInput(look {deltaX},{deltaY})", r);
+        }
 
         try
         {
@@ -40,7 +77,7 @@ internal sealed class CameraSession(IRustPlus rustPlus, EntityIdStore ids)
                 // The server silently ignores inputs the camera does not advertise: WASD only moves
                 // drones (Movement flag), mouse-look only turns PTZ-style cameras (Mouse flag) —
                 // a static CCTV reports None and never reacts, even though the input is acked.
-                Console.WriteLine($"Supported controls: {(info.ControlFlags == CameraControlFlags.None ? "none (static camera)" : info.ControlFlags)}");
+                Console.WriteLine($"Supported controls: {(info.ControlFlags == CameraControlFlags.None ? "none (static camera)" : info.ControlFlags)}{(controller.IsAutoTurret ? " — auto-turret" : "")}");
                 Console.WriteLine("  p       : render an ASCII preview now");
                 Console.WriteLine("  o       : save the current frame as a PNG");
                 Console.WriteLine("  w/a/s/d : move (forward/left/back/right) — drones");
@@ -49,8 +86,9 @@ internal sealed class CameraSession(IRustPlus rustPlus, EntityIdStore ids)
                 Console.WriteLine("  c       : down (duck)");
                 Console.WriteLine("  x       : sprint");
                 Console.WriteLine("  e       : use / interact");
-                Console.WriteLine("  f/g/h   : fire primary/secondary/third — turrets");
-                Console.WriteLine("  r       : reload — turrets");
+                Console.WriteLine("  z       : zoom (PTZ cameras)");
+                Console.WriteLine("  f/g/h   : fire primary/secondary/third — turrets (press+release)");
+                Console.WriteLine("  r       : reload — turrets (press+release)");
                 Console.WriteLine("  u       : unsubscribe and go back");
                 Console.Write("\nPress a key: ");
 
@@ -60,63 +98,76 @@ internal sealed class CameraSession(IRustPlus rustPlus, EntityIdStore ids)
                 switch (key)
                 {
                     case 'p':
-                        CameraAsciiRenderer.Print(renderer.Render());
+                        byte[] asciiFrame;
+                        lock (renderLock)
+                        {
+                            asciiFrame = renderer.Render();
+                        }
+                        CameraAsciiRenderer.Print(asciiFrame);
                         Console.WriteLine("\nPress any key to continue...");
                         Console.ReadKey(intercept: true);
                         break;
                     case 'o':
-                        var path = SavePng(cameraId, renderer.Render());
+                        byte[] pngFrame;
+                        lock (renderLock)
+                        {
+                            pngFrame = renderer.Render();
+                        }
+                        var path = SavePng(cameraId, pngFrame);
                         Console.WriteLine($"Saved {path}");
                         Console.WriteLine("\nPress any key to continue...");
                         Console.ReadKey(intercept: true);
                         break;
                     case 'w':
-                        await MoveAsync(info, CameraButtons.Forward);
+                        await MoveAsync(CameraButtons.Forward);
                         break;
                     case 'a':
-                        await MoveAsync(info, CameraButtons.Left);
+                        await MoveAsync(CameraButtons.Left);
                         break;
                     case 's':
-                        await MoveAsync(info, CameraButtons.Backward);
+                        await MoveAsync(CameraButtons.Backward);
                         break;
                     case 'd':
-                        await MoveAsync(info, CameraButtons.Right);
+                        await MoveAsync(CameraButtons.Right);
                         break;
                     case 'i':
-                        await LookAsync(info, 0, -LookStep);
+                        await LookAsync(0, -LookStep);
                         break;
                     case 'j':
-                        await LookAsync(info, -LookStep, 0);
+                        await LookAsync(-LookStep, 0);
                         break;
                     case 'k':
-                        await LookAsync(info, 0, LookStep);
+                        await LookAsync(0, LookStep);
                         break;
                     case 'l':
-                        await LookAsync(info, LookStep, 0);
+                        await LookAsync(LookStep, 0);
                         break;
                     case ' ':
-                        await MoveAsync(info, CameraButtons.Jump);
+                        await MoveAsync(CameraButtons.Jump);
                         break;
                     case 'c':
-                        await MoveAsync(info, CameraButtons.Duck);
+                        await MoveAsync(CameraButtons.Duck);
                         break;
                     case 'x':
-                        await SendButtonAsync(info, CameraButtons.Sprint, CameraControlFlags.SprintAndDuck);
+                        await SendButtonAsync(CameraButtons.Sprint, CameraControlFlags.SprintAndDuck);
                         break;
                     case 'e':
-                        await SendButtonAsync(info, CameraButtons.Use, requiredFlag: null);
+                        await SendButtonAsync(CameraButtons.Use, requiredFlag: null);
+                        break;
+                    case 'z':
+                        DisplayUtilities.DisplayJson("Zoom", await controller.ZoomAsync());
                         break;
                     case 'f':
-                        await SendButtonAsync(info, CameraButtons.FirePrimary, CameraControlFlags.Fire);
+                        DisplayUtilities.DisplayJson("Shoot", await controller.ShootAsync());
                         break;
                     case 'g':
-                        await SendButtonAsync(info, CameraButtons.FireSecondary, CameraControlFlags.Fire);
+                        DisplayUtilities.DisplayJson("FireSecondary", await controller.PressAsync(CameraButtons.FireSecondary));
                         break;
                     case 'h':
-                        await SendButtonAsync(info, CameraButtons.FireThird, CameraControlFlags.Fire);
+                        DisplayUtilities.DisplayJson("FireThird", await controller.PressAsync(CameraButtons.FireThird));
                         break;
                     case 'r':
-                        await SendButtonAsync(info, CameraButtons.Reload, CameraControlFlags.Reload);
+                        DisplayUtilities.DisplayJson("Reload", await controller.ReloadAsync());
                         break;
                     case 'u':
                         running = false;
@@ -126,37 +177,10 @@ internal sealed class CameraSession(IRustPlus rustPlus, EntityIdStore ids)
         }
         finally
         {
-            rustPlus.OnCameraRaysReceived -= OnRays;
-            var unsub = await rustPlus.UnsubscribeFromCameraAsync();
-            DisplayUtilities.DisplayJson("UnsubscribeFromCamera", unsub);
-        }
-    }
-
-    private Task MoveAsync(CameraInfo info, CameraButtons buttons) =>
-        SendButtonAsync(info, buttons, CameraControlFlags.Movement);
-
-    private async Task SendButtonAsync(CameraInfo info, CameraButtons buttons, CameraControlFlags? requiredFlag)
-    {
-        if (requiredFlag is { } flag && !info.ControlFlags.HasFlag(flag))
-        {
-            Console.WriteLine(
-                $"Note: this camera does not support {flag} (controls: {info.ControlFlags}); the server will ignore the input.");
+            controller.OnFrameReceived -= OnRays;
         }
 
-        var response = await rustPlus.SendCameraInputAsync(buttons);
-        DisplayUtilities.DisplayJson($"SendCameraInput({buttons})", response);
-    }
-
-    private async Task LookAsync(CameraInfo info, float deltaX, float deltaY)
-    {
-        if (!info.ControlFlags.HasFlag(CameraControlFlags.Mouse))
-        {
-            Console.WriteLine(
-                $"Note: this camera does not support mouse look (controls: {info.ControlFlags}); the server will ignore the input.");
-        }
-
-        var response = await rustPlus.SendCameraInputAsync(CameraButtons.None, deltaX, deltaY);
-        DisplayUtilities.DisplayJson($"SendCameraInput(look {deltaX},{deltaY})", response);
+        Console.WriteLine("Unsubscribed.");
     }
 
     private static string SavePng(string cameraId, byte[] pngBytes)
