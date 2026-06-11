@@ -47,4 +47,8 @@ public enum RustPlusErrorCode
 
     /// <summary><c>not_enabled</c> — the requested feature is disabled on this server.</summary>
     NotEnabled = 12,
+
+    /// <summary><c>no_player</c> — the paired player is not connected to the server
+    /// (observed on camera subscribe attempts while the player is offline).</summary>
+    NoPlayer = 13,
 }
