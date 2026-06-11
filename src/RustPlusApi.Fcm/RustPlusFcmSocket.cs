@@ -786,6 +786,14 @@ public abstract class RustPlusFcmSocket(
 
         var bodyData = JsonSerializer.Deserialize<Body>(body, _parsingOptions);
 
+        if (bodyData is null)
+        {
+            // A JSON-literal null body deserializes to null without throwing; skip it here
+            // instead of deferring a NullReferenceException into downstream event handlers.
+            Logger.LogNullNotificationBody();
+            return;
+        }
+
         var fcmMessage = new FcmMessage
         {
             PersistentId = dataMessage.PersistentId ?? string.Empty,
@@ -795,7 +803,7 @@ public abstract class RustPlusFcmSocket(
             {
                 ChannelId = channelId,
                 ProjectId = Guid.Parse(projectId ?? Guid.Empty.ToString()),
-                Body = bodyData!,
+                Body = bodyData,
                 Title = title ?? string.Empty,
                 Message = message ?? string.Empty,
                 ExperienceId = experienceId ?? string.Empty,

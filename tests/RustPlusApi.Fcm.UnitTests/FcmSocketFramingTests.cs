@@ -286,6 +286,27 @@ public class FcmSocketFramingTests
     }
 
     [Fact]
+    public async Task DataMessage_BodyDeserializesToNull_IsSkippedWithoutFaulting()
+    {
+        // A JSON-literal null body deserializes to null without throwing; the message must be
+        // skipped with a log instead of deferring a NullReferenceException into downstream event handlers.
+        await using var socket = NewSocket();
+        string? notification = null;
+        Exception? error = null;
+        socket.NotificationReceived += (_, n) => notification = n;
+        socket.ErrorOccurred += (_, ex) => error = ex;
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(body: "null")));
+
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
+
+        Assert.Null(notification); // skipped, not dispatched with a null Body
+        Assert.Null(error);        // and skipped cleanly, not via the catch-all
+    }
+
+    [Fact]
     public async Task HeartbeatPing_WritesHeartbeatAckBackToStream()
     {
         await using var socket = NewSocket();
