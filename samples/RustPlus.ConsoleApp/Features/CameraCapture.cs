@@ -55,7 +55,10 @@ internal sealed class CameraCapture(IRustPlus rustPlus)
             while (DateTime.UtcNow < deadline)
             {
                 var slice = deadline - DateTime.UtcNow;
-                await Task.Delay(slice < ResubscribeInterval ? slice : ResubscribeInterval);
+                if (slice > TimeSpan.Zero)
+                {
+                    await Task.Delay(slice < ResubscribeInterval ? slice : ResubscribeInterval);
+                }
 
                 int count;
                 lock (fixture.Frames)
@@ -67,7 +70,11 @@ internal sealed class CameraCapture(IRustPlus rustPlus)
 
                 if (DateTime.UtcNow < deadline)
                 {
-                    await rustPlus.SubscribeToCameraAsync(cameraId);
+                    var renew = await rustPlus.SubscribeToCameraAsync(cameraId);
+                    if (!renew.IsSuccess)
+                    {
+                        Console.WriteLine($"Warning: re-subscribe failed: {renew.Error?.Code} {renew.Error?.Message}");
+                    }
                 }
             }
         }
