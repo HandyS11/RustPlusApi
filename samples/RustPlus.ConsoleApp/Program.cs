@@ -4,7 +4,11 @@ using RustPlus.ConsoleApp.Utils;
 // Fill credentials.json (copy credentials.sample.json) with the ip/port/playerId/playerToken
 // printed by the RustPlus.Register.ConsoleApp sample when you "Pair with Server" in game.
 // Put it next to this project (gitignored), or pass its path as the first argument.
-var configFilePath = args.Length > 0
+//
+// Headless capture mode (golden-fixture generation):
+//   RustPlus.ConsoleApp [credentialsPath] capture <cameraId> <durationSeconds> [outputDir]
+var captureIndex = Array.FindIndex(args, a => a.Equals("capture", StringComparison.OrdinalIgnoreCase));
+var configFilePath = args.Length > 0 && captureIndex != 0
     ? args[0]
     : Path.Combine(AppContext.BaseDirectory, "credentials.json");
 
@@ -37,6 +41,21 @@ catch (Exception ex)
     Console.WriteLine($"Failed to connect to {credentials.Ip}:{credentials.Port} — {ex.Message}");
     Console.WriteLine("Check that the server is up and the credentials are current.");
     return;
+}
+
+if (captureIndex >= 0)
+{
+    if (args.Length <= captureIndex + 2 || !int.TryParse(args[captureIndex + 2], out var seconds) || seconds <= 0)
+    {
+        Console.WriteLine("Usage: RustPlus.ConsoleApp [credentialsPath] capture <cameraId> <durationSeconds> [outputDir]");
+        await rustPlus.DisconnectAsync();
+        return;
+    }
+
+    var outDir = args.Length > captureIndex + 3 ? args[captureIndex + 3] : Environment.CurrentDirectory;
+    var exitCode = await new CameraCapture(rustPlus).RunAsync(args[captureIndex + 1], TimeSpan.FromSeconds(seconds), outDir);
+    await rustPlus.DisconnectAsync();
+    Environment.Exit(exitCode);
 }
 
 var ids = new EntityIdStore();
