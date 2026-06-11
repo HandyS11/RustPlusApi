@@ -23,4 +23,8 @@
         <ProjectReference Include="..\..\src\RustPlusApi.Camera\RustPlusApi.Camera.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
 </Project>
