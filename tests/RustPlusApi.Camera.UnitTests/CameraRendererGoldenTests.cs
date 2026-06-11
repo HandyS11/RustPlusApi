@@ -34,8 +34,7 @@ public class CameraRendererGoldenTests
         {
             renderer.AddRays(new CameraFrame
             {
-                SampleOffset = frame.SampleOffset,
-                RayData = Convert.FromBase64String(frame.RayDataBase64)
+                SampleOffset = frame.SampleOffset, RayData = Convert.FromBase64String(frame.RayDataBase64)
             });
         }
 
