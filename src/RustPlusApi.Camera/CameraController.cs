@@ -20,6 +20,14 @@ public sealed class CameraController : IAsyncDisposable
     /// <summary>The keep-alive renewal period used when none is supplied (mirrors rustplus.js).</summary>
     public static readonly TimeSpan DefaultResubscribeInterval = TimeSpan.FromSeconds(10);
 
+    /// <summary>How long <see cref="MoveAsync"/> holds the buttons when no duration is supplied.
+    /// 500 ms moves a live drone roughly 2 m at cruise speed.</summary>
+    public static readonly TimeSpan DefaultMoveDuration = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>Cadence at which <see cref="MoveAsync"/> re-sends the held input frame —
+    /// drones only actuate while receiving a continuous input stream.</summary>
+    private static readonly TimeSpan MoveStreamInterval = TimeSpan.FromMilliseconds(50);
+
     private readonly IRustPlus _rustPlus;
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _keepAlive;
@@ -144,29 +152,148 @@ public sealed class CameraController : IAsyncDisposable
     /// <summary>
     /// Advances a PTZ camera's zoom by one step (it cycles through its zoom levels and wraps),
     /// sending the <see cref="CameraButtons.FirePrimary"/> press-and-release used by rustplus.js.
+    /// Refused with <see cref="RustPlusErrorCode.NotSupported"/> unless <see cref="IsPtzCamera"/>:
+    /// zoom shares <see cref="CameraButtons.FirePrimary"/> with turret fire, so zooming "on" a
+    /// turret would shoot it — and the server acks unsupported inputs with success, giving no
+    /// feedback of its own.
     /// </summary>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    /// <returns>The acknowledgement <see cref="Response"/> from the server.</returns>
+    /// <returns>The acknowledgement <see cref="Response"/> from the server, or the
+    /// client-side refusal (nothing sent).</returns>
     public Task<Response> ZoomAsync(CancellationToken cancellationToken = default) =>
-        PressAsync(CameraButtons.FirePrimary, cancellationToken);
+        IsPtzCamera
+            ? PressAsync(CameraButtons.FirePrimary, cancellationToken)
+            : RefusedAsync("zoom is a PTZ-camera action (FirePrimary fires on a turret)");
 
     /// <summary>
     /// Fires an auto-turret once, sending the <see cref="CameraButtons.FirePrimary"/>
-    /// press-and-release used by rustplus.js.
+    /// press-and-release used by rustplus.js. Refused with
+    /// <see cref="RustPlusErrorCode.NotSupported"/> unless <see cref="IsAutoTurret"/>.
     /// </summary>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    /// <returns>The acknowledgement <see cref="Response"/> from the server.</returns>
+    /// <returns>The acknowledgement <see cref="Response"/> from the server, or the
+    /// client-side refusal (nothing sent).</returns>
     public Task<Response> ShootAsync(CancellationToken cancellationToken = default) =>
-        PressAsync(CameraButtons.FirePrimary, cancellationToken);
+        IsAutoTurret
+            ? PressAsync(CameraButtons.FirePrimary, cancellationToken)
+            : RefusedAsync("shoot is an auto-turret action");
 
     /// <summary>
     /// Reloads an auto-turret, sending the <see cref="CameraButtons.Reload"/>
-    /// press-and-release used by rustplus.js.
+    /// press-and-release used by rustplus.js. Refused with
+    /// <see cref="RustPlusErrorCode.NotSupported"/> unless <see cref="IsAutoTurret"/>.
     /// </summary>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    /// <returns>The acknowledgement <see cref="Response"/> from the server.</returns>
+    /// <returns>The acknowledgement <see cref="Response"/> from the server, or the
+    /// client-side refusal (nothing sent).</returns>
     public Task<Response> ReloadAsync(CancellationToken cancellationToken = default) =>
-        PressAsync(CameraButtons.Reload, cancellationToken);
+        IsAutoTurret
+            ? PressAsync(CameraButtons.Reload, cancellationToken)
+            : RefusedAsync("reload is an auto-turret action");
+
+    /// <summary>
+    /// Turns the camera by sending a single mouse-delta frame (PTZ cameras, turrets and
+    /// drones — anything advertising <see cref="CameraControlFlags.Mouse"/>). Refused with
+    /// <see cref="RustPlusErrorCode.NotSupported"/> when the device does not support mouse look.
+    /// </summary>
+    /// <remarks>Live-observed (2026-06): actuates on PTZ cameras (the frame's
+    /// <c>CameraRotation</c> pans) and on drones while airborne — a parked drone ignores the
+    /// input (acked with success regardless). Turret behaviour is unverified: the test
+    /// server's turret was deactivated and ignored every input.</remarks>
+    /// <param name="deltaX">Horizontal mouse delta (positive looks right).</param>
+    /// <param name="deltaY">Vertical mouse delta (positive looks down).</param>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <returns>The acknowledgement <see cref="Response"/> from the server, or the
+    /// client-side refusal (nothing sent).</returns>
+    public Task<Response> LookAsync(float deltaX, float deltaY, CancellationToken cancellationToken = default) =>
+        Info.ControlFlags.HasFlag(CameraControlFlags.Mouse)
+            ? SendInputAsync(CameraButtons.None, deltaX, deltaY, cancellationToken)
+            : RefusedAsync("this device does not support mouse look");
+
+    /// <summary>
+    /// Moves a drone by streaming the given movement buttons as input frames for
+    /// <paramref name="duration"/> (default <see cref="DefaultMoveDuration"/>), then releasing.
+    /// Movement only actuates while a continuous input stream is held — a single
+    /// press-and-release is acknowledged by the server but never moves the drone
+    /// (live-verified 2026-06). Buttons: <see cref="CameraButtons.Forward"/>/
+    /// <see cref="CameraButtons.Backward"/>/<see cref="CameraButtons.Left"/>/
+    /// <see cref="CameraButtons.Right"/> need <see cref="CameraControlFlags.Movement"/>;
+    /// <see cref="CameraButtons.Sprint"/> (ascend) and <see cref="CameraButtons.Duck"/>
+    /// (descend) need <see cref="CameraControlFlags.SprintAndDuck"/> — the drone's vertical
+    /// controls, hence the flag's name (<see cref="CameraButtons.Jump"/> is accepted but did
+    /// nothing on a live drone). Refused with <see cref="RustPlusErrorCode.NotSupported"/>
+    /// when the device does not advertise the required flags.
+    /// </summary>
+    /// <remarks>Live flight 2026-06-12: streaming <c>Sprint</c> for 1 s climbed ~4.7 m,
+    /// <c>Forward</c>/<c>Backward</c> moved ~5 m and back, <c>Duck</c> landed the drone on its
+    /// starting spot. The drone hovers when the stream stops.</remarks>
+    /// <param name="buttons">Movement buttons to hold.</param>
+    /// <param name="duration">How long to hold the buttons; <see cref="DefaultMoveDuration"/>
+    /// when <see langword="null"/>.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <returns>The release acknowledgement from the server, the first failed send, or the
+    /// client-side refusal (nothing sent).</returns>
+    /// <exception cref="ArgumentException"><paramref name="buttons"/> is empty or contains
+    /// non-movement buttons (use the action helpers or <see cref="SendInputAsync"/> for those).</exception>
+    public async Task<Response> MoveAsync(CameraButtons buttons,
+        TimeSpan? duration = null,
+        CancellationToken cancellationToken = default)
+    {
+        const CameraButtons planar = CameraButtons.Forward | CameraButtons.Backward
+            | CameraButtons.Left | CameraButtons.Right;
+        const CameraButtons vertical = CameraButtons.Jump | CameraButtons.Duck | CameraButtons.Sprint;
+
+        if (buttons == CameraButtons.None || (buttons & ~(planar | vertical)) != 0)
+        {
+            throw new ArgumentException(
+                "MoveAsync accepts movement buttons only (Forward/Backward/Left/Right/Jump/Duck/Sprint).",
+                nameof(buttons));
+        }
+
+        var required = CameraControlFlags.None;
+        if ((buttons & planar) != 0)
+        {
+            required |= CameraControlFlags.Movement;
+        }
+
+        if ((buttons & vertical) != 0)
+        {
+            required |= CameraControlFlags.SprintAndDuck;
+        }
+
+        if (!Info.ControlFlags.HasFlag(required))
+        {
+            return await RefusedAsync($"movement needs {required}").ConfigureAwait(false);
+        }
+
+        var deadline = DateTime.UtcNow + (duration ?? DefaultMoveDuration);
+        do
+        {
+            var send = await SendInputAsync(buttons, cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (!send.IsSuccess)
+            {
+                return send;
+            }
+
+            await Task.Delay(MoveStreamInterval, cancellationToken).ConfigureAwait(false);
+        } while (DateTime.UtcNow < deadline);
+
+        return await SendInputAsync(CameraButtons.None, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Builds the client-side refusal for an action the device does not support —
+    /// nothing is sent: the server acks unsupported inputs with success while ignoring them.</summary>
+    /// <param name="reason">Why the action does not apply to this device.</param>
+    private Task<Response> RefusedAsync(string reason) =>
+        Task.FromResult(new Response
+        {
+            IsSuccess = false,
+            Error = new ErrorMessage
+            {
+                Code = RustPlusErrorCode.NotSupported,
+                Message = $"{reason}; '{CameraId}' reports {Info.ControlFlags}"
+            }
+        });
 
     /// <summary>Stops the keep-alive loop and unsubscribes from the camera (when still connected).</summary>
     public async ValueTask DisposeAsync()

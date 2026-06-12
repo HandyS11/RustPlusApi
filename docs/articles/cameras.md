@@ -129,11 +129,41 @@ if (turret.IsAutoTurret)        // ControlFlags has Reload (turret-only input)
 }
 else
 {
-    // PTZ cameras only — zoom shares the FirePrimary button, so on a
-    // turret this would fire instead. Cycles the zoom levels and wraps.
+    // PTZ cameras only. Cycles the zoom levels and wraps.
     await turret.ZoomAsync();
 }
+
+await turret.LookAsync(10f, 0f);                  // mouse look (Mouse flag)
+await turret.MoveAsync(CameraButtons.Forward);    // drone nudge (Movement flag)
 ```
+
+The action helpers are **capability-gated**: an action the device does not advertise is refused
+client-side with `RustPlusErrorCode.NotSupported` and **nothing is sent**. This matters because
+the live server acknowledges unsupported inputs with success while silently ignoring them — and
+because zoom shares the `FirePrimary` button with turret fire, an ungated zoom sent to a turret
+would actually shoot it. `ZoomAsync` requires `IsPtzCamera`; `ShootAsync`/`ReloadAsync` require
+`IsAutoTurret`; `LookAsync` requires the `Mouse` flag; `MoveAsync` requires `Movement` (WASD)
+and/or `SprintAndDuck` (jump/duck/sprint). The raw `SendInputAsync`/`PressAsync` remain ungated
+escape hatches.
+
+> [!IMPORTANT]
+> An accepted input is not necessarily an **actuated** one — the server acks everything with
+> success. Live-tested (2026-06, player disconnected):
+>
+> - **PTZ look and zoom act** — the frame's `CameraRotation` pans and `VerticalFov` cycles
+>   through the four zoom levels (65 → 43.33 → 26 → 16.25, wrapping).
+> - **Drones fly, but only under a continuous input stream** — `MoveAsync` streams frames for
+>   its hold duration for exactly this reason; a single press-and-release is acked and ignored.
+>   Vertical controls are `Sprint` (ascend) and `Duck` (descend) — that is what the
+>   `SprintAndDuck` control flag refers to; `Jump` did nothing on a live drone. Mouse look
+>   actuates while the drone is airborne and is ignored while it is parked. Looking mid-flight
+>   changes the heading `Forward`/`Backward` move along — land before looking around if you
+>   need to return to the starting spot.
+> - **Turret inputs proved nothing on the test server** (the turret was deactivated there) —
+>   shoot/reload/look acks are transport-proof only; verify in game.
+>
+> When you need proof an input acted, watch the frame's
+> `CameraPosition`/`CameraRotation`/`VerticalFov` — never the ack.
 
 One device-kind check exists per camera type, derived from live-observed control flags:
 

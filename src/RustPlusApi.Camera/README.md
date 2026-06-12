@@ -40,6 +40,10 @@ camera.OnFrameReceived += (_, frame) =>
 // One check per device kind: IsAutoTurret / IsDrone / IsPtzCamera / IsStaticCamera.
 // Turrets: await camera.ShootAsync(); await camera.ReloadAsync();
 // PTZ cameras: await camera.ZoomAsync();
+// Mouse look / drone movement: await camera.LookAsync(10f, 0f); await camera.MoveAsync(CameraButtons.Forward);
+// All action helpers are capability-gated: an unsupported action is refused client-side
+// (RustPlusErrorCode.NotSupported) without sending — the server acks unsupported inputs
+// with success while ignoring them, and zoom shares FirePrimary with turret fire.
 
 // Raised when a renewal fails (e.g. NoPlayer after the camera was destroyed in game):
 camera.OnKeepAliveFailed += (_, error) => Console.WriteLine($"{error.Code} {error.Message}");
