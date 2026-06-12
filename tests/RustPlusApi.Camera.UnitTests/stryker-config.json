@@ -8,6 +8,6 @@
     "mutate": ["!**/obj/**", "!**/bin/**"],
     "ignore-methods": ["ConfigureAwait", "Log*", "CreateLogger", "SuppressFinalize"],
     "ignore-mutations": [],
-    "project-info": { "module": "RustPlusApi.Camera" }
+    "project-info": { "name": "github.com/HandyS11/RustPlusApi", "module": "RustPlusApi.Camera" }
   }
 }

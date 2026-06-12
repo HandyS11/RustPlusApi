@@ -11,6 +11,7 @@ all the required credentials natively — _no Node.js required_.
 [![Docs](https://github.com/HandyS11/RustPlusApi/actions/workflows/Documentation.yml/badge.svg)](https://handys11.github.io/RustPlusApi/)
 
 ![.NET](https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4?logo=dotnet)
+[![NuGet Version](https://img.shields.io/nuget/v/RustPlusApi.svg)](https://www.nuget.org/packages/RustPlusApi)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![codecov](https://codecov.io/gh/HandyS11/RustPlusApi/graph/badge.svg?token=UZCM1A6ERM)](https://codecov.io/gh/HandyS11/RustPlusApi)
 [![Mutation Score](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Fgithub.com%2FHandyS11%2FRustPlusApi%2Fdevelop)](https://dashboard.stryker-mutator.io/reports/github.com/HandyS11/RustPlusApi/develop)
@@ -23,14 +24,14 @@ all the required credentials natively — _no Node.js required_.
 
 ## Packages
 
-| Package | Version | Downloads | Description |
-| --- | --- | --- | --- |
-| [`RustPlusApi`](src/RustPlusApi/README.md) | [![NuGet](https://img.shields.io/nuget/v/RustPlusApi.svg)](https://www.nuget.org/packages/RustPlusApi) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.svg)](https://www.nuget.org/packages/RustPlusApi) | Core client. Typed `Response<T>` API for info/time/map/markers, team & **clan** chat, **nexus** auth, entities (smart switch / alarm / storage monitor), and the **camera** protocol. |
-| [`RustPlusApi.Fcm`](src/RustPlusApi.Fcm/README.md) | [![NuGet](https://img.shields.io/nuget/v/RustPlusApi.Fcm.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm) | FCM listener — receives server/entity **pairing** and **alarm** notifications. |
-| [`RustPlusApi.Fcm.Registration`](src/RustPlusApi.Fcm.Registration/README.md) | [![NuGet](https://img.shields.io/nuget/v/RustPlusApi.Fcm.Registration.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Registration) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.Registration.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Registration) | **Native credential acquisition** (GCM/Firebase/FCM/Expo + Steam login + Rust Companion). Replaces the `rustplus.js` Node CLI. |
-| [`RustPlusApi.Camera`](src/RustPlusApi.Camera/README.md) | [![NuGet](https://img.shields.io/nuget/v/RustPlusApi.Camera.svg)](https://www.nuget.org/packages/RustPlusApi.Camera) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Camera.svg)](https://www.nuget.org/packages/RustPlusApi.Camera) | Camera sessions (`CameraController`: keep-alive, turret/PTZ helpers, device-kind checks) and frame rendering via ImageSharp. |
-| [`RustPlusApi.Extensions.DependencyInjection`](src/RustPlusApi.Extensions.DependencyInjection/README.md) | [![NuGet](https://img.shields.io/nuget/v/RustPlusApi.Extensions.DependencyInjection.svg)](https://www.nuget.org/packages/RustPlusApi.Extensions.DependencyInjection) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Extensions.DependencyInjection.svg)](https://www.nuget.org/packages/RustPlusApi.Extensions.DependencyInjection) | DI registration (`AddRustPlus`, `IRustPlusFactory`) for the core client. |
-| [`RustPlusApi.Fcm.Extensions.DependencyInjection`](src/RustPlusApi.Fcm.Extensions.DependencyInjection/README.md) | [![NuGet](https://img.shields.io/nuget/v/RustPlusApi.Fcm.Extensions.DependencyInjection.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Extensions.DependencyInjection) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.Extensions.DependencyInjection.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Extensions.DependencyInjection) | DI registration (`AddRustPlusFcm`, `IRustPlusFcmFactory`) for the FCM listener. |
+| Package | Downloads | Description |
+| --- | --- | --- |
+| [`RustPlusApi`](src/RustPlusApi/README.md) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.svg)](https://www.nuget.org/packages/RustPlusApi) | Core client. Typed `Response<T>` API for info/time/map/markers, team & **clan** chat, **nexus** auth, entities (smart switch / alarm / storage monitor), and the **camera** protocol. |
+| [`RustPlusApi.Fcm`](src/RustPlusApi.Fcm/README.md) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm) | FCM listener — receives server/entity **pairing** and **alarm** notifications. |
+| [`RustPlusApi.Fcm.Registration`](src/RustPlusApi.Fcm.Registration/README.md) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.Registration.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Registration) | **Native credential acquisition** (GCM/Firebase/FCM/Expo + Steam login + Rust Companion). Replaces the `rustplus.js` Node CLI. |
+| [`RustPlusApi.Camera`](src/RustPlusApi.Camera/README.md) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Camera.svg)](https://www.nuget.org/packages/RustPlusApi.Camera) | Camera sessions (`CameraController`: keep-alive, turret/PTZ helpers, device-kind checks) and frame rendering via ImageSharp. |
+| [`RustPlusApi.Extensions.DependencyInjection`](src/RustPlusApi.Extensions.DependencyInjection/README.md) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Extensions.DependencyInjection.svg)](https://www.nuget.org/packages/RustPlusApi.Extensions.DependencyInjection) | DI registration (`AddRustPlus`, `IRustPlusFactory`) for the core client. |
+| [`RustPlusApi.Fcm.Extensions.DependencyInjection`](src/RustPlusApi.Fcm.Extensions.DependencyInjection/README.md) | [![Downloads](https://img.shields.io/nuget/dt/RustPlusApi.Fcm.Extensions.DependencyInjection.svg)](https://www.nuget.org/packages/RustPlusApi.Fcm.Extensions.DependencyInjection) | DI registration (`AddRustPlusFcm`, `IRustPlusFcmFactory`) for the FCM listener. |
 
 ## Versions
 

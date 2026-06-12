@@ -54,6 +54,7 @@ jobs:
           dotnet stryker
           --config-file stryker-config.json
           --project ${{ matrix.source }}
+          --version ${{ github.ref_name }}
           --reporter cleartext
           --reporter html
           --reporter dashboard
