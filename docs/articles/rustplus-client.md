@@ -122,6 +122,12 @@ else
 | `SendCameraInputAsync(buttons, mouseDeltaX, mouseDeltaY)` | `Response` | Sends movement/action input to the subscribed camera. |
 | `UnsubscribeFromCameraAsync()` | `Response` | Stops the camera stream. |
 
+> [!TIP]
+> For anything beyond a quick look, use `CameraController` from the `RustPlusApi.Camera`
+> package instead of calling these directly — it renews the subscription (the server stops
+> streaming rays for unrenewed subscriptions), detects the device kind, and wraps the
+> press-and-release turret/PTZ gestures. See [Cameras](cameras.md#cameracontroller).
+
 ### Low-level
 
 | Method | Returns | Notes |

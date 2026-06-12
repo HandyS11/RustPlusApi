@@ -58,12 +58,19 @@ Interactive menu covering the full `IRustPlus` surface:
 | **Team** | Team info, team chat, promote to leader, send message. |
 | **Clan** | Clan info, clan chat, send message, set MOTD. |
 | **Electricity** | Alarms, subscriptions, storage monitors, smart switches (get/set/strobe/toggle). |
-| **Camera** | Subscribe and stream frames as an ASCII preview, send movement input, unsubscribe. |
+| **Camera** | Managed session via `CameraController`: live ASCII preview / PNG save, move & look, PTZ zoom, turret shoot/reload (press+release), device kind shown (static / PTZ / turret / drone). |
 | **Live Events** | Stream smart-switch, storage-monitor, team/clan chat and clan-change events live. |
 
 Entity ids (alarm / smart switch / storage monitor / camera) are remembered for the session —
 press Enter at a prompt to reuse the last value. Camera rendering uses the
 [RustPlusApi.Camera](cameras.md) package; render fidelity is validated against real captured frames.
+
+The sample also has a headless capture mode for generating render fixtures from a live camera
+(writes a JSON frame dump plus the rendered PNG):
+
+```bash
+dotnet run --project samples/RustPlus.ConsoleApp -- [credentialsPath] capture <cameraId> <durationSeconds> [outputDir]
+```
 
 ```bash
 # Copy credentials.sample.json to credentials.json and fill in the values

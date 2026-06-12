@@ -53,7 +53,7 @@ Interactive menu covering the full `IRustPlus` surface:
 - **Team** — team info, team chat, promote to leader, send message.
 - **Clan** — clan info, clan chat, send message, set MOTD.
 - **Electricity** — alarms, subscriptions, storage monitors, smart switches (get/set/strobe/toggle).
-- **Camera** — subscribe and stream frames as an ASCII preview, send movement input, unsubscribe.
+- **Camera** — managed session via `CameraController`: ASCII preview / PNG save, move & look, PTZ zoom, turret shoot/reload (press+release); the device kind (static / PTZ / turret / drone) is detected and shown. A headless mode generates fixtures: `… -- capture <cameraId> <seconds> [outDir]`.
 - **Live Events** — stream smart-switch, storage-monitor, team/clan chat and clan-change events live.
 
 Entity ids (alarm / smart switch / storage monitor / camera) are remembered for the session — press
