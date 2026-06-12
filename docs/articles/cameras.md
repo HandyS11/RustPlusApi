@@ -4,8 +4,9 @@ Rust's CCTV cameras, drones and auto-turrets stream depth/entity data over the c
 RustPlusApi splits this into two layers:
 
 - **Protocol layer** (in `RustPlusApi`) — subscribe, send input, and receive typed `CameraFrame`s.
-- **Rendering layer** (in `RustPlusApi.Camera`) — turn frames into images. Optional, so the core
-  stays image-free.
+- **Session & rendering layer** (in `RustPlusApi.Camera`) — manage a camera session
+  (`CameraController`: keep-alive, turret/PTZ helpers) and turn frames into images. Optional,
+  so the core stays image-free.
 
 > [!NOTE]
 > Render fidelity is validated against real captured frames — a golden test in
@@ -110,7 +111,7 @@ Each `CameraFrame` (delivered via `OnCameraRaysReceived`) contains:
 ## CameraController
 
 `SubscribeToCameraAsync` alone is not enough for long sessions: the server stops streaming
-rays for subscriptions that are not renewed. `CameraController` (in the core `RustPlusApi`
+rays for subscriptions that are not renewed. `CameraController` (in the `RustPlusApi.Camera`
 package) wraps the full session — it re-subscribes every 10 seconds (configurable), forwards
 frames, and exposes the press-and-release gestures PTZ cameras and auto-turrets expect:
 
@@ -142,10 +143,10 @@ Disposing the controller stops the keep-alive and unsubscribes. Create at most o
 controller per client — the server tracks a single camera subscription per connection.
 
 > [!NOTE]
-> Cameras are accessed while the paired player is **disconnected** from the server, but the
-> player's character (sleeper) must still exist in the world. If the character is gone — for
-> example it was killed while away — subscribing fails with `RustPlusErrorCode.NoPlayer`
-> (`no_player`) until the player reconnects and respawns.
+> Cameras are accessed while the paired player is **disconnected** from the server. If the
+> camera entity itself has been destroyed in game, subscribing fails with
+> `RustPlusErrorCode.NoPlayer` (`no_player`) — despite the name, the error is about the
+> missing camera entity, not the player.
 
 ## Rendering layer (RustPlusApi.Camera)
 

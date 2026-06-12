@@ -3,7 +3,7 @@ using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Interfaces;
 
-namespace RustPlusApi;
+namespace RustPlusApi.Camera;
 
 /// <summary>
 /// Managed session for one subscribed camera: keeps the subscription alive by periodically

@@ -18,17 +18,27 @@ dotnet add package RustPlusApi.Camera
 
 ## Usage
 
+`CameraController` manages the session (the server stops streaming rays for subscriptions
+that are not renewed; the controller re-subscribes every 10 s) and exposes turret/PTZ
+helpers; `CameraRenderer` turns the frames into PNGs:
+
 ```csharp
 using RustPlusApi.Camera;
 
-var info = (await rustPlus.SubscribeToCameraAsync("CAM01")).Data!;
-var renderer = new CameraRenderer(info.Width, info.Height);
+var response = await CameraController.SubscribeAsync(rustPlus, "CAM01");
+if (!response.IsSuccess) return;
 
-rustPlus.OnCameraRaysReceived += (_, frame) =>
+await using var camera = response.Data!;
+var renderer = new CameraRenderer(camera.Info.Width, camera.Info.Height);
+
+camera.OnFrameReceived += (_, frame) =>
 {
     renderer.AddRays(frame);
     byte[] png = renderer.Render();   // save / display
 };
+
+// Turrets (camera.IsAutoTurret): await camera.ShootAsync(); await camera.ReloadAsync();
+// PTZ cameras: await camera.ZoomAsync();  Drones: camera.IsDrone
 ```
 
 Frames accumulate — each `AddRays` fills in more samples, so the image sharpens over time.

@@ -1,3 +1,4 @@
+using RustPlusApi.Camera;
 using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Events;
 using RustPlusApi.MockServer;

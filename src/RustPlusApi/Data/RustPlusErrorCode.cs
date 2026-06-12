@@ -48,8 +48,8 @@ public enum RustPlusErrorCode
     /// <summary><c>not_enabled</c> — the requested feature is disabled on this server.</summary>
     NotEnabled = 12,
 
-    /// <summary><c>no_player</c> — the server has no player entity for the paired account,
-    /// e.g. the character was killed while away (observed on camera subscribe attempts:
-    /// cameras are accessed while disconnected, but need the character to still exist).</summary>
+    /// <summary><c>no_player</c> — the target entity is gone: observed on camera subscribe
+    /// attempts after the camera entity had been destroyed in game (despite the name, it does
+    /// not indicate anything about the paired player's own state).</summary>
     NoPlayer = 13,
 }

@@ -7,7 +7,7 @@
         <Authors>HandyS11</Authors>
         <Owners>HandyS11</Owners>
         <Product>Rust+ camera frame rendering</Product>
-        <Description>Renders Rust+ camera frames (AppCameraRays) into images. Depends on SixLabors.ImageSharp; keep it out of the core if you only need the camera protocol.</Description>
+        <Description>Camera session control (keep-alive, turret/PTZ helpers) and frame rendering for Rust+. Renders AppCameraRays into images via SixLabors.ImageSharp; keep it out of the core if you only need the raw camera protocol.</Description>
         <PackageTags>rust rustplus rustplusapi camera</PackageTags>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <LicenseUrl>https://github.com/HandyS11/RustPlusApi/blob/main/LICENSE</LicenseUrl>
