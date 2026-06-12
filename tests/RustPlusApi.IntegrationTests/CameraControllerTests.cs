@@ -236,12 +236,16 @@ public class CameraControllerTests
     }
 
     [Theory]
-    // Turret-shaped flags: Mouse | Fire | Reload | Crosshair — Reload marks the turret.
+    // Auto-turret, as observed live (TURRET01, 2026-06-12): Mouse | Fire | Reload | Crosshair —
+    // Reload marks the turret.
     [InlineData(2 | 8 | 16 | 32, true, false)]
-    // Drone-shaped flags: Movement | Mouse | SprintAndDuck | Crosshair — a drone may render
-    // a crosshair too, so Crosshair must NOT count as a turret; SprintAndDuck marks the drone.
+    // Drone, as observed live (DRONE01, 2026-06-12): Movement | Mouse | SprintAndDuck.
+    [InlineData(1 | 2 | 4, false, true)]
+    // Hypothetical crosshair-bearing drone: Crosshair must NOT count as a turret marker.
     [InlineData(1 | 2 | 4 | 32, false, true)]
-    // Static CCTV: no controls at all.
+    // PTZ camera, as observed live (CCTV01, 2026-06-12): Mouse | Fire (zoom) — neither kind.
+    [InlineData(2 | 8, false, false)]
+    // Static CCTV, as observed live (CAM01): no controls at all.
     [InlineData(0, false, false)]
     public async Task DeviceKindFlags_MapToIsAutoTurretAndIsDrone(int controlFlags, bool isAutoTurret, bool isDrone)
     {
