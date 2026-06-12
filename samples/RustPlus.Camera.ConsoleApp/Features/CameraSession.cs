@@ -1,4 +1,5 @@
 using RustPlus.Camera.ConsoleApp.Utils;
+using RustPlus.ConsoleApp.Utils;
 using RustPlusApi.Camera;
 using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Events;

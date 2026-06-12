@@ -1,14 +1,15 @@
 using System.Text.Json;
 using RustPlusApi.Camera;
+using RustPlusApi.Data;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Interfaces;
 
 namespace RustPlus.Camera.ConsoleApp.Features;
 
 /// <summary>
-/// Headless capture for golden-fixture generation: subscribes to a camera, records every
-/// received frame for a fixed duration (re-subscribing every 5 s to keep the stream alive),
-/// then writes a JSON fixture of the raw frames plus the rendered PNG.
+/// Headless capture for golden-fixture generation: opens a <see cref="CameraController"/>
+/// (which renews the subscription every 5 s to keep the stream alive), records every received
+/// frame for a fixed duration, then writes a JSON fixture of the raw frames plus the rendered PNG.
 /// </summary>
 /// <param name="rustPlus">The connected Rust+ client to capture from.</param>
 internal sealed class CameraCapture(IRustPlus rustPlus)
@@ -27,14 +28,15 @@ internal sealed class CameraCapture(IRustPlus rustPlus)
     /// <returns>0 on success, 1 when the subscription fails, 2 when no frames arrived.</returns>
     public async Task<int> RunAsync(string cameraId, TimeSpan duration, string outputDirectory)
     {
-        var response = await rustPlus.SubscribeToCameraAsync(cameraId);
+        var response = await CameraController.SubscribeAsync(rustPlus, cameraId, ResubscribeInterval);
         if (!response.IsSuccess)
         {
             Console.WriteLine($"SubscribeToCamera('{cameraId}') failed: {response.Error?.Code} {response.Error?.Message}");
             return 1;
         }
 
-        var info = response.Data!;
+        await using var controller = response.Data!;
+        var info = controller.Info;
         var renderer = new CameraRenderer(info.Width, info.Height);
         var fixture = new CaptureFixture(cameraId, info.Width, info.Height, []);
 
@@ -47,7 +49,11 @@ internal sealed class CameraCapture(IRustPlus rustPlus)
             }
         }
 
-        rustPlus.OnCameraRaysReceived += OnRays;
+        void OnRenewalFailed(object? _, ErrorMessage error) =>
+            Console.WriteLine($"Warning: re-subscribe failed: {error.Code} {error.Message}");
+
+        controller.OnFrameReceived += OnRays;
+        controller.OnKeepAliveFailed += OnRenewalFailed;
         try
         {
             var started = DateTime.UtcNow;
@@ -67,21 +73,12 @@ internal sealed class CameraCapture(IRustPlus rustPlus)
                 }
 
                 Console.WriteLine($"[{(int)(DateTime.UtcNow - started).TotalSeconds,3}s] frames so far: {count}");
-
-                if (DateTime.UtcNow < deadline)
-                {
-                    var renew = await rustPlus.SubscribeToCameraAsync(cameraId);
-                    if (!renew.IsSuccess)
-                    {
-                        Console.WriteLine($"Warning: re-subscribe failed: {renew.Error?.Code} {renew.Error?.Message}");
-                    }
-                }
             }
         }
         finally
         {
-            rustPlus.OnCameraRaysReceived -= OnRays;
-            await rustPlus.UnsubscribeFromCameraAsync();
+            controller.OnFrameReceived -= OnRays;
+            controller.OnKeepAliveFailed -= OnRenewalFailed;
         }
 
         Directory.CreateDirectory(outputDirectory);

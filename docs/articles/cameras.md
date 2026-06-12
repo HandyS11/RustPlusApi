@@ -146,6 +146,16 @@ One device-kind check exists per camera type, derived from live-observed control
 
 The four checks are mutually exclusive for every flag combination observed in game.
 
+A failed renewal raises `OnKeepAliveFailed` with the server's `ErrorMessage` (for example
+`NoPlayer` after the camera was destroyed in game; a disconnected client reports `Unknown`
+with the exception message). The controller keeps retrying, so a later reconnect recovers on
+its own — but frames going quiet after this event means the subscription is dead:
+
+```csharp
+turret.OnKeepAliveFailed += (_, error) =>
+    Console.WriteLine($"Keep-alive failed: {error.Code} {error.Message}");
+```
+
 Disposing the controller stops the keep-alive and unsubscribes. Create at most one live
 controller per client — the server tracks a single camera subscription per connection.
 

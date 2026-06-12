@@ -55,6 +55,15 @@ public sealed class CameraController : IAsyncDisposable
     /// <summary>Occurs when a ray frame for the subscribed camera is received.</summary>
     public event EventHandler<CameraRaysEventArg>? OnFrameReceived;
 
+    /// <summary>Occurs when a keep-alive renewal attempt fails: the server refused the
+    /// re-subscribe (e.g. <see cref="RustPlusErrorCode.NoPlayer"/> after the camera was
+    /// destroyed in game) or the client was disconnected (reported as
+    /// <see cref="RustPlusErrorCode.Unknown"/> with the exception message). Without a renewal
+    /// the server stops streaming, so frames going quiet after this event means the
+    /// subscription is dead — <see cref="Info"/> keeps its last successful value. The loop
+    /// keeps retrying, so a later reconnect recovers on its own.</summary>
+    public event EventHandler<ErrorMessage>? OnKeepAliveFailed;
+
     private CameraController(IRustPlus rustPlus, string cameraId, CameraInfo info, TimeSpan resubscribeInterval)
     {
         _rustPlus = rustPlus;
@@ -217,17 +226,24 @@ public sealed class CameraController : IAsyncDisposable
                 {
                     Info = response.Data;
                 }
+                else
+                {
+                    OnKeepAliveFailed?.Invoke(this,
+                        response.Error ?? new ErrorMessage { Code = RustPlusErrorCode.Unknown });
+                }
             }
             catch (OperationCanceledException)
             {
                 return;
             }
 #pragma warning disable RCS1075 // best-effort renewal: a disconnected client throws instead of returning a failed Response; keep looping so the next renewal succeeds after a reconnect
-            catch (Exception)
+            catch (Exception ex)
 #pragma warning restore RCS1075
             {
                 // Renewal is best-effort: a disconnected client throws instead of returning a
                 // failed Response; keep looping so the next renewal succeeds after a reconnect.
+                OnKeepAliveFailed?.Invoke(this,
+                    new ErrorMessage { Message = ex.Message, Code = RustPlusErrorCode.Unknown });
             }
         }
     }

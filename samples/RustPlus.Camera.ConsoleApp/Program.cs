@@ -1,5 +1,5 @@
 using RustPlus.Camera.ConsoleApp.Features;
-using RustPlus.Camera.ConsoleApp.Utils;
+using RustPlus.ConsoleApp.Utils;
 
 // Fill credentials.json (copy credentials.sample.json) with the ip/port/playerId/playerToken
 // printed by the RustPlus.Register.ConsoleApp sample when you "Pair with Server" in game.

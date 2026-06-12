@@ -40,6 +40,9 @@ camera.OnFrameReceived += (_, frame) =>
 // One check per device kind: IsAutoTurret / IsDrone / IsPtzCamera / IsStaticCamera.
 // Turrets: await camera.ShootAsync(); await camera.ReloadAsync();
 // PTZ cameras: await camera.ZoomAsync();
+
+// Raised when a renewal fails (e.g. NoPlayer after the camera was destroyed in game):
+camera.OnKeepAliveFailed += (_, error) => Console.WriteLine($"{error.Code} {error.Message}");
 ```
 
 Frames accumulate — each `AddRays` fills in more samples, so the image sharpens over time.

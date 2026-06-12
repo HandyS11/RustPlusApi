@@ -1,3 +1,4 @@
+using RustPlusApi.Data;
 using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Events;
 using RustPlusApi.MockServer;
@@ -169,6 +170,60 @@ public class CameraControllerTests
         {
             Assert.Equal([(int)CameraButtons.Reload, (int)CameraButtons.None], buttons);
         }
+    }
+
+    [Fact]
+    public async Task OnKeepAliveFailed_RaisedWhenRenewalReturnsError()
+    {
+        var subscribeCount = 0;
+        var server = new MockRustPlusServer(request =>
+        {
+            if (request.CameraSubscribe is not null && Interlocked.Increment(ref subscribeCount) > 1)
+            {
+                // The initial subscribe succeeds; every renewal fails as if the camera was destroyed.
+                return MockResponses.Error(request.Seq, "no_player");
+            }
+
+            return MockResponses.Default(request);
+        });
+        await using var _ = server;
+        server.Start();
+        await using var client = await ConnectAsync(server);
+
+        var response = await CameraController
+            .SubscribeAsync(client, "CAM01", resubscribeInterval: TimeSpan.FromMilliseconds(50))
+            .WaitAsync(Timeout);
+        await using var controller = response.Data!;
+
+        var failed = new TaskCompletionSource<ErrorMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        controller.OnKeepAliveFailed += (_, error) => failed.TrySetResult(error);
+
+        var error = await failed.Task.WaitAsync(Timeout);
+
+        Assert.Equal(RustPlusErrorCode.NoPlayer, error.Code);
+    }
+
+    [Fact]
+    public async Task OnKeepAliveFailed_RaisedWhenClientIsDisconnected()
+    {
+        await using var server = new MockRustPlusServer();
+        server.Start();
+        var client = await ConnectAsync(server);
+
+        var response = await CameraController
+            .SubscribeAsync(client, "CAM01", resubscribeInterval: TimeSpan.FromMilliseconds(50))
+            .WaitAsync(Timeout);
+        await using var controller = response.Data!;
+
+        var failed = new TaskCompletionSource<ErrorMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        controller.OnKeepAliveFailed += (_, error) => failed.TrySetResult(error);
+
+        await client.DisconnectAsync();
+
+        var error = await failed.Task.WaitAsync(Timeout);
+
+        Assert.Equal(RustPlusErrorCode.Unknown, error.Code);
+        Assert.False(string.IsNullOrEmpty(error.Message));
     }
 
     [Fact]
