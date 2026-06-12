@@ -8,11 +8,13 @@ using Xunit;
 namespace RustPlusApi.Camera.UnitTests;
 
 /// <summary>
-/// Golden test against a real frame sequence captured from a live server (CAM02, outdoor
-/// CCTV, 2026-06-12). The fixture is raw protocol data (sampleOffset + rayData per frame);
-/// the golden PNG is the visually-approved render of exactly those frames. Any decode/colour
-/// change that alters real-frame output fails here. Refresh both files with:
-///   dotnet run --project samples/RustPlus.ConsoleApp -- capture CAM02 8 out/
+/// Golden tests against real frame sequences captured live (2026-06-12) from every camera
+/// device type: static CCTV (cam01, cam02), PTZ camera (cctv01), auto-turret (turret01) and
+/// drone (drone01). Each fixture is raw protocol data (sampleOffset + rayData per frame);
+/// each golden PNG is the visually-approved render of exactly those frames. Any decode/colour
+/// change that alters real-frame output fails here. Refresh a fixture with the sample's
+/// headless capture mode:
+///   dotnet run --project samples/RustPlus.ConsoleApp -- capture &lt;cameraId&gt; 8 out/
 /// </summary>
 public class CameraRendererGoldenTests
 {
@@ -22,12 +24,17 @@ public class CameraRendererGoldenTests
     private sealed record CaptureFixture(string CameraId, int Width, int Height, List<CapturedFrame> Frames);
 #pragma warning restore CA1812
 
-    [Fact]
-    public void Render_RealCapturedFrames_MatchesApprovedGoldenImage()
+    [Theory]
+    [InlineData("cam01")] // static CCTV
+    [InlineData("cam02")] // static CCTV (first validated capture)
+    [InlineData("cctv01")] // PTZ camera
+    [InlineData("turret01")] // auto-turret
+    [InlineData("drone01")] // drone
+    public void Render_RealCapturedFrames_MatchesApprovedGoldenImage(string fixtureId)
     {
         var fixture = JsonSerializer.Deserialize<CaptureFixture>(
-                          File.ReadAllText(Path.Combine("Fixtures", "cam02-frames.json")))
-                      ?? throw new InvalidOperationException("cam02-frames.json deserialized to null");
+                          File.ReadAllText(Path.Combine("Fixtures", $"{fixtureId}-frames.json")))
+                      ?? throw new InvalidOperationException($"{fixtureId}-frames.json deserialized to null");
 
         var renderer = new CameraRenderer(fixture.Width, fixture.Height);
         foreach (var frame in fixture.Frames)
@@ -39,7 +46,7 @@ public class CameraRendererGoldenTests
         }
 
         using var rendered = Image.Load<Rgba32>(renderer.Render());
-        using var golden = Image.Load<Rgba32>(Path.Combine("Fixtures", "cam02-golden.png"));
+        using var golden = Image.Load<Rgba32>(Path.Combine("Fixtures", $"{fixtureId}-golden.png"));
 
         Assert.Equal(golden.Width, rendered.Width);
         Assert.Equal(golden.Height, rendered.Height);

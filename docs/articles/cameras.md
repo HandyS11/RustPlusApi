@@ -9,9 +9,9 @@ RustPlusApi splits this into two layers:
   so the core stays image-free.
 
 > [!NOTE]
-> Render fidelity is validated against real captured frames — a golden test in
-> `RustPlusApi.Camera.UnitTests` pins the decode output to a frame sequence captured from a
-> live server (2026-06-12).
+> Render fidelity is validated against real captured frames — golden tests in
+> `RustPlusApi.Camera.UnitTests` pin the decode output to live-captured frame sequences from
+> every device type: static CCTV, PTZ camera, auto-turret and drone (2026-06-12).
 
 ## Data flow
 

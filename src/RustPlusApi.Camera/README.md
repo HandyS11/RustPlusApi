@@ -44,9 +44,10 @@ camera.OnFrameReceived += (_, frame) =>
 
 Frames accumulate — each `AddRays` fills in more samples, so the image sharpens over time.
 
-> Validated against real captured frames: a golden render test pins the decode output to a
-> frame sequence captured from a live server. Refresh the fixture any time with the sample's
-> headless capture mode (`RustPlus.ConsoleApp … capture <cameraId> <seconds> [outDir]`).
+> Validated against real captured frames: golden render tests pin the decode output to
+> live-captured frame sequences from every device type (static CCTV, PTZ camera, auto-turret,
+> drone). Refresh a fixture any time with the sample's headless capture mode
+> (`RustPlus.ConsoleApp … capture <cameraId> <seconds> [outDir]`).
 
 ## Documentation
 
