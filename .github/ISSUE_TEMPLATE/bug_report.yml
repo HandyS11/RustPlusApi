@@ -18,7 +18,7 @@ body:
       options:
         - label: I searched [existing issues](https://github.com/HandyS11/RustPlusApi/issues) and didn't find a duplicate.
           required: true
-        - label: I'm using a [supported version](https://github.com/HandyS11/RustPlusApi/blob/develop/SECURITY.md#supported-versions).
+        - label: I'm using a [supported version](https://github.com/HandyS11/RustPlusApi/security/policy).
           required: true
   - type: dropdown
     id: package
