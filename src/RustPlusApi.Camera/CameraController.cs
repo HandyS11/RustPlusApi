@@ -42,6 +42,16 @@ public sealed class CameraController : IAsyncDisposable
     /// vertical movement controls).</summary>
     public bool IsDrone => Info.ControlFlags.HasFlag(CameraControlFlags.SprintAndDuck);
 
+    /// <summary>Whether the camera is a PTZ (pan-tilt-zoom) CCTV camera: it supports
+    /// <see cref="CameraControlFlags.Mouse"/> look but is neither an auto-turret nor a drone.
+    /// Live-observed PTZ flags are <c>Mouse | Fire</c> — <c>Fire</c> drives
+    /// <see cref="ZoomAsync"/>.</summary>
+    public bool IsPtzCamera => Info.ControlFlags.HasFlag(CameraControlFlags.Mouse) && !IsAutoTurret && !IsDrone;
+
+    /// <summary>Whether the camera is a fixed CCTV camera that accepts no input at all
+    /// (<see cref="CameraInfo.ControlFlags"/> is <see cref="CameraControlFlags.None"/>).</summary>
+    public bool IsStaticCamera => Info.ControlFlags == CameraControlFlags.None;
+
     /// <summary>Occurs when a ray frame for the subscribed camera is received.</summary>
     public event EventHandler<CameraRaysEventArg>? OnFrameReceived;
 

@@ -85,6 +85,10 @@ internal sealed class CameraSession(IRustPlus rustPlus, EntityIdStore ids)
                 {
                     deviceKind = " — drone";
                 }
+                else if (controller.IsPtzCamera)
+                {
+                    deviceKind = " — PTZ camera";
+                }
 
                 Console.WriteLine($"Supported controls: {(info.ControlFlags == CameraControlFlags.None ? "none (static camera)" : info.ControlFlags)}{deviceKind}");
                 Console.WriteLine("  p       : render an ASCII preview now");

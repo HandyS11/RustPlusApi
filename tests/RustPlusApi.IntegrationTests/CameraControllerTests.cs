@@ -238,16 +238,21 @@ public class CameraControllerTests
     [Theory]
     // Auto-turret, as observed live (TURRET01, 2026-06-12): Mouse | Fire | Reload | Crosshair —
     // Reload marks the turret.
-    [InlineData(2 | 8 | 16 | 32, true, false)]
+    [InlineData(2 | 8 | 16 | 32, true, false, false, false)]
     // Drone, as observed live (DRONE01, 2026-06-12): Movement | Mouse | SprintAndDuck.
-    [InlineData(1 | 2 | 4, false, true)]
+    [InlineData(1 | 2 | 4, false, true, false, false)]
     // Hypothetical crosshair-bearing drone: Crosshair must NOT count as a turret marker.
-    [InlineData(1 | 2 | 4 | 32, false, true)]
-    // PTZ camera, as observed live (CCTV01, 2026-06-12): Mouse | Fire (zoom) — neither kind.
-    [InlineData(2 | 8, false, false)]
+    [InlineData(1 | 2 | 4 | 32, false, true, false, false)]
+    // PTZ camera, as observed live (CCTV01, 2026-06-12): Mouse | Fire (zoom) — it can look
+    // around but is neither turret nor drone.
+    [InlineData(2 | 8, false, false, true, false)]
     // Static CCTV, as observed live (CAM01): no controls at all.
-    [InlineData(0, false, false)]
-    public async Task DeviceKindFlags_MapToIsAutoTurretAndIsDrone(int controlFlags, bool isAutoTurret, bool isDrone)
+    [InlineData(0, false, false, false, true)]
+    public async Task DeviceKindFlags_MapToExactlyOneDeviceKind(int controlFlags,
+        bool isAutoTurret,
+        bool isDrone,
+        bool isPtzCamera,
+        bool isStaticCamera)
     {
         var server = new MockRustPlusServer(request =>
         {
@@ -268,6 +273,8 @@ public class CameraControllerTests
 
         Assert.Equal(isAutoTurret, controller.IsAutoTurret);
         Assert.Equal(isDrone, controller.IsDrone);
+        Assert.Equal(isPtzCamera, controller.IsPtzCamera);
+        Assert.Equal(isStaticCamera, controller.IsStaticCamera);
     }
 
     [Fact]

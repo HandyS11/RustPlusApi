@@ -37,8 +37,9 @@ camera.OnFrameReceived += (_, frame) =>
     byte[] png = renderer.Render();   // save / display
 };
 
-// Turrets (camera.IsAutoTurret): await camera.ShootAsync(); await camera.ReloadAsync();
-// PTZ cameras: await camera.ZoomAsync();  Drones: camera.IsDrone
+// One check per device kind: IsAutoTurret / IsDrone / IsPtzCamera / IsStaticCamera.
+// Turrets: await camera.ShootAsync(); await camera.ReloadAsync();
+// PTZ cameras: await camera.ZoomAsync();
 ```
 
 Frames accumulate — each `AddRays` fills in more samples, so the image sharpens over time.

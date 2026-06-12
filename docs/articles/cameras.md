@@ -135,9 +135,16 @@ else
 }
 ```
 
-`IsAutoTurret` keys off the `Reload` flag (only turrets expose a reload input — a drone may
-render a crosshair too, so `Crosshair` is not a reliable turret marker), and `IsDrone` keys
-off `SprintAndDuck` (the drone's vertical movement controls).
+One device-kind check exists per camera type, derived from live-observed control flags:
+
+| Check | Rule | Live-observed flags |
+| --- | --- | --- |
+| `IsAutoTurret` | has `Reload` (turret-only input — a drone may render a crosshair, so `Crosshair` is not a reliable marker) | `Mouse, Fire, Reload, Crosshair` |
+| `IsDrone` | has `SprintAndDuck` (the drone's vertical movement controls) | `Movement, Mouse, SprintAndDuck` |
+| `IsPtzCamera` | has `Mouse` but is neither turret nor drone (`Fire` drives the zoom) | `Mouse, Fire` |
+| `IsStaticCamera` | `ControlFlags` is `None` | `None` |
+
+The four checks are mutually exclusive for every flag combination observed in game.
 
 Disposing the controller stops the keep-alive and unsubscribes. Create at most one live
 controller per client — the server tracks a single camera subscription per connection.
