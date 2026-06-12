@@ -1,6 +1,6 @@
 # Samples
 
-The repository ships three runnable console apps under [`samples/`](https://github.com/HandyS11/RustPlusApi/tree/develop/samples)
+The repository ships four runnable console apps under [`samples/`](https://github.com/HandyS11/RustPlusApi/tree/develop/samples)
 that fit together as one flow:
 
 ```mermaid
@@ -8,13 +8,13 @@ flowchart LR
     Reg["RustPlus.Register.ConsoleApp<br/>(one-time setup)"] --> Cfg["rustplus.config.json<br/>+ RustPlus(...) args"]
     Cfg --> Fcm["RustPlus.Fcm.ConsoleApp<br/>(listen for pairing / alarms)"]
     Cfg --> App["RustPlus.ConsoleApp<br/>(query / control the server)"]
+    Cfg --> Cam["RustPlus.Camera.ConsoleApp<br/>(watch & control cameras)"]
 ```
 
 > [!IMPORTANT]
-> Credentials are never committed. The query and listener apps ship a placeholder template
-> (`RustPlus.ConsoleApp/credentials.sample.json` /
-> `RustPlus.Fcm.ConsoleApp/sample-config.json`); you create the real `credentials.json` /
-> `rustplus.config.json` locally — both are gitignored. The Register app needs no template, it
+> Credentials are never committed. The query, camera and listener apps ship a placeholder
+> template (`credentials.sample.json` / `RustPlus.Fcm.ConsoleApp/sample-config.json`); you
+> create the real `credentials.json` / `rustplus.config.json` locally — both are gitignored. The Register app needs no template, it
 > generates `rustplus.config.json` for you.
 
 ## RustPlus.Register.ConsoleApp — get your credentials (start here)
@@ -58,19 +58,10 @@ Interactive menu covering the full `IRustPlus` surface:
 | **Team** | Team info, team chat, promote to leader, send message. |
 | **Clan** | Clan info, clan chat, send message, set MOTD. |
 | **Electricity** | Alarms, subscriptions, storage monitors, smart switches (get/set/strobe/toggle). |
-| **Camera** | Managed session via `CameraController`: live ASCII preview / PNG save, move & look, PTZ zoom, turret shoot/reload (press+release), device kind shown (static / PTZ / turret / drone). |
 | **Live Events** | Stream smart-switch, storage-monitor, team/clan chat and clan-change events live. |
 
-Entity ids (alarm / smart switch / storage monitor / camera) are remembered for the session —
-press Enter at a prompt to reuse the last value. Camera rendering uses the
-[RustPlusApi.Camera](cameras.md) package; render fidelity is validated against real captured frames.
-
-The sample also has a headless capture mode for generating render fixtures from a live camera
-(writes a JSON frame dump plus the rendered PNG):
-
-```bash
-dotnet run --project samples/RustPlus.ConsoleApp -- [credentialsPath] capture <cameraId> <durationSeconds> [outputDir]
-```
+Entity ids (alarm / smart switch / storage monitor) are remembered for the session — press
+Enter at a prompt to reuse the last value.
 
 ```bash
 # Copy credentials.sample.json to credentials.json and fill in the values
@@ -78,6 +69,25 @@ dotnet run --project samples/RustPlus.ConsoleApp -- [credentialsPath] capture <c
 dotnet run --project samples/RustPlus.ConsoleApp
 # or pass the path explicitly:
 dotnet run --project samples/RustPlus.ConsoleApp -- /path/to/credentials.json
+```
+
+## RustPlus.Camera.ConsoleApp — watch and control cameras
+
+Dedicated camera sample built on the [RustPlusApi.Camera](cameras.md) package. The interactive
+mode prompts for a camera identifier and opens a managed `CameraController` session: live
+ASCII preview, PNG save, movement & mouse look, PTZ zoom, turret shoot/reload
+(press+release) — with the device kind detected and shown (static / PTZ / turret / drone).
+Render fidelity is validated against real captured frames.
+
+```bash
+dotnet run --project samples/RustPlus.Camera.ConsoleApp
+```
+
+It also has a headless capture mode for generating render fixtures from a live camera (writes
+a JSON frame dump plus the rendered PNG — this is how the golden-test fixtures were made):
+
+```bash
+dotnet run --project samples/RustPlus.Camera.ConsoleApp -- [credentialsPath] capture <cameraId> <durationSeconds> [outputDir]
 ```
 
 ## Where the apps look for config

@@ -3,7 +3,7 @@ using RustPlusApi.Camera;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Interfaces;
 
-namespace RustPlus.ConsoleApp.Features;
+namespace RustPlus.Camera.ConsoleApp.Features;
 
 /// <summary>
 /// Headless capture for golden-fixture generation: subscribes to a camera, records every

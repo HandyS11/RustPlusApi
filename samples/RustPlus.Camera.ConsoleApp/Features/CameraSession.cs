@@ -1,10 +1,10 @@
-using RustPlus.ConsoleApp.Utils;
+using RustPlus.Camera.ConsoleApp.Utils;
 using RustPlusApi.Camera;
 using RustPlusApi.Data.Cameras;
 using RustPlusApi.Data.Events;
 using RustPlusApi.Interfaces;
 
-namespace RustPlus.ConsoleApp.Features;
+namespace RustPlus.Camera.ConsoleApp.Features;
 
 internal sealed class CameraSession(IRustPlus rustPlus, EntityIdStore ids)
 {

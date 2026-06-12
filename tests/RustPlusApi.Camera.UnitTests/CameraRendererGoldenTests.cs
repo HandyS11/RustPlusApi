@@ -14,7 +14,7 @@ namespace RustPlusApi.Camera.UnitTests;
 /// each golden PNG is the visually-approved render of exactly those frames. Any decode/colour
 /// change that alters real-frame output fails here. Refresh a fixture with the sample's
 /// headless capture mode:
-///   dotnet run --project samples/RustPlus.ConsoleApp -- capture &lt;cameraId&gt; 8 out/
+///   dotnet run --project samples/RustPlus.Camera.ConsoleApp -- capture &lt;cameraId&gt; 8 out/
 /// </summary>
 public class CameraRendererGoldenTests
 {

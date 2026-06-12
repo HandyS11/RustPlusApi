@@ -4,7 +4,7 @@ using RustPlusApi.MockServer;
 using RustPlusContracts;
 using Xunit;
 
-namespace RustPlusApi.Camera.UnitTests;
+namespace RustPlusApi.Camera.IntegrationTests;
 
 /// <summary>
 /// End-to-end tests for <see cref="CameraController"/> against the mock server:
