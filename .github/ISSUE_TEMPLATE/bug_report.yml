@@ -1,0 +1,95 @@
+name: 🐛 Bug Report
+description: Report a reproducible problem in one of the RustPlusApi packages.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report! Please fill in as much detail as you can —
+        it helps us reproduce and fix the issue faster.
+
+        ⚠️ **Do not report security vulnerabilities here.** Use
+        [Security Advisories](https://github.com/HandyS11/RustPlusApi/security/advisories/new) instead.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I searched [existing issues](https://github.com/HandyS11/RustPlusApi/issues) and didn't find a duplicate.
+          required: true
+        - label: I'm using a [supported version](https://github.com/HandyS11/RustPlusApi/security/policy).
+          required: true
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package(s)
+      description: Which package(s) does this affect?
+      multiple: true
+      options:
+        - RustPlusApi (core)
+        - RustPlusApi.Camera
+        - RustPlusApi.Fcm
+        - RustPlusApi.Fcm.Registration
+        - RustPlusApi.Extensions.DependencyInjection
+        - RustPlusApi.Fcm.Extensions.DependencyInjection
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      description: The NuGet version you're running (e.g. 2.0.0).
+      placeholder: "2.0.0"
+    validations:
+      required: true
+  - type: input
+    id: tfm
+    attributes:
+      label: Target framework / runtime
+      description: e.g. net10.0, net8.0, .NET Framework 4.8, Unity, Mono.
+      placeholder: "net10.0"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps or a code snippet that triggers the bug. Redact any tokens/credentials.
+      placeholder: |
+        1. Call `...`
+        2. With arguments `...`
+        3. Observe `...`
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened, including any exceptions or stack traces (with secrets redacted).
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that might help — logs, screenshots, related issues.
+    validations:
+      required: false

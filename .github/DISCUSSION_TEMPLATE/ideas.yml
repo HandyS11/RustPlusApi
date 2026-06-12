@@ -1,0 +1,49 @@
+title: "[Idea]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Got an idea for RustPlusApi? Discuss it here before it becomes a formal feature request.
+        Focus on the problem you're trying to solve — the best solution often emerges from the
+        conversation.
+  - type: dropdown
+    id: package
+    attributes:
+      label: Target package(s)
+      description: Which package(s) would this affect?
+      multiple: true
+      options:
+        - RustPlusApi (core)
+        - RustPlusApi.Camera
+        - RustPlusApi.Fcm
+        - RustPlusApi.Fcm.Registration
+        - RustPlusApi.Extensions.DependencyInjection
+        - RustPlusApi.Fcm.Extensions.DependencyInjection
+        - New package
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What problem are you trying to solve? What's the use case?
+      placeholder: "It would be great if..."
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: Describe what you have in mind. A sketched API shape is welcome.
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links to Rust+ protocol details, related discussions, or anything else useful.
+    validations:
+      required: false
