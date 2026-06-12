@@ -226,6 +226,7 @@ public class CameraControllerTests
 
         Assert.False(zoom.IsSuccess);
         Assert.Equal(RustPlusErrorCode.NotSupported, zoom.Error!.Code);
+        Assert.Contains("zoom", zoom.Error.Message, StringComparison.Ordinal);
         lock (inputs)
         {
             Assert.Empty(inputs);
@@ -247,6 +248,7 @@ public class CameraControllerTests
 
         Assert.False(shoot.IsSuccess);
         Assert.Equal(RustPlusErrorCode.NotSupported, shoot.Error!.Code);
+        Assert.Contains("shoot", shoot.Error.Message, StringComparison.Ordinal);
         lock (inputs)
         {
             Assert.Empty(inputs);
@@ -268,6 +270,7 @@ public class CameraControllerTests
 
         Assert.False(reload.IsSuccess);
         Assert.Equal(RustPlusErrorCode.NotSupported, reload.Error!.Code);
+        Assert.Contains("reload", reload.Error.Message, StringComparison.Ordinal);
         lock (inputs)
         {
             Assert.Empty(inputs);
@@ -309,6 +312,10 @@ public class CameraControllerTests
 
         Assert.False(look.IsSuccess);
         Assert.Equal(RustPlusErrorCode.NotSupported, look.Error!.Code);
+        // The refusal explains the cause (the device-specific reason) and names the camera it
+        // applies to — RefusedAsync formats "<reason>; '<cameraId>' reports <flags>".
+        Assert.Contains("mouse look", look.Error.Message, StringComparison.Ordinal);
+        Assert.Contains("CAM01", look.Error.Message, StringComparison.Ordinal);
         lock (inputs)
         {
             Assert.Empty(inputs);
@@ -490,7 +497,77 @@ public class CameraControllerTests
         var response = await CameraController.SubscribeAsync(client, "DRONE01").WaitAsync(Timeout);
         await using var controller = response.Data!;
 
-        await Assert.ThrowsAsync<ArgumentException>(() => controller.MoveAsync(CameraButtons.FirePrimary));
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => controller.MoveAsync(CameraButtons.FirePrimary));
+        Assert.Contains("movement buttons", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PressAsync_WhenPressFails_ReturnsFailureWithoutReleasing()
+    {
+        // PressAsync sends a press then a release; when the press itself fails it must return
+        // that failure immediately, without sending the release frame.
+        var inputs = new List<(int Buttons, float X, float Y)>();
+        var server = new MockRustPlusServer(request =>
+        {
+            if (request.CameraInput is not null)
+            {
+                lock (inputs)
+                {
+                    inputs.Add((request.CameraInput.Buttons,
+                        request.CameraInput.MouseDelta.X,
+                        request.CameraInput.MouseDelta.Y));
+                }
+
+                return MockResponses.Error(request.Seq, "server_error");
+            }
+
+            var message = MockResponses.Default(request);
+            if (request.CameraSubscribe is not null)
+            {
+                message!.Response.CameraSubscribeInfo.ControlFlags = TurretFlags;
+            }
+
+            return message;
+        });
+        await using var _ = server;
+        server.Start();
+        await using var client = await ConnectAsync(server);
+
+        var response = await CameraController.SubscribeAsync(client, "TURRET01").WaitAsync(Timeout);
+        await using var controller = response.Data!;
+
+        var shoot = await controller.ShootAsync().WaitAsync(Timeout);
+
+        Assert.False(shoot.IsSuccess);
+        lock (inputs)
+        {
+            // Only the press was sent; the failure short-circuits before the release.
+            Assert.Single(inputs);
+            Assert.Equal((int)CameraButtons.FirePrimary, inputs[0].Buttons);
+        }
+    }
+
+    [Fact]
+    public async Task DisposeAsync_StopsForwardingFrames()
+    {
+        await using var server = new MockRustPlusServer();
+        server.Start();
+        await using var client = await ConnectAsync(server);
+
+        var response = await CameraController.SubscribeAsync(client, "CAM01").WaitAsync(Timeout);
+        var controller = response.Data!;
+
+        var frames = 0;
+        controller.OnFrameReceived += (_, _) => Interlocked.Increment(ref frames);
+
+        await controller.DisposeAsync();
+
+        // Dispose detaches the controller from the client's ray event: a frame still arriving on
+        // the (open) connection afterwards must not be forwarded to OnFrameReceived.
+        await server.BroadcastAsync(MockResponses.CameraRaysBroadcast());
+        await Task.Delay(200);
+
+        Assert.Equal(0, Volatile.Read(ref frames));
     }
 
     [Fact]
