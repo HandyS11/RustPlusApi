@@ -18,6 +18,10 @@ namespace RustPlusApi.Camera.UnitTests;
 /// </summary>
 public class CameraRendererGoldenTests
 {
+    /// <summary>Fixtures are copied next to the test assembly; resolve them from there rather
+    /// than the working directory, which varies by test runner.</summary>
+    private static readonly string FixturesDirectory = Path.Combine(AppContext.BaseDirectory, "Fixtures");
+
 #pragma warning disable CA1812 // instantiated by JsonSerializer.Deserialize<T>
     private sealed record CapturedFrame(int SampleOffset, string RayDataBase64);
 
@@ -33,7 +37,7 @@ public class CameraRendererGoldenTests
     public void Render_RealCapturedFrames_MatchesApprovedGoldenImage(string fixtureId)
     {
         var fixture = JsonSerializer.Deserialize<CaptureFixture>(
-                          File.ReadAllText(Path.Combine("Fixtures", $"{fixtureId}-frames.json")))
+                          File.ReadAllText(Path.Combine(FixturesDirectory, $"{fixtureId}-frames.json")))
                       ?? throw new InvalidOperationException($"{fixtureId}-frames.json deserialized to null");
 
         var renderer = new CameraRenderer(fixture.Width, fixture.Height);
@@ -46,7 +50,7 @@ public class CameraRendererGoldenTests
         }
 
         using var rendered = Image.Load<Rgba32>(renderer.Render());
-        using var golden = Image.Load<Rgba32>(Path.Combine("Fixtures", $"{fixtureId}-golden.png"));
+        using var golden = Image.Load<Rgba32>(Path.Combine(FixturesDirectory, $"{fixtureId}-golden.png"));
 
         Assert.Equal(golden.Width, rendered.Width);
         Assert.Equal(golden.Height, rendered.Height);

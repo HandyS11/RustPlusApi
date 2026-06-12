@@ -273,18 +273,44 @@ public sealed class CameraController : IAsyncDisposable
         }
 
         var deadline = DateTime.UtcNow + (duration ?? DefaultMoveDuration);
-        do
+        try
         {
-            var send = await SendInputAsync(buttons, cancellationToken: cancellationToken).ConfigureAwait(false);
-            if (!send.IsSuccess)
+            do
             {
-                return send;
-            }
+                var send = await SendInputAsync(buttons, cancellationToken: cancellationToken).ConfigureAwait(false);
+                if (!send.IsSuccess)
+                {
+                    await ReleaseAsync().ConfigureAwait(false);
+                    return send;
+                }
 
-            await Task.Delay(MoveStreamInterval, cancellationToken).ConfigureAwait(false);
-        } while (DateTime.UtcNow < deadline);
+                await Task.Delay(MoveStreamInterval, cancellationToken).ConfigureAwait(false);
+            } while (DateTime.UtcNow < deadline);
+        }
+        catch (OperationCanceledException)
+        {
+            await ReleaseAsync().ConfigureAwait(false);
+            throw;
+        }
 
         return await SendInputAsync(CameraButtons.None, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        // The streamed buttons were (possibly) registered as held; never leave them pressed
+        // when the stream aborts early — release best-effort, ignoring the original token.
+        async Task ReleaseAsync()
+        {
+            try
+            {
+                await SendInputAsync(CameraButtons.None, cancellationToken: CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
+#pragma warning disable RCS1075 // best-effort release: a disconnected client throws; the server drops held buttons on its own once input stops
+            catch (Exception)
+#pragma warning restore RCS1075
+            {
+                // Best-effort: the server stops applying input shortly after frames cease.
+            }
+        }
     }
 
     /// <summary>Builds the client-side refusal for an action the device does not support —

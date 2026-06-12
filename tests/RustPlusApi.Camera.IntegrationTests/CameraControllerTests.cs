@@ -365,6 +365,79 @@ public class CameraControllerTests
     }
 
     [Fact]
+    public async Task MoveAsync_Cancelled_StillReleasesButtons()
+    {
+        var inputs = new List<(int Buttons, float X, float Y)>();
+        await using var server = ServerWithFlags(DroneFlags, inputs);
+        server.Start();
+        await using var client = await ConnectAsync(server);
+
+        var response = await CameraController.SubscribeAsync(client, "DRONE01").WaitAsync(Timeout);
+        await using var controller = response.Data!;
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            controller.MoveAsync(CameraButtons.Forward, TimeSpan.FromSeconds(30), cts.Token));
+
+        // The held buttons must still be released, best-effort, despite the cancellation.
+        await WaitUntilAsync(() =>
+        {
+            lock (inputs)
+            {
+                return inputs.Count > 0 && inputs[^1].Buttons == (int)CameraButtons.None;
+            }
+        });
+    }
+
+    [Fact]
+    public async Task MoveAsync_SendFailure_StillReleasesButtons()
+    {
+        var inputs = new List<(int Buttons, float X, float Y)>();
+        var server = new MockRustPlusServer(request =>
+        {
+            if (request.CameraInput is not null)
+            {
+                lock (inputs)
+                {
+                    inputs.Add((request.CameraInput.Buttons,
+                        request.CameraInput.MouseDelta.X,
+                        request.CameraInput.MouseDelta.Y));
+                }
+
+                return MockResponses.Error(request.Seq, "server_error");
+            }
+
+            var message = MockResponses.Default(request);
+            if (request.CameraSubscribe is not null)
+            {
+                message!.Response.CameraSubscribeInfo.ControlFlags = DroneFlags;
+            }
+
+            return message;
+        });
+        await using var _ = server;
+        server.Start();
+        await using var client = await ConnectAsync(server);
+
+        var response = await CameraController.SubscribeAsync(client, "DRONE01").WaitAsync(Timeout);
+        await using var controller = response.Data!;
+
+        var move = await controller.MoveAsync(CameraButtons.Sprint).WaitAsync(Timeout);
+
+        Assert.False(move.IsSuccess);
+        await WaitUntilAsync(() =>
+        {
+            lock (inputs)
+            {
+                return inputs.Count == 2
+                       && inputs[0].Buttons == (int)CameraButtons.Sprint
+                       && inputs[1].Buttons == (int)CameraButtons.None;
+            }
+        });
+    }
+
+    [Fact]
     public async Task MoveAsync_OnPtzCamera_RefusedWithoutSendingInput()
     {
         var inputs = new List<(int Buttons, float X, float Y)>();
