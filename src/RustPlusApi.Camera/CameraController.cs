@@ -226,7 +226,8 @@ public sealed class CameraController : IAsyncDisposable
     /// </summary>
     /// <remarks>Live flight 2026-06-12: streaming <c>Sprint</c> for 1 s climbed ~4.7 m,
     /// <c>Forward</c>/<c>Backward</c> moved ~5 m and back, <c>Duck</c> landed the drone on its
-    /// starting spot. The drone hovers when the stream stops.</remarks>
+    /// starting spot. The drone hovers when the stream stops. A parked drone responds to
+    /// <c>Sprint</c> (take-off) only — planar movement and mouse look require being airborne.</remarks>
     /// <param name="buttons">Movement buttons to hold.</param>
     /// <param name="duration">How long to hold the buttons; <see cref="DefaultMoveDuration"/>
     /// when <see langword="null"/>.</param>
@@ -240,7 +241,7 @@ public sealed class CameraController : IAsyncDisposable
         CancellationToken cancellationToken = default)
     {
         const CameraButtons planar = CameraButtons.Forward | CameraButtons.Backward
-            | CameraButtons.Left | CameraButtons.Right;
+                                                           | CameraButtons.Left | CameraButtons.Right;
         const CameraButtons vertical = CameraButtons.Jump | CameraButtons.Duck | CameraButtons.Sprint;
 
         if (buttons == CameraButtons.None || (buttons & ~(planar | vertical)) != 0)
@@ -290,8 +291,7 @@ public sealed class CameraController : IAsyncDisposable
             IsSuccess = false,
             Error = new ErrorMessage
             {
-                Code = RustPlusErrorCode.NotSupported,
-                Message = $"{reason}; '{CameraId}' reports {Info.ControlFlags}"
+                Code = RustPlusErrorCode.NotSupported, Message = $"{reason}; '{CameraId}' reports {Info.ControlFlags}"
             }
         });
 
@@ -356,7 +356,10 @@ public sealed class CameraController : IAsyncDisposable
                 else
                 {
                     OnKeepAliveFailed?.Invoke(this,
-                        response.Error ?? new ErrorMessage { Code = RustPlusErrorCode.Unknown });
+                        response.Error ?? new ErrorMessage
+                        {
+                            Code = RustPlusErrorCode.Unknown
+                        });
                 }
             }
             catch (OperationCanceledException)
@@ -370,7 +373,10 @@ public sealed class CameraController : IAsyncDisposable
                 // Renewal is best-effort: a disconnected client throws instead of returning a
                 // failed Response; keep looping so the next renewal succeeds after a reconnect.
                 OnKeepAliveFailed?.Invoke(this,
-                    new ErrorMessage { Message = ex.Message, Code = RustPlusErrorCode.Unknown });
+                    new ErrorMessage
+                    {
+                        Message = ex.Message, Code = RustPlusErrorCode.Unknown
+                    });
             }
         }
     }

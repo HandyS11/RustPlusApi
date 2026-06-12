@@ -155,10 +155,10 @@ escape hatches.
 > - **Drones fly, but only under a continuous input stream** — `MoveAsync` streams frames for
 >   its hold duration for exactly this reason; a single press-and-release is acked and ignored.
 >   Vertical controls are `Sprint` (ascend) and `Duck` (descend) — that is what the
->   `SprintAndDuck` control flag refers to; `Jump` did nothing on a live drone. Mouse look
->   actuates while the drone is airborne and is ignored while it is parked. Looking mid-flight
->   changes the heading `Forward`/`Backward` move along — land before looking around if you
->   need to return to the starting spot.
+>   `SprintAndDuck` control flag refers to; `Jump` did nothing on a live drone. A parked drone
+>   responds to `Sprint` (take-off) only: planar movement and mouse look are ignored until it
+>   is airborne. Looking mid-flight changes the heading `Forward`/`Backward` move along — land
+>   before looking around if you need to return to the starting spot.
 > - **Turret inputs proved nothing on the test server** (the turret was deactivated there) —
 >   shoot/reload/look acks are transport-proof only; verify in game.
 >
