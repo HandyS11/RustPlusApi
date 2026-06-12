@@ -47,4 +47,15 @@ public enum RustPlusErrorCode
 
     /// <summary><c>not_enabled</c> — the requested feature is disabled on this server.</summary>
     NotEnabled = 12,
+
+    /// <summary><c>no_player</c> — the target entity is gone: observed on camera subscribe
+    /// attempts after the camera entity had been destroyed in game (despite the name, it does
+    /// not indicate anything about the paired player's own state).</summary>
+    NoPlayer = 13,
+
+    /// <summary>Client-side: the action is not supported by the target device, so the request
+    /// was never sent. Raised by capability-gated helpers (e.g. <c>CameraController.ZoomAsync</c>
+    /// on a non-PTZ camera) — the live server acknowledges unsupported camera inputs with
+    /// success while silently ignoring them, so this is the only feedback available.</summary>
+    NotSupported = 14,
 }

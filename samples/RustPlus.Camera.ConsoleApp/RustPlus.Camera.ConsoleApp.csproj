@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\RustPlusApi\RustPlusApi.csproj" />
+      <ProjectReference Include="..\..\src\RustPlusApi.Camera\RustPlusApi.Camera.csproj" />
+    </ItemGroup>
+
+    <!-- Console-sample utilities shared with RustPlus.ConsoleApp — linked, not copied,
+         so both samples stay on one implementation. -->
+    <ItemGroup>
+      <Compile Include="..\RustPlus.ConsoleApp\Utils\CredentialsReaderUtility.cs" Link="Utils\CredentialsReaderUtility.cs" />
+      <Compile Include="..\RustPlus.ConsoleApp\Utils\DisplayUtilities.cs" Link="Utils\DisplayUtilities.cs" />
+      <Compile Include="..\RustPlus.ConsoleApp\Utils\EntityIdStore.cs" Link="Utils\EntityIdStore.cs" />
+      <Compile Include="..\RustPlus.ConsoleApp\Utils\JsonUtilities.cs" Link="Utils\JsonUtilities.cs" />
+    </ItemGroup>
+
+    <!-- Copy your (gitignored) real credentials next to the built sample so it can find them. -->
+    <ItemGroup Condition="Exists('credentials.json')">
+      <None Include="credentials.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+</Project>

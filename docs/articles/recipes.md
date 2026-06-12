@@ -128,14 +128,14 @@ await Task.Delay(Timeout.Infinite);
 
 ## 4. Camera snapshot loop
 
-Subscribe to a camera, accumulate frames with `CameraRenderer.AddRays`, render a PNG, then
-unsubscribe. Requires the `RustPlusApi.Camera` NuGet package (install with
-`dotnet add package RustPlusApi.Camera`).
+Open a managed camera session with `CameraController` (it keeps the subscription alive — the
+server stops streaming rays for unrenewed subscriptions), accumulate frames with
+`CameraRenderer.AddRays`, render a PNG, then dispose. Requires the `RustPlusApi.Camera`
+NuGet package (install with `dotnet add package RustPlusApi.Camera`).
 
 ```csharp
 using RustPlusApi;
 using RustPlusApi.Camera;
-using RustPlusApi.Data.Cameras;
 
 const string ServerIp    = "192.0.2.1";
 const int    ServerPort  = 28082;
@@ -147,26 +147,26 @@ const int    FrameTarget = 10;        // accumulate 10 frames before saving
 using var rustPlus = new RustPlus(new RustPlusConnection(ServerIp, ServerPort, PlayerId, PlayerToken));
 await rustPlus.ConnectAsync();
 
-var sub = await rustPlus.SubscribeToCameraAsync(CameraId);
-if (!sub.IsSuccess)
+var session = await CameraController.SubscribeAsync(rustPlus, CameraId);
+if (!session.IsSuccess)
 {
-    Console.Error.WriteLine($"Subscribe failed: {sub.Error?.Message}");
+    Console.Error.WriteLine($"Subscribe failed: {session.Error?.Code} {session.Error?.Message}");
     return;
 }
 
-var info = sub.Data!;
-var renderer = new CameraRenderer(info.Width, info.Height);
+await using var camera = session.Data!;   // DisposeAsync stops the keep-alive and unsubscribes
+var renderer = new CameraRenderer(camera.Info.Width, camera.Info.Height);
 var tcs = new TaskCompletionSource<bool>();
 var frameCount = 0;
 
-rustPlus.OnCameraRaysReceived += async (_, frame) =>
+camera.OnFrameReceived += async (_, frame) =>
 {
     renderer.AddRays(frame);
 
     if (++frameCount < FrameTarget)
         return;
 
-    // Enough frames — render, save, unsubscribe.
+    // Enough frames — render and save.
     var png = renderer.Render();
     await File.WriteAllBytesAsync("snapshot.png", png);
     Console.WriteLine($"Saved snapshot.png ({png.Length:N0} bytes) after {frameCount} frames.");
@@ -174,12 +174,12 @@ rustPlus.OnCameraRaysReceived += async (_, frame) =>
 };
 
 await tcs.Task;   // wait until the snapshot is saved
-await rustPlus.UnsubscribeFromCameraAsync();
 ```
 
-> [!WARNING]
-> Camera image fidelity is experimental — the decode has not yet been validated against a captured
-> real frame. See [Cameras](cameras.md) for the rendering layer details.
+> [!NOTE]
+> `CameraController` also tells you what you are looking at — `IsStaticCamera`, `IsPtzCamera`
+> (`ZoomAsync`), `IsAutoTurret` (`ShootAsync`/`ReloadAsync`), `IsDrone` — and render fidelity
+> is validated against real captured frames. See [Cameras](cameras.md) for details.
 
 ## 5. Persist and reload credentials
 

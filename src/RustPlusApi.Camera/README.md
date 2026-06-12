@@ -18,24 +18,43 @@ dotnet add package RustPlusApi.Camera
 
 ## Usage
 
+`CameraController` manages the session (the server stops streaming rays for subscriptions
+that are not renewed; the controller re-subscribes every 10 s) and exposes turret/PTZ
+helpers; `CameraRenderer` turns the frames into PNGs:
+
 ```csharp
 using RustPlusApi.Camera;
 
-var info = (await rustPlus.SubscribeToCameraAsync("CAM01")).Data!;
-var renderer = new CameraRenderer(info.Width, info.Height);
+var response = await CameraController.SubscribeAsync(rustPlus, "CAM01");
+if (!response.IsSuccess) return;
 
-rustPlus.OnCameraRaysReceived += (_, frame) =>
+await using var camera = response.Data!;
+var renderer = new CameraRenderer(camera.Info.Width, camera.Info.Height);
+
+camera.OnFrameReceived += (_, frame) =>
 {
     renderer.AddRays(frame);
     byte[] png = renderer.Render();   // save / display
 };
+
+// One check per device kind: IsAutoTurret / IsDrone / IsPtzCamera / IsStaticCamera.
+// Turrets: await camera.ShootAsync(); await camera.ReloadAsync();
+// PTZ cameras: await camera.ZoomAsync();
+// Mouse look / drone movement: await camera.LookAsync(10f, 0f); await camera.MoveAsync(CameraButtons.Forward);
+// All action helpers are capability-gated: an unsupported action is refused client-side
+// (RustPlusErrorCode.NotSupported) without sending — the server acks unsupported inputs
+// with success while ignoring them, and zoom shares FirePrimary with turret fire.
+
+// Raised when a renewal fails (e.g. NoPlayer after the camera was destroyed in game):
+camera.OnKeepAliveFailed += (_, error) => Console.WriteLine($"{error.Code} {error.Message}");
 ```
 
 Frames accumulate — each `AddRays` fills in more samples, so the image sharpens over time.
 
-> **Experimental.** The ray decode, sample shuffle and colouring are ported faithfully from
-> rustplus.js but have not yet been validated against a captured real frame. Treat image fidelity
-> as experimental until that validation lands.
+> Validated against real captured frames: golden render tests pin the decode output to
+> live-captured frame sequences from every device type (static CCTV, PTZ camera, auto-turret,
+> drone). Refresh a fixture any time with the sample's headless capture mode
+> (`RustPlus.Camera.ConsoleApp … capture <cameraId> <seconds> [outDir]`).
 
 ## Documentation
 

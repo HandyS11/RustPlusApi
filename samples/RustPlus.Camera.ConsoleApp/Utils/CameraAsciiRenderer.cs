@@ -2,7 +2,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
-namespace RustPlus.ConsoleApp.Utils;
+namespace RustPlus.Camera.ConsoleApp.Utils;
 
 /// <summary>
 /// Prints a rendered camera PNG as ASCII art by downsampling to a console-sized grid and mapping

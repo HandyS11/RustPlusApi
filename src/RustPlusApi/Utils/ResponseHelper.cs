@@ -65,6 +65,7 @@ public static class ResponseHelper
         "message_not_sent" => RustPlusErrorCode.MessageNotSent,
         "too_many_subscribers" => RustPlusErrorCode.TooManySubscribers,
         "not_enabled" => RustPlusErrorCode.NotEnabled,
+        "no_player" => RustPlusErrorCode.NoPlayer,
         _ => RustPlusErrorCode.Unknown
     };
 }

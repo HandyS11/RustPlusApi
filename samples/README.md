@@ -53,14 +53,11 @@ Interactive menu covering the full `IRustPlus` surface:
 - **Team** — team info, team chat, promote to leader, send message.
 - **Clan** — clan info, clan chat, send message, set MOTD.
 - **Electricity** — alarms, subscriptions, storage monitors, smart switches (get/set/strobe/toggle).
-- **Camera** — subscribe and stream frames as an ASCII preview, send movement input, unsubscribe.
+- **Camera** — moved to the dedicated **RustPlus.Camera.ConsoleApp** sample (below).
 - **Live Events** — stream smart-switch, storage-monitor, team/clan chat and clan-change events live.
 
-Entity ids (alarm / smart switch / storage monitor / camera) are remembered for the session — press
+Entity ids (alarm / smart switch / storage monitor) are remembered for the session — press
 Enter at the prompt to reuse the last value.
-
-Camera rendering depends on the **RustPlusApi.Camera** package and is **experimental** (frame
-fidelity is not yet validated against real captures).
 
 ```bash
 # Copy credentials.sample.json to credentials.json and fill in the values
@@ -68,6 +65,20 @@ fidelity is not yet validated against real captures).
 dotnet run --project samples/RustPlus.ConsoleApp
 # or pass the path explicitly:
 dotnet run --project samples/RustPlus.ConsoleApp -- /path/to/credentials.json
+```
+
+## 4. RustPlus.Camera.ConsoleApp — watch and control cameras
+
+Dedicated camera sample built on the **RustPlusApi.Camera** package. Interactive mode opens a
+managed `CameraController` session (keep-alive, device kind detected: static / PTZ / turret /
+drone) with ASCII preview, PNG save, move & look, PTZ zoom, and turret shoot/reload
+(press+release). Render fidelity is validated against real captured frames (golden tests,
+2026-06-12). Uses the same `credentials.json` format as the query app.
+
+```bash
+dotnet run --project samples/RustPlus.Camera.ConsoleApp
+# headless capture (render-fixture generation):
+dotnet run --project samples/RustPlus.Camera.ConsoleApp -- [credentialsPath] capture <cameraId> <durationSeconds> [outputDir]
 ```
 
 ## Where the apps look for config

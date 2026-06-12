@@ -21,6 +21,7 @@ public class ErrorCodeTests
     [InlineData("message_not_sent", RustPlusErrorCode.MessageNotSent)]
     [InlineData("too_many_subscribers", RustPlusErrorCode.TooManySubscribers)]
     [InlineData("not_enabled", RustPlusErrorCode.NotEnabled)]
+    [InlineData("no_player", RustPlusErrorCode.NoPlayer)]
     [InlineData("unknown-error", RustPlusErrorCode.Unknown)]
     [InlineData("some_future_identifier", RustPlusErrorCode.Unknown)]
     public void BuildAckOutput_MapsServerIdentifierToCode(string identifier, RustPlusErrorCode expected)

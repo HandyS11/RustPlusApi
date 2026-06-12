@@ -4,6 +4,7 @@ using RustPlus.ConsoleApp.Utils;
 // Fill credentials.json (copy credentials.sample.json) with the ip/port/playerId/playerToken
 // printed by the RustPlus.Register.ConsoleApp sample when you "Pair with Server" in game.
 // Put it next to this project (gitignored), or pass its path as the first argument.
+// Camera features live in the dedicated RustPlus.Camera.ConsoleApp sample.
 var configFilePath = args.Length > 0
     ? args[0]
     : Path.Combine(AppContext.BaseDirectory, "credentials.json");
@@ -130,7 +131,6 @@ await Menu.RunAsync("Main menu",
             new StrobeSmartSwitch(rustPlus).StrobeSmartSwitchAsync(ids.GetUlong("smartSwitchId"))),
         new MenuItem("Toggle Smart Switch", () =>
             new ToggleSmartSwitch(rustPlus).ToggleSmartSwitchAsync(ids.GetUlong("smartSwitchId"))))),
-    new MenuItem("Camera Features", () => new CameraSession(rustPlus, ids).RunAsync()),
     new MenuItem("Live Events", () => new LiveEvents(rustPlus).RunAsync()));
 
 await rustPlus.DisconnectAsync();

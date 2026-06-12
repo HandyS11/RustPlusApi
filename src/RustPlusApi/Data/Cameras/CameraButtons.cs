@@ -25,10 +25,12 @@ public enum CameraButtons
     /// <summary>Jump.</summary>
     Jump = 1 << 5,
 
-    /// <summary>Crouch / duck.</summary>
+    /// <summary>Crouch / duck. For drones this is the descend control (live-verified 2026-06,
+    /// part of the <c>SprintAndDuck</c> control flag).</summary>
     Duck = 1 << 6,
 
-    /// <summary>Sprint.</summary>
+    /// <summary>Sprint. For drones this is the ascend control (live-verified 2026-06,
+    /// part of the <c>SprintAndDuck</c> control flag — <see cref="Jump"/> did nothing).</summary>
     Sprint = 1 << 7,
 
     /// <summary>Use / interact.</summary>

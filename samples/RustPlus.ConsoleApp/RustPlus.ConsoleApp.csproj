@@ -7,7 +7,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\src\RustPlusApi\RustPlusApi.csproj" />
-      <ProjectReference Include="..\..\src\RustPlusApi.Camera\RustPlusApi.Camera.csproj" />
     </ItemGroup>
 
     <!-- Copy your (gitignored) real credentials next to the built sample so it can find them. -->

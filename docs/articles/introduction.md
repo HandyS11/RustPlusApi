@@ -18,7 +18,7 @@ The library is split so you only take the dependencies you need.
 | **RustPlusApi** | Core WebSocket client with a typed `Response<T>` API: info, time, map, markers, team & clan chat, nexus auth, entities (smart switch / alarm / storage monitor) and the camera protocol. | protobuf-net |
 | **RustPlusApi.Fcm** | Listens to Firebase Cloud Messaging for server/entity **pairing** and **alarm** notifications. | protobuf-net, System.Text.Json |
 | **RustPlusApi.Fcm.Registration** | Acquires all the credentials natively (GCM check-in → Firebase → FCM → Expo → Steam → Rust Companion). Replaces the `rustplus.js` Node CLI. | RustPlusApi.Fcm |
-| **RustPlusApi.Camera** | Renders camera frames (`AppCameraRays`) into images. | RustPlusApi, SixLabors.ImageSharp |
+| **RustPlusApi.Camera** | Manages camera sessions (`CameraController`: keep-alive, turret/PTZ helpers) and renders frames into images. | RustPlusApi, SixLabors.ImageSharp |
 
 ```mermaid
 graph LR
@@ -28,7 +28,7 @@ graph LR
     A --> Core["RustPlusApi<br/>(WebSocket client)"]
     A --> Fcm["RustPlusApi.Fcm<br/>(FCM listener)"]
     A --> Reg["RustPlusApi.Fcm.Registration<br/>(credential acquisition)"]
-    A --> Cam["RustPlusApi.Camera<br/>(frame rendering)"]
+    A --> Cam["RustPlusApi.Camera<br/>(camera sessions + rendering)"]
     Reg --> Fcm
     Cam --> Core
     Core -- "WebSocket :companion port" --> S[(Rust server)]
@@ -60,7 +60,7 @@ full surface.
 Google FCM and surfaces server-pairing events, smart-alarm triggers, and entity pairing
 notifications as strongly-typed .NET events. See [FCM Notifications](fcm-notifications.md).
 
-**4. Render cameras** (optional) — `RustPlusApi.Camera` converts the raw `AppCameraRays` protobuf
+**4. Watch cameras** (optional) — `RustPlusApi.Camera` manages the session (`CameraController`) and converts the raw `AppCameraRays` protobuf
 frames from the WebSocket stream into images using SixLabors.ImageSharp. See
 [Cameras](cameras.md).
 

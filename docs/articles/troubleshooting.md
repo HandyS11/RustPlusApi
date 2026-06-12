@@ -138,6 +138,20 @@ rustPlus.OnSmartSwitchTriggered += (_, e) =>
 
 See [RustPlus Client — Events](rustplus-client.md#events) for the full broadcast list.
 
+## Camera subscribe fails with `no_player`
+
+**Symptom:** `SubscribeToCameraAsync` (or `CameraController.SubscribeAsync`) returns
+`IsSuccess = false` with `RustPlusErrorCode.NoPlayer` (raw identifier `no_player`) for an
+identifier that worked before.
+
+**Cause:** the camera entity no longer exists — it was destroyed in game. Despite the name,
+the error says nothing about the paired player's own state. (Verified live: a destroyed
+camera produced exactly this error; rebuilding it restored access.)
+
+**Fix:** rebuild the camera/turret/drone in game and set the identifier again on the computer
+station. Also remember that cameras are watched while the paired player is *disconnected*
+from the server.
+
 ## `ErrorOccurred` fires with `TimeoutException` after ~12 minutes
 
 **Symptom:** The `RustPlusFcm` listener raises `ErrorOccurred` with a `TimeoutException` after
