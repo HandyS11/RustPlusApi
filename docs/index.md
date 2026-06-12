@@ -17,7 +17,7 @@ _disableBreadcrumb: true
     <a class="btn btn-outline-secondary" href="api/RustPlusApi.yml">API Reference</a>
   </div>
   <p class="rp-badges">
-    <img src="https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4?logo=dotnet" alt=".NET" />
+    <img src="https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4" alt=".NET" />
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT" />
     <img src="https://img.shields.io/nuget/v/RustPlusApi.svg?label=NuGet&color=ce412b" alt="NuGet" />
   </p>
