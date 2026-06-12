@@ -167,11 +167,11 @@ mutation score cannot be measured.
 | Project | Score | Notes |
 | --- | --- | --- |
 | `RustPlusApi.Camera` | ~90.5% | `CameraController` is exercised by `RustPlusApi.Camera.IntegrationTests` (a `RustPlus` client is required), so that project is listed alongside the unit tests in `test-projects` — Stryker mutates `RustPlusApi.Camera.csproj` and runs both suites against it. Remaining survivors are equivalent: renderer `>>` signed-vs-unsigned shifts; controller keep-alive/`Move` timing (`<` vs `<=` deadline, `duration ?? default`), `\|=`→`^=` on a zero-initialised flag accumulator, and movement-gate bitmasks that would only differ on a device advertising one of `Movement`/`SprintAndDuck` but not the other (no such device exists in game). |
-| `RustPlusApi.Fcm.Registration` | ~84.6% | Remaining: `ConfigureAwait`/`Task.Delay` (equivalent in tests) + `[ExcludeFromCodeCoverage]` Steam surface. |
-| `RustPlusApi.Fcm` | ~78.5% | Remaining: live-socket cleanup and equivalent shift/xor mutants in `McsUtils`; `Log*`/`CreateLogger` calls are suppressed via `ignore-methods`. |
+| `RustPlusApi.Fcm.Registration` | ~97.1% | Remaining: `CredentialsStore` file-write path + an `AndroidFcmRegister` error-parse equality; the rest is `[ExcludeFromCodeCoverage]` Steam surface. |
+| `RustPlusApi.Fcm` | ~83.3% | Remaining: live-socket teardown (`Dispose`/`Close`/`Cancel` statement removals are not observable without leak detection) and equivalent shift/xor mutants in `McsUtils`; `Log*`/`CreateLogger` calls are suppressed via `ignore-methods`. |
 | `RustPlusApi` (core) | n/a | Cannot run — see limitation above. |
-| `RustPlusApi.Extensions.DependencyInjection` | pending | First measured by the next weekly Mutation.yml run. |
-| `RustPlusApi.Fcm.Extensions.DependencyInjection` | pending | First measured by the next weekly Mutation.yml run. |
+| `RustPlusApi.Extensions.DependencyInjection` | ~90.9% | Remaining survivors are equivalent: the explicit `if (services is null) throw` guards are masked by the `services.AddOptions()` call, which throws the same `ArgumentNullException(paramName: "services")`. |
+| `RustPlusApi.Fcm.Extensions.DependencyInjection` | ~80.0% | Remaining: the same `AddOptions`-masked null-services guards, plus the factory's `persistentIds ?? []` default, which is unobservable without a live FCM connection. |
 
 ---
 
