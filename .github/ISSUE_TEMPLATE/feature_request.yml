@@ -1,0 +1,64 @@
+name: ✨ Feature Request
+description: Suggest a new feature or improvement for RustPlusApi.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing an idea! Please describe the problem you're trying to solve, not just the
+        solution you have in mind — it helps us find the best fit for the library.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I searched [existing issues](https://github.com/HandyS11/RustPlusApi/issues) and didn't find a duplicate.
+          required: true
+  - type: dropdown
+    id: package
+    attributes:
+      label: Target package(s)
+      description: Which package(s) would this affect?
+      multiple: true
+      options:
+        - RustPlusApi (core)
+        - RustPlusApi.Camera
+        - RustPlusApi.Fcm
+        - RustPlusApi.Fcm.Registration
+        - RustPlusApi.Extensions.DependencyInjection
+        - RustPlusApi.Fcm.Extensions.DependencyInjection
+        - New package
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What problem are you trying to solve? What's the use case?
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe what you'd like to happen. A sketched API shape is welcome.
+      render: csharp
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any alternative solutions or workarounds you've considered.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links to Rust+ protocol details, related issues, or anything else useful.
+    validations:
+      required: false
