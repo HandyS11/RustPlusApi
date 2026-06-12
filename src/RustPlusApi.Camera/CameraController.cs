@@ -227,7 +227,12 @@ public sealed class CameraController : IAsyncDisposable
     /// <remarks>Live flight 2026-06-12: streaming <c>Sprint</c> for 1 s climbed ~4.7 m,
     /// <c>Forward</c>/<c>Backward</c> moved ~5 m and back, <c>Duck</c> landed the drone on its
     /// starting spot. The drone hovers when the stream stops. A parked drone responds to
-    /// <c>Sprint</c> (take-off) only — planar movement and mouse look require being airborne.</remarks>
+    /// <c>Sprint</c> (take-off) only — planar movement and mouse look require being airborne.
+    /// Fly gently: collisions with the ground or structures (and incoming fire) cost the drone
+    /// HP; a destroyed drone fails subsequent subscribes with
+    /// <see cref="RustPlusErrorCode.NoPlayer"/>. A carried package (attached by a player) is
+    /// dropped with a <see cref="CameraButtons.FirePrimary"/> click via
+    /// <see cref="PressAsync"/>.</remarks>
     /// <param name="buttons">Movement buttons to hold.</param>
     /// <param name="duration">How long to hold the buttons; <see cref="DefaultMoveDuration"/>
     /// when <see langword="null"/>.</param>

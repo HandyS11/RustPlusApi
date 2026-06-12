@@ -159,6 +159,12 @@ escape hatches.
 >   responds to `Sprint` (take-off) only: planar movement and mouse look are ignored until it
 >   is airborne. Looking mid-flight changes the heading `Forward`/`Backward` move along — land
 >   before looking around if you need to return to the starting spot.
+> - **Drones take damage** — hitting the ground or structures and incoming fire all cost the
+>   drone HP, and a destroyed drone fails subsequent subscribes with
+>   `RustPlusErrorCode.NoPlayer` (the entity is gone). Fly gently and land with short `Duck`
+>   bursts. A player can attach a package for the drone to carry; a `FirePrimary` click drops
+>   it — use the raw `PressAsync(CameraButtons.FirePrimary)` for that (the gated
+>   `ShootAsync`/`ZoomAsync` deliberately refuse on drones).
 > - **Turret inputs proved nothing on the test server** (the turret was deactivated there) —
 >   shoot/reload/look acks are transport-proof only; verify in game.
 >
