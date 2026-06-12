@@ -10,7 +10,7 @@ all the required credentials natively — _no Node.js required_.
 [![CD](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml/badge.svg)](https://github.com/HandyS11/RustPlusApi/actions/workflows/CD.yml)
 [![Docs](https://github.com/HandyS11/RustPlusApi/actions/workflows/Documentation.yml/badge.svg)](https://handys11.github.io/RustPlusApi/)
 
-![.NET](https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4?logo=dotnet)
+![.NET](https://img.shields.io/badge/.NET-Standard%202.0%20%7C%2010-512BD4)
 [![NuGet Version](https://img.shields.io/nuget/v/RustPlusApi.svg)](https://www.nuget.org/packages/RustPlusApi)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![codecov](https://codecov.io/gh/HandyS11/RustPlusApi/graph/badge.svg?token=UZCM1A6ERM)](https://codecov.io/gh/HandyS11/RustPlusApi)

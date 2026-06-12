@@ -162,6 +162,10 @@ public class RustPlusFcmServiceCollectionExtensionsTests
         await using var provider = services.BuildServiceProvider();
         var factory = provider.GetRequiredService<IRustPlusFcmFactory>();
 
+        // The factory's configure delegate must reach the options pipeline (default is 5 min).
+        var options = provider.GetRequiredService<IOptions<RustPlusFcmSocketOptions>>().Value;
+        Assert.Equal(TimeSpan.FromMinutes(2), options.HeartbeatInterval);
+
         await using var client = factory.Create(AnyCredentials());
 
         Assert.NotNull(client);

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace RustPlusApi.Extensions.DependencyInjection.UnitTests;
@@ -77,6 +78,10 @@ public class RustPlusFactoryTests
         services.AddRustPlusFactory(o => o.RequestTimeout = TimeSpan.FromSeconds(3));
         await using var provider = services.BuildServiceProvider();
         var factory = provider.GetRequiredService<IRustPlusFactory>();
+
+        // The configure delegate must actually be wired into the options pipeline (default is 30s).
+        var options = provider.GetRequiredService<IOptions<RustPlusSocketOptions>>().Value;
+        Assert.Equal(TimeSpan.FromSeconds(3), options.RequestTimeout);
 
         await using var client = factory.Create(AnyConnection());
 
