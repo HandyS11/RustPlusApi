@@ -26,9 +26,10 @@ dotnet test RustPlusApi.sln -f net10.0
 # Coverage with per-class gap report + CI gate (line 95 / branch 90):
 tools/coverage/report.sh
 
-# Formatting (ReSharper CLI; rules from .editorconfig):
+# Formatting + member reordering (ReSharper CLI; whitespace rules from .editorconfig, the
+# ReformatAndReorder cleanup profile + member layout live in RustPlusApi.sln.DotSettings):
 dotnet tool restore
-dotnet jb cleanupcode RustPlusApi.sln --profile="Built-in: Reformat Code"
+dotnet jb cleanupcode RustPlusApi.sln --profile="ReformatAndReorder"
 
 # Mutation testing (run from the unit-test project directory):
 cd tests/RustPlusApi.Fcm.UnitTests && dotnet stryker --config-file stryker-config.json --project RustPlusApi.Fcm.csproj
@@ -38,8 +39,8 @@ docfx docs/docfx.json --serve
 ```
 
 A committed **pre-push hook** (`.githooks/pre-push`, wired up automatically by the first
-`dotnet build`) runs the ReSharper formatter on outgoing files and **rejects the push** if it
-changes anything — format before pushing.
+`dotnet build`) runs the ReSharper formatter **and member reordering** on outgoing files and
+**rejects the push** if it changes anything — format before pushing.
 
 ## Architecture
 

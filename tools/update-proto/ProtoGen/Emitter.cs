@@ -10,15 +10,16 @@ namespace ProtoGen;
 /// </summary>
 internal sealed partial class Emitter
 {
-    private readonly ServerParser _server;
     private readonly CommittedProto _committed;
-    private readonly HashSet<string> _scopeMessages = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _scopeEnums = new(StringComparer.Ordinal);
 
     /// <summary>Committed top-level types that the authoritative closure does not cover: external well-known
     /// types (Vector2/3/4) and unreachable/vestigial types (Half3, Color, Ray, ClanActionResult).
     /// Emitted verbatim from the committed proto — no authoritative claim is made about them.</summary>
     private readonly HashSet<string> _preserved = new(StringComparer.Ordinal);
+
+    private readonly HashSet<string> _scopeEnums = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _scopeMessages = new(StringComparer.Ordinal);
+    private readonly ServerParser _server;
 
     private Emitter(ServerParser server, CommittedProto committed)
     {

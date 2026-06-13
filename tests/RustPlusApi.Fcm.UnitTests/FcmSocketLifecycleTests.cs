@@ -10,26 +10,6 @@ namespace RustPlusApi.Fcm.UnitTests;
 /// </summary>
 public class FcmSocketLifecycleTests
 {
-    /// <summary>Concrete subclass: <see cref="RustPlusFcmSocket"/> is abstract.</summary>
-    /// <param name="credentials">The FCM credentials.</param>
-    private sealed class TestSocket(Credentials credentials) : RustPlusFcmSocket(credentials);
-
-    /// <summary>
-    /// A spy subclass that records the <c>disposing</c> argument passed to
-    /// <see cref="RustPlusFcmSocket.Dispose(bool)"/>.
-    /// </summary>
-    /// <param name="credentials">The FCM credentials.</param>
-    private sealed class SpySocket(Credentials credentials) : RustPlusFcmSocket(credentials)
-    {
-        public bool? DisposingArgument { get; private set; }
-
-        protected override void Dispose(bool disposing)
-        {
-            DisposingArgument = disposing;
-            base.Dispose(disposing);
-        }
-    }
-
     private static TestSocket NewSocket() =>
         new(new Credentials
         {
@@ -71,54 +51,6 @@ public class FcmSocketLifecycleTests
         await socket.RunReceiveLoopOverStreamAsync(new CanceledProbeStream());
 
         Assert.False(raised);
-    }
-
-    /// <summary>
-    /// Serves a single minimal valid first frame (version 41, tag KLoginResponseTag, size 0). The receive
-    /// loop processes that login message, then the <c>while</c> check sees the already-cancelled token and
-    /// exits without attempting another read.
-    /// </summary>
-    private sealed class CanceledProbeStream : Stream
-    {
-        private readonly MemoryStream _reads = new([41, 3, 0]);
-
-        public override bool CanRead => true;
-        public override bool CanWrite => true;
-        public override bool CanSeek => false;
-        public override long Length => throw new NotSupportedException();
-
-        public override long Position
-        {
-            get => throw new NotSupportedException();
-            set => throw new NotSupportedException();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count) => _reads.Read(buffer, offset, count);
-        public override int ReadByte() => _reads.ReadByte();
-        public override void Write(byte[] buffer, int offset, int count) { }
-        public override void Flush() { }
-        public override void SetLength(long value) => throw new NotSupportedException();
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-    }
-
-    /// <summary>
-    /// A <see cref="MemoryStream"/> that completes <see cref="FirstWrite"/> as soon as the first frame is
-    /// written. Lets the heartbeat test wait on the actual condition (a ping was emitted) instead of a
-    /// fixed delay, which flakes when the loop task is starved of scheduling under parallel test runs.
-    /// </summary>
-    private sealed class SignalingMemoryStream : MemoryStream
-    {
-        private readonly TaskCompletionSource<bool> _firstWrite =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        /// <summary>Completes once at least one frame has been written.</summary>
-        public Task FirstWrite => _firstWrite.Task;
-
-        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            await base.WriteAsync(buffer.AsMemory(offset, count), cancellationToken);
-            _firstWrite.TrySetResult(true);
-        }
     }
 
     [Fact]
@@ -187,17 +119,6 @@ public class FcmSocketLifecycleTests
         Assert.True(await disconnected.Task.WaitAsync(TimeSpan.FromSeconds(5)));
         await loop.WaitAsync(TimeSpan.FromSeconds(5)); // the loop exited after disconnecting
     }
-
-    /// <summary>Concrete subclass that forwards heartbeat/watchdog tuning options.</summary>
-    /// <param name="options">The heartbeat/watchdog options under test.</param>
-    private sealed class OptionsSocket(RustPlusFcmSocketOptions options)
-        : RustPlusFcmSocket(new Credentials
-        {
-            Gcm = new Gcm
-            {
-                AndroidId = 1, SecurityToken = 1
-            }
-        }, options: options);
 
     [Fact]
     public void Dispose_IsIdempotent()
@@ -298,4 +219,83 @@ public class FcmSocketLifecycleTests
         await Assert.ThrowsAsync<ObjectDisposedException>(() =>
             socket.RunReceiveLoopOverStreamAsync(new CanceledProbeStream()));
     }
+
+    /// <summary>Concrete subclass: <see cref="RustPlusFcmSocket"/> is abstract.</summary>
+    /// <param name="credentials">The FCM credentials.</param>
+    private sealed class TestSocket(Credentials credentials) : RustPlusFcmSocket(credentials);
+
+    /// <summary>
+    /// A spy subclass that records the <c>disposing</c> argument passed to
+    /// <see cref="RustPlusFcmSocket.Dispose(bool)"/>.
+    /// </summary>
+    /// <param name="credentials">The FCM credentials.</param>
+    private sealed class SpySocket(Credentials credentials) : RustPlusFcmSocket(credentials)
+    {
+        public bool? DisposingArgument { get; private set; }
+
+        protected override void Dispose(bool disposing)
+        {
+            DisposingArgument = disposing;
+            base.Dispose(disposing);
+        }
+    }
+
+    /// <summary>
+    /// Serves a single minimal valid first frame (version 41, tag KLoginResponseTag, size 0). The receive
+    /// loop processes that login message, then the <c>while</c> check sees the already-cancelled token and
+    /// exits without attempting another read.
+    /// </summary>
+    private sealed class CanceledProbeStream : Stream
+    {
+        private readonly MemoryStream _reads = new([41, 3, 0]);
+
+        public override bool CanRead => true;
+        public override bool CanWrite => true;
+        public override bool CanSeek => false;
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => _reads.Read(buffer, offset, count);
+        public override int ReadByte() => _reads.ReadByte();
+        public override void Write(byte[] buffer, int offset, int count) { }
+        public override void Flush() { }
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// A <see cref="MemoryStream"/> that completes <see cref="FirstWrite"/> as soon as the first frame is
+    /// written. Lets the heartbeat test wait on the actual condition (a ping was emitted) instead of a
+    /// fixed delay, which flakes when the loop task is starved of scheduling under parallel test runs.
+    /// </summary>
+    private sealed class SignalingMemoryStream : MemoryStream
+    {
+        private readonly TaskCompletionSource<bool> _firstWrite =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        /// <summary>Completes once at least one frame has been written.</summary>
+        public Task FirstWrite => _firstWrite.Task;
+
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            await base.WriteAsync(buffer.AsMemory(offset, count), cancellationToken);
+            _firstWrite.TrySetResult(true);
+        }
+    }
+
+    /// <summary>Concrete subclass that forwards heartbeat/watchdog tuning options.</summary>
+    /// <param name="options">The heartbeat/watchdog options under test.</param>
+    private sealed class OptionsSocket(RustPlusFcmSocketOptions options)
+        : RustPlusFcmSocket(new Credentials
+        {
+            Gcm = new Gcm
+            {
+                AndroidId = 1, SecurityToken = 1
+            }
+        }, options: options);
 }

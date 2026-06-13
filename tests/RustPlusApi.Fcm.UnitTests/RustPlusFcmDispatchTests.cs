@@ -9,17 +9,6 @@ namespace RustPlusApi.Fcm.UnitTests;
 /// subclass that exposes the protected <c>ParseNotification</c> hook — no socket needed.</summary>
 public class RustPlusFcmDispatchTests
 {
-    private sealed class TestFcm() : RustPlusFcm(new Credentials
-    {
-        Gcm = new Gcm
-        {
-            AndroidId = 1, SecurityToken = 1
-        }
-    })
-    {
-        public void Feed(FcmMessage message) => ParseNotification(message);
-    }
-
     private static FcmMessage Pairing(Body body) =>
         new()
         {
@@ -237,5 +226,16 @@ public class RustPlusFcmDispatchTests
             Type = "server", Ip = "1.2.3.4", Port = 1, PlayerToken = "0"
         }));
         Assert.True(pairingRaised);
+    }
+
+    private sealed class TestFcm() : RustPlusFcm(new Credentials
+    {
+        Gcm = new Gcm
+        {
+            AndroidId = 1, SecurityToken = 1
+        }
+    })
+    {
+        public void Feed(FcmMessage message) => ParseNotification(message);
     }
 }

@@ -17,16 +17,6 @@ public class FcmSocketFramingTests
 {
     private const int KMcsVersion = 41;
 
-    /// <summary>Concrete subclass: <see cref="RustPlusFcmSocket"/> is abstract.</summary>
-    /// <param name="credentials">The FCM credentials.</param>
-    /// <param name="persistentIds">The de-duplication set of already-seen persistent ids.</param>
-    /// <param name="options">Optional heartbeat/watchdog tuning.</param>
-    private sealed class TestSocket(
-        Credentials credentials,
-        ICollection<string>? persistentIds = null,
-        RustPlusFcmSocketOptions? options = null)
-        : RustPlusFcmSocket(credentials, persistentIds, options);
-
     private static Credentials NewCredentials() =>
         new()
         {
@@ -38,50 +28,6 @@ public class FcmSocketFramingTests
 
     private static TestSocket NewSocket(ICollection<string>? persistentIds = null) =>
         new(NewCredentials(), persistentIds);
-
-    /// <summary>
-    /// A duplex stream whose reads are served from a pre-built script and whose writes are captured.
-    /// The script always ends with a Close frame so the receive loop terminates deterministically;
-    /// the Close handler cancels the token, exiting the <c>while</c> on the next iteration.
-    /// </summary>
-    /// <param name="script">The pre-built MCS byte script served to reads.</param>
-    private sealed class ScriptedStream(byte[] script) : Stream
-    {
-        private readonly MemoryStream _reads = new(script);
-
-        private readonly TaskCompletionSource<bool> _firstWrite =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public MemoryStream Writes { get; } = new();
-
-        /// <summary>Completes once at least one frame has been written — lets tests wait on the
-        /// actual condition instead of a fixed delay that flakes under parallel runs.</summary>
-        public Task FirstWrite => _firstWrite.Task;
-
-        public override bool CanRead => true;
-        public override bool CanWrite => true;
-        public override bool CanSeek => false;
-        public override long Length => throw new NotSupportedException();
-
-        public override long Position
-        {
-            get => throw new NotSupportedException();
-            set => throw new NotSupportedException();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count) => _reads.Read(buffer, offset, count);
-        public override int ReadByte() => _reads.ReadByte();
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            Writes.Write(buffer, offset, count);
-            _firstWrite.TrySetResult(true);
-        }
-
-        public override void Flush() { }
-        public override void SetLength(long value) => throw new NotSupportedException();
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-    }
 
     /// <summary>
     /// Splits the client-written byte stream into MCS frames. Client frames after the login
@@ -115,49 +61,6 @@ public class FcmSocketFramingTests
 
         return frames;
     }
-
-    /// <summary>
-    /// A duplex stream that ONLY supports asynchronous I/O: synchronous <see cref="Read"/>/<see cref="ReadByte"/>/
-    /// <see cref="Write"/> throw. Driving the receive/send path over it proves the loop uses ReadAsync/WriteAsync
-    /// (i.e. does not occupy a thread-pool thread with blocking calls for the connection's lifetime).
-    /// </summary>
-    /// <param name="script">The pre-built MCS byte script served to async reads.</param>
-#pragma warning disable CA1844 // memory-based overrides are a perf hint, irrelevant for this test stub
-    private sealed class AsyncOnlyStream(byte[] script) : Stream
-    {
-        private readonly MemoryStream _reads = new(script);
-        public MemoryStream Writes { get; } = new();
-
-        public override bool CanRead => true;
-        public override bool CanWrite => true;
-        public override bool CanSeek => false;
-        public override long Length => throw new NotSupportedException();
-
-        public override long Position
-        {
-            get => throw new NotSupportedException();
-            set => throw new NotSupportedException();
-        }
-
-        public override int Read(byte[] buffer, int offset, int count) =>
-            throw new NotSupportedException("synchronous Read is not allowed");
-
-        public override int ReadByte() => throw new NotSupportedException("synchronous ReadByte is not allowed");
-
-        public override void Write(byte[] buffer, int offset, int count) =>
-            throw new NotSupportedException("synchronous Write is not allowed");
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            => _reads.ReadAsync(buffer, offset, count, cancellationToken);
-
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            => Writes.WriteAsync(buffer, offset, count, cancellationToken);
-
-        public override void Flush() { }
-        public override void SetLength(long value) => throw new NotSupportedException();
-        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-    }
-#pragma warning restore CA1844
 
     [Fact]
     public async Task ReceiveLoop_OverAsyncOnlyStream_ProcessesFramesViaAsyncIo()
@@ -1216,4 +1119,101 @@ public class FcmSocketFramingTests
 
         Assert.Null(exception);
     }
+
+    /// <summary>Concrete subclass: <see cref="RustPlusFcmSocket"/> is abstract.</summary>
+    /// <param name="credentials">The FCM credentials.</param>
+    /// <param name="persistentIds">The de-duplication set of already-seen persistent ids.</param>
+    /// <param name="options">Optional heartbeat/watchdog tuning.</param>
+    private sealed class TestSocket(
+        Credentials credentials,
+        ICollection<string>? persistentIds = null,
+        RustPlusFcmSocketOptions? options = null)
+        : RustPlusFcmSocket(credentials, persistentIds, options);
+
+    /// <summary>
+    /// A duplex stream whose reads are served from a pre-built script and whose writes are captured.
+    /// The script always ends with a Close frame so the receive loop terminates deterministically;
+    /// the Close handler cancels the token, exiting the <c>while</c> on the next iteration.
+    /// </summary>
+    /// <param name="script">The pre-built MCS byte script served to reads.</param>
+    private sealed class ScriptedStream(byte[] script) : Stream
+    {
+        private readonly TaskCompletionSource<bool> _firstWrite =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private readonly MemoryStream _reads = new(script);
+
+        public MemoryStream Writes { get; } = new();
+
+        /// <summary>Completes once at least one frame has been written — lets tests wait on the
+        /// actual condition instead of a fixed delay that flakes under parallel runs.</summary>
+        public Task FirstWrite => _firstWrite.Task;
+
+        public override bool CanRead => true;
+        public override bool CanWrite => true;
+        public override bool CanSeek => false;
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) => _reads.Read(buffer, offset, count);
+        public override int ReadByte() => _reads.ReadByte();
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            Writes.Write(buffer, offset, count);
+            _firstWrite.TrySetResult(true);
+        }
+
+        public override void Flush() { }
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// A duplex stream that ONLY supports asynchronous I/O: synchronous <see cref="Read"/>/<see cref="ReadByte"/>/
+    /// <see cref="Write"/> throw. Driving the receive/send path over it proves the loop uses ReadAsync/WriteAsync
+    /// (i.e. does not occupy a thread-pool thread with blocking calls for the connection's lifetime).
+    /// </summary>
+    /// <param name="script">The pre-built MCS byte script served to async reads.</param>
+#pragma warning disable CA1844 // memory-based overrides are a perf hint, irrelevant for this test stub
+    private sealed class AsyncOnlyStream(byte[] script) : Stream
+    {
+        private readonly MemoryStream _reads = new(script);
+        public MemoryStream Writes { get; } = new();
+
+        public override bool CanRead => true;
+        public override bool CanWrite => true;
+        public override bool CanSeek => false;
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count) =>
+            throw new NotSupportedException("synchronous Read is not allowed");
+
+        public override int ReadByte() => throw new NotSupportedException("synchronous ReadByte is not allowed");
+
+        public override void Write(byte[] buffer, int offset, int count) =>
+            throw new NotSupportedException("synchronous Write is not allowed");
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => _reads.ReadAsync(buffer, offset, count, cancellationToken);
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => Writes.WriteAsync(buffer, offset, count, cancellationToken);
+
+        public override void Flush() { }
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    }
+#pragma warning restore CA1844
 }

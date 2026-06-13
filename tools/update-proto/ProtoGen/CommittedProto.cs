@@ -44,15 +44,6 @@ internal sealed partial class CommittedProto
         return result;
     }
 
-    /// <summary>Transient state threaded through the line-by-line parse: the nesting stack, the current
-    /// top-level declaration name, and the raw lines accumulated for it.</summary>
-    private sealed class ParseState
-    {
-        public readonly List<string> Stack = [];
-        public string? TopLevelName;
-        public List<string> Block = [];
-    }
-
     /// <summary>Folds a single source line into <paramref name="state"/>: tracks declaration open/close
     /// and records field labels.</summary>
     /// <param name="rawLine">The untrimmed source line.</param>
@@ -147,4 +138,13 @@ internal sealed partial class CommittedProto
     // e.g. "required uint32 width = 1;"  /  "repeated AppMap.Monument monuments = 5;"
     [GeneratedRegex(@"^(required|optional|repeated)\s+[A-Za-z0-9_.]+\s+[A-Za-z0-9_]+\s*=\s*(\d+)\s*;")]
     private static partial Regex FieldLine();
+
+    /// <summary>Transient state threaded through the line-by-line parse: the nesting stack, the current
+    /// top-level declaration name, and the raw lines accumulated for it.</summary>
+    private sealed class ParseState
+    {
+        public readonly List<string> Stack = [];
+        public List<string> Block = [];
+        public string? TopLevelName;
+    }
 }

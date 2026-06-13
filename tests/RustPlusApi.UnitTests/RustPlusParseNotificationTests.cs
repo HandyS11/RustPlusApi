@@ -13,20 +13,6 @@ namespace RustPlusApi.UnitTests;
 /// </summary>
 public class RustPlusParseNotificationTests
 {
-    /// <summary>Exposes the protected members of <see cref="RustPlus"/> for direct unit testing.</summary>
-    private sealed class TestRustPlus() : RustPlus(new RustPlusConnection("127.0.0.1", 1, 1, 1))
-    {
-        public void Feed(AppBroadcast? b) => ParseNotification(b);
-
-        /// <summary>Delegates to the inherited protected static IsError.</summary>
-        /// <param name="m">The message to check.</param>
-        public static bool CallIsError(AppMessage m) => IsError(m);
-
-        /// <summary>Delegates to the inherited protected static GetErrorMessage.</summary>
-        /// <param name="m">The message to extract the error from.</param>
-        public static string CallGetErrorMessage(AppMessage m) => GetErrorMessage(m);
-    }
-
     // ── null guard ────────────────────────────────────────────────────────────
 
     [Fact]
@@ -246,5 +232,19 @@ public class RustPlusParseNotificationTests
         // `if (!_cancellationTokenSource.IsCancellationRequested)`
         var ex = Record.Exception(sut.Dispose);
         Assert.Null(ex);
+    }
+
+    /// <summary>Exposes the protected members of <see cref="RustPlus"/> for direct unit testing.</summary>
+    private sealed class TestRustPlus() : RustPlus(new RustPlusConnection("127.0.0.1", 1, 1, 1))
+    {
+        public void Feed(AppBroadcast? b) => ParseNotification(b);
+
+        /// <summary>Delegates to the inherited protected static IsError.</summary>
+        /// <param name="m">The message to check.</param>
+        public static bool CallIsError(AppMessage m) => IsError(m);
+
+        /// <summary>Delegates to the inherited protected static GetErrorMessage.</summary>
+        /// <param name="m">The message to extract the error from.</param>
+        public static string CallGetErrorMessage(AppMessage m) => GetErrorMessage(m);
     }
 }

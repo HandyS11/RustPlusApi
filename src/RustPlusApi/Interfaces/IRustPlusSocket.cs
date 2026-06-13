@@ -6,6 +6,9 @@ namespace RustPlusApi.Interfaces;
 /// Clients are disposable; prefer <see cref="IAsyncDisposable.DisposeAsync"/> so teardown drains background work.</summary>
 public interface IRustPlusSocket : IDisposable, IAsyncDisposable
 {
+    /// <summary>Gets a value indicating whether the WebSocket connection is currently open.</summary>
+    bool IsConnected { get; }
+
     /// <summary>Raised just before the WebSocket connection attempt begins.</summary>
     event EventHandler? Connecting;
 
@@ -48,7 +51,4 @@ public interface IRustPlusSocket : IDisposable, IAsyncDisposable
     /// <summary>Closes the WebSocket connection.</summary>
     /// <param name="forceClose">When <see langword="true"/>, aborts the connection immediately instead of sending a close handshake.</param>
     Task DisconnectAsync(bool forceClose = false);
-
-    /// <summary>Gets a value indicating whether the WebSocket connection is currently open.</summary>
-    bool IsConnected { get; }
 }
