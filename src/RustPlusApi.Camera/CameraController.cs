@@ -28,10 +28,22 @@ public sealed class CameraController : IAsyncDisposable
     /// drones only actuate while receiving a continuous input stream.</summary>
     private static readonly TimeSpan MoveStreamInterval = TimeSpan.FromMilliseconds(50);
 
-    private readonly IRustPlus _rustPlus;
     private readonly CancellationTokenSource _cts = new();
     private readonly Task _keepAlive;
+
+    private readonly IRustPlus _rustPlus;
     private bool _disposed;
+
+    private CameraController(IRustPlus rustPlus, string cameraId, CameraInfo info, TimeSpan resubscribeInterval)
+    {
+        _rustPlus = rustPlus;
+        CameraId = cameraId;
+        Info = info;
+        _rustPlus.OnCameraRaysReceived += ForwardFrame;
+        _keepAlive = resubscribeInterval > TimeSpan.Zero
+            ? KeepAliveAsync(resubscribeInterval)
+            : Task.CompletedTask;
+    }
 
     /// <summary>The identifier this controller is subscribed to (e.g. <c>CAM01</c>).</summary>
     public string CameraId { get; }
@@ -60,6 +72,50 @@ public sealed class CameraController : IAsyncDisposable
     /// (<see cref="CameraInfo.ControlFlags"/> is <see cref="CameraControlFlags.None"/>).</summary>
     public bool IsStaticCamera => Info.ControlFlags == CameraControlFlags.None;
 
+    /// <summary>Stops the keep-alive loop and unsubscribes from the camera (when still connected).</summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _rustPlus.OnCameraRaysReceived -= ForwardFrame;
+#if NET10_0_OR_GREATER
+        await _cts.CancelAsync().ConfigureAwait(false);
+#else
+        _cts.Cancel();
+#endif
+        try
+        {
+#pragma warning disable VSTHRD003 // we own this background task; awaiting it on dispose cannot deadlock
+            await _keepAlive.ConfigureAwait(false);
+#pragma warning restore VSTHRD003
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancellation is the expected shutdown path.
+        }
+
+        if (_rustPlus.IsConnected)
+        {
+            try
+            {
+                await _rustPlus.UnsubscribeFromCameraAsync().ConfigureAwait(false);
+            }
+#pragma warning disable RCS1075 // best-effort teardown: swallow any unsubscribe failure so dispose never throws
+            catch (Exception)
+#pragma warning restore RCS1075
+            {
+                // Best-effort, mirroring rustplus.js: the server drops stale
+                // subscriptions on its own; never throw from dispose.
+            }
+        }
+
+        _cts.Dispose();
+    }
+
     /// <summary>Occurs when a ray frame for the subscribed camera is received.</summary>
     public event EventHandler<CameraRaysEventArg>? OnFrameReceived;
 
@@ -71,17 +127,6 @@ public sealed class CameraController : IAsyncDisposable
     /// subscription is dead — <see cref="Info"/> keeps its last successful value. The loop
     /// keeps retrying, so a later reconnect recovers on its own.</summary>
     public event EventHandler<ErrorMessage>? OnKeepAliveFailed;
-
-    private CameraController(IRustPlus rustPlus, string cameraId, CameraInfo info, TimeSpan resubscribeInterval)
-    {
-        _rustPlus = rustPlus;
-        CameraId = cameraId;
-        Info = info;
-        _rustPlus.OnCameraRaysReceived += ForwardFrame;
-        _keepAlive = resubscribeInterval > TimeSpan.Zero
-            ? KeepAliveAsync(resubscribeInterval)
-            : Task.CompletedTask;
-    }
 
     /// <summary>
     /// Subscribes to <paramref name="cameraId"/> and returns a controller that keeps the
@@ -325,50 +370,6 @@ public sealed class CameraController : IAsyncDisposable
                 Code = RustPlusErrorCode.NotSupported, Message = $"{reason}; '{CameraId}' reports {Info.ControlFlags}"
             }
         });
-
-    /// <summary>Stops the keep-alive loop and unsubscribes from the camera (when still connected).</summary>
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        _rustPlus.OnCameraRaysReceived -= ForwardFrame;
-#if NET10_0_OR_GREATER
-        await _cts.CancelAsync().ConfigureAwait(false);
-#else
-        _cts.Cancel();
-#endif
-        try
-        {
-#pragma warning disable VSTHRD003 // we own this background task; awaiting it on dispose cannot deadlock
-            await _keepAlive.ConfigureAwait(false);
-#pragma warning restore VSTHRD003
-        }
-        catch (OperationCanceledException)
-        {
-            // Cancellation is the expected shutdown path.
-        }
-
-        if (_rustPlus.IsConnected)
-        {
-            try
-            {
-                await _rustPlus.UnsubscribeFromCameraAsync().ConfigureAwait(false);
-            }
-#pragma warning disable RCS1075 // best-effort teardown: swallow any unsubscribe failure so dispose never throws
-            catch (Exception)
-#pragma warning restore RCS1075
-            {
-                // Best-effort, mirroring rustplus.js: the server drops stale
-                // subscriptions on its own; never throw from dispose.
-            }
-        }
-
-        _cts.Dispose();
-    }
 
     private void ForwardFrame(object? sender, CameraRaysEventArg frame) => OnFrameReceived?.Invoke(this, frame);
 

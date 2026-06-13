@@ -29,6 +29,9 @@ namespace RustPlusApi.Fcm.Registration.Steps;
 [ExcludeFromCodeCoverage]
 public sealed class SteamLoginService(int port = 3000)
 {
+    private static readonly string[] FlatpakAppIds =
+        ["com.google.Chrome", "org.chromium.Chromium", "com.github.Eloston.UngoogledChromium"];
+
     /// <summary>Launches Chrome, navigates to the Facepunch Steam login page, and returns the captured auth token.</summary>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a token is received.</exception>
@@ -250,9 +253,6 @@ public sealed class SteamLoginService(int port = 3000)
         return Process.Start(startInfo)
                ?? throw new InvalidOperationException("Failed to launch Chrome/Chromium.");
     }
-
-    private static readonly string[] FlatpakAppIds =
-        ["com.google.Chrome", "org.chromium.Chromium", "com.github.Eloston.UngoogledChromium"];
 
     /// <summary>Resolves a native Chrome/Chromium binary, or a Flatpak launcher, with any prefix args.</summary>
     /// <param name="workDir">Temporary working directory passed to Flatpak's <c>--filesystem</c> flag when needed.</param>

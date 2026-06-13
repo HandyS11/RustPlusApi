@@ -64,122 +64,6 @@ public class RustPlus(
     public event EventHandler<CameraRaysEventArg>? OnCameraRaysReceived;
 
     /// <summary>
-    /// Parses the notification received from the Rust+ server.
-    /// </summary>
-    /// <param name="broadcast">The broadcast received from the server.</param>
-    protected override void ParseNotification(AppBroadcast? broadcast)
-    {
-        if (broadcast is null)
-        {
-            return;
-        }
-
-        if (broadcast.EntityChanged is not null)
-        {
-            // There is no physical difference between a SmartSwitch and an Alarm
-            // If you check the status of an alarm, it will return the same as a smart switch
-            if (broadcast.EntityChanged.Payload.Capacity is 0)
-            {
-                OnSmartSwitchTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartSwitchEvent());
-            }
-            else
-            {
-                OnStorageMonitorTriggered?.Invoke(this, broadcast.EntityChanged.ToStorageMonitorEvent());
-            }
-
-            return;
-        }
-
-        if (broadcast.TeamMessage is not null)
-        {
-            OnTeamChatReceived?.Invoke(this, broadcast.TeamMessage.Message.ToTeamMessageEvent());
-            return;
-        }
-
-        if (broadcast.ClanMessage is not null)
-        {
-            OnClanChatReceived?.Invoke(this, broadcast.ClanMessage.ToClanMessageEvent());
-            return;
-        }
-
-        if (broadcast.ClanChanged is not null)
-        {
-            OnClanChanged?.Invoke(this, broadcast.ClanChanged.ToClanChangedEvent());
-            return;
-        }
-
-        if (broadcast.CameraRays is not null)
-        {
-            OnCameraRaysReceived?.Invoke(this, broadcast.CameraRays.ToCameraRaysEvent());
-            return;
-        }
-
-        Logger.LogUnknownBroadcast(broadcast);
-    }
-
-    /// <summary>
-    /// Processes the request asynchronously and returns the result.
-    /// </summary>
-    /// <typeparam name="T">The type of the result.</typeparam>
-    /// <param name="request">The request to be processed.</param>
-    /// <param name="successSelector">The function to select the result from the response.</param>
-    /// <param name="broadcastReplyMatcher">When non-null, the success reply is delivered as a broadcast
-    /// (no seq) and is matched by this predicate, so the selector reads <c>response.Broadcast</c> rather
-    /// than <c>response.Response</c>. Unrelated broadcasts stay pure notifications.</param>
-    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
-    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    /// <exception cref="InvalidOperationException">Thrown when the client is not connected.</exception>
-    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request,
-        Func<AppMessage, T> successSelector,
-        Func<AppBroadcast, bool>? broadcastReplyMatcher = null,
-        CancellationToken cancellationToken = default)
-    {
-        var response = await SendRequestAsync(request, broadcastReplyMatcher, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-
-        return IsError(response)
-            ? ResponseHelper.BuildGenericOutput<T>(false, default!, GetErrorMessage(response))
-            : ResponseHelper.BuildGenericOutput(true, successSelector(response));
-    }
-
-    /// <summary>
-    /// Processes an acknowledge-only request asynchronously: success is the absence of a server
-    /// error, and no payload is returned.
-    /// </summary>
-    /// <param name="request">The request to be processed.</param>
-    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    /// <returns>A <see cref="Task{TResult}"/> whose result is a payload-free <see cref="Response"/>.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when the client is not connected.</exception>
-    protected async Task<Response> ProcessAckRequestAsync(AppRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var response = await SendRequestAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
-
-        return IsError(response)
-            ? ResponseHelper.BuildAckOutput(false, GetErrorMessage(response))
-            : ResponseHelper.BuildAckOutput(true);
-    }
-
-    /// <summary>
-    /// Retrieves the information of an entity asynchronously.
-    /// </summary>
-    /// <typeparam name="T">The type of the entity information.</typeparam>
-    /// <param name="entityId">The ID of the entity.</param>
-    /// <param name="selector">The function to select the entity information from the response.</param>
-    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the entity information.</returns>
-    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    protected async Task<Response<T?>> GetEntityInfoAsync<T>(ulong entityId,
-        Func<AppMessage, T> selector,
-        CancellationToken cancellationToken = default)
-    {
-        var request = new AppRequest
-        {
-            EntityId = entityId, GetEntityInfo = new AppEmpty()
-        };
-        return await ProcessRequestAsync(request, selector, cancellationToken: cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <summary>
     /// Checks the subscription status of an alarm asynchronously.
     /// </summary>
     /// <param name="alarmId">The ID of the alarm entity.</param>
@@ -637,5 +521,121 @@ public class RustPlus(
         var value = entityInfo.Data!.IsActive;
         return await SetSmartSwitchValueAsync(entityId, !value, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Parses the notification received from the Rust+ server.
+    /// </summary>
+    /// <param name="broadcast">The broadcast received from the server.</param>
+    protected override void ParseNotification(AppBroadcast? broadcast)
+    {
+        if (broadcast is null)
+        {
+            return;
+        }
+
+        if (broadcast.EntityChanged is not null)
+        {
+            // There is no physical difference between a SmartSwitch and an Alarm
+            // If you check the status of an alarm, it will return the same as a smart switch
+            if (broadcast.EntityChanged.Payload.Capacity is 0)
+            {
+                OnSmartSwitchTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartSwitchEvent());
+            }
+            else
+            {
+                OnStorageMonitorTriggered?.Invoke(this, broadcast.EntityChanged.ToStorageMonitorEvent());
+            }
+
+            return;
+        }
+
+        if (broadcast.TeamMessage is not null)
+        {
+            OnTeamChatReceived?.Invoke(this, broadcast.TeamMessage.Message.ToTeamMessageEvent());
+            return;
+        }
+
+        if (broadcast.ClanMessage is not null)
+        {
+            OnClanChatReceived?.Invoke(this, broadcast.ClanMessage.ToClanMessageEvent());
+            return;
+        }
+
+        if (broadcast.ClanChanged is not null)
+        {
+            OnClanChanged?.Invoke(this, broadcast.ClanChanged.ToClanChangedEvent());
+            return;
+        }
+
+        if (broadcast.CameraRays is not null)
+        {
+            OnCameraRaysReceived?.Invoke(this, broadcast.CameraRays.ToCameraRaysEvent());
+            return;
+        }
+
+        Logger.LogUnknownBroadcast(broadcast);
+    }
+
+    /// <summary>
+    /// Processes the request asynchronously and returns the result.
+    /// </summary>
+    /// <typeparam name="T">The type of the result.</typeparam>
+    /// <param name="request">The request to be processed.</param>
+    /// <param name="successSelector">The function to select the result from the response.</param>
+    /// <param name="broadcastReplyMatcher">When non-null, the success reply is delivered as a broadcast
+    /// (no seq) and is matched by this predicate, so the selector reads <c>response.Broadcast</c> rather
+    /// than <c>response.Response</c>. Unrelated broadcasts stay pure notifications.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the client is not connected.</exception>
+    protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request,
+        Func<AppMessage, T> successSelector,
+        Func<AppBroadcast, bool>? broadcastReplyMatcher = null,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await SendRequestAsync(request, broadcastReplyMatcher, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        return IsError(response)
+            ? ResponseHelper.BuildGenericOutput<T>(false, default!, GetErrorMessage(response))
+            : ResponseHelper.BuildGenericOutput(true, successSelector(response));
+    }
+
+    /// <summary>
+    /// Processes an acknowledge-only request asynchronously: success is the absence of a server
+    /// error, and no payload is returned.
+    /// </summary>
+    /// <param name="request">The request to be processed.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <returns>A <see cref="Task{TResult}"/> whose result is a payload-free <see cref="Response"/>.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the client is not connected.</exception>
+    protected async Task<Response> ProcessAckRequestAsync(AppRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await SendRequestAsync(request, cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        return IsError(response)
+            ? ResponseHelper.BuildAckOutput(false, GetErrorMessage(response))
+            : ResponseHelper.BuildAckOutput(true);
+    }
+
+    /// <summary>
+    /// Retrieves the information of an entity asynchronously.
+    /// </summary>
+    /// <typeparam name="T">The type of the entity information.</typeparam>
+    /// <param name="entityId">The ID of the entity.</param>
+    /// <param name="selector">The function to select the entity information from the response.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the entity information.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    protected async Task<Response<T?>> GetEntityInfoAsync<T>(ulong entityId,
+        Func<AppMessage, T> selector,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new AppRequest
+        {
+            EntityId = entityId, GetEntityInfo = new AppEmpty()
+        };
+        return await ProcessRequestAsync(request, selector, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 }

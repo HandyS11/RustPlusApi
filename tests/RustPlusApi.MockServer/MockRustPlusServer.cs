@@ -14,19 +14,13 @@ namespace RustPlusApi.MockServer;
 /// </summary>
 public sealed class MockRustPlusServer : IAsyncDisposable
 {
-    private readonly HttpListener _listener = new();
     private readonly CancellationTokenSource _cts = new();
-    private readonly SemaphoreSlim _sendLock = new(1, 1);
+    private readonly HttpListener _listener = new();
     private readonly Func<AppRequest, AppMessage?> _responder;
-
-    private WebSocket? _activeSocket;
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
     private Task? _acceptLoop;
 
-    /// <summary>The loopback port the server listens on.</summary>
-    public int Port { get; }
-
-    /// <summary>The host the client should connect to (always loopback).</summary>
-    public static string Host => "127.0.0.1";
+    private WebSocket? _activeSocket;
 
     /// <summary>
     /// Creates a server on a free loopback port.
@@ -40,6 +34,45 @@ public sealed class MockRustPlusServer : IAsyncDisposable
         _responder = responder ?? MockResponses.Default;
         Port = GetFreePort();
         _listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
+    }
+
+    /// <summary>The loopback port the server listens on.</summary>
+    public int Port { get; }
+
+    /// <summary>The host the client should connect to (always loopback).</summary>
+    public static string Host => "127.0.0.1";
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cts.CancelAsync();
+
+        // Abort rather than attempt a graceful close handshake. The client may already be gone
+        // (e.g. disposed without sending a close frame), in which case CloseAsync would block
+        // forever waiting for an acknowledgement that never arrives.
+        _activeSocket?.Abort();
+
+        if (_listener.IsListening)
+        {
+            _listener.Stop();
+        }
+
+        _listener.Close();
+
+        if (_acceptLoop is not null)
+        {
+            try
+            {
+                await _acceptLoop;
+            }
+            catch (OperationCanceledException)
+            {
+                /* expected on shutdown */
+            }
+        }
+
+        _cts.Dispose();
+        _sendLock.Dispose();
+        _activeSocket?.Dispose();
     }
 
     /// <summary>Starts listening and accepting connections.</summary>
@@ -152,38 +185,5 @@ public sealed class MockRustPlusServer : IAsyncDisposable
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
         return ((IPEndPoint)listener.LocalEndpoint).Port;
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await _cts.CancelAsync();
-
-        // Abort rather than attempt a graceful close handshake. The client may already be gone
-        // (e.g. disposed without sending a close frame), in which case CloseAsync would block
-        // forever waiting for an acknowledgement that never arrives.
-        _activeSocket?.Abort();
-
-        if (_listener.IsListening)
-        {
-            _listener.Stop();
-        }
-
-        _listener.Close();
-
-        if (_acceptLoop is not null)
-        {
-            try
-            {
-                await _acceptLoop;
-            }
-            catch (OperationCanceledException)
-            {
-                /* expected on shutdown */
-            }
-        }
-
-        _cts.Dispose();
-        _sendLock.Dispose();
-        _activeSocket?.Dispose();
     }
 }

@@ -12,11 +12,11 @@ namespace ProtoGen;
 /// </summary>
 internal sealed class ServerParser
 {
-    private readonly Dictionary<string, Message> _messages = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, EnumDef> _enums = new(StringComparer.Ordinal);
-
     /// <summary>Maps simple names to their fully-qualified names (a simple name like "Member" can be ambiguous).</summary>
     private readonly Dictionary<string, List<string>> _bySimpleName = new(StringComparer.Ordinal);
+
+    private readonly Dictionary<string, EnumDef> _enums = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Message> _messages = new(StringComparer.Ordinal);
 
     public IReadOnlyDictionary<string, Message> Messages => _messages;
     public IReadOnlyDictionary<string, EnumDef> Enums => _enums;

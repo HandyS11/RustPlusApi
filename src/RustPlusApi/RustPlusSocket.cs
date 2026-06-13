@@ -26,17 +26,64 @@ public abstract class RustPlusSocket(
     ILoggerFactory? loggerFactory = null)
     : IRustPlusSocket
 {
-    /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
-    /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>
-    private readonly RustPlusSocketOptions _options = options?.Clone() ?? new RustPlusSocketOptions();
+    /// <summary>Backoff applied after a non-fatal receive error so the loop cannot busy-spin on it.</summary>
+    private static readonly TimeSpan ReceiveErrorBackoff = TimeSpan.FromMilliseconds(100);
 
     /// <summary>The client logger; <c>NullLogger</c> when no factory was supplied. Exposed to derived
     /// classes (e.g. <see cref="RustPlus"/>) so they log through the same categorised sink.</summary>
     private protected readonly ILogger Logger =
         (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger("RustPlusApi.RustPlusSocket");
 
-    /// <summary>Backoff applied after a non-fatal receive error so the loop cannot busy-spin on it.</summary>
-    private static readonly TimeSpan ReceiveErrorBackoff = TimeSpan.FromMilliseconds(100);
+    private readonly object _broadcastRepliesLock = new();
+
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+
+    /// <summary>Serializes connect/disconnect transitions so concurrent lifecycle calls cannot race
+    /// on <see cref="_webSocket"/> (leaking a connection or briefly running two receive loops).</summary>
+    private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
+
+    /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
+    /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>
+    private readonly RustPlusSocketOptions _options = options?.Clone() ?? new RustPlusSocketOptions();
+
+    /// <summary>Requests answered by a broadcast (e.g. SetEntityValue → EntityChanged, SendTeamMessage →
+    /// TeamMessage). Broadcasts carry no seq, so each waiter supplies a matcher describing the broadcast it
+    /// expects (entity ID, own Steam ID, …); a broadcast that matches no waiter is a pure notification.
+    /// Guarded by <see cref="_broadcastRepliesLock"/>.</summary>
+    private readonly List<(Func<AppBroadcast, bool> Matches, TaskCompletionSource<AppMessage> Tcs)>
+        _pendingBroadcastReplies = [];
+
+    /// <summary>Requests answered by a seq-bearing <see cref="AppResponse"/>, keyed by <see cref="AppRequest.Seq"/>
+    /// so each response resolves the request it actually answers; unsolicited broadcasts never touch this map.</summary>
+    private readonly ConcurrentDictionary<uint, TaskCompletionSource<AppMessage>> _pendingRequests = new();
+
+    private readonly int _playerToken = connection.PlayerToken;
+
+    /// <summary>Outgoing requests are handed to the send loop via a channel — no polling, no per-send latency.</summary>
+    private readonly Channel<AppRequest> _sendChannel = Channel.CreateUnbounded<AppRequest>(
+        new UnboundedChannelOptions
+        {
+            SingleReader = true
+        });
+
+    /// <summary>int (not uint) so Interlocked.Increment works on netstandard2.0, which lacks the uint overload.</summary>
+    private int _seq;
+
+    private ClientWebSocket? _webSocket;
+
+    /// <summary>Test seam: the number of in-flight requests awaiting a seq-bearing response.</summary>
+    internal int PendingRequestCountForTests => _pendingRequests.Count;
+
+    private CancellationToken CancellationToken => _cancellationTokenSource.Token;
+
+    /// <summary>Test seam: the tracked receive loop, so tests can assert it actually completed on teardown.</summary>
+    internal Task? ReceiveLoopForTests { get; private set; }
+
+    /// <summary>Test seam: the tracked send loop, so tests can assert it actually completed on teardown.</summary>
+    internal Task? SendLoopForTests { get; private set; }
+
+    /// <summary>The Steam ID requests are issued as.</summary>
+    protected ulong PlayerId { get; } = connection.PlayerId;
 
     /// <summary>
     /// Occurs when the client is about to connect to the Rust+ server.
@@ -99,57 +146,6 @@ public abstract class RustPlusSocket(
     /// </summary>
     /// <seealso cref="Exception"/>
     public event EventHandler<Exception>? ErrorOccurred;
-
-    private ClientWebSocket? _webSocket;
-
-    /// <summary>int (not uint) so Interlocked.Increment works on netstandard2.0, which lacks the uint overload.</summary>
-    private int _seq;
-
-    /// <summary>Outgoing requests are handed to the send loop via a channel — no polling, no per-send latency.</summary>
-    private readonly Channel<AppRequest> _sendChannel = Channel.CreateUnbounded<AppRequest>(
-        new UnboundedChannelOptions
-        {
-            SingleReader = true
-        });
-
-    /// <summary>Requests answered by a seq-bearing <see cref="AppResponse"/>, keyed by <see cref="AppRequest.Seq"/>
-    /// so each response resolves the request it actually answers; unsolicited broadcasts never touch this map.</summary>
-    private readonly ConcurrentDictionary<uint, TaskCompletionSource<AppMessage>> _pendingRequests = new();
-
-    /// <summary>Requests answered by a broadcast (e.g. SetEntityValue → EntityChanged, SendTeamMessage →
-    /// TeamMessage). Broadcasts carry no seq, so each waiter supplies a matcher describing the broadcast it
-    /// expects (entity ID, own Steam ID, …); a broadcast that matches no waiter is a pure notification.
-    /// Guarded by <see cref="_broadcastRepliesLock"/>.</summary>
-    private readonly List<(Func<AppBroadcast, bool> Matches, TaskCompletionSource<AppMessage> Tcs)>
-        _pendingBroadcastReplies = [];
-
-    private readonly object _broadcastRepliesLock = new();
-
-    /// <summary>Test seam: the number of in-flight requests awaiting a seq-bearing response.</summary>
-    internal int PendingRequestCountForTests => _pendingRequests.Count;
-
-    /// <summary>Test seam: enqueues a request directly onto the send channel, bypassing
-    /// <see cref="SendRequestAsync"/>'s state checks, to exercise the send loop's fault path.</summary>
-    /// <param name="request">The request to enqueue.</param>
-    internal void EnqueueRequestForTests(AppRequest request) => _sendChannel.Writer.TryWrite(request);
-
-    private readonly CancellationTokenSource _cancellationTokenSource = new();
-    private CancellationToken CancellationToken => _cancellationTokenSource.Token;
-
-    /// <summary>Serializes connect/disconnect transitions so concurrent lifecycle calls cannot race
-    /// on <see cref="_webSocket"/> (leaking a connection or briefly running two receive loops).</summary>
-    private readonly SemaphoreSlim _lifecycleLock = new(1, 1);
-
-    /// <summary>Test seam: the tracked receive loop, so tests can assert it actually completed on teardown.</summary>
-    internal Task? ReceiveLoopForTests { get; private set; }
-
-    /// <summary>Test seam: the tracked send loop, so tests can assert it actually completed on teardown.</summary>
-    internal Task? SendLoopForTests { get; private set; }
-
-    private readonly int _playerToken = connection.PlayerToken;
-
-    /// <summary>The Steam ID requests are issued as.</summary>
-    protected ulong PlayerId { get; } = connection.PlayerId;
 
     /// <summary>
     /// Asynchronously connects to the Rust+ server using a WebSocket.
@@ -270,6 +266,105 @@ public abstract class RustPlusSocket(
     }
 
     /// <summary>
+    /// Asynchronously disconnects from the Rust+ server, waiting for pending responses unless <paramref name="forceClose"/> is true.
+    /// Raises <c>Disconnecting</c> before disconnecting and <c>Disconnected</c> after.
+    /// </summary>
+    /// <remarks>Connect/disconnect transitions are serialized internally and are not reentrant:
+    /// an event handler (e.g. <see cref="Disconnected"/>) must not call back into
+    /// <see cref="ConnectAsync"/> or <see cref="DisconnectAsync"/> and wait for it, or it will deadlock.
+    /// A lifecycle call racing a concurrent dispose may surface <see cref="ObjectDisposedException"/>.</remarks>
+    /// <param name="forceClose">When <see langword="true"/>, skips draining in-flight requests.</param>
+    public async Task DisconnectAsync(bool forceClose = false)
+    {
+        await _lifecycleLock.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (!IsConnected)
+            {
+                return;
+            }
+
+            Disconnecting?.Invoke(this, EventArgs.Empty);
+
+            if (!forceClose)
+            {
+                // Drain by awaiting the in-flight requests' completion (bounded), instead of polling a queue
+                // and sleeping a fixed second before closing.
+                await WaitForPendingRequestsAsync().ConfigureAwait(false);
+            }
+
+            // Bound the close handshake: a dead peer that never acks must not hang teardown.
+            try
+            {
+                using var closeTimeout = new CancellationTokenSource(_options.TeardownTimeout);
+                using var linked =
+                    CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
+                await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, linked.Token)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Bounded close timed out (or the instance token was cancelled): drop the socket regardless.
+            }
+            catch (WebSocketException)
+            {
+                // Peer already gone; nothing to close gracefully.
+            }
+            catch (ObjectDisposedException)
+            {
+                // A concurrent dispose released the instance token source or the socket while this
+                // disconnect was draining its in-flight requests: there is nothing left to close.
+            }
+
+            Disconnected?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            try
+            {
+                _lifecycleLock.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+                // A concurrent dispose tore the instance down mid-transition. Disposal is
+                // deliberately not serialized behind this lock — teardown must stay bounded —
+                // so the semaphore can be gone by the time this transition unwinds.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Disposes the Rust+ API client, cancelling background work and releasing the underlying WebSocket.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Asynchronously disposes the client: cancels background work, awaits the tracked receive/send
+    /// loops (bounded by <see cref="RustPlusSocketOptions.TeardownTimeout"/>), then releases the WebSocket. Prefer this over
+    /// <see cref="Dispose()"/> so teardown deterministically drains in-flight I/O instead of abandoning it.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeCoreAsync().ConfigureAwait(false);
+        SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the client is currently connected to the Rust+ socket
+    /// (the underlying WebSocket is open).
+    /// </summary>
+    public bool IsConnected => _webSocket is { State: WebSocketState.Open };
+
+    /// <summary>Test seam: enqueues a request directly onto the send channel, bypassing
+    /// <see cref="SendRequestAsync"/>'s state checks, to exercise the send loop's fault path.</summary>
+    /// <param name="request">The request to enqueue.</param>
+    internal void EnqueueRequestForTests(AppRequest request) => _sendChannel.Writer.TryWrite(request);
+
+    /// <summary>
     /// Awaits the previous connection's receive loop before a reconnect, bounded by
     /// <see cref="RustPlusSocketOptions.TeardownTimeout"/>. Disposing the old socket unblocks its read, so a clean exit is
     /// prompt; a fault from that torn-down read is expected and swallowed.
@@ -387,83 +482,6 @@ public abstract class RustPlusSocket(
     }
 
     /// <summary>
-    /// Asynchronously disconnects from the Rust+ server, waiting for pending responses unless <paramref name="forceClose"/> is true.
-    /// Raises <c>Disconnecting</c> before disconnecting and <c>Disconnected</c> after.
-    /// </summary>
-    /// <remarks>Connect/disconnect transitions are serialized internally and are not reentrant:
-    /// an event handler (e.g. <see cref="Disconnected"/>) must not call back into
-    /// <see cref="ConnectAsync"/> or <see cref="DisconnectAsync"/> and wait for it, or it will deadlock.
-    /// A lifecycle call racing a concurrent dispose may surface <see cref="ObjectDisposedException"/>.</remarks>
-    /// <param name="forceClose">When <see langword="true"/>, skips draining in-flight requests.</param>
-    public async Task DisconnectAsync(bool forceClose = false)
-    {
-        await _lifecycleLock.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            if (!IsConnected)
-            {
-                return;
-            }
-
-            Disconnecting?.Invoke(this, EventArgs.Empty);
-
-            if (!forceClose)
-            {
-                // Drain by awaiting the in-flight requests' completion (bounded), instead of polling a queue
-                // and sleeping a fixed second before closing.
-                await WaitForPendingRequestsAsync().ConfigureAwait(false);
-            }
-
-            // Bound the close handshake: a dead peer that never acks must not hang teardown.
-            try
-            {
-                using var closeTimeout = new CancellationTokenSource(_options.TeardownTimeout);
-                using var linked =
-                    CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
-                await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, linked.Token)
-                    .ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                // Bounded close timed out (or the instance token was cancelled): drop the socket regardless.
-            }
-            catch (WebSocketException)
-            {
-                // Peer already gone; nothing to close gracefully.
-            }
-            catch (ObjectDisposedException)
-            {
-                // A concurrent dispose released the instance token source or the socket while this
-                // disconnect was draining its in-flight requests: there is nothing left to close.
-            }
-
-            Disconnected?.Invoke(this, EventArgs.Empty);
-        }
-        finally
-        {
-            try
-            {
-                _lifecycleLock.Release();
-            }
-            catch (ObjectDisposedException)
-            {
-                // A concurrent dispose tore the instance down mid-transition. Disposal is
-                // deliberately not serialized behind this lock — teardown must stay bounded —
-                // so the semaphore can be gone by the time this transition unwinds.
-            }
-        }
-    }
-
-    /// <summary>
-    /// Disposes the Rust+ API client, cancelling background work and releasing the underlying WebSocket.
-    /// </summary>
-    public void Dispose()
-    {
-        Dispose(true);
-        SuppressFinalize(this);
-    }
-
-    /// <summary>
     /// Releases the resources used by the <see cref="RustPlusSocket"/>.
     /// </summary>
     /// <param name="disposing">
@@ -486,17 +504,6 @@ public abstract class RustPlusSocket(
         _webSocket?.Dispose();
         _cancellationTokenSource.Dispose();
         _lifecycleLock.Dispose();
-    }
-
-    /// <summary>
-    /// Asynchronously disposes the client: cancels background work, awaits the tracked receive/send
-    /// loops (bounded by <see cref="RustPlusSocketOptions.TeardownTimeout"/>), then releases the WebSocket. Prefer this over
-    /// <see cref="Dispose()"/> so teardown deterministically drains in-flight I/O instead of abandoning it.
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        await DisposeCoreAsync().ConfigureAwait(false);
-        SuppressFinalize(this);
     }
 
     /// <summary>
@@ -575,12 +582,6 @@ public abstract class RustPlusSocket(
         var all = Task.WhenAll(pending);
         await Task.WhenAny(all, Task.Delay(_options.TeardownTimeout)).ConfigureAwait(false);
     }
-
-    /// <summary>
-    /// Gets a value indicating whether the client is currently connected to the Rust+ socket
-    /// (the underlying WebSocket is open).
-    /// </summary>
-    public bool IsConnected => _webSocket is { State: WebSocketState.Open };
 
     /// <summary>
     /// Parses and handles a broadcast notification received from the Rust+ server.

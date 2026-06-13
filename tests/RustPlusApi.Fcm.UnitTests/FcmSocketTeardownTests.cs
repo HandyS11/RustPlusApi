@@ -10,8 +10,6 @@ namespace RustPlusApi.Fcm.UnitTests;
 /// </summary>
 public class FcmSocketTeardownTests
 {
-    private sealed class TestSocket(Credentials credentials) : RustPlusFcmSocket(credentials);
-
     private static TestSocket NewSocket() =>
         new(new Credentials
         {
@@ -44,14 +42,16 @@ public class FcmSocketTeardownTests
         Assert.True(loop.IsCompleted); // DisposeAsync awaited the tracked loop to completion
     }
 
+    private sealed class TestSocket(Credentials credentials) : RustPlusFcmSocket(credentials);
+
     /// <summary>
     /// Serves a single valid login frame (version 41, tag KLoginResponseTag, size 0) then blocks every
     /// subsequent read until the stream is disposed, at which point reads report EOF so the loop exits.
     /// </summary>
     private sealed class GatedStream : Stream
     {
-        private readonly Queue<int> _initial = new([41, 3, 0]);
         private readonly ManualResetEventSlim _gate = new(false);
+        private readonly Queue<int> _initial = new([41, 3, 0]);
 
         public override bool CanRead => true;
         public override bool CanWrite => true;

@@ -1,6 +1,7 @@
 #!/bin/sh
-# pre-push: run the ReSharper formatter on the files being pushed and block
-# the push when it produces changes, so unformatted code never leaves the
+# pre-push: run the ReSharper formatter + member reordering (ReformatAndReorder
+# profile in RustPlusApi.sln.DotSettings) on the files being pushed and block the
+# push when it produces changes, so unformatted/unordered code never leaves the
 # machine. Bypass for emergencies with `git push --no-verify`.
 set -u
 
@@ -62,7 +63,7 @@ hash_diffs() {
 before=$(hash_diffs)
 
 dotnet jb cleanupcode RustPlusApi.sln \
-    --profile="Built-in: Reformat Code" \
+    --profile="ReformatAndReorder" \
     --include="$include" \
     --no-build \
     --verbosity=ERROR || exit 1

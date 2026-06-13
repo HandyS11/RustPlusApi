@@ -30,8 +30,11 @@ public sealed class PairingListener(
     HttpClient? httpClient = null)
     : IDisposable
 {
-    private readonly RustPlusFcm _fcm = new(credentials, persistentIds, loggerFactory: loggerFactory);
     private readonly AndroidFcmRegister _androidFcmRegister = new(httpClient);
+    private readonly RustPlusFcm _fcm = new(credentials, persistentIds, loggerFactory: loggerFactory);
+
+    /// <inheritdoc/>
+    public void Dispose() => _fcm.Dispose();
 
     /// <summary>Raised once the listener is connected and waiting for pairing notifications.</summary>
     public event EventHandler? Listening;
@@ -106,7 +109,4 @@ public sealed class PairingListener(
             Name = server?.Name
         };
     }
-
-    /// <inheritdoc/>
-    public void Dispose() => _fcm.Dispose();
 }

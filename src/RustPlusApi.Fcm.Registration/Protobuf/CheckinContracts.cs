@@ -8,6 +8,25 @@ namespace RustPlusApi.Fcm.Registration.Protobuf;
 [ProtoContract]
 public sealed class ChromeBuildProto
 {
+    /// <summary>Chrome release channel.</summary>
+    public enum ChannelType
+    {
+        /// <summary>Stable channel.</summary>
+        Stable = 1,
+
+        /// <summary>Beta channel.</summary>
+        Beta = 2,
+
+        /// <summary>Dev channel.</summary>
+        Dev = 3,
+
+        /// <summary>Canary channel.</summary>
+        Canary = 4,
+
+        /// <summary>Unknown channel.</summary>
+        Unknown = 5
+    }
+
     /// <summary>Host platform of the Chrome client.</summary>
     public enum PlatformType
     {
@@ -28,25 +47,6 @@ public sealed class ChromeBuildProto
 
         /// <summary>Android.</summary>
         Android = 6
-    }
-
-    /// <summary>Chrome release channel.</summary>
-    public enum ChannelType
-    {
-        /// <summary>Stable channel.</summary>
-        Stable = 1,
-
-        /// <summary>Beta channel.</summary>
-        Beta = 2,
-
-        /// <summary>Dev channel.</summary>
-        Dev = 3,
-
-        /// <summary>Canary channel.</summary>
-        Canary = 4,
-
-        /// <summary>Unknown channel.</summary>
-        Unknown = 5
     }
 
     /// <summary>Host platform.</summary>

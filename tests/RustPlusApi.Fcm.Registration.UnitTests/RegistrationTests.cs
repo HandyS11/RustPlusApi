@@ -165,21 +165,6 @@ public class RegistrationTests
         Assert.Contains("RustPlusApi.Fcm.RustPlusFcmSocket", factory.Categories);
     }
 
-    /// <summary>Factory recording the categories requested, to prove pass-through happened.</summary>
-    private sealed class CapturingLoggerFactory : Microsoft.Extensions.Logging.ILoggerFactory
-    {
-        public List<string> Categories { get; } = [];
-
-        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName)
-        {
-            Categories.Add(categoryName);
-            return Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
-        }
-
-        public void AddProvider(Microsoft.Extensions.Logging.ILoggerProvider provider) { }
-        public void Dispose() { }
-    }
-
     /// <summary>
     /// Covers <see cref="PairingListener"/> construction (it builds the wrapped <c>RustPlusFcm</c>)
     /// and <see cref="PairingListener.Dispose"/>. Neither touches the network, so Dispose on a
@@ -204,5 +189,20 @@ public class RegistrationTests
             listener.Dispose(); // idempotent
         });
         Assert.Null(ex);
+    }
+
+    /// <summary>Factory recording the categories requested, to prove pass-through happened.</summary>
+    private sealed class CapturingLoggerFactory : Microsoft.Extensions.Logging.ILoggerFactory
+    {
+        public List<string> Categories { get; } = [];
+
+        public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName)
+        {
+            Categories.Add(categoryName);
+            return Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+        }
+
+        public void AddProvider(Microsoft.Extensions.Logging.ILoggerProvider provider) { }
+        public void Dispose() { }
     }
 }

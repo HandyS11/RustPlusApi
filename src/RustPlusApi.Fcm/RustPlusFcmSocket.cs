@@ -41,28 +41,54 @@ public abstract class RustPlusFcmSocket(
 
     private const int KMcsVersion = 41;
 
+    /// <summary>MCS StreamAck extension id (Chromium <c>mcs_client</c> kStreamAck).</summary>
+    private const int KStreamAckExtensionId = 13;
+
     /// <summary>Bounds teardown waits so a wedged receive loop cannot hang disposal.</summary>
     private static readonly TimeSpan TeardownTimeout = TimeSpan.FromSeconds(5);
-
-    /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
-    /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>
-    private readonly RustPlusFcmSocketOptions _options = options?.Clone() ?? new RustPlusFcmSocketOptions();
 
     /// <summary>The client's logger; <c>NullLogger</c> when no factory was supplied.
     /// Exposed to derived classes (e.g. <see cref="RustPlusFcm"/>) so they log through the same categorised sink.</summary>
     private protected readonly ILogger Logger =
         (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger("RustPlusApi.Fcm.RustPlusFcmSocket");
 
-    private TcpClient? _tcpClient;
-    private SslStream? _sslStream;
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
 
-    private Task? _receiveLoop;
+    /// <summary>Tuning values for this instance — a private snapshot taken at construction, so later
+    /// mutation of the caller's (possibly shared) options object cannot affect a live socket.</summary>
+    private readonly RustPlusFcmSocketOptions _options = options?.Clone() ?? new RustPlusFcmSocketOptions();
+
+    private readonly JsonSerializerOptions _parsingOptions = new()
+    {
+        PropertyNameCaseInsensitive = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    /// <summary>Serializes writes to the transport so concurrent sends (e.g. a ping-ack racing another
+    /// send) cannot interleave bytes on the stream.</summary>
+    private readonly SemaphoreSlim _sendLock = new(1, 1);
+
     private Task? _heartbeatLoop;
 
     /// <summary>UTC tick count of the last received frame, observed by the inactivity watchdog.
     /// Stored as ticks behind <see cref="Volatile"/> because the watchdog reads it from another
     /// thread, and a non-volatile 64-bit read can tear on 32-bit netstandard2.0 hosts.</summary>
     private long _lastTrafficTicks = DateTime.UtcNow.Ticks;
+
+    private Task? _receiveLoop;
+    private SslStream? _sslStream;
+
+    /// <summary>Incoming MCS stream position: the count of frames received since login (the
+    /// LoginResponse is 1). Reported back to the server as <c>LastStreamIdReceived</c> on stream
+    /// acks and heartbeats — without it the server treats delivered messages as unacknowledged,
+    /// closes the connection after a few minutes and redelivers them on the next connect.</summary>
+    private int _streamIdIn;
+
+    private TcpClient? _tcpClient;
+
+    /// <summary>The transport stream used for reading and writing MCS frames.
+    /// In production this is set to the authenticated <see cref="SslStream"/> immediately after
+    /// TLS handshake; tests supply an in-memory stream via <see cref="RunReceiveLoopOverStreamAsync"/>.</summary>
+    private Stream? _transport;
 
     /// <summary>Tear-free accessor over <see cref="_lastTrafficTicks"/>.</summary>
     private DateTime LastTrafficUtc
@@ -71,31 +97,7 @@ public abstract class RustPlusFcmSocket(
         set => Volatile.Write(ref _lastTrafficTicks, value.Ticks);
     }
 
-    /// <summary>Incoming MCS stream position: the count of frames received since login (the
-    /// LoginResponse is 1). Reported back to the server as <c>LastStreamIdReceived</c> on stream
-    /// acks and heartbeats — without it the server treats delivered messages as unacknowledged,
-    /// closes the connection after a few minutes and redelivers them on the next connect.</summary>
-    private int _streamIdIn;
-
-    /// <summary>MCS StreamAck extension id (Chromium <c>mcs_client</c> kStreamAck).</summary>
-    private const int KStreamAckExtensionId = 13;
-
-    /// <summary>Serializes writes to the transport so concurrent sends (e.g. a ping-ack racing another
-    /// send) cannot interleave bytes on the stream.</summary>
-    private readonly SemaphoreSlim _sendLock = new(1, 1);
-
-    /// <summary>The transport stream used for reading and writing MCS frames.
-    /// In production this is set to the authenticated <see cref="SslStream"/> immediately after
-    /// TLS handshake; tests supply an in-memory stream via <see cref="RunReceiveLoopOverStreamAsync"/>.</summary>
-    private Stream? _transport;
-
-    private readonly CancellationTokenSource _cancellationTokenSource = new();
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
-
-    private readonly JsonSerializerOptions _parsingOptions = new()
-    {
-        PropertyNameCaseInsensitive = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
 
     /// <summary>
     /// Occurs when the client is starting to connect to the FCM server.
@@ -266,6 +268,18 @@ public abstract class RustPlusFcmSocket(
     }
 
     /// <summary>
+    /// Asynchronously disposes the socket: cancels background work, unblocks the in-progress read by
+    /// tearing down the transport, then awaits the tracked receive loop (bounded by <see cref="TeardownTimeout"/>)
+    /// before releasing remaining resources. Prefer this over <see cref="Dispose()"/> so teardown
+    /// deterministically drains the receive loop instead of abandoning it.
+    /// </summary>
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeCoreAsync().ConfigureAwait(false);
+        SuppressFinalize(this);
+    }
+
+    /// <summary>
     /// Releases the resources used by the <see cref="RustPlusFcmSocket"/>.
     /// </summary>
     /// <param name="disposing">
@@ -288,18 +302,6 @@ public abstract class RustPlusFcmSocket(
         _tcpClient?.Dispose();
         _cancellationTokenSource.Dispose();
         _sendLock.Dispose();
-    }
-
-    /// <summary>
-    /// Asynchronously disposes the socket: cancels background work, unblocks the in-progress read by
-    /// tearing down the transport, then awaits the tracked receive loop (bounded by <see cref="TeardownTimeout"/>)
-    /// before releasing remaining resources. Prefer this over <see cref="Dispose()"/> so teardown
-    /// deterministically drains the receive loop instead of abandoning it.
-    /// </summary>
-    public async ValueTask DisposeAsync()
-    {
-        await DisposeCoreAsync().ConfigureAwait(false);
-        SuppressFinalize(this);
     }
 
     /// <summary>

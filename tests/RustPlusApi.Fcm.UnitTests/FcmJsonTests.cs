@@ -11,12 +11,6 @@ namespace RustPlusApi.Fcm.UnitTests;
 /// </summary>
 public class FcmJsonTests
 {
-    /// <summary>Mirrors RustPlusFcmSocket's parsing options (Rust+ sends camelCase keys).</summary>
-    private static readonly JsonSerializerOptions Options = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
     private const string PairingBodyJson = """
                                            {
                                              "id": "11111111-1111-1111-1111-111111111111",
@@ -30,6 +24,12 @@ public class FcmJsonTests
                                              "entityId": "98765"
                                            }
                                            """;
+
+    /// <summary>Mirrors RustPlusFcmSocket's parsing options (Rust+ sends camelCase keys).</summary>
+    private static readonly JsonSerializerOptions Options = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     [Fact]
     public void Body_ReadsNumericFieldsEncodedAsStrings()

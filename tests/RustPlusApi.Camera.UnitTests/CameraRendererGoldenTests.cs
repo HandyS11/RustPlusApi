@@ -22,12 +22,6 @@ public class CameraRendererGoldenTests
     /// than the working directory, which varies by test runner.</summary>
     private static readonly string FixturesDirectory = Path.Combine(AppContext.BaseDirectory, "Fixtures");
 
-#pragma warning disable CA1812 // instantiated by JsonSerializer.Deserialize<T>
-    private sealed record CapturedFrame(int SampleOffset, string RayDataBase64);
-
-    private sealed record CaptureFixture(string CameraId, int Width, int Height, List<CapturedFrame> Frames);
-#pragma warning restore CA1812
-
     [Theory]
     [InlineData("cam01")] // static CCTV
     [InlineData("cam02")] // static CCTV (first validated capture)
@@ -66,4 +60,10 @@ public class CameraRendererGoldenTests
             }
         }
     }
+
+#pragma warning disable CA1812 // instantiated by JsonSerializer.Deserialize<T>
+    private sealed record CapturedFrame(int SampleOffset, string RayDataBase64);
+
+    private sealed record CaptureFixture(string CameraId, int Width, int Height, List<CapturedFrame> Frames);
+#pragma warning restore CA1812
 }
