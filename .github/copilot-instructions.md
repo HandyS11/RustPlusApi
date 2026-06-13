@@ -15,7 +15,7 @@ dotnet test RustPlusApi.sln --filter "FullyQualifiedName~ClassName.MethodName"
 tools/coverage/report.sh               # full suite + merged coverage report + CI gate (line 95 / branch 90)
 
 dotnet tool restore
-dotnet jb cleanupcode RustPlusApi.sln --profile="Built-in: Reformat Code"  # ReSharper formatter
+dotnet jb cleanupcode RustPlusApi.sln --profile="ReformatAndReorder"
 ```
 
 ## Critical Conventions
