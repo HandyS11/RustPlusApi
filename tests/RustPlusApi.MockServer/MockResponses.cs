@@ -231,6 +231,7 @@ public static class MockResponses
         Salt = 7331,
         LogoImage = ExampleBaseUrl + "/logo.png",
         Nexus = "",
+        NexusId = 123,
         NexusZone = ""
     };
 

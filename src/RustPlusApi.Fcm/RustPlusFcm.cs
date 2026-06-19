@@ -51,25 +51,25 @@ public class RustPlusFcm(
     /// Occurs when a smart switch pairing notification is received.
     /// </summary>
     /// <remarks>
-    /// The event data is a <see cref="Notification{T}"/> containing an <see cref="int"/> entity ID.
+    /// The event data is a <see cref="Notification{T}"/> containing a <see cref="ulong"/> entity ID.
     /// </remarks>
-    public event EventHandler<Notification<int?>>? OnSmartSwitchPairing;
+    public event EventHandler<Notification<ulong?>>? OnSmartSwitchPairing;
 
     /// <summary>
     /// Occurs when a smart alarm pairing notification is received.
     /// </summary>
     /// <remarks>
-    /// The event data is a <see cref="Notification{T}"/> containing an <see cref="int"/> entity ID.
+    /// The event data is a <see cref="Notification{T}"/> containing a <see cref="ulong"/> entity ID.
     /// </remarks>
-    public event EventHandler<Notification<int?>>? OnSmartAlarmPairing;
+    public event EventHandler<Notification<ulong?>>? OnSmartAlarmPairing;
 
     /// <summary>
     /// Occurs when a storage monitor pairing notification is received.
     /// </summary>
     /// <remarks>
-    /// The event data is a <see cref="Notification{T}"/> containing an <see cref="int"/> entity ID.
+    /// The event data is a <see cref="Notification{T}"/> containing a <see cref="ulong"/> entity ID.
     /// </remarks>
-    public event EventHandler<Notification<int?>>? OnStorageMonitorPairing;
+    public event EventHandler<Notification<ulong?>>? OnStorageMonitorPairing;
 
     /// <summary>
     /// Occurs when an alarm event is triggered.

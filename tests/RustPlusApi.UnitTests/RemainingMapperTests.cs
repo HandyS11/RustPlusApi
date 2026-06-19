@@ -216,6 +216,19 @@ public class RemainingMapperTests
         var info = MockResponses.SampleInfo();
         var model = info.ToServerInfo();
         Assert.Equal(info.Nexus, model.Nexus);
+        Assert.Equal(info.NexusId, model.NexusId);
         Assert.Equal(info.NexusZone, model.NexusZone);
+    }
+
+    [Fact]
+    public void ToServerInfo_AbsentNexusId_IsNull()
+    {
+        // nexus_id is optional; a non-Nexus server omits it, which must map to null (not 0).
+        var info = new AppInfo
+        {
+            Name = "n", HeaderImage = "h", Url = "u", Map = "m"
+        };
+        Assert.False(info.ShouldSerializeNexusId());
+        Assert.Null(info.ToServerInfo().NexusId);
     }
 }

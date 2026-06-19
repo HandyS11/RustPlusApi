@@ -87,7 +87,7 @@ public sealed record Body
     public int? EntityType { get; init; }
 
     /// <summary>Entity ID when <see cref="Type"/> is <c>"entity"</c>.</summary>
-    public int? EntityId { get; init; }
+    public ulong? EntityId { get; init; }
 
     /// <summary>Entity name when <see cref="Type"/> is <c>"entity"</c>.</summary>
     public string? EntityName { get; init; }

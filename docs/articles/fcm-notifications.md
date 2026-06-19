@@ -37,9 +37,9 @@ Prefer a `HashSet<string>` — the collection is consulted on every message and 
 | --- | --- | --- |
 | `OnPairing` | `FcmMessage` | Any pairing FCM message is received (raw). |
 | `OnEntityPairing` | `Notification<EntityEvent?>` | You pair a smart device (superset of the three below). |
-| `OnSmartSwitchPairing` | `Notification<int?>` | A smart switch is paired (entity ID in `Data`). |
-| `OnSmartAlarmPairing` | `Notification<int?>` | A smart alarm is paired (entity ID in `Data`). |
-| `OnStorageMonitorPairing` | `Notification<int?>` | A storage monitor is paired (entity ID in `Data`). |
+| `OnSmartSwitchPairing` | `Notification<ulong?>` | A smart switch is paired (entity ID in `Data`). |
+| `OnSmartAlarmPairing` | `Notification<ulong?>` | A smart alarm is paired (entity ID in `Data`). |
+| `OnStorageMonitorPairing` | `Notification<ulong?>` | A storage monitor is paired (entity ID in `Data`). |
 | `OnServerPairing` | `Notification<ServerEvent?>` | You choose *Pair with Server* in game — carries ip/port/playerId/playerToken. |
 | `OnAlarmTriggered` | `AlarmEvent?` | A paired smart alarm fires. |
 

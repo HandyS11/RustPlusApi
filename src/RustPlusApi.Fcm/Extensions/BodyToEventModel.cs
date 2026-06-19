@@ -8,7 +8,7 @@ public static class BodyToEventModel
 {
     /// <summary>Extracts the entity ID from the notification body.</summary>
     /// <param name="body">The FCM notification body to read from.</param>
-    public static int? ToEntityId(this Body body)
+    public static ulong? ToEntityId(this Body body)
     {
         return body.EntityId;
     }
@@ -19,8 +19,20 @@ public static class BodyToEventModel
     {
         return new EntityEvent
         {
-            EntityType = body.EntityType, EntityId = body.EntityId, EntityName = body.EntityName
+            EntityType = body.ToEntityType(), EntityId = body.EntityId, EntityName = body.EntityName
         };
+    }
+
+    /// <summary>
+    /// Maps the raw numeric entity type to a known <see cref="EntityType"/>, or <see langword="null"/>
+    /// when the value is absent or outside the defined set (e.g. a future or malformed type).
+    /// </summary>
+    /// <param name="body">The FCM notification body to read from.</param>
+    public static EntityType? ToEntityType(this Body body)
+    {
+        return body.EntityType is { } type && Enum.IsDefined(typeof(EntityType), type)
+            ? (EntityType)type
+            : null;
     }
 
     /// <summary>Maps the notification body to a <see cref="ServerEvent"/>.</summary>

@@ -40,7 +40,7 @@ public class FcmJsonTests
         Assert.Equal(28083, body!.Port);
         Assert.Equal(76561198000000000UL, body.PlayerId);
         Assert.Equal(1, body.EntityType);
-        Assert.Equal(98765, body.EntityId);
+        Assert.Equal(98765UL, body.EntityId);
     }
 
     [Fact]

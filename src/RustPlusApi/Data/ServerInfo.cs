@@ -42,6 +42,9 @@ public sealed record ServerInfo
     /// <summary>Nexus cluster identifier, if the server participates in a Nexus.</summary>
     public string? Nexus { get; init; }
 
+    /// <summary>Numeric Nexus identifier, if the server participates in a Nexus.</summary>
+    public int? NexusId { get; init; }
+
     /// <summary>Zone identifier within the Nexus cluster.</summary>
     public string? NexusZone { get; init; }
 }
