@@ -37,6 +37,23 @@ public class FcmExtensionMapperTests
         Assert.Null(body.ToEntityId());
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(4)]
+    [InlineData(99)]
+    public void ToEntityEvent_UnknownEntityType_MapsToNull(int entityType)
+    {
+        // An out-of-range numeric type must map to null instead of an undefined enum member, so
+        // consumers that switch over the entity type never see a value outside the known set.
+        var body = new Body
+        {
+            EntityType = entityType, EntityId = 42, EntityName = "x"
+        };
+        var ev = body.ToEntityEvent();
+        Assert.Null(ev.EntityType);
+        Assert.Equal(42UL, ev.EntityId);
+    }
+
     [Fact]
     public void ToServerEvent_NullName_BecomesEmpty()
     {
