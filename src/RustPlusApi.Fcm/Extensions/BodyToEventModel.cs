@@ -8,7 +8,7 @@ public static class BodyToEventModel
 {
     /// <summary>Extracts the entity ID from the notification body.</summary>
     /// <param name="body">The FCM notification body to read from.</param>
-    public static int? ToEntityId(this Body body)
+    public static ulong? ToEntityId(this Body body)
     {
         return body.EntityId;
     }
@@ -19,7 +19,7 @@ public static class BodyToEventModel
     {
         return new EntityEvent
         {
-            EntityType = body.EntityType, EntityId = body.EntityId, EntityName = body.EntityName
+            EntityType = (EntityType?)body.EntityType, EntityId = body.EntityId, EntityName = body.EntityName
         };
     }
 

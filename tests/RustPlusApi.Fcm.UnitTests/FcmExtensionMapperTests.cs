@@ -1,4 +1,5 @@
 using RustPlusApi.Fcm.Data;
+using RustPlusApi.Fcm.Data.Events;
 using RustPlusApi.Fcm.Extensions;
 using Xunit;
 
@@ -15,10 +16,25 @@ public class FcmExtensionMapperTests
             EntityType = 1, EntityId = 42, EntityName = "Switch"
         };
         var ev = body.ToEntityEvent();
-        Assert.Equal(1, ev.EntityType);
-        Assert.Equal(42, ev.EntityId);
+        Assert.Equal(EntityType.Switch, ev.EntityType);
+        Assert.Equal(42UL, ev.EntityId);
         Assert.Equal("Switch", ev.EntityName);
-        Assert.Equal(42, body.ToEntityId());
+        Assert.Equal(42UL, body.ToEntityId());
+    }
+
+    [Fact]
+    public void ToEntityEvent_NullEntityType_StaysNull()
+    {
+        // A server-pairing body carries no entity fields; the nullable enum cast must preserve null.
+        var body = new Body
+        {
+            EntityType = null, EntityId = null, EntityName = null
+        };
+        var ev = body.ToEntityEvent();
+        Assert.Null(ev.EntityType);
+        Assert.Null(ev.EntityId);
+        Assert.Null(ev.EntityName);
+        Assert.Null(body.ToEntityId());
     }
 
     [Fact]

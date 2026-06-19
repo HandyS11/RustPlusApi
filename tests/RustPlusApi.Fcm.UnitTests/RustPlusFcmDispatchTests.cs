@@ -65,9 +65,9 @@ public class RustPlusFcmDispatchTests
     public void Pairing_Entity_RaisesTypedEntityEvents(int entityType)
     {
         using var fcm = new TestFcm();
-        Notification<int?>? smart = null;
-        Notification<int?>? alarm = null;
-        Notification<int?>? storage = null;
+        Notification<ulong?>? smart = null;
+        Notification<ulong?>? alarm = null;
+        Notification<ulong?>? storage = null;
         fcm.OnSmartSwitchPairing += (_, n) => smart = n;
         fcm.OnSmartAlarmPairing += (_, n) => alarm = n;
         fcm.OnStorageMonitorPairing += (_, n) => storage = n;
@@ -91,8 +91,8 @@ public class RustPlusFcmDispatchTests
         Assert.Equal(11ul, entity!.PlayerId);
         Assert.Equal(5, entity.PlayerToken);
         Assert.Equal(serverId, entity.ServerId);
-        Assert.Equal(entityType, entity.Data!.EntityType);
-        Assert.Equal(42, entity.Data.EntityId);
+        Assert.Equal((EntityType)entityType, entity.Data!.EntityType);
+        Assert.Equal(42UL, entity.Data.EntityId);
         Assert.Equal("switch-1", entity.Data.EntityName);
 
         // Exactly one typed event fires, carrying the entity id (42) as its payload.
@@ -101,7 +101,7 @@ public class RustPlusFcmDispatchTests
             smart, alarm, storage
         };
         var raised = Assert.Single(fired, n => n is not null);
-        Assert.Equal(42, raised!.Data);
+        Assert.Equal(42UL, raised!.Data);
         Assert.Equal(serverId, raised.ServerId);
         Assert.Equal(11ul, raised.PlayerId);
 
