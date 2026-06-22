@@ -95,7 +95,7 @@ public class RustPlusFcm(
         {
             case "pairing":
                 OnPairing?.Invoke(this, message);
-                ParsePairing(message.Data.Body);
+                ParsePairing(message.Data.Body, message.PersistentId);
                 break;
             case "alarm":
                 OnAlarmTriggered?.Invoke(this, message.Data.ToAlarmEvent());
@@ -110,20 +110,21 @@ public class RustPlusFcm(
     /// Handles pairing notifications by type and dispatches related events.
     /// </summary>
     /// <param name="body">The <see cref="Body"/> of the notification.</param>
+    /// <param name="persistentId">The FCM persistent id of the underlying message (may be <see langword="null"/>).</param>
     /// <remarks>
     /// Invokes <see cref="OnEntityPairing"/>, <see cref="OnServerPairing"/>, and calls <see cref="ParsePairingEntity"/>.
     /// </remarks>
-    private void ParsePairing(Body body)
+    private void ParsePairing(Body body, string? persistentId)
     {
         switch (body.Type)
         {
             case "entity":
-                var entity = BuildGenericOutput(body, body.ToEntityEvent());
+                var entity = BuildGenericOutput(body, body.ToEntityEvent(), persistentId);
                 OnEntityPairing?.Invoke(this, entity);
-                ParsePairingEntity(body);
+                ParsePairingEntity(body, persistentId);
                 break;
             case "server":
-                var server = BuildGenericOutput(body, body.ToServerEvent());
+                var server = BuildGenericOutput(body, body.ToServerEvent(), persistentId);
                 OnServerPairing?.Invoke(this, server);
                 break;
             default:
@@ -136,12 +137,13 @@ public class RustPlusFcm(
     /// Handles entity-specific pairing notifications and dispatches events based on entity type.
     /// </summary>
     /// <param name="body">The <see cref="Body"/> of the notification.</param>
+    /// <param name="persistentId">The FCM persistent id of the underlying message (may be <see langword="null"/>).</param>
     /// <remarks>
     /// Invokes <see cref="OnSmartSwitchPairing"/>, <see cref="OnSmartAlarmPairing"/>, and <see cref="OnStorageMonitorPairing"/>.
     /// </remarks>
-    private void ParsePairingEntity(Body body)
+    private void ParsePairingEntity(Body body, string? persistentId)
     {
-        var response = BuildGenericOutput(body, body.ToEntityId());
+        var response = BuildGenericOutput(body, body.ToEntityId(), persistentId);
 
         switch (body.EntityType)
         {

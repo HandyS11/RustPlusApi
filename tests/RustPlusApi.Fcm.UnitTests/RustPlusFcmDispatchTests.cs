@@ -12,6 +12,7 @@ public class RustPlusFcmDispatchTests
     private static FcmMessage Pairing(Body body) =>
         new()
         {
+            PersistentId = "pair-pid",
             Data = new MessageData
             {
                 ChannelId = "pairing", Body = body
@@ -46,6 +47,7 @@ public class RustPlusFcmDispatchTests
         Assert.Equal(7ul, captured!.PlayerId);
         Assert.Equal(9, captured.PlayerToken);
         Assert.Equal(serverId, captured.ServerId);
+        Assert.Equal("pair-pid", captured.PersistentId);
         // Mapped ServerEvent payload (ToServerEvent).
         var server = captured.Data!;
         Assert.Equal(serverId, server.Id);
@@ -94,6 +96,7 @@ public class RustPlusFcmDispatchTests
         Assert.Equal((EntityType)entityType, entity.Data!.EntityType);
         Assert.Equal(42UL, entity.Data.EntityId);
         Assert.Equal("switch-1", entity.Data.EntityName);
+        Assert.Equal("pair-pid", entity.PersistentId);
 
         // Exactly one typed event fires, carrying the entity id (42) as its payload.
         var fired = new[]
@@ -104,6 +107,7 @@ public class RustPlusFcmDispatchTests
         Assert.Equal(42UL, raised!.Data);
         Assert.Equal(serverId, raised.ServerId);
         Assert.Equal(11ul, raised.PlayerId);
+        Assert.Equal("pair-pid", raised.PersistentId);
 
         Assert.Equal(entityType == 1, smart is not null);
         Assert.Equal(entityType == 2, alarm is not null);
