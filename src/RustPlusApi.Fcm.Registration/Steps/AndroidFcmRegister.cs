@@ -178,7 +178,7 @@ public sealed class AndroidFcmRegister(HttpClient? httpClient = null)
 #pragma warning restore CA1307
             if (!responseText.StartsWith("Error=", StringComparison.Ordinal) && separatorIndex >= 0)
             {
-                return responseText.Substring(separatorIndex + 1);
+                return responseText[(separatorIndex + 1)..];
             }
 
             await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
