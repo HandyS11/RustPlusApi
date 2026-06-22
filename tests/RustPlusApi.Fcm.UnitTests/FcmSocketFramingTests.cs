@@ -986,10 +986,13 @@ public class FcmSocketFramingTests
     }
 
     /// <summary>
-    /// Asserts the initial LoginResponse frame IS dispatched: a valid LoginResponse first frame must
-    /// be consumed as the login (not faulted as a non-login first frame), after which a fresh-id
-    /// DataMessage is delivered normally. Kills the Statement mutation that removes the first-frame
-    /// dispatch call — without it, the first frame is mis-handled and no notification is delivered.
+    /// Asserts that the LoginResponse first frame IS dispatched through
+    /// <c>OnGotMessageBytesAsync</c> (RustPlusFcmSocket.cs line 493). Each call to
+    /// <c>OnGotMessageBytesAsync</c> increments <c>_streamIdIn</c>, so after LoginResponse
+    /// (frame 1) + DataMessageStanza (frame 2) the StreamAck written back carries
+    /// <c>LastStreamIdReceived == 2</c>. Under the line-493 Statement mutation (first-frame
+    /// dispatch removed), <c>_streamIdIn</c> is only incremented once (for the DataMessage),
+    /// and the ack carries <c>1</c> instead — killing the mutation.
     /// </summary>
     [Fact]
     public async Task LoginResponse_IsDispatched_ThenDataMessageDelivered()
@@ -998,16 +1001,24 @@ public class FcmSocketFramingTests
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
 
-        var script = Build(
+        var stream = new ScriptedStream(Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("fresh-id")),
-            NextFrame(McsProtoTag.KCloseTag, new Close()));
+            NextFrame(McsProtoTag.KCloseTag, new Close())));
 
         var exception = await Record.ExceptionAsync(
-            () => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
+            () => socket.RunReceiveLoopOverStreamAsync(stream));
 
         Assert.Null(exception);  // LoginResponse accepted as the login frame
         Assert.Equal(1, count);  // subsequent DataMessage delivered
+
+        // The StreamAck must report LastStreamIdReceived == 2: LoginResponse counted as frame 1,
+        // DataMessage as frame 2. Under the line-493 mutation the login frame is never dispatched,
+        // _streamIdIn is only bumped once, and the ack would report 1 — detecting the mutation.
+        var (tag, payload) = Assert.Single(ParseClientFrames(stream.Writes.ToArray()));
+        Assert.Equal((int)McsProtoTag.KIqStanzaTag, tag);
+        var iq = Serializer.Deserialize<IqStanza>(new MemoryStream(payload));
+        Assert.Equal(2, iq.LastStreamIdReceived); // LoginResponse = 1, DataMessageStanza = 2
     }
 
     /// <summary>
