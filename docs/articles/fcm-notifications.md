@@ -26,10 +26,16 @@ await listener.ConnectAsync();
 listener.Disconnect();
 ```
 
-`persistentIds` is an optional `ICollection<string>` of already-seen notification IDs to skip on
-reconnect. Pass the same collection instance across reconnects — the socket appends every newly-seen
-ID to it as they arrive, so passing it back to a new instance automatically deduplicates replays.
-Prefer a `HashSet<string>` — the collection is consulted on every message and grows for the lifetime of the listener, so a `List<string>`'s linear scan degrades over long sessions.
+`persistentIds` is an optional `ICollection<string>` of already-seen notification IDs. These are
+server-assigned ids that the socket replays to the FCM server at login so it won't redeliver
+messages you've already processed. Prefer a `HashSet<string>` — the collection is consulted on
+every message and grows over time, so a `List<string>`'s linear scan degrades over long sessions.
+
+The socket adds each newly-harvested id to your collection and then raises `PersistentIdReceived`
+with that id — subscribe to persist ids incrementally and avoid a redelivery window after a restart
+(not just a reconnect). Read the full tracked set at any time via `PersistentIds`, which returns a
+never-null snapshot. The caller's set is **not** cleared on login; you own its lifecycle, including
+pruning (ids have a server-side lifespan).
 
 ## Events
 
@@ -133,6 +139,28 @@ async Task ConnectWithRetryAsync(CancellationToken ct)
 
 await ConnectWithRetryAsync(CancellationToken.None);
 ```
+
+### Persisting across restarts
+
+The reconnect loop above keeps ids in memory only — a process restart loses them and the server may
+replay recently-delivered messages. To survive restarts, load the set from disk on startup and save
+it incrementally via `PersistentIdReceived`:
+
+```csharp
+const string IdsFile = "persistent-ids.json";
+
+// Load on startup.
+ICollection<string> persistentIds = File.Exists(IdsFile)
+    ? JsonSerializer.Deserialize<HashSet<string>>(File.ReadAllText(IdsFile)) ?? new HashSet<string>()
+    : new HashSet<string>();
+
+// Wire up before ConnectAsync so no id is missed.
+listener.PersistentIdReceived += (_, _) =>
+    File.WriteAllText(IdsFile, JsonSerializer.Serialize(listener.PersistentIds));
+```
+
+For a real app, prune the stored set periodically — FCM persistent ids have a server-side lifespan
+and the set grows without bound otherwise.
 
 ## One-await pairing
 

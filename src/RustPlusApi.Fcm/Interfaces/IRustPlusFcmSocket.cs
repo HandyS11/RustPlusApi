@@ -7,6 +7,14 @@ public interface IRustPlusFcmSocket : IDisposable, IAsyncDisposable
     /// <summary>A never-null snapshot of the <c>persistentId</c>s currently tracked for
     /// de-duplication. Persist and replay these via the constructor to suppress redelivery across
     /// reconnects; ids have a server-side lifespan, so pruning your stored copy is your job.</summary>
+    /// <remarks>
+    /// <para><b>Thread safety:</b> the snapshot enumerates the caller-owned collection with no lock.
+    /// The receive loop adds ids on its own task, so reading <see cref="PersistentIds"/> from an
+    /// unrelated thread while live traffic is flowing can throw
+    /// <c>InvalidOperationException</c> (collection modified during enumeration).
+    /// Safe read points: inside a <see cref="PersistentIdReceived"/> handler or any other
+    /// notification event (same thread as the harvest), or after <see cref="Disconnect"/>.</para>
+    /// </remarks>
     IReadOnlyCollection<string> PersistentIds { get; }
 
     /// <summary>Raised when the client begins connecting to the FCM server.</summary>

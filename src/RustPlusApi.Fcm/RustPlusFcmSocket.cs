@@ -159,6 +159,14 @@ public abstract class RustPlusFcmSocket(
     /// collection is never <see langword="null"/> (empty when no ids are tracked). Ids have a
     /// server-side lifespan; pruning your persisted copy is the caller's responsibility.
     /// </summary>
+    /// <remarks>
+    /// <para><b>Thread safety:</b> the snapshot enumerates the caller-owned collection with no lock.
+    /// The receive loop adds ids on its own task, so reading <see cref="PersistentIds"/> from an
+    /// unrelated thread while live traffic is flowing can throw
+    /// <see cref="System.InvalidOperationException"/> (collection modified during enumeration).
+    /// Safe read points: inside a <see cref="PersistentIdReceived"/> handler or any other
+    /// notification event (same thread as the harvest), or after <see cref="Disconnect"/>.</para>
+    /// </remarks>
     public IReadOnlyCollection<string> PersistentIds =>
         persistentIds is null ? [] : [.. persistentIds];
 
