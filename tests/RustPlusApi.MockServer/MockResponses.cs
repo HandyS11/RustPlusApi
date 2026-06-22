@@ -138,7 +138,7 @@ public static class MockResponses
             }
         };
 
-    /// <summary>An entity-changed broadcast (smart switch), for testing <c>OnSmartSwitchTriggered</c>.</summary>
+    /// <summary>An entity-changed broadcast (smart switch), for testing <c>OnSmartDeviceTriggered</c>.</summary>
     /// <param name="entityId">The entity to report as changed.</param>
     /// <param name="value">The new switch state.</param>
     public static AppBroadcast SmartSwitchBroadcast(uint entityId, bool value) =>

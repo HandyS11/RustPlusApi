@@ -32,7 +32,7 @@ public class RustPlusParseNotificationTests
     {
         using var sut = new TestRustPlus();
         RustPlusApi.Data.Events.SmartSwitchEventArg? captured = null;
-        sut.OnSmartSwitchTriggered += (_, e) => captured = e;
+        sut.OnSmartDeviceTriggered += (_, e) => captured = e;
 
         var broadcast = new AppBroadcast
         {
@@ -57,7 +57,7 @@ public class RustPlusParseNotificationTests
     public void SmartSwitch_NoSubscriber_DoesNotThrow()
     {
         using var sut = new TestRustPlus();
-        // OnSmartSwitchTriggered intentionally NOT subscribed
+        // OnSmartDeviceTriggered intentionally NOT subscribed
 
         var broadcast = new AppBroadcast
         {

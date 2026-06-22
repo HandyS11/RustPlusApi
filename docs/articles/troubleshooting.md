@@ -115,7 +115,7 @@ See [Credentials — upstream fragility](credentials.md#upstream-fragility) for 
 
 ## Entity events never fire
 
-**Symptom:** `OnSmartSwitchTriggered` or `OnStorageMonitorTriggered` never fires even when the
+**Symptom:** `OnSmartDeviceTriggered` or `OnStorageMonitorTriggered` never fires even when the
 device changes state in game.
 
 **Cause:** The server only sends broadcasts for entities that your client has explicitly queried.
@@ -128,8 +128,8 @@ arriving.
 // Register the entity with the server — broadcasts start after this call.
 await rustPlus.GetSmartSwitchInfoAsync(entityId);
 
-rustPlus.OnSmartSwitchTriggered += (_, e) =>
-    Console.WriteLine($"Switch {e.Id}: {(e.IsActive ? "on" : "off")}");
+rustPlus.OnSmartDeviceTriggered += (_, e) =>
+    Console.WriteLine($"Device {e.Id}: {(e.IsActive ? "on" : "off")}");
 ```
 
 > [!NOTE]

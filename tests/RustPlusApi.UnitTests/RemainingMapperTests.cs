@@ -36,7 +36,7 @@ public class RemainingMapperTests
     }
 
     [Fact]
-    public void ToSmartSwitchEvent_MapsIdAndActiveState()
+    public void ToSmartDeviceEvent_MapsIdAndActiveState()
     {
         var changed = new AppEntityChanged
         {
@@ -47,7 +47,7 @@ public class RemainingMapperTests
             }
         };
 
-        var ev = changed.ToSmartSwitchEvent();
+        var ev = changed.ToSmartDeviceEvent();
 
         Assert.Equal(99u, ev.Id);
         Assert.True(ev.IsActive);

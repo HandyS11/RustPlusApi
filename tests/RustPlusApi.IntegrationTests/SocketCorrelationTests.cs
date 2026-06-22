@@ -90,7 +90,7 @@ public class SocketCorrelationTests
             new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         var otherSwitchEvent = new TaskCompletionSource<Data.Events.SmartSwitchEventArg>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        client.OnSmartSwitchTriggered += (_, e) => otherSwitchEvent.TrySetResult(e);
+        client.OnSmartDeviceTriggered += (_, e) => otherSwitchEvent.TrySetResult(e);
 
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.GetInfoAsync().WaitAsync(Timeout); // round-trip so the server registers the socket
