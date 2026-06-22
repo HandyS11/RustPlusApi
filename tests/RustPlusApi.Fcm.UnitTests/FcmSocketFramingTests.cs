@@ -433,8 +433,8 @@ public class FcmSocketFramingTests
     [Fact]
     public async Task DuplicatePersistentId_IsSkipped()
     {
-        // The LoginResponse handler clears the dedupe set, so seeding it up front would not survive.
-        // Instead send the same PersistentId twice: the first populates the set, the second is skipped.
+        // Send the same PersistentId twice within one session: the first harvests it into the set,
+        // the second is recognised as a duplicate and skipped. (LoginResponse no longer clears the set.)
         await using var socket = NewSocket([]);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
@@ -986,31 +986,28 @@ public class FcmSocketFramingTests
     }
 
     /// <summary>
-    /// Asserts that the initial LoginResponse frame IS dispatched via OnGotMessageBytes —
-    /// killing the Statement mutation that removes that call at L219.  The side-effect of
-    /// dispatching LoginResponse is that it clears <c>persistentIds</c>, which is observable.
+    /// Asserts the initial LoginResponse frame IS dispatched: a valid LoginResponse first frame must
+    /// be consumed as the login (not faulted as a non-login first frame), after which a fresh-id
+    /// DataMessage is delivered normally. Kills the Statement mutation that removes the first-frame
+    /// dispatch call — without it, the first frame is mis-handled and no notification is delivered.
     /// </summary>
     [Fact]
-    public async Task LoginResponse_DispatchedViaOnGotMessageBytes_ClearsPersistentIds()
+    public async Task LoginResponse_IsDispatched_ThenDataMessageDelivered()
     {
-        var ids = new List<string>
-        {
-            "old-id"
-        };
-        await using var socket = NewSocket(ids);
+        await using var socket = NewSocket([]);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
 
         var script = Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
-            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("old-id")),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("fresh-id")),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
-        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
+        var exception = await Record.ExceptionAsync(
+            () => socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script)));
 
-        // If OnGotMessageBytes was NOT called for LoginResponse, persistentIds would NOT be cleared,
-        // "old-id" would still be in the set, and the DataMessage would be skipped (count == 0).
-        Assert.Equal(1, count);
+        Assert.Null(exception);  // LoginResponse accepted as the login frame
+        Assert.Equal(1, count);  // subsequent DataMessage delivered
     }
 
     /// <summary>
