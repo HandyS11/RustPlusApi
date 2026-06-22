@@ -8,33 +8,33 @@ namespace RustPlusApi.Extensions;
 /// <summary>Mapping extensions from protobuf entity messages to entity model types.</summary>
 public static class AppEntityInfoToModel
 {
-    /// <summary>Maps an <see cref="AppEntityInfo"/> of type Switch to a <see cref="SmartSwitchInfo"/>.</summary>
+    /// <summary>Maps an <see cref="AppEntityInfo"/> of type Switch to a <see cref="SmartDeviceInfo"/>.</summary>
     /// <param name="entity">The protobuf entity info.</param>
     /// <exception cref="InvalidOperationException">Thrown when the entity type is not <c>Switch</c>.</exception>
-    public static SmartSwitchInfo ToSmartSwitchInfo(this AppEntityInfo entity)
+    public static SmartDeviceInfo ToSmartSwitchInfo(this AppEntityInfo entity)
     {
         if (entity.Type is not AppEntityType.Switch)
         {
             throw new InvalidOperationException("Entity type is not a SmartSwitch.");
         }
 
-        return new SmartSwitchInfo
+        return new SmartDeviceInfo
         {
             IsActive = entity.Payload.Value
         };
     }
 
-    /// <summary>Maps an <see cref="AppEntityInfo"/> of type Alarm to an <see cref="AlarmInfo"/>.</summary>
+    /// <summary>Maps an <see cref="AppEntityInfo"/> of type Alarm to a <see cref="SmartDeviceInfo"/>.</summary>
     /// <param name="entity">The protobuf entity info.</param>
     /// <exception cref="InvalidOperationException">Thrown when the entity type is not <c>Alarm</c>.</exception>
-    public static AlarmInfo ToAlarmInfo(this AppEntityInfo entity)
+    public static SmartDeviceInfo ToAlarmInfo(this AppEntityInfo entity)
     {
         if (entity.Type is not AppEntityType.Alarm)
         {
             throw new InvalidOperationException("Entity type is not an Alarm.");
         }
 
-        return new AlarmInfo
+        return new SmartDeviceInfo
         {
             IsActive = entity.Payload.Value
         };

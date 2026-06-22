@@ -8,7 +8,7 @@ internal sealed class LiveEvents(IRustPlus rustPlus)
 {
     public Task RunAsync()
     {
-        void OnSmartDevice(object? _, SmartSwitchEventArg e) =>
+        void OnSmartDevice(object? _, SmartDeviceEventArg e) =>
             DisplayUtilities.DisplayEvent("SmartDeviceTriggered", e);
 
         void OnStorageMonitor(object? _, StorageMonitorEventArg e) =>

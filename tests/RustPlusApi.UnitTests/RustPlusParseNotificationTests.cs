@@ -31,7 +31,7 @@ public class RustPlusParseNotificationTests
     public void SmartSwitch_WithSubscriber_InvokesHandler()
     {
         using var sut = new TestRustPlus();
-        RustPlusApi.Data.Events.SmartSwitchEventArg? captured = null;
+        RustPlusApi.Data.Events.SmartDeviceEventArg? captured = null;
         sut.OnSmartDeviceTriggered += (_, e) => captured = e;
 
         var broadcast = new AppBroadcast

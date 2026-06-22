@@ -37,7 +37,7 @@ public class RustPlus(
     /// <see cref="GetSmartSwitchInfoAsync"/> or <see cref="GetAlarmInfoAsync"/> (both read the
     /// <c>type</c> field on <c>AppEntityInfo</c>, which the broadcast omits).
     /// </summary>
-    public event EventHandler<SmartSwitchEventArg>? OnSmartDeviceTriggered;
+    public event EventHandler<SmartDeviceEventArg>? OnSmartDeviceTriggered;
 
     /// <summary>
     /// Occurs when a <see cref="StorageMonitorEventArg"/> is triggered by a storage monitor
@@ -89,10 +89,10 @@ public class RustPlus(
     /// <param name="entityId">The ID of the alarm entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the alarm information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    public async Task<Response<AlarmInfo?>> GetAlarmInfoAsync(ulong entityId,
+    public async Task<Response<SmartDeviceInfo?>> GetAlarmInfoAsync(ulong entityId,
         CancellationToken cancellationToken = default)
     {
-        return await GetEntityInfoAsync<AlarmInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo(),
+        return await GetEntityInfoAsync<SmartDeviceInfo?>(entityId, r => r.Response.EntityInfo.ToAlarmInfo(),
             cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
@@ -296,10 +296,10 @@ public class RustPlus(
     /// <param name="entityId">The ID of the smart switch entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    public async Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(ulong entityId,
+    public async Task<Response<SmartDeviceInfo?>> GetSmartSwitchInfoAsync(ulong entityId,
         CancellationToken cancellationToken = default)
     {
-        return await GetEntityInfoAsync<SmartSwitchInfo?>(
+        return await GetEntityInfoAsync<SmartDeviceInfo?>(
             entityId,
             r => r.Response.EntityInfo.ToSmartSwitchInfo(), cancellationToken: cancellationToken).ConfigureAwait(false);
     }
@@ -424,7 +424,7 @@ public class RustPlus(
     /// <param name="smartSwitchValue">The value to set for the smart switch.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    public async Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(ulong smartSwitchId,
+    public async Task<Response<SmartDeviceInfo?>> SetSmartSwitchValueAsync(ulong smartSwitchId,
         bool smartSwitchValue,
         CancellationToken cancellationToken = default)
     {
@@ -436,7 +436,7 @@ public class RustPlus(
                 Value = smartSwitchValue
             },
         };
-        return await ProcessRequestAsync<SmartSwitchInfo?>(
+        return await ProcessRequestAsync<SmartDeviceInfo?>(
             request,
             // The live server acks setEntityValue with an immediate seq success {}; the EntityChanged
             // broadcast follows separately — and not at all when the state did not change. Whichever
@@ -444,7 +444,7 @@ public class RustPlus(
             // state, the bare ack means the server accepted the set, so the state is the requested value.
             r => r.Broadcast?.EntityChanged is { } entityChanged
                 ? entityChanged.ToSmartDeviceEvent()
-                : new SmartSwitchEventArg
+                : new SmartDeviceEventArg
                 {
                     Id = smartSwitchId, IsActive = smartSwitchValue
                 },
@@ -484,7 +484,7 @@ public class RustPlus(
     /// <param name="value">The initial value of the smart switch.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    public async Task<Response<SmartSwitchInfo?>> StrobeSmartSwitchAsync(
+    public async Task<Response<SmartDeviceInfo?>> StrobeSmartSwitchAsync(
         ulong entityId,
         int timeoutMilliseconds = 1000,
         bool value = true,
@@ -509,7 +509,7 @@ public class RustPlus(
     /// <param name="entityId">The ID of the smart switch entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the updated smart switch information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    public async Task<Response<SmartSwitchInfo?>> ToggleSmartSwitchAsync(ulong entityId,
+    public async Task<Response<SmartDeviceInfo?>> ToggleSmartSwitchAsync(ulong entityId,
         CancellationToken cancellationToken = default)
     {
         var entityInfo = await GetSmartSwitchInfoAsync(entityId, cancellationToken: cancellationToken)
