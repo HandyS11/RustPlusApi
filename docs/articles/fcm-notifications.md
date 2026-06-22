@@ -39,6 +39,11 @@ pruning (ids have a server-side lifespan).
 
 ## Events
 
+Every typed event payload derives `NotificationBase`, which carries `ServerId` (the originating
+Rust+ server) and `PersistentId` (the FCM message id — correlate with the `PersistentIdReceived`
+harvested set to de-duplicate or audit). `Notification<T>` adds `PlayerId`/`PlayerToken`/`Data`
+for pairing events; `AlarmNotification` adds `Title`/`Message` for alarm events.
+
 | Event | Payload type | Fires when |
 | --- | --- | --- |
 | `OnPairing` | `FcmMessage` | Any pairing FCM message is received (raw). |
@@ -47,7 +52,7 @@ pruning (ids have a server-side lifespan).
 | `OnSmartAlarmPairing` | `Notification<ulong?>` | A smart alarm is paired (entity ID in `Data`). |
 | `OnStorageMonitorPairing` | `Notification<ulong?>` | A storage monitor is paired (entity ID in `Data`). |
 | `OnServerPairing` | `Notification<ServerEvent?>` | You choose *Pair with Server* in game — carries ip/port/playerId/playerToken. |
-| `OnAlarmTriggered` | `AlarmEvent?` | A paired smart alarm fires. |
+| `OnAlarmTriggered` | `AlarmNotification?` | A paired smart alarm fires. |
 
 Socket lifecycle events (from `IRustPlusFcmSocket`):
 
