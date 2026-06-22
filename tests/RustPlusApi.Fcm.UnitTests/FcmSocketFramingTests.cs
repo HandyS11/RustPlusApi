@@ -903,33 +903,29 @@ public class FcmSocketFramingTests
     }
 
     /// <summary>
-    /// Asserts that LoginResponse clears the persistentIds collection, so a message whose
-    /// persistent ID was known BEFORE login is redelivered after login — kills the
-    /// Statement mutation that removes <c>persistentIds?.Clear()</c> in the LoginResponse arm.
+    /// Asserts that LoginResponse does NOT clear the caller's persistentIds set: a message whose id
+    /// was seeded BEFORE login is still de-duplicated (skipped) after login, and the seeded id
+    /// survives in the public snapshot. The seeded ids have already been replayed to the server in
+    /// the login request, so the caller's local history must be preserved for reconnect.
     /// </summary>
     [Fact]
-    public async Task LoginResponse_ClearsPreSeededPersistentIds()
+    public async Task LoginResponse_PreservesPreSeededPersistentIds()
     {
-        // Pre-seed the set with a known ID so that, WITHOUT clearing, the second delivery
-        // would be skipped by the dedup check.
-        var ids = new List<string>
-        {
-            "pre-existing-id"
-        };
+        var ids = new HashSet<string> { "pre-existing-id" };
         await using var socket = NewSocket(ids);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
 
         var script = Build(
-            // LoginResponse should clear the set (removing "pre-existing-id").
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
-            // This message has the same ID — it should be DELIVERED because the set was cleared.
+            // Same id as the seed — must be SKIPPED because the set was NOT cleared.
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "pre-existing-id")),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
         await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
-        Assert.Equal(1, count);
+        Assert.Equal(0, count); // duplicate of a seeded id is suppressed
+        Assert.Contains("pre-existing-id", socket.PersistentIds);
     }
 
     /// <summary>

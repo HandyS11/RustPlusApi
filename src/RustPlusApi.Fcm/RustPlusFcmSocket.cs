@@ -747,7 +747,9 @@ public abstract class RustPlusFcmSocket(
         switch (e.Tag)
         {
             case McsProtoTag.KLoginResponseTag:
-                persistentIds?.Clear();
+                // Do NOT clear the caller's set: the seeded ids were already replayed to the server in
+                // the login request (ReceivedPersistentIds), and the caller owns this collection for
+                // cross-reconnect persistence. Clearing it would destroy their history.
                 break;
             case McsProtoTag.KDataMessageStanzaTag:
                 OnDataMessage(e.Object as DataMessageStanza);
