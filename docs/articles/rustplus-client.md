@@ -150,7 +150,7 @@ The complete set of public events across `RustPlusSocket` and `RustPlus`:
 | `Disconnecting` | `EventArgs` | `DisconnectAsync` started the close handshake. |
 | `Disconnected` | `EventArgs` | The WebSocket close completed. |
 | `ErrorOccurred` | `Exception` | A transport or receive error occurred. Fires from Connecting or Connected state. |
-| `OnSmartSwitchTriggered` | `SmartSwitchEventArg` | A subscribed smart switch or alarm changed state. |
+| `OnSmartDeviceTriggered` | `SmartSwitchEventArg` | A subscribed binary-state device changed state. The broadcast omits the entity type, so a smart switch and a smart alarm are indistinguishable here — query the entity to learn its type. |
 | `OnStorageMonitorTriggered` | `StorageMonitorEventArg` | A subscribed storage monitor reported a change. |
 | `OnTeamChatReceived` | `TeamMessageEventArg` | A team chat message arrived. |
 | `OnClanChatReceived` | `ClanMessageEventArg` | A clan chat message arrived. |
@@ -158,7 +158,7 @@ The complete set of public events across `RustPlusSocket` and `RustPlus`:
 | `OnCameraRaysReceived` | `CameraRaysEventArg` | A camera frame broadcast arrived for the subscribed camera. |
 
 > [!NOTE]
-> To receive `OnSmartSwitchTriggered` or `OnStorageMonitorTriggered` broadcasts for a given
+> To receive `OnSmartDeviceTriggered` or `OnStorageMonitorTriggered` broadcasts for a given
 > entity, you must first make at least one request on that entity (e.g. `GetSmartSwitchInfoAsync`),
 > which registers it with the server. Camera frame events start after `SubscribeToCameraAsync`.
 

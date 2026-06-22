@@ -26,7 +26,7 @@ var info = await rustPlus.GetInfoAsync();          // Response<ServerInfo?>
 if (info.IsSuccess)
     Console.WriteLine($"{info.Data!.Name} — {info.Data.PlayerCount} players");
 
-rustPlus.OnSmartSwitchTriggered += (_, e) => { /* react to a smart switch */ };
+rustPlus.OnSmartDeviceTriggered += (_, e) => { /* react to a smart switch or alarm state change */ };
 ```
 
 Every request returns a `Response<T>` (`IsSuccess` / `Error` / `Data`). Need credentials? Use the

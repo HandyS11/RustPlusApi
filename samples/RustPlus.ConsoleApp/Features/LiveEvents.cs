@@ -8,8 +8,8 @@ internal sealed class LiveEvents(IRustPlus rustPlus)
 {
     public Task RunAsync()
     {
-        void OnSmartSwitch(object? _, SmartSwitchEventArg e) =>
-            DisplayUtilities.DisplayEvent("SmartSwitchTriggered", e);
+        void OnSmartDevice(object? _, SmartSwitchEventArg e) =>
+            DisplayUtilities.DisplayEvent("SmartDeviceTriggered", e);
 
         void OnStorageMonitor(object? _, StorageMonitorEventArg e) =>
             DisplayUtilities.DisplayEvent("StorageMonitorTriggered", e);
@@ -18,7 +18,7 @@ internal sealed class LiveEvents(IRustPlus rustPlus)
         void OnClanChat(object? _, ClanMessageEventArg e) => DisplayUtilities.DisplayEvent("ClanChatReceived", e);
         void OnClanChanged(object? _, ClanChangedEventArg e) => DisplayUtilities.DisplayEvent("ClanChanged", e);
 
-        rustPlus.OnSmartSwitchTriggered += OnSmartSwitch;
+        rustPlus.OnSmartDeviceTriggered += OnSmartDevice;
         rustPlus.OnStorageMonitorTriggered += OnStorageMonitor;
         rustPlus.OnTeamChatReceived += OnTeamChat;
         rustPlus.OnClanChatReceived += OnClanChat;
@@ -29,7 +29,7 @@ internal sealed class LiveEvents(IRustPlus rustPlus)
         Console.WriteLine("clan changes). Press any key to stop...\n");
         Console.ReadKey(intercept: true);
 
-        rustPlus.OnSmartSwitchTriggered -= OnSmartSwitch;
+        rustPlus.OnSmartDeviceTriggered -= OnSmartDevice;
         rustPlus.OnStorageMonitorTriggered -= OnStorageMonitor;
         rustPlus.OnTeamChatReceived -= OnTeamChat;
         rustPlus.OnClanChatReceived -= OnClanChat;

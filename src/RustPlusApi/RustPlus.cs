@@ -30,12 +30,14 @@ public class RustPlus(
     : RustPlusSocket(connection, options, loggerFactory), IRustPlus
 {
     /// <summary>
-    /// Occurs when a <see cref="SmartSwitchEventArg"/> is triggered by a smart switch or a smart
-    /// alarm. The Rust+ protocol does not distinguish the two: an <c>EntityChanged</c> broadcast
-    /// whose payload carries no item capacity is routed here, so alarm state changes also surface
-    /// through this event.
+    /// Occurs when a binary-state smart device (a smart switch or a smart alarm) changes state.
+    /// The Rust+ <c>EntityChanged</c> broadcast carries only the entity id and payload — it does
+    /// <b>not</b> include the entity type — so a switch and an alarm are indistinguishable here.
+    /// To learn an entity's actual type, query it explicitly with
+    /// <see cref="GetSmartSwitchInfoAsync"/> or <see cref="GetAlarmInfoAsync"/> (both read the
+    /// <c>type</c> field on <c>AppEntityInfo</c>, which the broadcast omits).
     /// </summary>
-    public event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered;
+    public event EventHandler<SmartSwitchEventArg>? OnSmartDeviceTriggered;
 
     /// <summary>
     /// Occurs when a <see cref="StorageMonitorEventArg"/> is triggered by a storage monitor
@@ -441,7 +443,7 @@ public class RustPlus(
             // resolves the request first must produce a result: the broadcast carries the authoritative
             // state, the bare ack means the server accepted the set, so the state is the requested value.
             r => r.Broadcast?.EntityChanged is { } entityChanged
-                ? entityChanged.ToSmartSwitchEvent()
+                ? entityChanged.ToSmartDeviceEvent()
                 : new SmartSwitchEventArg
                 {
                     Id = smartSwitchId, IsActive = smartSwitchValue
@@ -540,7 +542,7 @@ public class RustPlus(
             // If you check the status of an alarm, it will return the same as a smart switch
             if (broadcast.EntityChanged.Payload.Capacity is 0)
             {
-                OnSmartSwitchTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartSwitchEvent());
+                OnSmartDeviceTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartDeviceEvent());
             }
             else
             {

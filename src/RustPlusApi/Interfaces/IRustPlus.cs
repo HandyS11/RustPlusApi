@@ -9,10 +9,11 @@ namespace RustPlusApi.Interfaces;
 /// <summary>High-level Rust+ API contract — typed events and all supported server commands.</summary>
 public interface IRustPlus : IRustPlusSocket
 {
-    /// <summary>Raised when a subscribed smart switch or smart alarm changes state. The Rust+
-    /// protocol does not distinguish the two: an <c>EntityChanged</c> broadcast whose payload
-    /// carries no item capacity is routed here, so alarm state changes also surface through this event.</summary>
-    event EventHandler<SmartSwitchEventArg>? OnSmartSwitchTriggered;
+    /// <summary>Raised when a subscribed binary-state smart device (a smart switch or a smart alarm)
+    /// changes state. The Rust+ <c>EntityChanged</c> broadcast omits the entity type, so a switch and
+    /// an alarm are indistinguishable here; query the entity explicitly (<c>GetSmartSwitchInfoAsync</c>
+    /// or <c>GetAlarmInfoAsync</c>) to learn its actual type.</summary>
+    event EventHandler<SmartSwitchEventArg>? OnSmartDeviceTriggered;
 
     /// <summary>Raised when a subscribed storage monitor reports a change
     /// (an <c>EntityChanged</c> broadcast whose payload carries item capacity).</summary>

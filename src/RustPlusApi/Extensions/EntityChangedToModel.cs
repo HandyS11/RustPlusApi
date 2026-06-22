@@ -6,9 +6,11 @@ namespace RustPlusApi.Extensions;
 /// <summary>Mapping extensions from protobuf entity-changed broadcasts to event argument types.</summary>
 public static class EntityChangedToModel
 {
-    /// <summary>Maps an <see cref="AppEntityChanged"/> broadcast to a <see cref="SmartSwitchEventArg"/>.</summary>
+    /// <summary>Maps an <see cref="AppEntityChanged"/> broadcast to a <see cref="SmartSwitchEventArg"/>.
+    /// The broadcast carries no entity type, so this represents any binary-state smart device
+    /// (a smart switch or a smart alarm).</summary>
     /// <param name="entityChanged">The protobuf entity-changed broadcast.</param>
-    public static SmartSwitchEventArg ToSmartSwitchEvent(this AppEntityChanged entityChanged)
+    public static SmartSwitchEventArg ToSmartDeviceEvent(this AppEntityChanged entityChanged)
     {
         return new SmartSwitchEventArg
         {
