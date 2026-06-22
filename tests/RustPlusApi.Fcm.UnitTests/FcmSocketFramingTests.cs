@@ -451,6 +451,54 @@ public class FcmSocketFramingTests
     }
 
     [Fact]
+    public async Task PersistentIdReceived_RaisedPerHarvestedId_AndSnapshotReflectsThem()
+    {
+        var ids = new HashSet<string>();
+        await using var socket = NewSocket(ids);
+        var harvested = new List<string>();
+        socket.PersistentIdReceived += (_, id) => harvested.Add(id);
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "id-1")),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "id-2")),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
+
+        // Event fired once per NEW id, in order.
+        Assert.Equal((string[]) ["id-1", "id-2"], harvested);
+        // Snapshot exposes the same ids (no Clear destroyed them).
+        Assert.Equal((string[]) ["id-1", "id-2"], socket.PersistentIds.Order());
+    }
+
+    [Fact]
+    public async Task PersistentIdReceived_NotRaisedForDuplicate()
+    {
+        await using var socket = NewSocket([]);
+        var harvested = new List<string>();
+        socket.PersistentIdReceived += (_, id) => harvested.Add(id);
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "dup")),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "dup")),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
+
+        Assert.Equal((string[]) ["dup"], harvested); // duplicate did not re-raise
+    }
+
+    [Fact]
+    public void PersistentIds_NullCollection_SnapshotIsEmptyNotNull()
+    {
+        using var socket = NewSocket(persistentIds: null);
+        Assert.NotNull(socket.PersistentIds);
+        Assert.Empty(socket.PersistentIds);
+    }
+
+    [Fact]
     public async Task ReadVarInt32_MultiByteSize_FrameDelivered()
     {
         // Build a DataMessageStanza whose serialized payload length >= 128, so the size varint

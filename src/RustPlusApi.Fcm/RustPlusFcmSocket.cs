@@ -141,6 +141,25 @@ public abstract class RustPlusFcmSocket(
     public event EventHandler<Exception>? ErrorOccurred;
 
     /// <summary>
+    /// Occurs once for each newly-harvested FCM <c>persistentId</c>, immediately after it is added to
+    /// the tracked set. Subscribe to persist ids incrementally so a crash or quick restart cannot
+    /// reopen the redelivery window (the server only stops redelivering a message once its id is
+    /// replayed in a later login's <c>ReceivedPersistentIds</c>).
+    /// </summary>
+    /// <remarks>The event data is the harvested <c>persistentId</c> as a <see cref="string"/>.</remarks>
+    public event EventHandler<string>? PersistentIdReceived;
+
+    /// <summary>
+    /// A snapshot of the FCM <c>persistentId</c>s currently tracked for de-duplication — the ids
+    /// supplied at construction plus every id harvested since. Persist these and pass them back into
+    /// a new instance to suppress redelivery of already-processed messages across reconnects. The
+    /// collection is never <see langword="null"/> (empty when no ids are tracked). Ids have a
+    /// server-side lifespan; pruning your persisted copy is the caller's responsibility.
+    /// </summary>
+    public IReadOnlyCollection<string> PersistentIds =>
+        persistentIds is null ? [] : [.. persistentIds];
+
+    /// <summary>
     /// Connects to the FCM MCS server over TLS, performs the MCS login handshake,
     /// and starts the background message-receive loop.
     /// On failure, <see cref="ErrorOccurred"/> is raised, the partial transport is released (so the
@@ -811,9 +830,10 @@ public abstract class RustPlusFcmSocket(
             }
         };
 
-        if (dataMessage.PersistentId is not null)
+        if (dataMessage.PersistentId is not null && persistentIds is not null)
         {
-            persistentIds?.Add(dataMessage.PersistentId);
+            persistentIds.Add(dataMessage.PersistentId);
+            PersistentIdReceived?.Invoke(this, dataMessage.PersistentId);
         }
 
         ParseNotification(fcmMessage);
