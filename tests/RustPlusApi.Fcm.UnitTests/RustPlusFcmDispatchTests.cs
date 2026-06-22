@@ -129,6 +129,7 @@ public class RustPlusFcmDispatchTests
     public void Alarm_RaisesOnAlarmTriggered()
     {
         using var fcm = new TestFcm();
+        var serverId = Guid.Parse("52d121e8-9d14-4dc5-928a-84aa531cfc9e");
         AlarmEvent? captured = null;
         fcm.OnAlarmTriggered += (_, e) => captured = e;
 
@@ -136,12 +137,19 @@ public class RustPlusFcmDispatchTests
         {
             Data = new MessageData
             {
-                ChannelId = "alarm", Title = "the title", Message = "the message"
+                ChannelId = "alarm",
+                Title = "the title",
+                Message = "the message",
+                Body = new Body
+                {
+                    Id = serverId
+                }
             }
         });
 
         Assert.NotNull(captured);
-        Assert.Equal("the title", captured!.Title);
+        Assert.Equal(serverId, captured!.ServerId);
+        Assert.Equal("the title", captured.Title);
         Assert.Equal("the message", captured.Message);
     }
 
