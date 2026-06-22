@@ -78,9 +78,9 @@ public class RustPlusFcm(
     /// Occurs when an alarm event is triggered.
     /// </summary>
     /// <remarks>
-    /// The event data is an <see cref="AlarmEvent"/>.
+    /// The event data is an <see cref="AlarmNotification"/> (server id + persistent id + title/message).
     /// </remarks>
-    public event EventHandler<AlarmEvent?>? OnAlarmTriggered;
+    public event EventHandler<AlarmNotification?>? OnAlarmTriggered;
 
     /// <summary>
     /// Parses an incoming <see cref="FcmMessage"/> and dispatches events based on its channel.
@@ -98,7 +98,7 @@ public class RustPlusFcm(
                 ParsePairing(message.Data.Body, message.PersistentId);
                 break;
             case "alarm":
-                OnAlarmTriggered?.Invoke(this, message.Data.ToAlarmEvent());
+                OnAlarmTriggered?.Invoke(this, message.Data.ToAlarmNotification(message.Data.Body.Id, message.PersistentId));
                 break;
             default:
                 Logger.LogUnknownChannel(message.Data.ChannelId);

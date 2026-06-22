@@ -80,20 +80,18 @@ public class FcmExtensionMapperTests
     }
 
     [Fact]
-    public void ToAlarmEvent_MapsServerIdTitleAndMessage()
+    public void ToAlarmNotification_MapsServerIdPersistentIdTitleAndMessage()
     {
         var serverId = Guid.Parse("52d121e8-9d14-4dc5-928a-84aa531cfc9e");
         var data = new MessageData
         {
             Title = "Base attacked",
             Message = "Door opened",
-            Body = new Body
-            {
-                Id = serverId
-            }
+            Body = new Body { Id = serverId }
         };
-        var ev = data.ToAlarmEvent();
+        var ev = data.ToAlarmNotification(serverId, "alarm-pid");
         Assert.Equal(serverId, ev.ServerId);
+        Assert.Equal("alarm-pid", ev.PersistentId);
         Assert.Equal("Base attacked", ev.Title);
         Assert.Equal("Door opened", ev.Message);
     }

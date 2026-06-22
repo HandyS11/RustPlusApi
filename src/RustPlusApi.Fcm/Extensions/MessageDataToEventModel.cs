@@ -6,13 +6,15 @@ namespace RustPlusApi.Fcm.Extensions;
 /// <summary>Extension methods that project a <see cref="MessageData"/> into FCM event model types.</summary>
 public static class MessageDataToEventModel
 {
-    /// <summary>Maps the notification message data to an <see cref="AlarmEvent"/>.</summary>
+    /// <summary>Maps the notification message data to an <see cref="AlarmNotification"/>.</summary>
     /// <param name="data">The message data to map.</param>
-    public static AlarmEvent ToAlarmEvent(this MessageData data)
+    /// <param name="serverId">The ID of the server the alarm was triggered on.</param>
+    /// <param name="persistentId">The FCM persistent id of the alarm message (may be <see langword="null"/>).</param>
+    public static AlarmNotification ToAlarmNotification(this MessageData data, Guid serverId, string? persistentId)
     {
-        return new AlarmEvent
+        return new AlarmNotification
         {
-            ServerId = data.Body.Id, Title = data.Title, Message = data.Message
+            ServerId = serverId, PersistentId = persistentId, Title = data.Title, Message = data.Message
         };
     }
 }

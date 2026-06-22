@@ -24,6 +24,6 @@ public interface IRustPlusFcm : IRustPlusFcmSocket
     /// <summary>Raised when a storage monitor pairing notification is received.</summary>
     event EventHandler<Notification<ulong?>>? OnStorageMonitorPairing;
 
-    /// <summary>Raised when a smart alarm is triggered.</summary>
-    event EventHandler<AlarmEvent?>? OnAlarmTriggered;
+    /// <summary>Raised when a smart alarm is triggered. Payload is an <see cref="AlarmNotification"/>.</summary>
+    event EventHandler<AlarmNotification?>? OnAlarmTriggered;
 }
