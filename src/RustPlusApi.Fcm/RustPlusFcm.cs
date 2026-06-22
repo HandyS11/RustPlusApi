@@ -12,10 +12,13 @@ namespace RustPlusApi.Fcm;
 /// Inherits from <see cref="RustPlusFcmSocket"/>.
 /// </summary>
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
-/// <param name="persistentIds">Already-processed message IDs, used for de-duplication. Every data
-/// message is checked against and appended to this collection, so for a long-lived listener prefer
-/// a set-like implementation (e.g. <see cref="HashSet{T}"/>) — with a <see cref="List{T}"/> the
-/// duplicate check is a linear scan that degrades as the collection grows unboundedly.</param>
+/// <param name="persistentIds">Already-processed message ids, used for de-duplication, and the
+/// collection the socket harvests new ids into — pass a mutable, caller-owned set (prefer a
+/// <see cref="HashSet{T}"/>; a <see cref="List{T}"/> makes the duplicate check an O(n) scan). When
+/// <see langword="null"/>, de-duplication is disabled. The set is NOT cleared on login, so seeded
+/// ids survive reconnect. Read the current ids back via <see cref="PersistentIds"/> (snapshot) or
+/// subscribe to <see cref="PersistentIdReceived"/> (incremental) to persist them; ids have a
+/// server-side lifespan, so pruning your stored copy is your responsibility.</param>
 /// <param name="options">Tuning options (heartbeat interval, inactivity timeout); defaults are used when <see langword="null"/>.</param>
 /// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
 /// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
@@ -75,9 +78,9 @@ public class RustPlusFcm(
     /// Occurs when an alarm event is triggered.
     /// </summary>
     /// <remarks>
-    /// The event data is an <see cref="AlarmEvent"/>.
+    /// The event data is an <see cref="AlarmNotification"/> (server id + persistent id + title/message).
     /// </remarks>
-    public event EventHandler<AlarmEvent?>? OnAlarmTriggered;
+    public event EventHandler<AlarmNotification?>? OnAlarmTriggered;
 
     /// <summary>
     /// Parses an incoming <see cref="FcmMessage"/> and dispatches events based on its channel.
@@ -92,10 +95,11 @@ public class RustPlusFcm(
         {
             case "pairing":
                 OnPairing?.Invoke(this, message);
-                ParsePairing(message.Data.Body);
+                ParsePairing(message.Data.Body, message.PersistentId);
                 break;
             case "alarm":
-                OnAlarmTriggered?.Invoke(this, message.Data.ToAlarmEvent());
+                OnAlarmTriggered?.Invoke(this,
+                    message.Data.ToAlarmNotification(message.Data.Body.Id, message.PersistentId));
                 break;
             default:
                 Logger.LogUnknownChannel(message.Data.ChannelId);
@@ -107,20 +111,21 @@ public class RustPlusFcm(
     /// Handles pairing notifications by type and dispatches related events.
     /// </summary>
     /// <param name="body">The <see cref="Body"/> of the notification.</param>
+    /// <param name="persistentId">The FCM persistent id of the underlying message (may be <see langword="null"/>).</param>
     /// <remarks>
     /// Invokes <see cref="OnEntityPairing"/>, <see cref="OnServerPairing"/>, and calls <see cref="ParsePairingEntity"/>.
     /// </remarks>
-    private void ParsePairing(Body body)
+    private void ParsePairing(Body body, string? persistentId)
     {
         switch (body.Type)
         {
             case "entity":
-                var entity = BuildGenericOutput(body, body.ToEntityEvent());
+                var entity = BuildGenericOutput(body, body.ToEntityEvent(), persistentId);
                 OnEntityPairing?.Invoke(this, entity);
-                ParsePairingEntity(body);
+                ParsePairingEntity(body, persistentId);
                 break;
             case "server":
-                var server = BuildGenericOutput(body, body.ToServerEvent());
+                var server = BuildGenericOutput(body, body.ToServerEvent(), persistentId);
                 OnServerPairing?.Invoke(this, server);
                 break;
             default:
@@ -133,12 +138,13 @@ public class RustPlusFcm(
     /// Handles entity-specific pairing notifications and dispatches events based on entity type.
     /// </summary>
     /// <param name="body">The <see cref="Body"/> of the notification.</param>
+    /// <param name="persistentId">The FCM persistent id of the underlying message (may be <see langword="null"/>).</param>
     /// <remarks>
     /// Invokes <see cref="OnSmartSwitchPairing"/>, <see cref="OnSmartAlarmPairing"/>, and <see cref="OnStorageMonitorPairing"/>.
     /// </remarks>
-    private void ParsePairingEntity(Body body)
+    private void ParsePairingEntity(Body body, string? persistentId)
     {
-        var response = BuildGenericOutput(body, body.ToEntityId());
+        var response = BuildGenericOutput(body, body.ToEntityId(), persistentId);
 
         switch (body.EntityType)
         {

@@ -433,8 +433,8 @@ public class FcmSocketFramingTests
     [Fact]
     public async Task DuplicatePersistentId_IsSkipped()
     {
-        // The LoginResponse handler clears the dedupe set, so seeding it up front would not survive.
-        // Instead send the same PersistentId twice: the first populates the set, the second is skipped.
+        // Send the same PersistentId twice within one session: the first harvests it into the set,
+        // the second is recognised as a duplicate and skipped. (LoginResponse no longer clears the set.)
         await using var socket = NewSocket([]);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
@@ -448,6 +448,54 @@ public class FcmSocketFramingTests
         await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         Assert.Equal(1, count); // first delivered, duplicate skipped
+    }
+
+    [Fact]
+    public async Task PersistentIdReceived_RaisedPerHarvestedId_AndSnapshotReflectsThem()
+    {
+        var ids = new HashSet<string>();
+        await using var socket = NewSocket(ids);
+        var harvested = new List<string>();
+        socket.PersistentIdReceived += (_, id) => harvested.Add(id);
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "id-1")),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "id-2")),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
+
+        // Event fired once per NEW id, in order.
+        Assert.Equal((string[])["id-1", "id-2"], harvested);
+        // Snapshot exposes the same ids (no Clear destroyed them).
+        Assert.Equal((string[])["id-1", "id-2"], socket.PersistentIds.Order());
+    }
+
+    [Fact]
+    public async Task PersistentIdReceived_NotRaisedForDuplicate()
+    {
+        await using var socket = NewSocket([]);
+        var harvested = new List<string>();
+        socket.PersistentIdReceived += (_, id) => harvested.Add(id);
+
+        var script = Build(
+            FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "dup")),
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "dup")),
+            NextFrame(McsProtoTag.KCloseTag, new Close()));
+
+        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
+
+        Assert.Equal((string[])["dup"], harvested); // duplicate did not re-raise
+    }
+
+    [Fact]
+    public void PersistentIds_NullCollection_SnapshotIsEmptyNotNull()
+    {
+        using var socket = NewSocket(persistentIds: null);
+        Assert.NotNull(socket.PersistentIds);
+        Assert.Empty(socket.PersistentIds);
     }
 
     [Fact]
@@ -855,16 +903,15 @@ public class FcmSocketFramingTests
     }
 
     /// <summary>
-    /// Asserts that LoginResponse clears the persistentIds collection, so a message whose
-    /// persistent ID was known BEFORE login is redelivered after login — kills the
-    /// Statement mutation that removes <c>persistentIds?.Clear()</c> in the LoginResponse arm.
+    /// Asserts that LoginResponse does NOT clear the caller's persistentIds set: a message whose id
+    /// was seeded BEFORE login is still de-duplicated (skipped) after login, and the seeded id
+    /// survives in the public snapshot. The seeded ids have already been replayed to the server in
+    /// the login request, so the caller's local history must be preserved for reconnect.
     /// </summary>
     [Fact]
-    public async Task LoginResponse_ClearsPreSeededPersistentIds()
+    public async Task LoginResponse_PreservesPreSeededPersistentIds()
     {
-        // Pre-seed the set with a known ID so that, WITHOUT clearing, the second delivery
-        // would be skipped by the dedup check.
-        var ids = new List<string>
+        var ids = new HashSet<string>
         {
             "pre-existing-id"
         };
@@ -873,15 +920,15 @@ public class FcmSocketFramingTests
         socket.NotificationReceived += (_, _) => count++;
 
         var script = Build(
-            // LoginResponse should clear the set (removing "pre-existing-id").
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
-            // This message has the same ID — it should be DELIVERED because the set was cleared.
+            // Same id as the seed — must be SKIPPED because the set was NOT cleared.
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification(persistentId: "pre-existing-id")),
             NextFrame(McsProtoTag.KCloseTag, new Close()));
 
         await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
-        Assert.Equal(1, count);
+        Assert.Equal(0, count); // duplicate of a seeded id is suppressed
+        Assert.Contains("pre-existing-id", socket.PersistentIds);
     }
 
     /// <summary>
@@ -942,31 +989,38 @@ public class FcmSocketFramingTests
     }
 
     /// <summary>
-    /// Asserts that the initial LoginResponse frame IS dispatched via OnGotMessageBytes —
-    /// killing the Statement mutation that removes that call at L219.  The side-effect of
-    /// dispatching LoginResponse is that it clears <c>persistentIds</c>, which is observable.
+    /// Asserts that the LoginResponse first frame IS dispatched through
+    /// <c>OnGotMessageBytesAsync</c> (RustPlusFcmSocket.cs line 493). Each call to
+    /// <c>OnGotMessageBytesAsync</c> increments <c>_streamIdIn</c>, so after LoginResponse
+    /// (frame 1) + DataMessageStanza (frame 2) the StreamAck written back carries
+    /// <c>LastStreamIdReceived == 2</c>. Under the line-493 Statement mutation (first-frame
+    /// dispatch removed), <c>_streamIdIn</c> is only incremented once (for the DataMessage),
+    /// and the ack carries <c>1</c> instead — killing the mutation.
     /// </summary>
     [Fact]
-    public async Task LoginResponse_DispatchedViaOnGotMessageBytes_ClearsPersistentIds()
+    public async Task LoginResponse_IsDispatched_ThenDataMessageDelivered()
     {
-        var ids = new List<string>
-        {
-            "old-id"
-        };
-        await using var socket = NewSocket(ids);
+        await using var socket = NewSocket([]);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
 
-        var script = Build(
+        var stream = new ScriptedStream(Build(
             FirstFrame(McsProtoTag.KLoginResponseTag, new LoginResponse()),
-            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("old-id")),
-            NextFrame(McsProtoTag.KCloseTag, new Close()));
+            NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("fresh-id")),
+            NextFrame(McsProtoTag.KCloseTag, new Close())));
 
-        await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
+        var exception = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(stream));
 
-        // If OnGotMessageBytes was NOT called for LoginResponse, persistentIds would NOT be cleared,
-        // "old-id" would still be in the set, and the DataMessage would be skipped (count == 0).
-        Assert.Equal(1, count);
+        Assert.Null(exception); // LoginResponse accepted as the login frame
+        Assert.Equal(1, count); // subsequent DataMessage delivered
+
+        // The StreamAck must report LastStreamIdReceived == 2: LoginResponse counted as frame 1,
+        // DataMessage as frame 2. Under the line-493 mutation the login frame is never dispatched,
+        // _streamIdIn is only bumped once, and the ack would report 1 — detecting the mutation.
+        var (tag, payload) = Assert.Single(ParseClientFrames(stream.Writes.ToArray()));
+        Assert.Equal((int)McsProtoTag.KIqStanzaTag, tag);
+        var iq = Serializer.Deserialize<IqStanza>(new MemoryStream(payload));
+        Assert.Equal(2, iq.LastStreamIdReceived); // LoginResponse = 1, DataMessageStanza = 2
     }
 
     /// <summary>

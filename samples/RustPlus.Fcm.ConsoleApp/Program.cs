@@ -32,7 +32,19 @@ catch (Exception ex)
     return;
 }
 
-using var listener = new RustPlusFcm(credentials);
+// Persist the server-assigned persistentIds between runs so already-processed notifications are not
+// redelivered after a restart. Stored next to the config (gitignored). Ids have a server-side
+// lifespan; a real app should prune this (e.g. cap the count) — kept simple here.
+var persistentIdsPath = Path.Combine(AppContext.BaseDirectory, "persistent-ids.json");
+var persistentIds = File.Exists(persistentIdsPath)
+    ? JsonSerializer.Deserialize<HashSet<string>>(await File.ReadAllTextAsync(persistentIdsPath)) ?? []
+    : new HashSet<string>();
+Console.WriteLine($"Loaded {persistentIds.Count} persistent id(s).");
+
+using var listener = new RustPlusFcm(credentials, persistentIds);
+
+listener.PersistentIdReceived += (_, _) =>
+    File.WriteAllText(persistentIdsPath, JsonSerializer.Serialize(listener.PersistentIds));
 
 listener.Connecting += (_, _) => Console.WriteLine($"[CONNECTING]: {DateTime.Now}");
 listener.Connected += (_, _) => Console.WriteLine($"[CONNECTED]: {DateTime.Now}");

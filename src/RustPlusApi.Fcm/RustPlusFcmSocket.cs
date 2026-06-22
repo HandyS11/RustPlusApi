@@ -22,10 +22,13 @@ namespace RustPlusApi.Fcm;
 /// Represents a RustPlus FCM listener client for handling FCM connections and notifications.
 /// </summary>
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
-/// <param name="persistentIds">Already-processed message IDs, used for de-duplication. Every data
-/// message is checked against and appended to this collection, so for a long-lived listener prefer
-/// a set-like implementation (e.g. <see cref="HashSet{T}"/>) — with a <see cref="List{T}"/> the
-/// duplicate check is a linear scan that degrades as the collection grows unboundedly.</param>
+/// <param name="persistentIds">Already-processed message ids, used for de-duplication, and the
+/// collection the socket harvests new ids into — pass a mutable, caller-owned set (prefer a
+/// <see cref="HashSet{T}"/>; a <see cref="List{T}"/> makes the duplicate check an O(n) scan). When
+/// <see langword="null"/>, de-duplication is disabled. The set is NOT cleared on login, so seeded
+/// ids survive reconnect. Read the current ids back via <see cref="PersistentIds"/> (snapshot) or
+/// subscribe to <see cref="PersistentIdReceived"/> (incremental) to persist them; ids have a
+/// server-side lifespan, so pruning your stored copy is your responsibility.</param>
 /// <param name="options">Tuning options (heartbeat interval, inactivity timeout); defaults are used when <see langword="null"/>.</param>
 /// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
 /// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
@@ -139,6 +142,33 @@ public abstract class RustPlusFcmSocket(
     /// The event data is the <see cref="Exception"/> that was thrown.
     /// </remarks>
     public event EventHandler<Exception>? ErrorOccurred;
+
+    /// <summary>
+    /// Occurs once for each newly-harvested FCM <c>persistentId</c>, immediately after it is added to
+    /// the tracked set. Subscribe to persist ids incrementally so a crash or quick restart cannot
+    /// reopen the redelivery window (the server only stops redelivering a message once its id is
+    /// replayed in a later login's <c>ReceivedPersistentIds</c>).
+    /// </summary>
+    /// <remarks>The event data is the harvested <c>persistentId</c> as a <see cref="string"/>.</remarks>
+    public event EventHandler<string>? PersistentIdReceived;
+
+    /// <summary>
+    /// A snapshot of the FCM <c>persistentId</c>s currently tracked for de-duplication — the ids
+    /// supplied at construction plus every id harvested since. Persist these and pass them back into
+    /// a new instance to suppress redelivery of already-processed messages across reconnects. The
+    /// collection is never <see langword="null"/> (empty when no ids are tracked). Ids have a
+    /// server-side lifespan; pruning your persisted copy is the caller's responsibility.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Thread safety:</b> the snapshot enumerates the caller-owned collection with no lock.
+    /// The receive loop adds ids on its own task, so reading <see cref="PersistentIds"/> from an
+    /// unrelated thread while live traffic is flowing can throw
+    /// <see cref="System.InvalidOperationException"/> (collection modified during enumeration).
+    /// Safe read points: inside a <see cref="PersistentIdReceived"/> handler or any other
+    /// notification event (same thread as the harvest), or after <see cref="Disconnect"/>.</para>
+    /// </remarks>
+    public IReadOnlyCollection<string> PersistentIds =>
+        persistentIds is null ? [] : [.. persistentIds];
 
     /// <summary>
     /// Connects to the FCM MCS server over TLS, performs the MCS login handshake,
@@ -728,7 +758,9 @@ public abstract class RustPlusFcmSocket(
         switch (e.Tag)
         {
             case McsProtoTag.KLoginResponseTag:
-                persistentIds?.Clear();
+                // Do NOT clear the caller's set: the seeded ids were already replayed to the server in
+                // the login request (ReceivedPersistentIds), and the caller owns this collection for
+                // cross-reconnect persistence. Clearing it would destroy their history.
                 break;
             case McsProtoTag.KDataMessageStanzaTag:
                 OnDataMessage(e.Object as DataMessageStanza);
@@ -811,9 +843,10 @@ public abstract class RustPlusFcmSocket(
             }
         };
 
-        if (dataMessage.PersistentId is not null)
+        if (dataMessage.PersistentId is not null && persistentIds is not null)
         {
-            persistentIds?.Add(dataMessage.PersistentId);
+            persistentIds.Add(dataMessage.PersistentId);
+            PersistentIdReceived?.Invoke(this, dataMessage.PersistentId);
         }
 
         ParseNotification(fcmMessage);
