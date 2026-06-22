@@ -145,7 +145,10 @@ public class RustPlusFcmDispatchTests
                 ChannelId = "alarm",
                 Title = "the title",
                 Message = "the message",
-                Body = new Body { Id = serverId }
+                Body = new Body
+                {
+                    Id = serverId
+                }
             }
         });
 

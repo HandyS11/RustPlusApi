@@ -98,7 +98,8 @@ public class RustPlusFcm(
                 ParsePairing(message.Data.Body, message.PersistentId);
                 break;
             case "alarm":
-                OnAlarmTriggered?.Invoke(this, message.Data.ToAlarmNotification(message.Data.Body.Id, message.PersistentId));
+                OnAlarmTriggered?.Invoke(this,
+                    message.Data.ToAlarmNotification(message.Data.Body.Id, message.PersistentId));
                 break;
             default:
                 Logger.LogUnknownChannel(message.Data.ChannelId);

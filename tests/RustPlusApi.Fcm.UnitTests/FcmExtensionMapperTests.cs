@@ -87,7 +87,10 @@ public class FcmExtensionMapperTests
         {
             Title = "Base attacked",
             Message = "Door opened",
-            Body = new Body { Id = serverId }
+            Body = new Body
+            {
+                Id = serverId
+            }
         };
         var ev = data.ToAlarmNotification(serverId, "alarm-pid");
         Assert.Equal(serverId, ev.ServerId);

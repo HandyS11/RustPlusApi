@@ -12,7 +12,11 @@ public class NotificationHierarchyTests
         var serverId = Guid.NewGuid();
         NotificationBase n = new Notification<int?>
         {
-            ServerId = serverId, PersistentId = "pid-1", PlayerId = 7, PlayerToken = 9, Data = 42
+            ServerId = serverId,
+            PersistentId = "pid-1",
+            PlayerId = 7,
+            PlayerToken = 9,
+            Data = 42
         };
 
         Assert.Equal(serverId, n.ServerId);
