@@ -467,9 +467,9 @@ public class FcmSocketFramingTests
         await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
         // Event fired once per NEW id, in order.
-        Assert.Equal((string[]) ["id-1", "id-2"], harvested);
+        Assert.Equal((string[])["id-1", "id-2"], harvested);
         // Snapshot exposes the same ids (no Clear destroyed them).
-        Assert.Equal((string[]) ["id-1", "id-2"], socket.PersistentIds.Order());
+        Assert.Equal((string[])["id-1", "id-2"], socket.PersistentIds.Order());
     }
 
     [Fact]
@@ -487,7 +487,7 @@ public class FcmSocketFramingTests
 
         await socket.RunReceiveLoopOverStreamAsync(new ScriptedStream(script));
 
-        Assert.Equal((string[]) ["dup"], harvested); // duplicate did not re-raise
+        Assert.Equal((string[])["dup"], harvested); // duplicate did not re-raise
     }
 
     [Fact]
@@ -911,7 +911,10 @@ public class FcmSocketFramingTests
     [Fact]
     public async Task LoginResponse_PreservesPreSeededPersistentIds()
     {
-        var ids = new HashSet<string> { "pre-existing-id" };
+        var ids = new HashSet<string>
+        {
+            "pre-existing-id"
+        };
         await using var socket = NewSocket(ids);
         var count = 0;
         socket.NotificationReceived += (_, _) => count++;
@@ -1006,11 +1009,10 @@ public class FcmSocketFramingTests
             NextFrame(McsProtoTag.KDataMessageStanzaTag, RustNotification("fresh-id")),
             NextFrame(McsProtoTag.KCloseTag, new Close())));
 
-        var exception = await Record.ExceptionAsync(
-            () => socket.RunReceiveLoopOverStreamAsync(stream));
+        var exception = await Record.ExceptionAsync(() => socket.RunReceiveLoopOverStreamAsync(stream));
 
-        Assert.Null(exception);  // LoginResponse accepted as the login frame
-        Assert.Equal(1, count);  // subsequent DataMessage delivered
+        Assert.Null(exception); // LoginResponse accepted as the login frame
+        Assert.Equal(1, count); // subsequent DataMessage delivered
 
         // The StreamAck must report LastStreamIdReceived == 2: LoginResponse counted as frame 1,
         // DataMessage as frame 2. Under the line-493 mutation the login frame is never dispatched,

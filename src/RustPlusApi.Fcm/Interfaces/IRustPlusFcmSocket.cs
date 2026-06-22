@@ -4,6 +4,11 @@ namespace RustPlusApi.Fcm.Interfaces;
 /// Clients are disposable; prefer <see cref="IAsyncDisposable.DisposeAsync"/> so teardown drains background work.</summary>
 public interface IRustPlusFcmSocket : IDisposable, IAsyncDisposable
 {
+    /// <summary>A never-null snapshot of the <c>persistentId</c>s currently tracked for
+    /// de-duplication. Persist and replay these via the constructor to suppress redelivery across
+    /// reconnects; ids have a server-side lifespan, so pruning your stored copy is your job.</summary>
+    IReadOnlyCollection<string> PersistentIds { get; }
+
     /// <summary>Raised when the client begins connecting to the FCM server.</summary>
     event EventHandler? Connecting;
 
@@ -28,11 +33,6 @@ public interface IRustPlusFcmSocket : IDisposable, IAsyncDisposable
     /// <summary>Raised once per newly-harvested FCM <c>persistentId</c>, after it is tracked.
     /// Subscribe to persist ids incrementally and minimise the cross-session redelivery window.</summary>
     event EventHandler<string>? PersistentIdReceived;
-
-    /// <summary>A never-null snapshot of the <c>persistentId</c>s currently tracked for
-    /// de-duplication. Persist and replay these via the constructor to suppress redelivery across
-    /// reconnects; ids have a server-side lifespan, so pruning your stored copy is your job.</summary>
-    IReadOnlyCollection<string> PersistentIds { get; }
 
     /// <summary>Connects to the FCM MCS endpoint and begins receiving notifications. On failure,
     /// <c>ErrorOccurred</c> is raised and the exception is rethrown. Instances are single-connection:
