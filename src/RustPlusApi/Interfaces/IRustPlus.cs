@@ -13,7 +13,7 @@ public interface IRustPlus : IRustPlusSocket
     /// changes state. The Rust+ <c>EntityChanged</c> broadcast omits the entity type, so a switch and
     /// an alarm are indistinguishable here; query the entity explicitly (<c>GetSmartSwitchInfoAsync</c>
     /// or <c>GetAlarmInfoAsync</c>) to learn its actual type.</summary>
-    event EventHandler<SmartSwitchEventArg>? OnSmartDeviceTriggered;
+    event EventHandler<SmartDeviceEventArg>? OnSmartDeviceTriggered;
 
     /// <summary>Raised when a subscribed storage monitor reports a change
     /// (an <c>EntityChanged</c> broadcast whose payload carries item capacity).</summary>
@@ -40,7 +40,7 @@ public interface IRustPlus : IRustPlusSocket
     /// <summary>Returns the current state of a smart alarm entity.</summary>
     /// <param name="entityId">Entity ID of the alarm.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<AlarmInfo?>> GetAlarmInfoAsync(ulong entityId, CancellationToken cancellationToken = default);
+    Task<Response<SmartDeviceInfo?>> GetAlarmInfoAsync(ulong entityId, CancellationToken cancellationToken = default);
 
     /// <summary>Returns the full clan snapshot for the authenticated player's clan.</summary>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
@@ -99,7 +99,7 @@ public interface IRustPlus : IRustPlusSocket
     /// <summary>Returns the current state of a smart switch entity.</summary>
     /// <param name="entityId">Entity ID of the smart switch.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<SmartSwitchInfo?>> GetSmartSwitchInfoAsync(ulong entityId,
+    Task<Response<SmartDeviceInfo?>> GetSmartSwitchInfoAsync(ulong entityId,
         CancellationToken cancellationToken = default);
 
     /// <summary>Returns the current contents and protection state of a storage monitor.</summary>
@@ -134,7 +134,7 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="smartSwitchId">Entity ID of the smart switch.</param>
     /// <param name="smartSwitchValue"><see langword="true"/> to turn on, <see langword="false"/> to turn off.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<SmartSwitchInfo?>> SetSmartSwitchValueAsync(ulong smartSwitchId,
+    Task<Response<SmartDeviceInfo?>> SetSmartSwitchValueAsync(ulong smartSwitchId,
         bool smartSwitchValue,
         CancellationToken cancellationToken = default);
 
@@ -154,7 +154,7 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="timeoutMilliseconds">Duration to hold the initial state before reverting, in milliseconds.</param>
     /// <param name="value">Initial state to pulse the switch to.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<SmartSwitchInfo?>> StrobeSmartSwitchAsync(ulong entityId,
+    Task<Response<SmartDeviceInfo?>> StrobeSmartSwitchAsync(ulong entityId,
         int timeoutMilliseconds = 1000,
         bool value = true,
         CancellationToken cancellationToken = default);
@@ -162,6 +162,6 @@ public interface IRustPlus : IRustPlusSocket
     /// <summary>Toggles a smart switch — turns it on if off, or off if on.</summary>
     /// <param name="entityId">Entity ID of the smart switch.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
-    Task<Response<SmartSwitchInfo?>> ToggleSmartSwitchAsync(ulong entityId,
+    Task<Response<SmartDeviceInfo?>> ToggleSmartSwitchAsync(ulong entityId,
         CancellationToken cancellationToken = default);
 }

@@ -81,12 +81,12 @@ else
 
 | Method | Returns | Notes |
 | --- | --- | --- |
-| `GetSmartSwitchInfoAsync(entityId)` | `Response<SmartSwitchInfo?>` | Current on/off state. |
-| `GetAlarmInfoAsync(entityId)` | `Response<AlarmInfo?>` | Current state (protocol-level identical to smart switch). |
+| `GetSmartSwitchInfoAsync(entityId)` | `Response<SmartDeviceInfo?>` | Current on/off state. |
+| `GetAlarmInfoAsync(entityId)` | `Response<SmartDeviceInfo?>` | Current state (protocol-level identical to smart switch). |
 | `GetStorageMonitorInfoAsync(entityId)` | `Response<StorageMonitorInfo?>` | Item list and protection state. |
-| `SetSmartSwitchValueAsync(entityId, value)` | `Response<SmartSwitchInfo?>` | `true` = on, `false` = off. Reply is the EntityChanged broadcast. |
-| `ToggleSmartSwitchAsync(entityId)` | `Response<SmartSwitchInfo?>` | Reads current state then flips it. |
-| `StrobeSmartSwitchAsync(entityId, timeoutMilliseconds, value)` | `Response<SmartSwitchInfo?>` | Pulses to `value`, waits `timeoutMilliseconds`, then reverts. Default: 1 s on. |
+| `SetSmartSwitchValueAsync(entityId, value)` | `Response<SmartDeviceInfo?>` | `true` = on, `false` = off. Reply is the EntityChanged broadcast. |
+| `ToggleSmartSwitchAsync(entityId)` | `Response<SmartDeviceInfo?>` | Reads current state then flips it. |
+| `StrobeSmartSwitchAsync(entityId, timeoutMilliseconds, value)` | `Response<SmartDeviceInfo?>` | Pulses to `value`, waits `timeoutMilliseconds`, then reverts. Default: 1 s on. |
 | `CheckSubscriptionAsync(alarmId)` | `Response<SubscriptionInfo?>` | Whether you are subscribed to a smart alarm. |
 | `SetSubscriptionAsync(entityId, doSubscribe)` | `Response` | Subscribe (`true`) or unsubscribe (`false`) from push notifications. |
 
@@ -150,7 +150,7 @@ The complete set of public events across `RustPlusSocket` and `RustPlus`:
 | `Disconnecting` | `EventArgs` | `DisconnectAsync` started the close handshake. |
 | `Disconnected` | `EventArgs` | The WebSocket close completed. |
 | `ErrorOccurred` | `Exception` | A transport or receive error occurred. Fires from Connecting or Connected state. |
-| `OnSmartDeviceTriggered` | `SmartSwitchEventArg` | A subscribed binary-state device changed state. The broadcast omits the entity type, so a smart switch and a smart alarm are indistinguishable here — query the entity to learn its type. |
+| `OnSmartDeviceTriggered` | `SmartDeviceEventArg` | A subscribed binary-state device changed state. The broadcast omits the entity type, so a smart switch and a smart alarm are indistinguishable here — query the entity to learn its type. |
 | `OnStorageMonitorTriggered` | `StorageMonitorEventArg` | A subscribed storage monitor reported a change. |
 | `OnTeamChatReceived` | `TeamMessageEventArg` | A team chat message arrived. |
 | `OnClanChatReceived` | `ClanMessageEventArg` | A clan chat message arrived. |
