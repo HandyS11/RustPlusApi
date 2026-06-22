@@ -22,10 +22,13 @@ namespace RustPlusApi.Fcm;
 /// Represents a RustPlus FCM listener client for handling FCM connections and notifications.
 /// </summary>
 /// <param name="credentials">The <see cref="Credentials"/> used for authentication.</param>
-/// <param name="persistentIds">Already-processed message IDs, used for de-duplication. Every data
-/// message is checked against and appended to this collection, so for a long-lived listener prefer
-/// a set-like implementation (e.g. <see cref="HashSet{T}"/>) — with a <see cref="List{T}"/> the
-/// duplicate check is a linear scan that degrades as the collection grows unboundedly.</param>
+/// <param name="persistentIds">Already-processed message ids, used for de-duplication, and the
+/// collection the socket harvests new ids into — pass a mutable, caller-owned set (prefer a
+/// <see cref="HashSet{T}"/>; a <see cref="List{T}"/> makes the duplicate check an O(n) scan). When
+/// <see langword="null"/>, de-duplication is disabled. The set is NOT cleared on login, so seeded
+/// ids survive reconnect. Read the current ids back via <see cref="PersistentIds"/> (snapshot) or
+/// subscribe to <see cref="PersistentIdReceived"/> (incremental) to persist them; ids have a
+/// server-side lifespan, so pruning your stored copy is your responsibility.</param>
 /// <param name="options">Tuning options (heartbeat interval, inactivity timeout); defaults are used when <see langword="null"/>.</param>
 /// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
 /// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
