@@ -13,7 +13,7 @@
     <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
     <PackageVersion Include="protobuf-net" Version="3.2.56" />
     <PackageVersion Include="protobuf-net.BuildTools" Version="3.2.52" />
-    <PackageVersion Include="System.Text.Json" Version="10.0.8" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.9" />
     <!-- netstandard2.0: Channels is in-box on net10.0; ns2.0 needs the package. -->
     <PackageVersion Include="System.Threading.Channels" Version="10.0.0" />
     <!-- ImageSharp 2.1.x is the last line supporting netstandard2.0 (3.x requires net6+). -->
