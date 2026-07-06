@@ -5,8 +5,8 @@ using Xunit;
 namespace RustPlusApi.UnitTests;
 
 /// <summary>Locks the marker routing in <see cref="AppMapMarkerToModel.ToMapMarkers"/>:
-/// each type lands in the right dictionary, the no-op arms are skipped, and an unknown
-/// type throws.</summary>
+/// each type lands in the right dictionary and unrecognized types fall back to
+/// <c>UnknownMarkers</c> instead of throwing.</summary>
 public class MapMarkerDispatchTests
 {
     private static AppMapMarkers With(params (ulong id, AppMarkerType type)[] markers)
@@ -37,7 +37,10 @@ public class MapMarkerDispatchTests
             (4, AppMarkerType.Ch47),
             (5, AppMarkerType.CargoShip),
             (6, AppMarkerType.PatrolHelicopter),
-            (7, AppMarkerType.TravellingVendor)).ToMapMarkers();
+            (7, AppMarkerType.TravellingVendor),
+            (8, AppMarkerType.Explosion),
+            (9, AppMarkerType.Crate),
+            (10, AppMarkerType.GenericRadius)).ToMapMarkers();
 
         Assert.True(result.UnknownMarkers.ContainsKey(1));
         Assert.True(result.PlayerMarkers.ContainsKey(2));
@@ -46,25 +49,17 @@ public class MapMarkerDispatchTests
         Assert.True(result.CargoShipMarkers.ContainsKey(5));
         Assert.True(result.PatrolHelicopterMarkers.ContainsKey(6));
         Assert.True(result.TravellingVendorMarkers.ContainsKey(7));
-    }
-
-    [Theory]
-    [InlineData(AppMarkerType.Explosion)]
-    [InlineData(AppMarkerType.Crate)]
-    [InlineData(AppMarkerType.GenericRadius)]
-    public void ToMapMarkers_IgnoresNoOpMarkerTypes(AppMarkerType type)
-    {
-        var result = With((1, type)).ToMapMarkers();
-
-        Assert.Empty(result.UnknownMarkers);
-        Assert.Empty(result.PlayerMarkers);
-        Assert.Empty(result.VendingMachineMarkers);
+        Assert.True(result.ExplosionMarkers.ContainsKey(8));
+        Assert.True(result.CrateMarkers.ContainsKey(9));
+        Assert.True(result.GenericRadiusMarkers.ContainsKey(10));
     }
 
     [Fact]
-    public void ToMapMarkers_UnknownType_Throws()
+    public void ToMapMarkers_UnrecognizedType_FallsBackToUnknown()
     {
-        var markers = With((1, (AppMarkerType)999));
-        Assert.Throws<ArgumentException>(markers.ToMapMarkers);
+        var result = With((1, (AppMarkerType)999)).ToMapMarkers();
+
+        var marker = Assert.Single(result.UnknownMarkers).Value;
+        Assert.Equal(1u, marker.Id);
     }
 }
