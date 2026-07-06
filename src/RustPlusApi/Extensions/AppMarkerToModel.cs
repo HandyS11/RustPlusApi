@@ -19,6 +19,7 @@ public static class AppMarkerToModel
             Id = marker.Id,
             X = marker.X,
             Y = marker.Y,
+            RawType = (int)marker.Type,
             Name = marker.ShouldSerializeName() ? marker.Name : null,
             SteamId = marker.ShouldSerializeSteamId() ? marker.SteamId : null,
             Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null,

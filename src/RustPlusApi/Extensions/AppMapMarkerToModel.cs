@@ -46,6 +46,7 @@ public static class AppMapMarkerToModel
                 case AppMarkerType.TravellingVendor:
                     result.TravellingVendorMarkers.Add(marker.Id, marker.ToTravellingVendorMarker());
                     break;
+                // AppMarkerType.Undefined and unrecognized future types intentionally route here.
                 default:
                     result.UnknownMarkers.Add(marker.Id, marker.ToUnknownMarker());
                     break;

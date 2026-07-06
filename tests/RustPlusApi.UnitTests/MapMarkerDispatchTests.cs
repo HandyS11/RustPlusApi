@@ -61,5 +61,6 @@ public class MapMarkerDispatchTests
 
         var marker = Assert.Single(result.UnknownMarkers).Value;
         Assert.Equal(1u, marker.Id);
+        Assert.Equal(999, marker.RawType);
     }
 }

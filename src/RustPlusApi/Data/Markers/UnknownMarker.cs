@@ -22,6 +22,10 @@ public sealed record UnknownMarker : Marker
     /// <summary>Radius in world units, or <see langword="null"/> when omitted.</summary>
     public float? Radius { get; init; }
 
+    /// <summary>Numeric marker type as sent by the server — a value this library version does not
+    /// recognize (or <c>Undefined</c> = 0), preserved so consumers can distinguish and log new types.</summary>
+    public int? RawType { get; init; }
+
     /// <summary>Heading in degrees (0–360) as sent by the server, or <see langword="null"/> when omitted.</summary>
     public float? Rotation { get; init; }
 

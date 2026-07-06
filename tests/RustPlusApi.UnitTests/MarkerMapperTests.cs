@@ -27,6 +27,7 @@ public class MarkerMapperTests
         Assert.Equal(7u, m.Id);
         Assert.Equal(1.5f, m.X);
         Assert.Equal(2.5f, m.Y);
+        Assert.Equal(0, m.RawType);
     }
 
     [Fact]
