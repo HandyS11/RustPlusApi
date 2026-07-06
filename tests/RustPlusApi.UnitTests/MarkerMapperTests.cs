@@ -98,4 +98,31 @@ public class MarkerMapperTests
         Assert.Equal(1.5f, x);
         Assert.Equal(2.5f, y);
     }
+
+    [Fact]
+    public void ToMarkerColor_MapsComponents()
+    {
+        var color = new Vector4
+        {
+            X = 0.1f, Y = 0.2f, Z = 0.3f, W = 0.4f
+        };
+
+        var m = color.ToMarkerColor();
+
+        Assert.Equal(0.1f, m.R);
+        Assert.Equal(0.2f, m.G);
+        Assert.Equal(0.3f, m.B);
+        Assert.Equal(0.4f, m.A);
+    }
+
+    [Fact]
+    public void ToMarkerColor_UnsetComponents_AreNull()
+    {
+        var m = new Vector4().ToMarkerColor();
+
+        Assert.Null(m.R);
+        Assert.Null(m.G);
+        Assert.Null(m.B);
+        Assert.Null(m.A);
+    }
 }

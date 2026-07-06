@@ -114,4 +114,17 @@ public static class AppMarkerToModel
             Id = marker.Id, X = marker.X, Y = marker.Y
         };
     }
+
+    /// <summary>Maps a protobuf <see cref="Vector4"/> marker color to a <see cref="MarkerColor"/>.</summary>
+    /// <param name="color">The protobuf color vector (RGBA components).</param>
+    public static MarkerColor ToMarkerColor(this Vector4 color)
+    {
+        return new MarkerColor
+        {
+            R = color.ShouldSerializeX() ? color.X : null,
+            G = color.ShouldSerializeY() ? color.Y : null,
+            B = color.ShouldSerializeZ() ? color.Z : null,
+            A = color.ShouldSerializeW() ? color.W : null
+        };
+    }
 }
