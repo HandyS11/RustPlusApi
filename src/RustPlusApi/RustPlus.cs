@@ -291,6 +291,26 @@ public class RustPlus(
     }
 
     /// <summary>
+    /// Retrieves the state of a binary-state smart device (a smart switch or a smart alarm)
+    /// asynchronously, whichever of the two types the entity actually is. The server replies with the
+    /// entity's actual type and switch/alarm payloads are identical, so this method reads mixed device
+    /// sets without tracking each entity's type.
+    /// </summary>
+    /// <param name="entityId">The ID of the smart device entity.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart device information.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
+    /// entity's <c>EntityChanged</c> broadcasts server-side.</remarks>
+    public async Task<Response<SmartDeviceInfo?>> GetSmartDeviceInfoAsync(ulong entityId,
+        CancellationToken cancellationToken = default)
+    {
+        return await GetEntityInfoAsync<SmartDeviceInfo?>(
+            entityId,
+            r => r.Response.EntityInfo.ToSmartDeviceInfo(),
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Retrieves the information of a smart switch asynchronously.
     /// </summary>
     /// <param name="entityId">The ID of the smart switch entity.</param>

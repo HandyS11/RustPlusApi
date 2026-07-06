@@ -96,6 +96,13 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
     Task<Response<MapMarkers?>> GetMapMarkersAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Returns the state of a binary-state smart device (a smart switch or a smart alarm),
+    /// whichever of the two types the entity actually is.</summary>
+    /// <param name="entityId">Entity ID of the smart device.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    Task<Response<SmartDeviceInfo?>> GetSmartDeviceInfoAsync(ulong entityId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Returns the current state of a smart switch entity.</summary>
     /// <param name="entityId">Entity ID of the smart switch.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>

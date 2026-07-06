@@ -333,4 +333,51 @@ public class EntityClientTests
         var message = Assert.Single(response.Data!.Messages!);
         Assert.Equal("team chat fixture", message.Message);
     }
+
+    [Fact]
+    public async Task GetSmartDeviceInfoAsync_SwitchTypedReply_Succeeds()
+    {
+        var (server, client) = await ConnectEntityAsync();
+        await using var _ = server;
+        await using var __ = client;
+
+        var response = await client.GetSmartDeviceInfoAsync(1).WaitAsync(Timeout);
+
+        Assert.True(response.IsSuccess);
+        Assert.True(response.Data!.IsActive);
+    }
+
+    [Fact]
+    public async Task GetSmartDeviceInfoAsync_AlarmTypedReply_Succeeds()
+    {
+        await using var server = new MockRustPlusServer(req =>
+        {
+            var resp = new AppResponse
+            {
+                Seq = req.Seq
+            };
+            if (req.GetEntityInfo is not null)
+            {
+                resp.EntityInfo = MockResponses.SampleAlarm(value: true);
+            }
+            else
+            {
+                resp.Success = new AppSuccess();
+            }
+
+            return new AppMessage
+            {
+                Response = resp
+            };
+        });
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        var response = await client.GetSmartDeviceInfoAsync(1).WaitAsync(Timeout);
+
+        Assert.True(response.IsSuccess);
+        Assert.True(response.Data!.IsActive);
+    }
 }
