@@ -58,6 +58,7 @@ public class MarkerMapperTests
         var m = marker.ToVendingMachineMarker();
 
         Assert.True(m.IsOutOfStock);
+        Assert.Equal("M", m.Name);
         var item = Assert.Single(m.VendingMachineItems!);
         Assert.Equal(1, item.Id);
         Assert.Equal(1.25f, item.PriceMultiplier);
@@ -244,6 +245,10 @@ public class MarkerMapperTests
         {
             X = 1f
         };
+        marker.Color2 = new Vector4
+        {
+            W = 0.5f
+        };
         marker.SellOrders.Add(new SellOrder
         {
             ItemId = 1, Quantity = 1, CostPerItem = 1, AmountInStock = 1
@@ -258,7 +263,7 @@ public class MarkerMapperTests
         Assert.Equal(10f, m.Radius);
         Assert.Equal(0.5f, m.Alpha);
         Assert.Equal(1f, m.Color1!.R);
-        Assert.Null(m.Color2);
+        Assert.Equal(0.5f, m.Color2!.A);
         Assert.Single(m.VendingMachineItems!);
     }
 
