@@ -29,8 +29,9 @@ public static class AppMarkerToModel
             Id = marker.Id,
             X = marker.X,
             Y = marker.Y,
-            Name = marker.Name,
-            SteamId = marker.SteamId
+            Name = marker.ShouldSerializeName() ? marker.Name : null,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null,
+            SteamId = marker.ShouldSerializeSteamId() ? marker.SteamId : null
         };
     }
 
@@ -43,8 +44,8 @@ public static class AppMarkerToModel
             Id = marker.Id,
             X = marker.X,
             Y = marker.Y,
-            Name = marker.Name,
-            IsOutOfStock = marker.OutOfStock,
+            Name = marker.ShouldSerializeName() ? marker.Name : null,
+            IsOutOfStock = marker.ShouldSerializeOutOfStock() ? marker.OutOfStock : null,
             VendingMachineItems = marker.SellOrders.ToVendingMachineItems()
         };
     }
@@ -81,7 +82,10 @@ public static class AppMarkerToModel
     {
         return new Ch47Marker
         {
-            Id = marker.Id, X = marker.X, Y = marker.Y
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null
         };
     }
 
@@ -91,7 +95,10 @@ public static class AppMarkerToModel
     {
         return new CargoShipMarker
         {
-            Id = marker.Id, X = marker.X, Y = marker.Y
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null
         };
     }
 
@@ -101,7 +108,10 @@ public static class AppMarkerToModel
     {
         return new PatrolHelicopterMarker
         {
-            Id = marker.Id, X = marker.X, Y = marker.Y
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null
         };
     }
 
@@ -111,7 +121,10 @@ public static class AppMarkerToModel
     {
         return new TravellingVendorMarker
         {
-            Id = marker.Id, X = marker.X, Y = marker.Y
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null
         };
     }
 

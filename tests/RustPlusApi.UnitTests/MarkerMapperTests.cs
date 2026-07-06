@@ -125,4 +125,61 @@ public class MarkerMapperTests
         Assert.Null(m.B);
         Assert.Null(m.A);
     }
+
+    private static float? MapRotation(AppMarker marker, AppMarkerType type) => type switch
+    {
+        AppMarkerType.Player => marker.ToPlayerMarker().Rotation,
+        AppMarkerType.Ch47 => marker.ToCh47Marker().Rotation,
+        AppMarkerType.CargoShip => marker.ToCargoShipMarker().Rotation,
+        AppMarkerType.PatrolHelicopter => marker.ToPatrolHelicopterMarker().Rotation,
+        _ => marker.ToTravellingVendorMarker().Rotation,
+    };
+
+    [Theory]
+    [InlineData(AppMarkerType.Player)]
+    [InlineData(AppMarkerType.Ch47)]
+    [InlineData(AppMarkerType.CargoShip)]
+    [InlineData(AppMarkerType.PatrolHelicopter)]
+    [InlineData(AppMarkerType.TravellingVendor)]
+    public void MovingMarkers_RotationPresent_MapsValue(AppMarkerType type)
+    {
+        var marker = Marker(type);
+        marker.Rotation = 123.5f;
+
+        Assert.Equal(123.5f, MapRotation(marker, type));
+    }
+
+    [Theory]
+    [InlineData(AppMarkerType.Player)]
+    [InlineData(AppMarkerType.Ch47)]
+    [InlineData(AppMarkerType.CargoShip)]
+    [InlineData(AppMarkerType.PatrolHelicopter)]
+    [InlineData(AppMarkerType.TravellingVendor)]
+    public void MovingMarkers_RotationAbsent_MapsNull(AppMarkerType type)
+        => Assert.Null(MapRotation(Marker(type), type));
+
+    [Fact]
+    public void ToPlayerMarker_UnsetOptionals_AreNull()
+    {
+        var m = new AppMarker
+        {
+            Id = 1, X = 0, Y = 0, Type = AppMarkerType.Player
+        }.ToPlayerMarker();
+
+        Assert.Null(m.SteamId);
+        Assert.Null(m.Name);
+        Assert.Null(m.Rotation);
+    }
+
+    [Fact]
+    public void ToVendingMachineMarker_UnsetOptionals_AreNull()
+    {
+        var m = new AppMarker
+        {
+            Id = 1, X = 0, Y = 0, Type = AppMarkerType.VendingMachine
+        }.ToVendingMachineMarker();
+
+        Assert.Null(m.Name);
+        Assert.Null(m.IsOutOfStock);
+    }
 }
