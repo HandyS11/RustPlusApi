@@ -76,4 +76,22 @@ public static class AppEntityInfoToModel
     {
         return items.Select(ToStorageMonitorItemInfo);
     }
+
+    /// <summary>Maps an <see cref="AppEntityInfo"/> of a binary-state smart device (a smart switch or a
+    /// smart alarm) to a <see cref="SmartDeviceInfo"/>. The server replies with the entity's actual type
+    /// and switch/alarm payloads are physically identical, so both types are accepted.</summary>
+    /// <param name="entity">The protobuf entity info.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the entity type is neither <c>Switch</c> nor <c>Alarm</c>.</exception>
+    public static SmartDeviceInfo ToSmartDeviceInfo(this AppEntityInfo entity)
+    {
+        if (entity.Type is not (AppEntityType.Switch or AppEntityType.Alarm))
+        {
+            throw new InvalidOperationException("Entity type is not a binary-state smart device.");
+        }
+
+        return new SmartDeviceInfo
+        {
+            IsActive = entity.Payload.Value
+        };
+    }
 }

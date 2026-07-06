@@ -76,4 +76,22 @@ public class EntityInfoMapperTests
     public void ToStorageMonitorInfo_WrongType_Throws() =>
         Assert.Throws<InvalidOperationException>(() =>
             Entity(AppEntityType.Switch, new AppEntityPayload()).ToStorageMonitorInfo());
+
+    [Theory]
+    [InlineData(AppEntityType.Switch)]
+    [InlineData(AppEntityType.Alarm)]
+    public void ToSmartDeviceInfo_AcceptsBinaryStateDevices(AppEntityType type)
+    {
+        var info = Entity(type, new AppEntityPayload
+        {
+            Value = true
+        }).ToSmartDeviceInfo();
+
+        Assert.True(info.IsActive);
+    }
+
+    [Fact]
+    public void ToSmartDeviceInfo_StorageMonitor_Throws() =>
+        Assert.Throws<InvalidOperationException>(() =>
+            Entity(AppEntityType.StorageMonitor, new AppEntityPayload()).ToSmartDeviceInfo());
 }
