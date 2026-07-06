@@ -10,13 +10,24 @@ namespace RustPlusApi.Extensions;
 /// <summary>Mapping extensions from a protobuf <see cref="AppMarker"/> to typed marker model records.</summary>
 public static class AppMarkerToModel
 {
-    /// <summary>Maps a marker to an <see cref="UnknownMarker"/>.</summary>
+    /// <summary>Maps a marker to an <see cref="UnknownMarker"/>, passing through the full raw field surface.</summary>
     /// <param name="marker">The protobuf map marker.</param>
     public static UnknownMarker ToUnknownMarker(this AppMarker marker)
     {
         return new UnknownMarker
         {
-            Id = marker.Id, X = marker.X, Y = marker.Y
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Name = marker.ShouldSerializeName() ? marker.Name : null,
+            SteamId = marker.ShouldSerializeSteamId() ? marker.SteamId : null,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null,
+            Radius = marker.ShouldSerializeRadius() ? marker.Radius : null,
+            Color1 = marker.Color1?.ToMarkerColor(),
+            Color2 = marker.Color2?.ToMarkerColor(),
+            Alpha = marker.ShouldSerializeAlpha() ? marker.Alpha : null,
+            IsOutOfStock = marker.ShouldSerializeOutOfStock() ? marker.OutOfStock : null,
+            VendingMachineItems = marker.SellOrders.ToVendingMachineItems()
         };
     }
 

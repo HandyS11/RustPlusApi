@@ -236,4 +236,52 @@ public class MarkerMapperTests
         Assert.Null(m.Color1);
         Assert.Null(m.Color2);
     }
+
+    [Fact]
+    public void ToUnknownMarker_PassesThroughFullSurface()
+    {
+        var marker = Marker(AppMarkerType.Undefined);
+        marker.Rotation = 90f;
+        marker.Radius = 10f;
+        marker.Alpha = 0.5f;
+        marker.Color1 = new Vector4
+        {
+            X = 1f
+        };
+        marker.SellOrders.Add(new SellOrder
+        {
+            ItemId = 1, Quantity = 1, CostPerItem = 1, AmountInStock = 1
+        });
+
+        var m = marker.ToUnknownMarker();
+
+        Assert.Equal("M", m.Name);
+        Assert.Equal(76561198000000001ul, m.SteamId);
+        Assert.True(m.IsOutOfStock);
+        Assert.Equal(90f, m.Rotation);
+        Assert.Equal(10f, m.Radius);
+        Assert.Equal(0.5f, m.Alpha);
+        Assert.Equal(1f, m.Color1!.R);
+        Assert.Null(m.Color2);
+        Assert.Single(m.VendingMachineItems!);
+    }
+
+    [Fact]
+    public void ToUnknownMarker_UnsetOptionals_AreNull()
+    {
+        var m = new AppMarker
+        {
+            Id = 1, X = 0, Y = 0, Type = AppMarkerType.Undefined
+        }.ToUnknownMarker();
+
+        Assert.Null(m.Name);
+        Assert.Null(m.SteamId);
+        Assert.Null(m.IsOutOfStock);
+        Assert.Null(m.Rotation);
+        Assert.Null(m.Radius);
+        Assert.Null(m.Alpha);
+        Assert.Null(m.Color1);
+        Assert.Null(m.Color2);
+        Assert.Empty(m.VendingMachineItems!);
+    }
 }
