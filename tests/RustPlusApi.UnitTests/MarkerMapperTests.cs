@@ -128,7 +128,6 @@ public class MarkerMapperTests
 
     private static float? MapRotation(AppMarker marker, AppMarkerType type) => type switch
     {
-        AppMarkerType.Player => marker.ToPlayerMarker().Rotation,
         AppMarkerType.Ch47 => marker.ToCh47Marker().Rotation,
         AppMarkerType.CargoShip => marker.ToCargoShipMarker().Rotation,
         AppMarkerType.PatrolHelicopter => marker.ToPatrolHelicopterMarker().Rotation,
@@ -136,7 +135,6 @@ public class MarkerMapperTests
     };
 
     [Theory]
-    [InlineData(AppMarkerType.Player)]
     [InlineData(AppMarkerType.Ch47)]
     [InlineData(AppMarkerType.CargoShip)]
     [InlineData(AppMarkerType.PatrolHelicopter)]
@@ -150,7 +148,6 @@ public class MarkerMapperTests
     }
 
     [Theory]
-    [InlineData(AppMarkerType.Player)]
     [InlineData(AppMarkerType.Ch47)]
     [InlineData(AppMarkerType.CargoShip)]
     [InlineData(AppMarkerType.PatrolHelicopter)]
@@ -168,7 +165,6 @@ public class MarkerMapperTests
 
         Assert.Null(m.SteamId);
         Assert.Null(m.Name);
-        Assert.Null(m.Rotation);
     }
 
     [Fact]

@@ -41,7 +41,6 @@ public static class AppMarkerToModel
             X = marker.X,
             Y = marker.Y,
             Name = marker.ShouldSerializeName() ? marker.Name : null,
-            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null,
             SteamId = marker.ShouldSerializeSteamId() ? marker.SteamId : null
         };
     }
