@@ -75,7 +75,7 @@ else
 | `GetInfoAsync()` | `Response<ServerInfo?>` | Name, player counts, map size, wipe time, logo URL. |
 | `GetTimeAsync()` | `Response<TimeInfo?>` | In-game time, sunrise/sunset, day-length parameters. |
 | `GetMapAsync()` | `Response<ServerMap?>` | Map image bytes and monument list. Large response — cache it. |
-| `GetMapMarkersAsync()` | `Response<MapMarkers?>` | Players, cargo ship, patrol heli, vending machines, CH-47, events. |
+| `GetMapMarkersAsync()` | `Response<MapMarkers?>` | Players, cargo ship, patrol heli, vending machines, CH-47, events. Unrecognized marker types land in UnknownMarkers instead of failing. |
 
 ### Entities (smart devices)
 
