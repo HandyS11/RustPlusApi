@@ -182,4 +182,58 @@ public class MarkerMapperTests
         Assert.Null(m.Name);
         Assert.Null(m.IsOutOfStock);
     }
+
+    [Fact]
+    public void ToExplosionMarker_MapsIdAndCoords()
+    {
+        var m = Marker(AppMarkerType.Explosion).ToExplosionMarker();
+
+        Assert.Equal(7u, m.Id);
+        Assert.Equal(1.5f, m.X);
+        Assert.Equal(2.5f, m.Y);
+    }
+
+    [Fact]
+    public void ToCrateMarker_MapsIdAndCoords()
+    {
+        var m = Marker(AppMarkerType.Crate).ToCrateMarker();
+
+        Assert.Equal(7u, m.Id);
+        Assert.Equal(1.5f, m.X);
+        Assert.Equal(2.5f, m.Y);
+    }
+
+    [Fact]
+    public void ToGenericRadiusMarker_MapsStyling()
+    {
+        var marker = Marker(AppMarkerType.GenericRadius);
+        marker.Radius = 25f;
+        marker.Alpha = 0.75f;
+        marker.Color1 = new Vector4
+        {
+            X = 1f, Y = 0.5f, Z = 0.25f, W = 1f
+        };
+        marker.Color2 = new Vector4
+        {
+            X = 0f, Y = 0f, Z = 0f, W = 0.5f
+        };
+
+        var m = marker.ToGenericRadiusMarker();
+
+        Assert.Equal(25f, m.Radius);
+        Assert.Equal(0.75f, m.Alpha);
+        Assert.Equal(1f, m.Color1!.R);
+        Assert.Equal(0.5f, m.Color2!.A);
+    }
+
+    [Fact]
+    public void ToGenericRadiusMarker_UnsetStyling_IsNull()
+    {
+        var m = Marker(AppMarkerType.GenericRadius).ToGenericRadiusMarker();
+
+        Assert.Null(m.Radius);
+        Assert.Null(m.Alpha);
+        Assert.Null(m.Color1);
+        Assert.Null(m.Color2);
+    }
 }

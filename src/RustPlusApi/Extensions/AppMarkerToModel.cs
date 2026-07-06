@@ -128,6 +128,42 @@ public static class AppMarkerToModel
         };
     }
 
+    /// <summary>Maps a marker to an <see cref="ExplosionMarker"/>.</summary>
+    /// <param name="marker">The protobuf map marker.</param>
+    public static ExplosionMarker ToExplosionMarker(this AppMarker marker)
+    {
+        return new ExplosionMarker
+        {
+            Id = marker.Id, X = marker.X, Y = marker.Y
+        };
+    }
+
+    /// <summary>Maps a marker to a <see cref="CrateMarker"/>.</summary>
+    /// <param name="marker">The protobuf map marker.</param>
+    public static CrateMarker ToCrateMarker(this AppMarker marker)
+    {
+        return new CrateMarker
+        {
+            Id = marker.Id, X = marker.X, Y = marker.Y
+        };
+    }
+
+    /// <summary>Maps a marker to a <see cref="GenericRadiusMarker"/>, including its styling fields.</summary>
+    /// <param name="marker">The protobuf map marker.</param>
+    public static GenericRadiusMarker ToGenericRadiusMarker(this AppMarker marker)
+    {
+        return new GenericRadiusMarker
+        {
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Radius = marker.ShouldSerializeRadius() ? marker.Radius : null,
+            Color1 = marker.Color1?.ToMarkerColor(),
+            Color2 = marker.Color2?.ToMarkerColor(),
+            Alpha = marker.ShouldSerializeAlpha() ? marker.Alpha : null
+        };
+    }
+
     /// <summary>Maps a protobuf <see cref="Vector4"/> marker color to a <see cref="MarkerColor"/>.</summary>
     /// <param name="color">The protobuf color vector (RGBA components).</param>
     public static MarkerColor ToMarkerColor(this Vector4 color)
