@@ -306,6 +306,7 @@ public class RustPlusParseNotificationTests
 
         Assert.NotNull(capture.Storage);
         Assert.Null(capture.Smart);
+        Assert.NotNull(capture.Raw);
     }
 
     [Fact]
@@ -318,6 +319,7 @@ public class RustPlusParseNotificationTests
 
         Assert.NotNull(capture.Storage);
         Assert.Null(capture.Smart);
+        Assert.NotNull(capture.Raw);
     }
 
     [Fact]
@@ -366,9 +368,8 @@ public class RustPlusParseNotificationTests
 
         Assert.NotNull(capture.Storage);
         Assert.Null(capture.Smart);
+        Assert.NotNull(capture.Raw);
     }
-
-    // ── routing matrix: storage vs smart device classification ─────────────
 
     private sealed record RoutingCapture
     {

@@ -417,6 +417,7 @@ public class EntityClientTests
         Assert.False(response.IsSuccess);
         Assert.Null(response.Data);
         Assert.Equal("Entity type is not a SmartSwitch.", response.Error!.Message);
+        Assert.Equal(RustPlusErrorCode.ClientMappingFailed, response.Error.Code);
     }
 
     [Fact]

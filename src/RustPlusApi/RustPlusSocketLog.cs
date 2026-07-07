@@ -49,4 +49,8 @@ internal static partial class RustPlusSocketLog
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Broadcast-reply matcher threw; treating as no match.")]
     public static partial void LogMatcherThrew(this ILogger logger, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "A success selector failed to map a successful server reply; returning a failed response.")]
+    public static partial void LogSelectorFailed(this ILogger logger, Exception exception);
 }

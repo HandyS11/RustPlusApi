@@ -19,7 +19,8 @@ public interface IRustPlus : IRustPlusSocket
     /// <summary>Occurs when an <c>EntityChanged</c> broadcast is classified as a storage monitor: the payload
     /// carries items, a capacity, or tool-cupboard protection. Storage broadcasts with
     /// <c>value == true</c> and no items carry no contents snapshot and are NOT raised here (they
-    /// remain observable via <see cref="OnEntityChanged"/>).</summary>
+    /// remain observable via <see cref="OnEntityChanged"/>). Tool-cupboard broadcasts are sometimes
+    /// partial — <c>capacity</c> may be absent and only the protection flag identifies them.</summary>
     event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 
     /// <summary>Raised for every <c>EntityChanged</c> broadcast, before any device-type heuristic,
@@ -111,6 +112,9 @@ public interface IRustPlus : IRustPlusSocket
     /// whichever of the two types the entity actually is.</summary>
     /// <param name="entityId">Entity ID of the smart device.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
+    /// entity's <c>EntityChanged</c> broadcasts server-side — even when the read itself fails on a
+    /// type mismatch.</remarks>
     Task<Response<SmartDeviceInfo?>> GetSmartDeviceInfoAsync(ulong entityId,
         CancellationToken cancellationToken = default);
 

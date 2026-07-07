@@ -42,7 +42,8 @@ public class RustPlus(
     /// Occurs when an <c>EntityChanged</c> broadcast is classified as a storage monitor: the payload
     /// carries items, a capacity, or tool-cupboard protection. Storage broadcasts with
     /// <c>value == true</c> and no items carry no contents snapshot and are NOT raised here (they
-    /// remain observable via <see cref="OnEntityChanged"/>).
+    /// remain observable via <see cref="OnEntityChanged"/>). Tool-cupboard broadcasts are sometimes
+    /// partial — <c>capacity</c> may be absent and only the protection flag identifies them.
     /// </summary>
     public event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 
@@ -313,7 +314,8 @@ public class RustPlus(
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart device information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
     /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
-    /// entity's <c>EntityChanged</c> broadcasts server-side.</remarks>
+    /// entity's <c>EntityChanged</c> broadcasts server-side — even when the read itself fails on a
+    /// type mismatch.</remarks>
     public async Task<Response<SmartDeviceInfo?>> GetSmartDeviceInfoAsync(ulong entityId,
         CancellationToken cancellationToken = default)
     {
@@ -666,7 +668,15 @@ public class RustPlus(
             // (e.g. reading an alarm through GetSmartSwitchInfoAsync — the server answers with the
             // entity's actual type) becomes a failed Response the consumer can tell apart from a
             // transport error.
-            return ResponseHelper.BuildGenericOutput<T>(false, default!, ex.Message);
+            Logger.LogSelectorFailed(ex);
+            return new Response<T?>
+            {
+                IsSuccess = false,
+                Error = new ErrorMessage
+                {
+                    Message = ex.Message, Code = RustPlusErrorCode.ClientMappingFailed
+                }
+            };
         }
     }
 
@@ -696,6 +706,8 @@ public class RustPlus(
     /// <param name="selector">The function to select the entity information from the response.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the entity information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
+    /// entity's <c>EntityChanged</c> broadcasts server-side — even when the mapping of the reply fails.</remarks>
     protected async Task<Response<T?>> GetEntityInfoAsync<T>(ulong entityId,
         Func<AppMessage, T> selector,
         CancellationToken cancellationToken = default)
