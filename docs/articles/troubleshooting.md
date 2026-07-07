@@ -126,17 +126,45 @@ arriving.
 
 ```csharp
 // Register the entity with the server — broadcasts start after this call.
-await rustPlus.GetSmartSwitchInfoAsync(entityId);
+// GetSmartDeviceInfoAsync works for both smart switches and smart alarms.
+await rustPlus.GetSmartDeviceInfoAsync(entityId);
 
 rustPlus.OnSmartDeviceTriggered += (_, e) =>
     Console.WriteLine($"Device {e.Id}: {(e.IsActive ? "on" : "off")}");
 ```
+
+The registration happens server-side even when the read itself fails (e.g. a strict
+`GetSmartSwitchInfoAsync` on an alarm) — so an entity can broadcast while its reads fail. The
+broadcast carries no entity type, so the convenience events route by payload shape; when that
+heuristic can't work for you, subscribe to `OnEntityChanged` and route on the entity ID yourself.
 
 > [!NOTE]
 > Camera frames (`OnCameraRaysReceived`) work differently — they start automatically after
 > `SubscribeToCameraAsync`, no extra call needed.
 
 See [RustPlus Client — Events](rustplus-client.md#events) for the full broadcast list.
+
+## Reading a device fails with `ClientMappingFailed`
+
+**Symptom:** `GetSmartSwitchInfoAsync` (or `GetAlarmInfoAsync`) returns `IsSuccess = false` with
+`RustPlusErrorCode.ClientMappingFailed` for an entity that definitely exists — while its
+broadcasts keep arriving.
+
+**Cause:** The server answers `getEntityInfo` with the entity's *actual* type. Reading an alarm
+through the strict switch method (or vice versa) is a client-side type mismatch: the server reply
+was successful, the strict mapper refused it. Before 2.0.0-beta.4 this surfaced as a thrown
+`InvalidOperationException`, easily mistaken for "device unreachable".
+
+**Fix:** For mixed or unknown device sets, use the type-agnostic read — switch and alarm payloads
+are physically identical:
+
+```csharp
+var device = await rustPlus.GetSmartDeviceInfoAsync(entityId);
+if (device.IsSuccess)
+    Console.WriteLine($"Device {entityId} is {(device.Data!.IsActive ? "on" : "off")}");
+```
+
+Keep the strict methods when you *want* the type check (e.g. to detect a mis-paired entity).
 
 ## Camera subscribe fails with `no_player`
 

@@ -66,6 +66,13 @@ else
     Console.WriteLine(time.Error!.Message);
 ```
 
+`Error.Code` is a machine-readable `RustPlusErrorCode` parsed from the raw server identifier, so you
+can branch on failure type without string comparisons. A successful server reply never surfaces as a
+thrown exception: when the server answered fine but the library could not map the payload (e.g.
+reading an alarm through the strict `GetSmartSwitchInfoAsync` — the server replies with the entity's
+*actual* type), the call returns a failed `Response` with `RustPlusErrorCode.ClientMappingFailed`
+and the mapper's message.
+
 ## Method reference
 
 ### Server & world
@@ -75,14 +82,15 @@ else
 | `GetInfoAsync()` | `Response<ServerInfo?>` | Name, player counts, map size, wipe time, logo URL. |
 | `GetTimeAsync()` | `Response<TimeInfo?>` | In-game time, sunrise/sunset, day-length parameters. |
 | `GetMapAsync()` | `Response<ServerMap?>` | Map image bytes and monument list. Large response — cache it. |
-| `GetMapMarkersAsync()` | `Response<MapMarkers?>` | Players, cargo ship, patrol heli, vending machines, CH-47, events. Unrecognized marker types land in UnknownMarkers instead of failing. |
+| `GetMapMarkersAsync()` | `Response<MapMarkers?>` | Typed marker dictionaries: players, cargo ship, patrol heli, CH-47, travelling vendor, vending machines, explosions, crates, generic-radius overlays. Event movers carry `Rotation` (degrees, `null` when omitted); unrecognized types land in `UnknownMarkers` (full raw surface incl. `RawType`) instead of failing. |
 
 ### Entities (smart devices)
 
 | Method | Returns | Notes |
 | --- | --- | --- |
-| `GetSmartSwitchInfoAsync(entityId)` | `Response<SmartDeviceInfo?>` | Current on/off state. |
-| `GetAlarmInfoAsync(entityId)` | `Response<SmartDeviceInfo?>` | Current state (protocol-level identical to smart switch). |
+| `GetSmartDeviceInfoAsync(entityId)` | `Response<SmartDeviceInfo?>` | Type-agnostic read for any binary-state device (smart switch **or** smart alarm) — use this for mixed device sets. |
+| `GetSmartSwitchInfoAsync(entityId)` | `Response<SmartDeviceInfo?>` | Current on/off state. Strict: fails with `ClientMappingFailed` when the entity is not a switch. |
+| `GetAlarmInfoAsync(entityId)` | `Response<SmartDeviceInfo?>` | Current state (protocol-level identical to smart switch). Strict: fails with `ClientMappingFailed` when the entity is not an alarm. |
 | `GetStorageMonitorInfoAsync(entityId)` | `Response<StorageMonitorInfo?>` | Item list and protection state. |
 | `SetSmartSwitchValueAsync(entityId, value)` | `Response<SmartDeviceInfo?>` | `true` = on, `false` = off. Reply is the EntityChanged broadcast. |
 | `ToggleSmartSwitchAsync(entityId)` | `Response<SmartDeviceInfo?>` | Reads current state then flips it. |
@@ -150,17 +158,20 @@ The complete set of public events across `RustPlusSocket` and `RustPlus`:
 | `Disconnecting` | `EventArgs` | `DisconnectAsync` started the close handshake. |
 | `Disconnected` | `EventArgs` | The WebSocket close completed. |
 | `ErrorOccurred` | `Exception` | A transport or receive error occurred. Fires from Connecting or Connected state. |
-| `OnSmartDeviceTriggered` | `SmartDeviceEventArg` | A subscribed binary-state device changed state. The broadcast omits the entity type, so a smart switch and a smart alarm are indistinguishable here — query the entity to learn its type. |
-| `OnStorageMonitorTriggered` | `StorageMonitorEventArg` | A subscribed storage monitor reported a change. |
+| `OnEntityChanged` | `EntityChangedEventArg` | Every `EntityChanged` broadcast, raw and before any device-type heuristic (`Id`, `Value`, `Capacity`, `HasProtection`, `ProtectionExpiry`, `Items`). The broadcast carries no entity type — route on `Id` when you know your paired entities; this is the reliable channel. |
+| `OnSmartDeviceTriggered` | `SmartDeviceEventArg` | An `EntityChanged` broadcast classified as a binary-state device: no items, no capacity, no protection in the payload. A storage broadcast carrying *only* `value` is indistinguishable from a switch and lands here too. |
+| `OnStorageMonitorTriggered` | `StorageMonitorEventArg` | An `EntityChanged` broadcast classified as a storage monitor: items, capacity or tool-cupboard protection present (TC broadcasts are sometimes partial — capacity may be absent). Item-less `value == true` storage broadcasts carry no contents snapshot and are **not** raised here (observe them via `OnEntityChanged`). |
 | `OnTeamChatReceived` | `TeamMessageEventArg` | A team chat message arrived. |
 | `OnClanChatReceived` | `ClanMessageEventArg` | A clan chat message arrived. |
 | `OnClanChanged` | `ClanChangedEventArg` | The clan snapshot changed (roles, members, MOTD, …). |
 | `OnCameraRaysReceived` | `CameraRaysEventArg` | A camera frame broadcast arrived for the subscribed camera. |
 
 > [!NOTE]
-> To receive `OnSmartDeviceTriggered` or `OnStorageMonitorTriggered` broadcasts for a given
-> entity, you must first make at least one request on that entity (e.g. `GetSmartSwitchInfoAsync`),
-> which registers it with the server. Camera frame events start after `SubscribeToCameraAsync`.
+> To receive `OnEntityChanged`, `OnSmartDeviceTriggered` or `OnStorageMonitorTriggered` broadcasts
+> for a given entity, you must first make at least one request on that entity (e.g.
+> `GetSmartDeviceInfoAsync`), which registers it with the server — the registration happens even
+> when the read itself fails on a type mismatch. Camera frame events start after
+> `SubscribeToCameraAsync`.
 
 ## Disposal
 

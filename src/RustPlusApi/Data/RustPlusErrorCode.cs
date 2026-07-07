@@ -58,4 +58,10 @@ public enum RustPlusErrorCode
     /// on a non-PTZ camera) — the live server acknowledges unsupported camera inputs with
     /// success while silently ignoring them, so this is the only feedback available.</summary>
     NotSupported = 14,
+
+    /// <summary>Client-side: the server replied successfully but this library failed to map the
+    /// payload (e.g. reading an alarm through <c>GetSmartSwitchInfoAsync</c> — the server answers
+    /// with the entity's actual type). <see cref="ErrorMessage.Message"/> carries the mapper's
+    /// exception message.</summary>
+    ClientMappingFailed = 15,
 }

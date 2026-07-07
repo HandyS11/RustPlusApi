@@ -9,15 +9,24 @@ namespace RustPlusApi.Interfaces;
 /// <summary>High-level Rust+ API contract — typed events and all supported server commands.</summary>
 public interface IRustPlus : IRustPlusSocket
 {
-    /// <summary>Raised when a subscribed binary-state smart device (a smart switch or a smart alarm)
-    /// changes state. The Rust+ <c>EntityChanged</c> broadcast omits the entity type, so a switch and
-    /// an alarm are indistinguishable here; query the entity explicitly (<c>GetSmartSwitchInfoAsync</c>
-    /// or <c>GetAlarmInfoAsync</c>) to learn its actual type.</summary>
+    /// <summary>Occurs when an <c>EntityChanged</c> broadcast is classified as a binary-state smart device
+    /// (a smart switch or a smart alarm): the payload carries no container state (no items, no
+    /// capacity, no protection). The broadcast omits the entity type, so a storage broadcast whose
+    /// payload is only <c>value</c> is indistinguishable from a switch and lands here too — route on
+    /// <see cref="OnEntityChanged"/> with your paired entity ids when that matters.</summary>
     event EventHandler<SmartDeviceEventArg>? OnSmartDeviceTriggered;
 
-    /// <summary>Raised when a subscribed storage monitor reports a change
-    /// (an <c>EntityChanged</c> broadcast whose payload carries item capacity).</summary>
+    /// <summary>Occurs when an <c>EntityChanged</c> broadcast is classified as a storage monitor: the payload
+    /// carries items, a capacity, or tool-cupboard protection. Storage broadcasts with
+    /// <c>value == true</c> and no items carry no contents snapshot and are NOT raised here (they
+    /// remain observable via <see cref="OnEntityChanged"/>). Tool-cupboard broadcasts are sometimes
+    /// partial — <c>capacity</c> may be absent and only the protection flag identifies them.</summary>
     event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
+
+    /// <summary>Raised for every <c>EntityChanged</c> broadcast, before any device-type heuristic,
+    /// with the full raw payload. The broadcast carries no entity type; consumers that know their
+    /// paired entity ids should route on <see cref="EntityChangedEventArg.Id"/>.</summary>
+    event EventHandler<EntityChangedEventArg>? OnEntityChanged;
 
     /// <summary>Raised when a new team chat message arrives.</summary>
     event EventHandler<TeamMessageEventArg>? OnTeamChatReceived;
@@ -40,6 +49,9 @@ public interface IRustPlus : IRustPlusSocket
     /// <summary>Returns the current state of a smart alarm entity.</summary>
     /// <param name="entityId">Entity ID of the alarm.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
+    /// entity's <c>EntityChanged</c> broadcasts server-side — even when the read itself fails on a
+    /// type mismatch.</remarks>
     Task<Response<SmartDeviceInfo?>> GetAlarmInfoAsync(ulong entityId, CancellationToken cancellationToken = default);
 
     /// <summary>Returns the full clan snapshot for the authenticated player's clan.</summary>
@@ -96,15 +108,31 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
     Task<Response<MapMarkers?>> GetMapMarkersAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Returns the state of a binary-state smart device (a smart switch or a smart alarm),
+    /// whichever of the two types the entity actually is.</summary>
+    /// <param name="entityId">Entity ID of the smart device.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
+    /// entity's <c>EntityChanged</c> broadcasts server-side — even when the read itself fails on a
+    /// type mismatch.</remarks>
+    Task<Response<SmartDeviceInfo?>> GetSmartDeviceInfoAsync(ulong entityId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Returns the current state of a smart switch entity.</summary>
     /// <param name="entityId">Entity ID of the smart switch.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
+    /// entity's <c>EntityChanged</c> broadcasts server-side — even when the read itself fails on a
+    /// type mismatch.</remarks>
     Task<Response<SmartDeviceInfo?>> GetSmartSwitchInfoAsync(ulong entityId,
         CancellationToken cancellationToken = default);
 
     /// <summary>Returns the current contents and protection state of a storage monitor.</summary>
     /// <param name="entityId">Entity ID of the storage monitor.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
+    /// entity's <c>EntityChanged</c> broadcasts server-side — even when the read itself fails on a
+    /// type mismatch.</remarks>
     Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(ulong entityId,
         CancellationToken cancellationToken = default);
 

@@ -31,4 +31,24 @@ public static class EntityChangedToModel
             Items = entityChanged.Payload.Items.ToStorageMonitorItemsInfo()
         };
     }
+
+    /// <summary>Maps an <see cref="AppEntityChanged"/> broadcast to the raw
+    /// <see cref="EntityChangedEventArg"/>, preserving field presence (absent optional fields map to
+    /// <see langword="null"/>).</summary>
+    /// <param name="entityChanged">The protobuf entity-changed broadcast.</param>
+    public static EntityChangedEventArg ToEntityChangedEvent(this AppEntityChanged entityChanged)
+    {
+        var payload = entityChanged.Payload;
+        return new EntityChangedEventArg
+        {
+            Id = entityChanged.EntityId,
+            Value = payload.ShouldSerializeValue() ? payload.Value : null,
+            Capacity = payload.ShouldSerializeCapacity() ? payload.Capacity : null,
+            HasProtection = payload.ShouldSerializeHasProtection() ? payload.HasProtection : null,
+            ProtectionExpiry = payload.ShouldSerializeProtectionExpiry()
+                ? DateTimeOffset.FromUnixTimeSeconds(payload.ProtectionExpiry).UtcDateTime
+                : null,
+            Items = payload.Items.ToStorageMonitorItemsInfo()
+        };
+    }
 }
