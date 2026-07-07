@@ -22,9 +22,14 @@ public class ClanMapperTests
         Assert.Equal("Mock Clan", model.Name);
         Assert.Equal("Welcome to the mock clan", model.Motd);
         Assert.Equal(50, model.MaxMemberCount);
+        // Clan timestamps are Unix milliseconds on the wire (live-server verified), unlike
+        // team timestamps which are seconds.
         Assert.Equal(
-            DateTimeOffset.FromUnixTimeSeconds(1_600_000_000).UtcDateTime,
+            DateTimeOffset.FromUnixTimeMilliseconds(1_600_000_000_000).UtcDateTime,
             model.Created);
+        Assert.Equal(
+            DateTimeOffset.FromUnixTimeMilliseconds(1_700_000_000_000).UtcDateTime,
+            model.MotdTimestamp);
     }
 
     [Fact]
@@ -35,6 +40,8 @@ public class ClanMapperTests
         var member = Assert.Single(model!.Members!);
         Assert.Equal(76561198000000001ul, member.SteamId);
         Assert.True(member.Online);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1_600_000_000_000).UtcDateTime, member.Joined);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1_700_000_000_000).UtcDateTime, member.LastSeen);
     }
 
     [Fact]

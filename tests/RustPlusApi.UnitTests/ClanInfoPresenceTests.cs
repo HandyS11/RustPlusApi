@@ -31,7 +31,7 @@ public class ClanInfoPresenceTests
     {
         var proto = Minimal();
         proto.Motd = "m";
-        proto.MotdTimestamp = 1_700_000_000;
+        proto.MotdTimestamp = 1_700_000_000_000;
         proto.MotdAuthor = 5;
         proto.Logo = [1, 2];
         proto.Color = 42;
@@ -41,7 +41,7 @@ public class ClanInfoPresenceTests
         var model = proto.ToClanInfo()!;
 
         Assert.Equal("m", model.Motd);
-        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1_700_000_000).UtcDateTime, model.MotdTimestamp);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1_700_000_000_000).UtcDateTime, model.MotdTimestamp);
         Assert.Equal(5ul, model.MotdAuthor);
         Assert.Equal(42, model.Color);
         Assert.Equal(50, model.MaxMemberCount);
@@ -85,11 +85,11 @@ public class ClanInfoPresenceTests
     {
         var invite = new ProtoClanInfo.Invite
         {
-            SteamId = 1, Recruiter = 2, Timestamp = 1_700_000_000
+            SteamId = 1, Recruiter = 2, Timestamp = 1_700_000_000_000
         };
         var model = invite.ToClanInvite();
         Assert.Equal(1ul, model.SteamId);
-        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1_700_000_000).UtcDateTime, model.Timestamp);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1_700_000_000_000).UtcDateTime, model.Timestamp);
     }
 
     [Fact]

@@ -161,12 +161,12 @@ public class RemainingMapperTests
     {
         var proto = new AppClanMessage
         {
-            SteamId = 1, Name = "D", Message = "hey", Time = 1_700_000_000
+            SteamId = 1, Name = "D", Message = "hey", Time = 1_700_000_000_000
         };
         var msg = proto.ToClanMessage();
         Assert.Equal(1ul, msg.SteamId);
         Assert.Equal("D", msg.Name);
-        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1_700_000_000).UtcDateTime, msg.Time);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1_700_000_000_000).UtcDateTime, msg.Time);
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public class RemainingMapperTests
             ClanId = 42,
             Message = new AppClanMessage
             {
-                SteamId = 7, Name = "Eve", Message = "sup", Time = 1_600_000_000
+                SteamId = 7, Name = "Eve", Message = "sup", Time = 1_600_000_000_000
             }
         };
 
@@ -187,7 +187,7 @@ public class RemainingMapperTests
         Assert.Equal(7ul, ev.SteamId);
         Assert.Equal("Eve", ev.Name);
         Assert.Equal("sup", ev.Message);
-        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1_600_000_000).UtcDateTime, ev.Time);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1_600_000_000_000).UtcDateTime, ev.Time);
     }
 
     [Fact]
