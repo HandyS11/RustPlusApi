@@ -10,13 +10,25 @@ namespace RustPlusApi.Extensions;
 /// <summary>Mapping extensions from a protobuf <see cref="AppMarker"/> to typed marker model records.</summary>
 public static class AppMarkerToModel
 {
-    /// <summary>Maps a marker to an <see cref="UnknownMarker"/>.</summary>
+    /// <summary>Maps a marker to an <see cref="UnknownMarker"/>, passing through the full raw field surface.</summary>
     /// <param name="marker">The protobuf map marker.</param>
     public static UnknownMarker ToUnknownMarker(this AppMarker marker)
     {
         return new UnknownMarker
         {
-            Id = marker.Id, X = marker.X, Y = marker.Y
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            RawType = (int)marker.Type,
+            Name = marker.ShouldSerializeName() ? marker.Name : null,
+            SteamId = marker.ShouldSerializeSteamId() ? marker.SteamId : null,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null,
+            Radius = marker.ShouldSerializeRadius() ? marker.Radius : null,
+            Color1 = marker.Color1?.ToMarkerColor(),
+            Color2 = marker.Color2?.ToMarkerColor(),
+            Alpha = marker.ShouldSerializeAlpha() ? marker.Alpha : null,
+            IsOutOfStock = marker.ShouldSerializeOutOfStock() ? marker.OutOfStock : null,
+            VendingMachineItems = marker.SellOrders.ToVendingMachineItems()
         };
     }
 
@@ -29,8 +41,8 @@ public static class AppMarkerToModel
             Id = marker.Id,
             X = marker.X,
             Y = marker.Y,
-            Name = marker.Name,
-            SteamId = marker.SteamId
+            Name = marker.ShouldSerializeName() ? marker.Name : null,
+            SteamId = marker.ShouldSerializeSteamId() ? marker.SteamId : null
         };
     }
 
@@ -43,8 +55,8 @@ public static class AppMarkerToModel
             Id = marker.Id,
             X = marker.X,
             Y = marker.Y,
-            Name = marker.Name,
-            IsOutOfStock = marker.OutOfStock,
+            Name = marker.ShouldSerializeName() ? marker.Name : null,
+            IsOutOfStock = marker.ShouldSerializeOutOfStock() ? marker.OutOfStock : null,
             VendingMachineItems = marker.SellOrders.ToVendingMachineItems()
         };
     }
@@ -81,7 +93,10 @@ public static class AppMarkerToModel
     {
         return new Ch47Marker
         {
-            Id = marker.Id, X = marker.X, Y = marker.Y
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null
         };
     }
 
@@ -91,7 +106,10 @@ public static class AppMarkerToModel
     {
         return new CargoShipMarker
         {
-            Id = marker.Id, X = marker.X, Y = marker.Y
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null
         };
     }
 
@@ -101,7 +119,10 @@ public static class AppMarkerToModel
     {
         return new PatrolHelicopterMarker
         {
-            Id = marker.Id, X = marker.X, Y = marker.Y
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null
         };
     }
 
@@ -111,7 +132,59 @@ public static class AppMarkerToModel
     {
         return new TravellingVendorMarker
         {
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Rotation = marker.ShouldSerializeRotation() ? marker.Rotation : null
+        };
+    }
+
+    /// <summary>Maps a marker to an <see cref="ExplosionMarker"/>.</summary>
+    /// <param name="marker">The protobuf map marker.</param>
+    public static ExplosionMarker ToExplosionMarker(this AppMarker marker)
+    {
+        return new ExplosionMarker
+        {
             Id = marker.Id, X = marker.X, Y = marker.Y
+        };
+    }
+
+    /// <summary>Maps a marker to a <see cref="CrateMarker"/>.</summary>
+    /// <param name="marker">The protobuf map marker.</param>
+    public static CrateMarker ToCrateMarker(this AppMarker marker)
+    {
+        return new CrateMarker
+        {
+            Id = marker.Id, X = marker.X, Y = marker.Y
+        };
+    }
+
+    /// <summary>Maps a marker to a <see cref="GenericRadiusMarker"/>, including its styling fields.</summary>
+    /// <param name="marker">The protobuf map marker.</param>
+    public static GenericRadiusMarker ToGenericRadiusMarker(this AppMarker marker)
+    {
+        return new GenericRadiusMarker
+        {
+            Id = marker.Id,
+            X = marker.X,
+            Y = marker.Y,
+            Radius = marker.ShouldSerializeRadius() ? marker.Radius : null,
+            Color1 = marker.Color1?.ToMarkerColor(),
+            Color2 = marker.Color2?.ToMarkerColor(),
+            Alpha = marker.ShouldSerializeAlpha() ? marker.Alpha : null
+        };
+    }
+
+    /// <summary>Maps a protobuf <see cref="Vector4"/> marker color to a <see cref="MarkerColor"/>.</summary>
+    /// <param name="color">The protobuf color vector (RGBA components).</param>
+    public static MarkerColor ToMarkerColor(this Vector4 color)
+    {
+        return new MarkerColor
+        {
+            R = color.ShouldSerializeX() ? color.X : null,
+            G = color.ShouldSerializeY() ? color.Y : null,
+            B = color.ShouldSerializeZ() ? color.Z : null,
+            A = color.ShouldSerializeW() ? color.W : null
         };
     }
 }

@@ -336,6 +336,70 @@ public class EntityClientTests
     }
 
     [Fact]
+    public async Task GetMapMarkersAsync_MixedAndUnrecognizedTypes_AllRoutedWithoutThrow()
+    {
+        await using var server = new MockRustPlusServer(req =>
+        {
+            var resp = new AppResponse
+            {
+                Seq = req.Seq
+            };
+            if (req.GetMapMarkers is not null)
+            {
+                var markers = new AppMapMarkers();
+                markers.Markers.Add(new AppMarker
+                {
+                    Id = 1, X = 1, Y = 1, Type = AppMarkerType.Explosion
+                });
+                markers.Markers.Add(new AppMarker
+                {
+                    Id = 2, X = 1, Y = 1, Type = AppMarkerType.Crate
+                });
+                markers.Markers.Add(new AppMarker
+                {
+                    Id = 3,
+                    X = 1,
+                    Y = 1,
+                    Type = AppMarkerType.GenericRadius,
+                    Radius = 25f,
+                    Alpha = 0.5f,
+                    Color1 = new Vector4
+                    {
+                        X = 1f, Y = 0.5f, Z = 0f, W = 1f
+                    }
+                });
+                markers.Markers.Add(new AppMarker
+                {
+                    Id = 4, X = 1, Y = 1, Type = (AppMarkerType)999
+                });
+                resp.MapMarkers = markers;
+            }
+            else
+            {
+                resp.Success = new AppSuccess();
+            }
+
+            return new AppMessage
+            {
+                Response = resp
+            };
+        });
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        var response = await client.GetMapMarkersAsync().WaitAsync(Timeout);
+
+        Assert.True(response.IsSuccess);
+        Assert.True(response.Data!.ExplosionMarkers.ContainsKey(1));
+        Assert.True(response.Data.CrateMarkers.ContainsKey(2));
+        Assert.Equal(25f, response.Data.GenericRadiusMarkers[3].Radius);
+        Assert.Equal(1f, response.Data.GenericRadiusMarkers[3].Color1!.R);
+        Assert.True(response.Data.UnknownMarkers.ContainsKey(4));
+    }
+
+    [Fact]
     public async Task GetSmartDeviceInfoAsync_SwitchTypedReply_Succeeds()
     {
         var (server, client) = await ConnectEntityAsync();
