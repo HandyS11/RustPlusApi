@@ -258,15 +258,6 @@ public class RustPlusParseNotificationTests
         Assert.Null(ex);
     }
 
-    // ── routing matrix: storage vs smart device classification ─────────────
-
-    private sealed record RoutingCapture
-    {
-        public RustPlusApi.Data.Events.EntityChangedEventArg? Raw { get; set; }
-        public RustPlusApi.Data.Events.SmartDeviceEventArg? Smart { get; set; }
-        public RustPlusApi.Data.Events.StorageMonitorEventArg? Storage { get; set; }
-    }
-
     private static RoutingCapture Route(AppEntityPayload payload)
     {
         using var sut = new TestRustPlus();
@@ -375,6 +366,15 @@ public class RustPlusParseNotificationTests
 
         Assert.NotNull(capture.Storage);
         Assert.Null(capture.Smart);
+    }
+
+    // ── routing matrix: storage vs smart device classification ─────────────
+
+    private sealed record RoutingCapture
+    {
+        public RustPlusApi.Data.Events.EntityChangedEventArg? Raw { get; set; }
+        public RustPlusApi.Data.Events.SmartDeviceEventArg? Smart { get; set; }
+        public RustPlusApi.Data.Events.StorageMonitorEventArg? Storage { get; set; }
     }
 
     /// <summary>Exposes the protected members of <see cref="RustPlus"/> for direct unit testing.</summary>
