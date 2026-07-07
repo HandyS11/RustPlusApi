@@ -1,3 +1,4 @@
+using RustPlusApi.Data;
 using RustPlusApi.MockServer;
 using RustPlusContracts;
 using Xunit;
@@ -379,5 +380,68 @@ public class EntityClientTests
 
         Assert.True(response.IsSuccess);
         Assert.True(response.Data!.IsActive);
+    }
+
+    [Fact]
+    public async Task GetSmartSwitchInfoAsync_AlarmTypedReply_ReturnsFailedResponse()
+    {
+        await using var server = new MockRustPlusServer(req =>
+        {
+            var resp = new AppResponse
+            {
+                Seq = req.Seq
+            };
+            if (req.GetEntityInfo is not null)
+            {
+                resp.EntityInfo = MockResponses.SampleAlarm(value: false);
+            }
+            else
+            {
+                resp.Success = new AppSuccess();
+            }
+
+            return new AppMessage
+            {
+                Response = resp
+            };
+        });
+        server.Start();
+        await using var client =
+            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        // The server answered successfully with the entity's actual type (Alarm); the strict
+        // mapper's type check must surface as a failed Response, not a thrown exception.
+        var response = await client.GetSmartSwitchInfoAsync(1).WaitAsync(Timeout);
+
+        Assert.False(response.IsSuccess);
+        Assert.Null(response.Data);
+        Assert.Equal("Entity type is not a SmartSwitch.", response.Error!.Message);
+    }
+
+    [Fact]
+    public async Task ProcessRequestAsync_SelectorThrowsOperationCanceled_Propagates()
+    {
+        await using var server = new MockRustPlusServer();
+        server.Start();
+        await using var client =
+            new SelectorProbeRustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId,
+                PlayerToken));
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => client.ProbeAsync<object>(
+            new AppRequest
+            {
+                GetTime = new AppEmpty()
+            },
+            _ => throw new OperationCanceledException()).WaitAsync(Timeout));
+    }
+
+    /// <summary>Exposes the protected <c>ProcessRequestAsync</c> to pin its selector exception handling.</summary>
+    /// <param name="connection">The server endpoint and player credentials to connect as.</param>
+    private sealed class SelectorProbeRustPlus(RustPlusConnection connection) : RustPlus(connection)
+    {
+        public Task<Response<T?>> ProbeAsync<T>(AppRequest request, Func<AppMessage, T> selector) =>
+            ProcessRequestAsync(request, selector);
     }
 }

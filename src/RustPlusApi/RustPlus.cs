@@ -611,6 +611,9 @@ public class RustPlus(
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the processed result.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
     /// <exception cref="InvalidOperationException">Thrown when the client is not connected.</exception>
+    /// <remarks>A success-selector exception (other than <see cref="OperationCanceledException"/>) is
+    /// returned as a failed <see cref="Response{T}"/> carrying the exception message — a successful
+    /// server reply never surfaces as a thrown exception.</remarks>
     protected async Task<Response<T?>> ProcessRequestAsync<T>(AppRequest request,
         Func<AppMessage, T> successSelector,
         Func<AppBroadcast, bool>? broadcastReplyMatcher = null,
@@ -619,9 +622,23 @@ public class RustPlus(
         var response = await SendRequestAsync(request, broadcastReplyMatcher, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        return IsError(response)
-            ? ResponseHelper.BuildGenericOutput<T>(false, default!, GetErrorMessage(response))
-            : ResponseHelper.BuildGenericOutput(true, successSelector(response));
+        if (IsError(response))
+        {
+            return ResponseHelper.BuildGenericOutput<T>(false, default!, GetErrorMessage(response));
+        }
+
+        try
+        {
+            return ResponseHelper.BuildGenericOutput(true, successSelector(response));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A successful server reply must never escape as a thrown exception: a selector failure
+            // (e.g. reading an alarm through GetSmartSwitchInfoAsync — the server answers with the
+            // entity's actual type) becomes a failed Response the consumer can tell apart from a
+            // transport error.
+            return ResponseHelper.BuildGenericOutput<T>(false, default!, ex.Message);
+        }
     }
 
     /// <summary>
