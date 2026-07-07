@@ -66,6 +66,15 @@ public class RustPlus(
     public event EventHandler<CameraRaysEventArg>? OnCameraRaysReceived;
 
     /// <summary>
+    /// Occurs for every <c>EntityChanged</c> broadcast, before any device-type heuristic, with the
+    /// full raw payload. The broadcast carries no entity type; consumers that know their paired
+    /// entity ids should route on <see cref="EntityChangedEventArg.Id"/> — this is the reliable
+    /// channel when the <see cref="OnSmartDeviceTriggered"/>/<see cref="OnStorageMonitorTriggered"/>
+    /// heuristics cannot classify a payload.
+    /// </summary>
+    public event EventHandler<EntityChangedEventArg>? OnEntityChanged;
+
+    /// <summary>
     /// Checks the subscription status of an alarm asynchronously.
     /// </summary>
     /// <param name="alarmId">The ID of the alarm entity.</param>
@@ -558,6 +567,8 @@ public class RustPlus(
 
         if (broadcast.EntityChanged is not null)
         {
+            OnEntityChanged?.Invoke(this, broadcast.EntityChanged.ToEntityChangedEvent());
+
             // There is no physical difference between a SmartSwitch and an Alarm
             // If you check the status of an alarm, it will return the same as a smart switch
             if (broadcast.EntityChanged.Payload.Capacity is 0)

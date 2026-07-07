@@ -19,6 +19,11 @@ public interface IRustPlus : IRustPlusSocket
     /// (an <c>EntityChanged</c> broadcast whose payload carries item capacity).</summary>
     event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 
+    /// <summary>Raised for every <c>EntityChanged</c> broadcast, before any device-type heuristic,
+    /// with the full raw payload. The broadcast carries no entity type; consumers that know their
+    /// paired entity ids should route on <see cref="EntityChangedEventArg.Id"/>.</summary>
+    event EventHandler<EntityChangedEventArg>? OnEntityChanged;
+
     /// <summary>Raised when a new team chat message arrives.</summary>
     event EventHandler<TeamMessageEventArg>? OnTeamChatReceived;
 

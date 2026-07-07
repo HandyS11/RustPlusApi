@@ -183,6 +183,30 @@ public class RustPlusParseNotificationTests
         Assert.Null(ex);
     }
 
+    [Fact]
+    public void EntityChanged_WithRawSubscriber_InvokesOnEntityChanged()
+    {
+        using var sut = new TestRustPlus();
+        RustPlusApi.Data.Events.EntityChangedEventArg? captured = null;
+        sut.OnEntityChanged += (_, e) => captured = e;
+
+        sut.Feed(new AppBroadcast
+        {
+            EntityChanged = new AppEntityChanged
+            {
+                EntityId = 42,
+                Payload = new AppEntityPayload
+                {
+                    Value = true
+                }
+            }
+        });
+
+        Assert.NotNull(captured);
+        Assert.Equal(42u, captured!.Id);
+        Assert.True(captured.Value);
+    }
+
     // ── IsError: message with Broadcast set → returns false ──────────────────
 
     [Fact]
