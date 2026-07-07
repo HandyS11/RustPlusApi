@@ -30,18 +30,19 @@ public class RustPlus(
     : RustPlusSocket(connection, options, loggerFactory), IRustPlus
 {
     /// <summary>
-    /// Occurs when a binary-state smart device (a smart switch or a smart alarm) changes state.
-    /// The Rust+ <c>EntityChanged</c> broadcast carries only the entity id and payload — it does
-    /// <b>not</b> include the entity type — so a switch and an alarm are indistinguishable here.
-    /// To learn an entity's actual type, query it explicitly with
-    /// <see cref="GetSmartSwitchInfoAsync"/> or <see cref="GetAlarmInfoAsync"/> (both read the
-    /// <c>type</c> field on <c>AppEntityInfo</c>, which the broadcast omits).
+    /// Occurs when an <c>EntityChanged</c> broadcast is classified as a binary-state smart device
+    /// (a smart switch or a smart alarm): the payload carries no container state (no items, no
+    /// capacity, no protection). The broadcast omits the entity type, so a storage broadcast whose
+    /// payload is only <c>value</c> is indistinguishable from a switch and lands here too — route on
+    /// <see cref="OnEntityChanged"/> with your paired entity ids when that matters.
     /// </summary>
     public event EventHandler<SmartDeviceEventArg>? OnSmartDeviceTriggered;
 
     /// <summary>
-    /// Occurs when a <see cref="StorageMonitorEventArg"/> is triggered by a storage monitor
-    /// (an <c>EntityChanged</c> broadcast whose payload carries item capacity).
+    /// Occurs when an <c>EntityChanged</c> broadcast is classified as a storage monitor: the payload
+    /// carries items, a capacity, or tool-cupboard protection. Storage broadcasts with
+    /// <c>value == true</c> and no items carry no contents snapshot and are NOT raised here (they
+    /// remain observable via <see cref="OnEntityChanged"/>).
     /// </summary>
     public event EventHandler<StorageMonitorEventArg>? OnStorageMonitorTriggered;
 
@@ -98,6 +99,9 @@ public class RustPlus(
     /// <param name="entityId">The ID of the alarm entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the alarm information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
+    /// entity's <c>EntityChanged</c> broadcasts server-side — even when the read itself fails on a
+    /// type mismatch.</remarks>
     public async Task<Response<SmartDeviceInfo?>> GetAlarmInfoAsync(ulong entityId,
         CancellationToken cancellationToken = default)
     {
@@ -325,6 +329,9 @@ public class RustPlus(
     /// <param name="entityId">The ID of the smart switch entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the smart switch information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
+    /// entity's <c>EntityChanged</c> broadcasts server-side — even when the read itself fails on a
+    /// type mismatch.</remarks>
     public async Task<Response<SmartDeviceInfo?>> GetSmartSwitchInfoAsync(ulong entityId,
         CancellationToken cancellationToken = default)
     {
@@ -339,6 +346,9 @@ public class RustPlus(
     /// <param name="entityId">The ID of the storage monitor entity.</param>
     /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a <see cref="Response{T}"/> with the storage monitor information.</returns>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    /// <remarks>The underlying <c>getEntityInfo</c> request also subscribes this connection to the
+    /// entity's <c>EntityChanged</c> broadcasts server-side — even when the read itself fails on a
+    /// type mismatch.</remarks>
     public async Task<Response<StorageMonitorInfo?>> GetStorageMonitorInfoAsync(ulong entityId,
         CancellationToken cancellationToken = default)
     {
@@ -567,17 +577,25 @@ public class RustPlus(
 
         if (broadcast.EntityChanged is not null)
         {
-            OnEntityChanged?.Invoke(this, broadcast.EntityChanged.ToEntityChangedEvent());
+            var entityChanged = broadcast.EntityChanged;
+            OnEntityChanged?.Invoke(this, entityChanged.ToEntityChangedEvent());
 
-            // There is no physical difference between a SmartSwitch and an Alarm
-            // If you check the status of an alarm, it will return the same as a smart switch
-            if (broadcast.EntityChanged.Payload.Capacity is 0)
+            // The broadcast carries no entity type. A payload is storage-shaped when it exposes any
+            // container state; a bare `value` is indistinguishable from a switch/alarm and routes to
+            // OnSmartDeviceTriggered. Consumers that know their paired ids use OnEntityChanged.
+            var payload = entityChanged.Payload;
+            if (payload.Items.Count > 0 || payload.Capacity > 0 || payload.HasProtection)
             {
-                OnSmartDeviceTriggered?.Invoke(this, broadcast.EntityChanged.ToSmartDeviceEvent());
+                // A storage broadcast with value == true carries no contents snapshot; surfacing it
+                // would wipe consumer-tracked contents.
+                if (!payload.Value || payload.Items.Count > 0)
+                {
+                    OnStorageMonitorTriggered?.Invoke(this, entityChanged.ToStorageMonitorEvent());
+                }
             }
             else
             {
-                OnStorageMonitorTriggered?.Invoke(this, broadcast.EntityChanged.ToStorageMonitorEvent());
+                OnSmartDeviceTriggered?.Invoke(this, entityChanged.ToSmartDeviceEvent());
             }
 
             return;

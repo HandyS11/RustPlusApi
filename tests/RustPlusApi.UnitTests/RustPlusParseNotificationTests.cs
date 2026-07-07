@@ -258,6 +258,125 @@ public class RustPlusParseNotificationTests
         Assert.Null(ex);
     }
 
+    // ── routing matrix: storage vs smart device classification ─────────────
+
+    private sealed record RoutingCapture
+    {
+        public RustPlusApi.Data.Events.EntityChangedEventArg? Raw { get; set; }
+        public RustPlusApi.Data.Events.SmartDeviceEventArg? Smart { get; set; }
+        public RustPlusApi.Data.Events.StorageMonitorEventArg? Storage { get; set; }
+    }
+
+    private static RoutingCapture Route(AppEntityPayload payload)
+    {
+        using var sut = new TestRustPlus();
+        var capture = new RoutingCapture();
+        sut.OnEntityChanged += (_, e) => capture.Raw = e;
+        sut.OnSmartDeviceTriggered += (_, e) => capture.Smart = e;
+        sut.OnStorageMonitorTriggered += (_, e) => capture.Storage = e;
+
+        sut.Feed(new AppBroadcast
+        {
+            EntityChanged = new AppEntityChanged
+            {
+                EntityId = 42, Payload = payload
+            }
+        });
+
+        return capture;
+    }
+
+    [Fact]
+    public void EntityChanged_ItemsOnly_RoutesToStorageMonitor()
+    {
+        var capture = Route(new AppEntityPayload
+        {
+            Items =
+            {
+                new AppEntityPayload.Item
+                {
+                    ItemId = 1, Quantity = 1, ItemIsBlueprint = false
+                }
+            }
+        });
+
+        Assert.NotNull(capture.Storage);
+        Assert.Null(capture.Smart);
+        Assert.NotNull(capture.Raw);
+    }
+
+    [Fact]
+    public void EntityChanged_CapacityOnly_RoutesToStorageMonitor()
+    {
+        var capture = Route(new AppEntityPayload
+        {
+            Capacity = 48
+        });
+
+        Assert.NotNull(capture.Storage);
+        Assert.Null(capture.Smart);
+    }
+
+    [Fact]
+    public void EntityChanged_ProtectionOnly_RoutesToStorageMonitor()
+    {
+        var capture = Route(new AppEntityPayload
+        {
+            HasProtection = true
+        });
+
+        Assert.NotNull(capture.Storage);
+        Assert.Null(capture.Smart);
+    }
+
+    [Fact]
+    public void EntityChanged_ValueOnly_RoutesToSmartDevice()
+    {
+        var capture = Route(new AppEntityPayload
+        {
+            Value = true
+        });
+
+        Assert.NotNull(capture.Smart);
+        Assert.Null(capture.Storage);
+        Assert.NotNull(capture.Raw);
+    }
+
+    [Fact]
+    public void EntityChanged_StorageShapedValueTrueWithoutItems_SuppressedFromConvenienceEvents()
+    {
+        // A storage broadcast with value == true carries no contents snapshot; surfacing it through
+        // OnStorageMonitorTriggered would wipe consumer-tracked contents (rustplusplus skips these).
+        var capture = Route(new AppEntityPayload
+        {
+            Value = true, Capacity = 48
+        });
+
+        Assert.Null(capture.Storage);
+        Assert.Null(capture.Smart);
+        Assert.NotNull(capture.Raw);
+    }
+
+    [Fact]
+    public void EntityChanged_StorageShapedValueTrueWithItems_RoutesToStorageMonitor()
+    {
+        var capture = Route(new AppEntityPayload
+        {
+            Value = true,
+            Capacity = 48,
+            Items =
+            {
+                new AppEntityPayload.Item
+                {
+                    ItemId = 1, Quantity = 1, ItemIsBlueprint = false
+                }
+            }
+        });
+
+        Assert.NotNull(capture.Storage);
+        Assert.Null(capture.Smart);
+    }
+
     /// <summary>Exposes the protected members of <see cref="RustPlus"/> for direct unit testing.</summary>
     private sealed class TestRustPlus() : RustPlus(new RustPlusConnection("127.0.0.1", 1, 1, 1))
     {
