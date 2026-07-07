@@ -167,7 +167,7 @@ public static class MockResponses
                 ClanId = clanId,
                 Message = new AppClanMessage
                 {
-                    SteamId = steamId, Name = name, Message = message, Time = 1_700_000_000
+                    SteamId = steamId, Name = name, Message = message, Time = 1_700_000_000_000
                 }
             }
         };
@@ -271,10 +271,10 @@ public static class MockResponses
     {
         ClanId = 4242,
         Name = "Mock Clan",
-        Created = 1_600_000_000,
+        Created = 1_600_000_000_000,
         Creator = 76561198000000001,
         Motd = "Welcome to the mock clan",
-        MotdTimestamp = 1_700_000_000,
+        MotdTimestamp = 1_700_000_000_000,
         MotdAuthor = 76561198000000001,
         Color = 16711680,
         MaxMemberCount = 50,
@@ -284,8 +284,8 @@ public static class MockResponses
             {
                 SteamId = 76561198000000001,
                 RoleId = 0,
-                Joined = 1_600_000_000,
-                LastSeen = 1_700_000_000,
+                Joined = 1_600_000_000_000,
+                LastSeen = 1_700_000_000_000,
                 Online = true
             }
         }
@@ -297,7 +297,7 @@ public static class MockResponses
         {
             new AppClanMessage
             {
-                SteamId = 76561198000000001, Name = "Tester", Message = "clan chat fixture", Time = 1_700_000_000
+                SteamId = 76561198000000001, Name = "Tester", Message = "clan chat fixture", Time = 1_700_000_000_000
             }
         }
     };

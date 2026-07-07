@@ -31,11 +31,12 @@ public static class AppClanInfoToModel
         {
             ClanId = clanInfo.ClanId,
             Name = clanInfo.Name,
-            Created = DateTimeOffset.FromUnixTimeSeconds(clanInfo.Created).UtcDateTime,
+            // Clan timestamps are Unix milliseconds on the wire, unlike team timestamps (seconds).
+            Created = DateTimeOffset.FromUnixTimeMilliseconds(clanInfo.Created).UtcDateTime,
             Creator = clanInfo.Creator,
             Motd = clanInfo.ShouldSerializeMotd() ? clanInfo.Motd : null,
             MotdTimestamp = clanInfo.ShouldSerializeMotdTimestamp()
-                ? DateTimeOffset.FromUnixTimeSeconds(clanInfo.MotdTimestamp).UtcDateTime
+                ? DateTimeOffset.FromUnixTimeMilliseconds(clanInfo.MotdTimestamp).UtcDateTime
                 : null,
             MotdAuthor = clanInfo.ShouldSerializeMotdAuthor() ? clanInfo.MotdAuthor : null,
             Logo = clanInfo.ShouldSerializeLogo() ? clanInfo.Logo : null,
@@ -94,8 +95,8 @@ public static class AppClanInfoToModel
         {
             SteamId = member.SteamId,
             RoleId = member.RoleId,
-            Joined = DateTimeOffset.FromUnixTimeSeconds(member.Joined).UtcDateTime,
-            LastSeen = DateTimeOffset.FromUnixTimeSeconds(member.LastSeen).UtcDateTime,
+            Joined = DateTimeOffset.FromUnixTimeMilliseconds(member.Joined).UtcDateTime,
+            LastSeen = DateTimeOffset.FromUnixTimeMilliseconds(member.LastSeen).UtcDateTime,
             Notes = member.ShouldSerializeNotes() ? member.Notes : null,
             Online = member.ShouldSerializeOnline() ? member.Online : null
         };
@@ -116,7 +117,7 @@ public static class AppClanInfoToModel
         {
             SteamId = invite.SteamId,
             Recruiter = invite.Recruiter,
-            Timestamp = DateTimeOffset.FromUnixTimeSeconds(invite.Timestamp).UtcDateTime
+            Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(invite.Timestamp).UtcDateTime
         };
     }
 

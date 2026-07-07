@@ -28,7 +28,8 @@ public static class AppClanChatToModel
             SteamId = appClanMessage.SteamId,
             Name = appClanMessage.Name,
             Message = appClanMessage.Message,
-            Time = DateTimeOffset.FromUnixTimeSeconds(appClanMessage.Time).UtcDateTime
+            // Clan timestamps are Unix milliseconds on the wire, unlike team timestamps (seconds).
+            Time = DateTimeOffset.FromUnixTimeMilliseconds(appClanMessage.Time).UtcDateTime
         };
     }
 
@@ -49,7 +50,7 @@ public static class AppClanChatToModel
             SteamId = appNewClanMessage.Message.SteamId,
             Name = appNewClanMessage.Message.Name,
             Message = appNewClanMessage.Message.Message,
-            Time = DateTimeOffset.FromUnixTimeSeconds(appNewClanMessage.Message.Time).UtcDateTime
+            Time = DateTimeOffset.FromUnixTimeMilliseconds(appNewClanMessage.Message.Time).UtcDateTime
         };
     }
 }
