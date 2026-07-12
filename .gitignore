@@ -419,7 +419,6 @@ config.json
 docs/_site/
 docs/api/
 docs/obj/
-docs/superpowers/
 
 # Stryker mutation testing output
 StrykerOutput/
