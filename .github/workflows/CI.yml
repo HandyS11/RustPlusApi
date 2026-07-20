@@ -17,10 +17,10 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@v6
       with:
         # net8.0 host resolves the netstandard2.0 build of the libraries; net10.0 host
         # resolves the net10.0 build. The test project multi-targets both so the same
