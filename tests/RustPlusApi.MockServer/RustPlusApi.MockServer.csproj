@@ -7,6 +7,7 @@
 
     <ItemGroup>
         <!-- Shares the contract assembly so request/response stay in lockstep with the schema. -->
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
         <ProjectReference Include="..\..\src\RustPlusApi\RustPlusApi.csproj" />
     </ItemGroup>
 
