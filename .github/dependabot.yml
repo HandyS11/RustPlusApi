@@ -9,3 +9,24 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      # Every NuGet bump lands in a single PR: versions are centrally managed in
+      # Directory.Packages.props, so one-PR-per-package just serialises conflicts on one file.
+      nuget:
+        patterns:
+          - "*"
+    ignore:
+      # ImageSharp 3.x+ requires net6+, which would drop the netstandard2.0 target.
+      # Patches within the 2.1.x line are still picked up.
+      - dependency-name: "SixLabors.ImageSharp"
+        update-types:
+          - "version-update:semver-major"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

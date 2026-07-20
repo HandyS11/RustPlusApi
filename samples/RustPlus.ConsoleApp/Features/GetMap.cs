@@ -20,6 +20,8 @@ internal sealed class GetMap(IRustPlus rustPlus)
         Console.WriteLine(
             $"  Ocean margin: {map.OceanMargin?.ToString("D", System.Globalization.CultureInfo.InvariantCulture) ?? "?"}");
         Console.WriteLine($"  Monuments:   {map.Monuments?.Count ?? 0}");
+        Console.WriteLine(
+            $"  Monument list:\n{string.Join("\n    ", map.Monuments?.Select(m => m.Name) ?? [])}");
 
         if (map.JpgImage is { Length: > 0 })
         {
