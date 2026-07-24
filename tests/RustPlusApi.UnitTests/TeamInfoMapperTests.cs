@@ -75,6 +75,33 @@ public class TeamInfoMapperTests
     }
 
     [Fact]
+    public void ToTeamChangedEvent_MapsPlayerIdAndTeamInfo()
+    {
+        var broadcast = new AppTeamChanged
+        {
+            PlayerId = 76561198000000001,
+            TeamInfo = new AppTeamInfo
+            {
+                LeaderSteamId = 76561198000000002,
+                Members =
+                {
+                    new AppTeamInfo.Member
+                    {
+                        SteamId = 76561198000000002, Name = "Leader"
+                    }
+                }
+            }
+        };
+
+        var arg = broadcast.ToTeamChangedEvent();
+
+        Assert.Equal(76561198000000001ul, arg.PlayerId);
+        Assert.NotNull(arg.TeamInfo);
+        Assert.Equal(76561198000000002ul, arg.TeamInfo!.LeaderSteamId);
+        Assert.Single(arg.TeamInfo.Members!);
+    }
+
+    [Fact]
     public void ToTeamInfo_UnknownNoteType_Throws()
     {
         var info = new AppTeamInfo

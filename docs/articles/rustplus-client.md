@@ -163,6 +163,7 @@ The complete set of public events across `RustPlusSocket` and `RustPlus`:
 | `OnStorageMonitorTriggered` | `StorageMonitorEventArg` | An `EntityChanged` broadcast classified as a storage monitor: items, capacity or tool-cupboard protection present (TC broadcasts are sometimes partial — capacity may be absent). Item-less `value == true` storage broadcasts carry no contents snapshot and are **not** raised here (observe them via `OnEntityChanged`). |
 | `OnTeamChatReceived` | `TeamMessageEventArg` | A team chat message arrived. |
 | `OnClanChatReceived` | `ClanMessageEventArg` | A clan chat message arrived. |
+| `OnTeamChanged` | `TeamChangedEventArg` | The team snapshot changed (members, map notes, leader, …); carries the triggering `PlayerId`. |
 | `OnClanChanged` | `ClanChangedEventArg` | The clan snapshot changed (roles, members, MOTD, …). |
 | `OnCameraRaysReceived` | `CameraRaysEventArg` | A camera frame broadcast arrived for the subscribed camera. |
 

@@ -1,4 +1,5 @@
 using RustPlusApi.Data;
+using RustPlusApi.Data.Events;
 using RustPlusApi.Data.Notes;
 using RustPlusContracts;
 using static RustPlusContracts.AppTeamInfo;
@@ -40,6 +41,16 @@ public static class AppTeamInfoToModel
             DeathNote = deathNote,
             Notes = notes,
             LeaderNotes = appTeamInfo.LeaderMapNotes.ToPlayerNotes()
+        };
+    }
+
+    /// <summary>Maps an <see cref="AppTeamChanged"/> broadcast to a <see cref="TeamChangedEventArg"/>.</summary>
+    /// <param name="appTeamChanged">The protobuf team-changed broadcast.</param>
+    public static TeamChangedEventArg ToTeamChangedEvent(this AppTeamChanged appTeamChanged)
+    {
+        return new TeamChangedEventArg
+        {
+            PlayerId = appTeamChanged.PlayerId, TeamInfo = appTeamChanged.TeamInfo.ToTeamInfo()
         };
     }
 
