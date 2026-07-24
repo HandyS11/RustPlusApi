@@ -58,6 +58,11 @@ public class RustPlus(
     public event EventHandler<ClanMessageEventArg>? OnClanChatReceived;
 
     /// <summary>
+    /// Occurs when the team changes (members, map notes, leader, …), providing a <see cref="TeamChangedEventArg"/>.
+    /// </summary>
+    public event EventHandler<TeamChangedEventArg>? OnTeamChanged;
+
+    /// <summary>
     /// Occurs when the clan changes (roles, members, MOTD, …), providing a <see cref="ClanChangedEventArg"/>.
     /// </summary>
     public event EventHandler<ClanChangedEventArg>? OnClanChanged;
@@ -606,6 +611,12 @@ public class RustPlus(
         if (broadcast.TeamMessage is not null)
         {
             OnTeamChatReceived?.Invoke(this, broadcast.TeamMessage.Message.ToTeamMessageEvent());
+            return;
+        }
+
+        if (broadcast.TeamChanged is not null)
+        {
+            OnTeamChanged?.Invoke(this, broadcast.TeamChanged.ToTeamChangedEvent());
             return;
         }
 

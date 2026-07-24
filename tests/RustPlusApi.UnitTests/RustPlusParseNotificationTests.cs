@@ -123,6 +123,63 @@ public class RustPlusParseNotificationTests
     }
 
     [Fact]
+    public void TeamChanged_WithSubscriber_InvokesHandler()
+    {
+        using var sut = new TestRustPlus();
+        RustPlusApi.Data.Events.TeamChangedEventArg? captured = null;
+        sut.OnTeamChanged += (_, e) => captured = e;
+
+        var broadcast = new AppBroadcast
+        {
+            TeamChanged = new AppTeamChanged
+            {
+                PlayerId = 76561198000000001,
+                TeamInfo = new AppTeamInfo
+                {
+                    LeaderSteamId = 76561198000000001,
+                    Members =
+                    {
+                        new AppTeamInfo.Member
+                        {
+                            SteamId = 76561198000000001, Name = "Leader"
+                        }
+                    }
+                }
+            }
+        };
+
+        sut.Feed(broadcast);
+
+        Assert.NotNull(captured);
+        Assert.Equal(76561198000000001ul, captured!.PlayerId);
+        Assert.NotNull(captured.TeamInfo);
+        Assert.Equal(76561198000000001ul, captured.TeamInfo!.LeaderSteamId);
+        Assert.Single(captured.TeamInfo.Members!);
+    }
+
+    [Fact]
+    public void TeamChanged_NoSubscriber_DoesNotThrow()
+    {
+        using var sut = new TestRustPlus();
+        // OnTeamChanged intentionally NOT subscribed
+
+        var broadcast = new AppBroadcast
+        {
+            TeamChanged = new AppTeamChanged
+            {
+                PlayerId = 76561198000000001,
+                TeamInfo = new AppTeamInfo
+                {
+                    LeaderSteamId = 76561198000000001
+                }
+            }
+        };
+
+        var ex = Record.Exception(() => sut.Feed(broadcast));
+        Assert.Null(ex);
+    }
+
+    [Fact]
     public void ClanMessage_NoSubscriber_DoesNotThrow()
     {
         using var sut = new TestRustPlus();

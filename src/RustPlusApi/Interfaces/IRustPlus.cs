@@ -34,6 +34,9 @@ public interface IRustPlus : IRustPlusSocket
     /// <summary>Raised when a new clan chat message arrives.</summary>
     event EventHandler<ClanMessageEventArg>? OnClanChatReceived;
 
+    /// <summary>Raised when the team snapshot changes.</summary>
+    event EventHandler<TeamChangedEventArg>? OnTeamChanged;
+
     /// <summary>Raised when the clan snapshot changes.</summary>
     event EventHandler<ClanChangedEventArg>? OnClanChanged;
 
