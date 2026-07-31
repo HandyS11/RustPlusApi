@@ -276,7 +276,9 @@ public abstract class RustPlusSocket(
     /// <param name="forceClose">When <see langword="true"/>, skips draining in-flight requests.</param>
     public async Task DisconnectAsync(bool forceClose = false)
     {
-        await _lifecycleLock.WaitAsync().ConfigureAwait(false);
+        // Deliberately uncancellable: a disconnect must run to completion so the socket is always
+        // closed and Disconnected always raised, even while the instance token is being cancelled.
+        await _lifecycleLock.WaitAsync(CancellationToken.None).ConfigureAwait(false);
         try
         {
             if (!IsConnected)
@@ -377,7 +379,9 @@ public abstract class RustPlusSocket(
             return;
         }
 
-        var completed = await Task.WhenAny(loop, Task.Delay(_options.TeardownTimeout)).ConfigureAwait(false);
+        // The delay is the teardown bound itself: cancelling it would defeat the race it arbitrates.
+        var completed = await Task.WhenAny(loop, Task.Delay(_options.TeardownTimeout, CancellationToken.None))
+            .ConfigureAwait(false);
         if (completed != loop)
         {
             return;
@@ -395,6 +399,14 @@ public abstract class RustPlusSocket(
             Logger.LogPreviousReceiveLoopFaulted(ex);
         }
     }
+
+    /// <summary>
+    /// Token callback for a pending request's waiter: cancels the completion source the caller is
+    /// awaiting. A static method (not a closure) so registering it allocates nothing per request.
+    /// </summary>
+    /// <param name="state">The <see cref="TaskCompletionSource{TResult}"/> awaiting the response.</param>
+    private static void CancelPendingRequest(object? state) =>
+        ((TaskCompletionSource<AppMessage>)state!).TrySetCanceled(CancellationToken.None);
 
     /// <summary>
     /// Asynchronously sends a request to the Rust+ server and awaits the response correlated by sequence
@@ -455,8 +467,7 @@ public abstract class RustPlusSocket(
         try
         {
             // Cancel the wait if the caller cancels, the client is disposed, or the request times out.
-            using (linked.Token.Register(static state => ((TaskCompletionSource<AppMessage>)state!).TrySetCanceled(),
-                       tcs))
+            using (linked.Token.Register(CancelPendingRequest, tcs))
             {
                 return await tcs.Task.ConfigureAwait(false);
             }
@@ -549,7 +560,9 @@ public abstract class RustPlusSocket(
         }
 
         var all = Task.WhenAll(loops);
-        var completed = await Task.WhenAny(all, Task.Delay(_options.TeardownTimeout)).ConfigureAwait(false);
+        // The delay is the teardown bound itself: cancelling it would defeat the race it arbitrates.
+        var completed = await Task.WhenAny(all, Task.Delay(_options.TeardownTimeout, CancellationToken.None))
+            .ConfigureAwait(false);
         if (completed != all)
         {
             return;
@@ -580,7 +593,8 @@ public abstract class RustPlusSocket(
         }
 
         var all = Task.WhenAll(pending);
-        await Task.WhenAny(all, Task.Delay(_options.TeardownTimeout)).ConfigureAwait(false);
+        // The delay is the teardown bound itself: cancelling it would defeat the race it arbitrates.
+        await Task.WhenAny(all, Task.Delay(_options.TeardownTimeout, CancellationToken.None)).ConfigureAwait(false);
     }
 
     /// <summary>
