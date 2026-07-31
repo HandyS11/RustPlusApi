@@ -102,7 +102,9 @@ public sealed class CameraController : IAsyncDisposable
         {
             try
             {
-                await _rustPlus.UnsubscribeFromCameraAsync().ConfigureAwait(false);
+                // Uncancellable on purpose: _cts is already cancelled here, and the unsubscribe is
+                // this dispose's last best-effort courtesy to the server.
+                await _rustPlus.UnsubscribeFromCameraAsync(CancellationToken.None).ConfigureAwait(false);
             }
 #pragma warning disable RCS1075 // best-effort teardown: swallow any unsubscribe failure so dispose never throws
             catch (Exception)

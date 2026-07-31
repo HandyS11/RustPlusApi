@@ -79,7 +79,7 @@ public sealed class MockRustPlusServer : IAsyncDisposable
     public void Start()
     {
         _listener.Start();
-        _acceptLoop = Task.Run(() => AcceptLoopAsync(_cts.Token));
+        _acceptLoop = Task.Run(() => AcceptLoopAsync(_cts.Token), _cts.Token);
     }
 
     /// <summary>

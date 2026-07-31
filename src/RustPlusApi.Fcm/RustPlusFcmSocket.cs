@@ -383,7 +383,9 @@ public abstract class RustPlusFcmSocket(
         }
 
         var all = Task.WhenAll(loops);
-        var completed = await Task.WhenAny(all, Task.Delay(TeardownTimeout)).ConfigureAwait(false);
+        // The delay is the teardown bound itself: cancelling it would defeat the race it arbitrates.
+        var completed = await Task.WhenAny(all, Task.Delay(TeardownTimeout, CancellationToken.None))
+            .ConfigureAwait(false);
         if (completed != all)
         {
             return;
