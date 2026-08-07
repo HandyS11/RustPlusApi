@@ -32,6 +32,7 @@ public class CameraModelMapperTests
         Assert.Null(frame.TimeOfDay);
         Assert.Null(frame.CameraPosition);
         Assert.Null(frame.CameraRotation);
+        Assert.Null(frame.SampleRotation);
         Assert.Empty(frame.Entities);
     }
 
@@ -50,6 +51,10 @@ public class CameraModelMapperTests
             CameraRotation = new ProtoVector3
             {
                 X = 4, Y = 5, Z = 6
+            },
+            SampleRotation = new ProtoVector3
+            {
+                X = 7, Y = 8, Z = 9
             }
         };
 
@@ -58,6 +63,7 @@ public class CameraModelMapperTests
         Assert.Equal(0.5f, frame.TimeOfDay);
         Assert.Equal(1, frame.CameraPosition!.X);
         Assert.Equal(6, frame.CameraRotation!.Z);
+        Assert.Equal(9, frame.SampleRotation!.Z);
     }
 
     [Fact]
@@ -74,6 +80,7 @@ public class CameraModelMapperTests
         Assert.Null(frame.TimeOfDay);
         Assert.Null(frame.CameraPosition);
         Assert.Null(frame.CameraRotation);
+        Assert.Null(frame.SampleRotation);
     }
 
     [Fact]
@@ -91,6 +98,10 @@ public class CameraModelMapperTests
             CameraRotation = new ProtoVector3
             {
                 X = 1, Y = 2, Z = 3
+            },
+            SampleRotation = new ProtoVector3
+            {
+                X = 4, Y = 5, Z = 6
             }
         };
 
@@ -99,5 +110,6 @@ public class CameraModelMapperTests
         Assert.Equal(0.75f, frame.TimeOfDay);
         Assert.Equal(10, frame.CameraPosition!.X);
         Assert.Equal(3, frame.CameraRotation!.Z);
+        Assert.Equal(6, frame.SampleRotation!.Z);
     }
 }

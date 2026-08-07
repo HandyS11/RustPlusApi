@@ -39,7 +39,8 @@ public static class AppCameraToModel
             Entities = appCameraRays.Entities.ToCameraEntities(),
             TimeOfDay = appCameraRays.ShouldSerializeTimeOfDay() ? appCameraRays.TimeOfDay : null,
             CameraPosition = appCameraRays.CameraPosition?.ToVector3(),
-            CameraRotation = appCameraRays.CameraRotation?.ToVector3()
+            CameraRotation = appCameraRays.CameraRotation?.ToVector3(),
+            SampleRotation = appCameraRays.SampleRotation?.ToVector3()
         };
     }
 
@@ -56,7 +57,8 @@ public static class AppCameraToModel
             Entities = appCameraRays.Entities.ToCameraEntities(),
             TimeOfDay = appCameraRays.ShouldSerializeTimeOfDay() ? appCameraRays.TimeOfDay : null,
             CameraPosition = appCameraRays.CameraPosition?.ToVector3(),
-            CameraRotation = appCameraRays.CameraRotation?.ToVector3()
+            CameraRotation = appCameraRays.CameraRotation?.ToVector3(),
+            SampleRotation = appCameraRays.SampleRotation?.ToVector3()
         };
     }
 

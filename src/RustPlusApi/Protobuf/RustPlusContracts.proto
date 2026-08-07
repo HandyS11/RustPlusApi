@@ -335,6 +335,7 @@ message AppMarker {
 		optional float item_condition = 8;
 		optional float item_condition_max = 9;
 		optional float price_multiplier = 10;
+		optional float received_quantity_multiplier = 11;
 	}
 }
 
@@ -424,6 +425,7 @@ message AppCameraRays {
 	optional float time_of_day = 6;
 	optional Vector3 camera_position = 7;
 	optional Vector3 camera_rotation = 8;
+	optional Vector3 sample_rotation = 9;
 
 	enum EntityType {
 		Tree = 1;

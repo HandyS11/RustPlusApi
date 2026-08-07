@@ -32,4 +32,7 @@ public sealed record VendingMachineItem
 
     /// <summary>Price multiplier applied to the order, if reported.</summary>
     public float? PriceMultiplier { get; init; }
+
+    /// <summary>Multiplier applied to the quantity actually received per transaction, if reported.</summary>
+    public float? ReceivedQuantityMultiplier { get; init; }
 }

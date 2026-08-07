@@ -107,6 +107,7 @@ Each `CameraFrame` (delivered via `OnCameraRaysReceived`) contains:
 - `Entities` — list of `CameraEntity` objects visible in the frame (id, type, position/rotation/size, name).
 - `TimeOfDay` — in-game time of day when captured (`null` if not reported).
 - `CameraPosition` / `CameraRotation` — world-space position and rotation (`null` if not reported).
+- `SampleRotation` — world-space rotation the frame's rays were sampled with (`null` if not reported).
 
 ## CameraController
 
