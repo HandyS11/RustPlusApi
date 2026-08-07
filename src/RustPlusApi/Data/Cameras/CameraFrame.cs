@@ -31,4 +31,7 @@ public record CameraFrame
 
     /// <summary>World-space rotation of the camera, if reported.</summary>
     public Vector3? CameraRotation { get; init; }
+
+    /// <summary>World-space rotation the frame's rays were sampled with, if reported.</summary>
+    public Vector3? SampleRotation { get; init; }
 }

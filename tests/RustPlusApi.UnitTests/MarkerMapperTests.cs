@@ -6,7 +6,7 @@ using static RustPlusContracts.AppMarker;
 namespace RustPlusApi.UnitTests;
 
 /// <summary>Locks every projection in <see cref="AppMarkerToModel"/>, including the sell-order
-/// presence fork on <c>PriceMultiplier</c>.</summary>
+/// presence forks on <c>PriceMultiplier</c> and <c>ReceivedQuantityMultiplier</c>.</summary>
 public class MarkerMapperTests
 {
     private static AppMarker Marker(AppMarkerType type) => new()
@@ -76,6 +76,36 @@ public class MarkerMapperTests
         };
         var item = order.ToVendingMachineItem();
         Assert.Null(item.PriceMultiplier);
+    }
+
+    [Fact]
+    public void ToVendingMachineItem_WhenReceivedQuantityMultiplierSet_MapsValue()
+    {
+        var order = new SellOrder
+        {
+            ItemId = 9,
+            Quantity = 1,
+            CostPerItem = 1,
+            AmountInStock = 1,
+            ReceivedQuantityMultiplier = 2.5f
+        };
+
+        var item = order.ToVendingMachineItem();
+
+        Assert.Equal(2.5f, item.ReceivedQuantityMultiplier);
+    }
+
+    [Fact]
+    public void ToVendingMachineItem_WhenReceivedQuantityMultiplierUnset_IsNull()
+    {
+        var order = new SellOrder
+        {
+            ItemId = 9, Quantity = 1, CostPerItem = 1, AmountInStock = 1
+        };
+
+        var item = order.ToVendingMachineItem();
+
+        Assert.Null(item.ReceivedQuantityMultiplier);
     }
 
     [Theory]

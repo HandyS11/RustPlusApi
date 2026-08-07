@@ -76,7 +76,10 @@ public static class AppMarkerToModel
             IsCurrencyBlueprint = sellOrder.CurrencyIsBlueprint,
             ItemLife = sellOrder.ItemCondition,
             ItemMaxLife = sellOrder.ItemConditionMax,
-            PriceMultiplier = sellOrder.ShouldSerializePriceMultiplier() ? sellOrder.PriceMultiplier : null
+            PriceMultiplier = sellOrder.ShouldSerializePriceMultiplier() ? sellOrder.PriceMultiplier : null,
+            ReceivedQuantityMultiplier = sellOrder.ShouldSerializeReceivedQuantityMultiplier()
+                ? sellOrder.ReceivedQuantityMultiplier
+                : null
         };
     }
 
