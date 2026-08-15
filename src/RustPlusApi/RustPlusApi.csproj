@@ -28,7 +28,6 @@
     <!-- IAsyncDisposable / ValueTask + Channels are in-box on net10.0; netstandard2.0 needs the packages. -->
     <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
         <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
         <PackageReference Include="System.Threading.Channels" />
     </ItemGroup>
 
