@@ -69,6 +69,11 @@ public abstract class RustPlusSocket(
     /// <summary>int (not uint) so Interlocked.Increment works on netstandard2.0, which lacks the uint overload.</summary>
     private int _seq;
 
+    /// <summary>The underlying socket; <see langword="null"/> until connected and again after disposal.</summary>
+    /// <remarks>The close and send paths dereference this as <c>_webSocket!</c>: they only ever run on a connected
+    /// socket, but no guard is in scope for the compiler to see, so dropping the null-forgiving operator fails the
+    /// build with CS8602 on both target frameworks. Sonar's S8969 ("the compiler already knows this expression is not
+    /// null here") is therefore a false positive at those call sites and is suppressed there.</remarks>
     private ClientWebSocket? _webSocket;
 
     /// <summary>Test seam: the number of in-flight requests awaiting a seq-bearing response.</summary>
@@ -301,8 +306,11 @@ public abstract class RustPlusSocket(
                 using var closeTimeout = new CancellationTokenSource(_options.TeardownTimeout);
                 using var linked =
                     CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
+                // S8969 is a false positive on _webSocket! — see the field's remarks.
+#pragma warning disable S8969
                 await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, linked.Token)
                     .ConfigureAwait(false);
+#pragma warning restore S8969
             }
             catch (OperationCanceledException)
             {
@@ -654,8 +662,11 @@ public abstract class RustPlusSocket(
 #pragma warning restore RCS1261
                     Serializer.Serialize(ms, request);
                     var buffer = ms.ToArray();
+                    // S8969 is a false positive on _webSocket! — see the field's remarks.
+#pragma warning disable S8969
                     await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true,
                         CancellationToken).ConfigureAwait(false);
+#pragma warning restore S8969
                 }
             }
         }
