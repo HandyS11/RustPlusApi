@@ -55,7 +55,10 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
     public async Task<string> RegisterWithRustPlusAsync(Credentials credentials,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(credentials.ExpoPushToken))
+        // Narrow with a pattern rather than string.IsNullOrEmpty: netstandard2.0's reference assembly lacks the
+        // [NotNullWhen(false)] annotation, so only the pattern proves non-nullness to the compiler on both TFMs.
+        var expoPushToken = credentials.ExpoPushToken;
+        if (expoPushToken is not { Length: > 0 })
         {
             throw new InvalidOperationException(
                 "Credentials are missing the Expo push token; call AcquireCredentialsAsync first.");
@@ -63,7 +66,7 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
 
         var steamToken = await _steamLoginService.LoginAsync(cancellationToken).ConfigureAwait(false);
         await _rustCompanionClient
-            .RegisterAsync(steamToken, credentials.ExpoPushToken!, cancellationToken: cancellationToken)
+            .RegisterAsync(steamToken, expoPushToken, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         return steamToken;
     }

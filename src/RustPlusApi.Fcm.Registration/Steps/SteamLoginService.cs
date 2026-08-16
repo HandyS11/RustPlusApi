@@ -83,9 +83,11 @@ public sealed class SteamLoginService(int port = 3000)
 
                 var token = await ReadTokenAsync(context.Request).ConfigureAwait(false);
                 await RespondAsync(context, "<h1>Done. You can close this window.</h1>").ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(token))
+                // Narrow with a pattern rather than string.IsNullOrEmpty: netstandard2.0's reference assembly lacks
+                // the [NotNullWhen(false)] annotation, so only the pattern proves non-nullness on both TFMs.
+                if (token is { Length: > 0 })
                 {
-                    return token!;
+                    return token;
                 }
             }
         }
@@ -339,7 +341,7 @@ public sealed class SteamLoginService(int port = 3000)
             return null;
         }
 
-        foreach (var directory in pathVariable!.Split(Path.PathSeparator))
+        foreach (var directory in pathVariable.Split(Path.PathSeparator))
         {
             var candidate = Path.Combine(directory, executable);
             if (File.Exists(candidate))

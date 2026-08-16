@@ -91,6 +91,12 @@ public abstract class RustPlusFcmSocket(
     /// <summary>The transport stream used for reading and writing MCS frames.
     /// In production this is set to the authenticated <see cref="SslStream"/> immediately after
     /// TLS handshake; tests supply an in-memory stream via <see cref="RunReceiveLoopOverStreamAsync"/>.</summary>
+    /// <remarks>The read/write helpers dereference this as <c>_transport!</c>: they are only reachable once the
+    /// transport has been assigned, and the success path never clears it again — teardown disposes the stream rather
+    /// than nulling the field, so a read racing teardown surfaces <see cref="ObjectDisposedException"/> rather than a
+    /// null. No guard is in scope for the compiler to see, though, so dropping the null-forgiving operator fails the
+    /// build with CS8602 on both target frameworks; Sonar's S8969 ("the compiler already knows this expression is not
+    /// null here") is wrong at those call sites and is suppressed there.</remarks>
     private Stream? _transport;
 
     /// <summary>Tear-free accessor over <see cref="_lastTrafficTicks"/>.</summary>
@@ -599,10 +605,11 @@ public abstract class RustPlusFcmSocket(
         while (bytesRead < size)
         {
             // byte[] overload is intentional: the Memory<byte> overload (preferred by CA1835) is unavailable on netstandard2.0.
-#pragma warning disable CA1835
+            // S8969 is a false positive on _transport! — see the field's remarks.
+#pragma warning disable CA1835, S8969
             var read = await _transport!.ReadAsync(buffer, bytesRead, size - bytesRead, CancellationToken)
                 .ConfigureAwait(false);
-#pragma warning restore CA1835
+#pragma warning restore CA1835, S8969
             if (read == 0)
             {
                 throw new EndOfStreamException(); // stream closed before the full frame arrived
@@ -622,9 +629,10 @@ public abstract class RustPlusFcmSocket(
     {
         var one = new byte[1];
         // byte[] overload is intentional: the Memory<byte> overload (preferred by CA1835) is unavailable on netstandard2.0.
-#pragma warning disable CA1835
+        // S8969 is a false positive on _transport! — see the field's remarks.
+#pragma warning disable CA1835, S8969
         var read = await _transport!.ReadAsync(one, 0, 1, CancellationToken).ConfigureAwait(false);
-#pragma warning restore CA1835
+#pragma warning restore CA1835, S8969
         return read == 0 ? -1 : one[0];
     }
 
@@ -678,9 +686,10 @@ public abstract class RustPlusFcmSocket(
         try
         {
             // byte[] overload is intentional: the Memory<byte> overload (preferred by CA1835) is unavailable on netstandard2.0.
-#pragma warning disable CA1835
+            // S8969 is a false positive on _transport! — see the field's remarks.
+#pragma warning disable CA1835, S8969
             await _transport!.WriteAsync(frame, 0, frame.Length, CancellationToken).ConfigureAwait(false);
-#pragma warning restore CA1835
+#pragma warning restore CA1835, S8969
         }
         finally
         {

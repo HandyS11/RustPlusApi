@@ -69,6 +69,18 @@ public abstract class RustPlusSocket(
     /// <summary>int (not uint) so Interlocked.Increment works on netstandard2.0, which lacks the uint overload.</summary>
     private int _seq;
 
+    /// <summary>The underlying socket; <see langword="null"/> until connected, again after disposal, and
+    /// transiently during a reconnect (<see cref="ConnectAsync"/> disposes and clears it before rebuilding).</summary>
+    /// <remarks>Two paths dereference this as <c>_webSocket!</c>, for different reasons.
+    /// <see cref="DisconnectAsync"/> runs under the lifecycle lock and has already returned unless
+    /// <see cref="IsConnected"/>, so the field really is non-null there — but the guard is a property, so the
+    /// compiler cannot narrow the field through it. <see cref="ProcessSendQueueAsync"/> has no such guard and makes
+    /// no such promise: a concurrent reconnect can clear the field while that loop is still draining, so the
+    /// dereference genuinely can throw. That is handled rather than prevented — the loop's catch-all surfaces the
+    /// fault and fails the pending requests instead of letting them time out. Either way the operator is
+    /// load-bearing: dropping it fails the build with CS8602 on both target frameworks, so Sonar's S8969 ("the
+    /// compiler already knows this expression is not null here") is wrong at both sites and is suppressed there.
+    /// </remarks>
     private ClientWebSocket? _webSocket;
 
     /// <summary>Test seam: the number of in-flight requests awaiting a seq-bearing response.</summary>
@@ -301,8 +313,12 @@ public abstract class RustPlusSocket(
                 using var closeTimeout = new CancellationTokenSource(_options.TeardownTimeout);
                 using var linked =
                     CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, closeTimeout.Token);
+                // Non-null via the IsConnected check above, which the compiler cannot narrow through.
+                // S8969 (claims the operator is redundant) is wrong — see the field's remarks.
+#pragma warning disable S8969
                 await _webSocket!.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, linked.Token)
                     .ConfigureAwait(false);
+#pragma warning restore S8969
             }
             catch (OperationCanceledException)
             {
@@ -654,8 +670,12 @@ public abstract class RustPlusSocket(
 #pragma warning restore RCS1261
                     Serializer.Serialize(ms, request);
                     var buffer = ms.ToArray();
+                    // A concurrent reconnect can clear _webSocket here; the catch-all below handles that.
+                    // S8969 (claims the operator is redundant) is wrong — see the field's remarks.
+#pragma warning disable S8969
                     await _webSocket!.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true,
                         CancellationToken).ConfigureAwait(false);
+#pragma warning restore S8969
                 }
             }
         }
