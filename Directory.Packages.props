@@ -13,7 +13,7 @@
     <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
     <!-- 3.3.0+ ships the .proto source generator inside protobuf-net.Core; the standalone
          protobuf-net.BuildTools package is redundant and loading both duplicates the generator. -->
-    <PackageVersion Include="protobuf-net" Version="3.3.21" />
+    <PackageVersion Include="protobuf-net" Version="3.4.19" />
     <PackageVersion Include="System.Text.Json" Version="10.0.11" />
     <!-- netstandard2.0: Channels is in-box on net10.0; ns2.0 needs the package. -->
     <PackageVersion Include="System.Threading.Channels" Version="10.0.11" />
@@ -24,9 +24,9 @@
     <!-- Analyzers -->
     <PackageVersion Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.400" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="18.7.23" />
-    <PackageVersion Include="Roslynator.Analyzers" Version="4.16.1" />
-    <PackageVersion Include="Roslynator.Formatting.Analyzers" Version="4.16.1" />
-    <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.32.0.713" />
+    <PackageVersion Include="Roslynator.Analyzers" Version="5.0.0" />
+    <PackageVersion Include="Roslynator.Formatting.Analyzers" Version="5.0.0" />
+    <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.33.0.1635" />
   </ItemGroup>
   <ItemGroup>
     <!-- Test stack -->
