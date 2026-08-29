@@ -407,11 +407,13 @@ dotnet_diagnostic.CA1062.severity = none # Validate parameters — nullable refe
 dotnet_diagnostic.IDE0058.severity = none # Expression not used (boring with extension methods) _ = Foo()
 
 # protobuf-net.BuildTools (ships inside protobuf-net.Core 3.3+).
-# PBN2013 suggests [ProtoModel] to get compile-time serializers. That attribute is still experimental —
-# applying it raises PBN9001 ("for evaluation purposes only and is subject to change or removal") — and it
-# cascades PBN2010/PBN2011 onto every Serializer.Serialize / NonGeneric.Deserialize call site, i.e. a full
-# AOT rewrite. Not a trade worth making for a first-serialize perf hint; revisit once the attribute is stable.
-dotnet_diagnostic.PBN2013.severity = none # protobuf-net contracts without a [ProtoModel] compile-time serializer
+# PBN3013 (PBN2013 before protobuf-net 3.4, which renumbered the 2011-2013 family to 3011-3013 and reused the
+# PBN2010 slot for an unrelated error-level rule) suggests [ProtoModel] to get compile-time serializers. That
+# attribute is still experimental — applying it raises PBN9001 ("for evaluation purposes only and is subject to
+# change or removal") — and it cascades PBN3010/PBN3011 onto every Serializer.Serialize / NonGeneric.Deserialize
+# call site, i.e. a full AOT rewrite. Not a trade worth making for a first-serialize perf hint; revisit once the
+# attribute is stable.
+dotnet_diagnostic.PBN3013.severity = none # protobuf-net contracts without a [ProtoModel] compile-time serializer
 
 dotnet_diagnostic.Moq1203.severity = none # Method setup should specify a return value
 dotnet_diagnostic.Moq1400.severity = none # Choose a mock behaviour (strict, loose)
