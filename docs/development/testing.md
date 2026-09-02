@@ -202,13 +202,27 @@ per the "no unjustified gaps" rule, rather than contorted around):
 - The bare `throw;` inside the `GetContextAsync` catch block — reached only when that call fails
   for a reason other than the cancellation registration stopping the listener (e.g. an unrelated
   listener teardown mid-request); not producible from a test without forcing that specific race.
+- The `catch (Exception ex) when (ex is HttpListenerException or IOException)` around the response
+  write in `RespondAsync` — only taken when the browser has already dropped the TCP connection
+  before `OutputStream.WriteAsync` completes (tab closed, navigation cancelled); the test harness's
+  `HttpClient` always waits for the full response, so the write never fails.
+- The matching `catch` around `context.Response.Close()` in `RespondAsync`'s `finally` — requires
+  `Close()` itself to observe a connection already torn down, i.e. the same kind of drop landing at
+  the very end of the response instead of during the write; not producible without a client that
+  aborts mid-response.
+- The `port == 0` arm of the bind-failure guidance text in `LoginAsync` — only selected when the
+  caller passes `port: 0` and then loses the free-port race between `GetFreePort`'s probe socket
+  closing and `listener.Start()` rebinding the same port; the existing bind-failure test forces the
+  exception deterministically by passing an already-bound non-zero port instead, so it always takes
+  the other arm.
 
-Everything else — URL construction (`BuildLoginUrl`), callback parsing
-(`ParseCallback`/`ParseQuery`), nonce generation, and the loopback accept loop's success/unknown-
-path/bad-callback branches and port-bind failure — is exercised by `SteamLoginServiceTests` via the
-`openBrowser: false` seam, which drives the accept loop with a real loopback `HttpListener` and
-`HttpClient` without opening a browser. As of this writing `tools/coverage/report.sh` reports
-93.13% line / 80.77% branch for this class — the gaps above account for the shortfall.
+Aside from the residual gaps listed above, everything else — URL construction (`BuildLoginUrl`),
+callback parsing (`ParseCallback`/`ParseQuery`), nonce generation, and the loopback accept loop's
+success/unknown-path/bad-callback branches and port-bind failure — is exercised by
+`SteamLoginServiceTests` via the `openBrowser: false` seam, which drives the accept loop with a real
+loopback `HttpListener` and `HttpClient` without opening a browser. As of this writing
+`tools/coverage/report.sh` reports 90.62% line / 83.33% branch for this class — the gaps above
+account for the shortfall.
 
 ### `FcmRegistration.RegisterWithRustPlusAsync`
 
