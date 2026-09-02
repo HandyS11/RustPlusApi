@@ -178,7 +178,10 @@ mutation score cannot be measured.
 ## Coverage exclusion list
 
 The following members are explicitly excluded from the coverage gate with justifications.
-Everything else must reach 100% line and branch coverage across the TFM matrix.
+Everything else is expected at 100% line and branch coverage across the TFM matrix. Where a spot
+is neither reasonably excludable nor reachable by a test, it must be enumerated with a
+justification instead of silently left short — see the `SteamLoginService` residual gaps below for
+the pattern.
 
 ### `SteamLoginService.TryOpenBrowser`
 

@@ -217,10 +217,7 @@ public sealed class SteamLoginService(int port = 3000)
                 + "likely changed upstream — re-check RegistrationConstants against rustplus.js.");
         }
 
-        return new SteamLoginResult
-        {
-            SteamId = steamId, Token = token
-        };
+        return new SteamLoginResult(steamId, token);
     }
 
     /// <summary>Generates the per-run callback nonce as lowercase hex.</summary>

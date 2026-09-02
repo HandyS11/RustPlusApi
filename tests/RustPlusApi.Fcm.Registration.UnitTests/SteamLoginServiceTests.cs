@@ -67,6 +67,13 @@ public class SteamLoginServiceTests
     public void ParseCallback_InvalidCallback_Throws(string uri) =>
         Assert.Throws<InvalidOperationException>(() => SteamLoginService.ParseCallback(new Uri(uri)));
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SteamLoginResult_BlankToken_Throws(string? token) =>
+        Assert.Throws<ArgumentException>(() => new SteamLoginResult(7, token!));
+
     [Fact]
     public void ParseCallback_DuplicateParameter_LastValueWins()
     {
