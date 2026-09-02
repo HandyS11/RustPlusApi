@@ -45,7 +45,7 @@ Everything targets **.NET Standard 2.0** and **.NET 10**, so the libraries run o
 ## How it fits together
 
 **1. Get credentials once** — `RustPlusApi.Fcm.Registration` drives the full chain: GCM check-in,
-Firebase installation, FCM token, Expo push token, an interactive Steam login via Chrome DevTools,
+Firebase installation, FCM token, Expo push token, an interactive Steam login in your own browser,
 and a Rust Companion device registration. The result is a `rustplus.config.json` you load on every
 subsequent run. After that, pairing a server in game pushes four values — server IP, companion
 port, your SteamID64, and a per-server token — straight to your app via FCM. See

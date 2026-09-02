@@ -20,9 +20,13 @@ var registration = new FcmRegistration();
 Console.WriteLine("1/4  Acquiring FCM credentials (GCM check-in, Firebase, FCM, Expo)…");
 var credentials = await registration.AcquireCredentialsAsync();
 
-Console.WriteLine("2/4  Launching Chrome/Chromium for Steam login — sign in through Steam…");
-Console.WriteLine("     (Requires Chrome or Chromium installed; set CHROME_PATH if it isn't found.)");
-await registration.RegisterWithRustPlusAsync(credentials);
+Console.WriteLine("2/4  Opening your browser for the Steam login — sign in through Steam…");
+var steamLogin = await registration.RegisterWithRustPlusAsync(credentials, onLoginUrl: url =>
+{
+    Console.WriteLine("     If your browser didn't open, visit this URL yourself:");
+    Console.WriteLine($"     {url}");
+});
+Console.WriteLine($"     Signed in as {steamLogin.SteamId}.");
 
 Console.WriteLine($"3/4  Saving credentials to {configPath}…");
 CredentialsStore.Save(configPath, credentials);

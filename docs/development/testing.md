@@ -167,7 +167,7 @@ mutation score cannot be measured.
 | Project | Score | Notes |
 | --- | --- | --- |
 | `RustPlusApi.Camera` | ~90.5% | `CameraController` is exercised by `RustPlusApi.Camera.IntegrationTests` (a `RustPlus` client is required), so that project is listed alongside the unit tests in `test-projects` — Stryker mutates `RustPlusApi.Camera.csproj` and runs both suites against it. Remaining survivors are equivalent: renderer `>>` signed-vs-unsigned shifts; controller keep-alive/`Move` timing (`<` vs `<=` deadline, `duration ?? default`), `|=`→`^=` on a zero-initialised flag accumulator, and movement-gate bitmasks that would only differ on a device advertising one of `Movement`/`SprintAndDuck` but not the other (no such device exists in game). |
-| `RustPlusApi.Fcm.Registration` | ~97.1% | Remaining: `CredentialsStore` file-write path + an `AndroidFcmRegister` error-parse equality; the rest is `[ExcludeFromCodeCoverage]` Steam surface. |
+| `RustPlusApi.Fcm.Registration` | ~97.1% | Remaining: `CredentialsStore` file-write path + an `AndroidFcmRegister` error-parse equality; the three excluded members are `SteamLoginService.TryOpenBrowser`, `FcmRegistration.RegisterWithRustPlusAsync`, and `PairingListener.WaitForServerPairingAsync` (see the coverage exclusion list below). |
 | `RustPlusApi.Fcm` | ~83.3% | Remaining: live-socket teardown (`Dispose`/`Close`/`Cancel` statement removals are not observable without leak detection) and equivalent shift/xor mutants in `McsUtils`; `Log*`/`CreateLogger` calls are suppressed via `ignore-methods`. |
 | `RustPlusApi` (core) | n/a | Cannot run — see limitation above. |
 | `RustPlusApi.Extensions.DependencyInjection` | ~90.9% | Remaining survivors are equivalent: the explicit `if (services is null) throw` guards are masked by the `services.AddOptions()` call, which throws the same `ArgumentNullException(paramName: "services")`. |
@@ -178,22 +178,54 @@ mutation score cannot be measured.
 ## Coverage exclusion list
 
 The following members are explicitly excluded from the coverage gate with justifications.
-Everything else must reach 100% line and branch coverage across the TFM matrix.
+Everything else is expected at 100% line and branch coverage across the TFM matrix. Where a spot
+is neither reasonably excludable nor reachable by a test, it must be enumerated with a
+justification instead of silently left short — see the `SteamLoginService` residual gaps below for
+the pattern.
 
-### `SteamLoginService` (whole class)
+### `SteamLoginService.TryOpenBrowser`
 
 **File:** `src/RustPlusApi.Fcm.Registration/Steps/SteamLoginService.cs`
 
-**Justification:** Drives a live Chrome/Chromium instance over the Chrome DevTools Protocol (CDP).
-There is no meaningful offline seam — the entire class is browser-control logic (launch Chrome,
-inject a JavaScript shim via `Page.addScriptToEvaluateOnNewDocument`, navigate to the Facepunch
-Steam login URL, capture the OAuth callback token). Mocking CDP would mean reimplementing a browser.
-The class can only be validated by a real interactive run (Chrome plus a Steam login), e.g. via the
-`RustPlus.Register.ConsoleApp` sample.
+**Justification:** Launches a real OS browser process (`Process.Start`, platform-specific
+`xdg-open`/`open`/shell-execute), and failure is by design unobservable from the caller — the
+login URL has already been reported through `LoginAsync`'s `onLoginUrl` callback before this runs,
+so a headless host can always open the link by hand. This is the only member excluded from the
+coverage gate in this class.
 
-No pure helpers were extractable: the token arrives via an HTTP query-string parameter on the
-loopback callback listener, not from parsing a CDP JSON message, so there is no standalone parsing
-logic that could be unit-tested in isolation.
+**Residual gaps, not excluded, not currently reached by `SteamLoginServiceTests`** (recorded here
+per the "no unjustified gaps" rule, rather than contorted around):
+
+- The public `LoginAsync(Action<string>?, CancellationToken)` overload — a one-line delegation to
+  the internal `openBrowser` overload with `openBrowser: true`. Its only caller is
+  `FcmRegistration.RegisterWithRustPlusAsync`, itself excluded below, and exercising it directly
+  would open a real browser.
+- The `if (openBrowser) { TryOpenBrowser(loginUrl); }` true branch inside `LoginAsync` — tests
+  always pass `openBrowser: false` (the offline seam) so this branch is never taken.
+- The bare `throw;` inside the `GetContextAsync` catch block — reached only when that call fails
+  for a reason other than the cancellation registration stopping the listener (e.g. an unrelated
+  listener teardown mid-request); not producible from a test without forcing that specific race.
+- The `catch (Exception ex) when (ex is HttpListenerException or IOException)` around the response
+  write in `RespondAsync` — only taken when the browser has already dropped the TCP connection
+  before `OutputStream.WriteAsync` completes (tab closed, navigation cancelled); the test harness's
+  `HttpClient` always waits for the full response, so the write never fails.
+- The matching `catch` around `context.Response.Close()` in `RespondAsync`'s `finally` — requires
+  `Close()` itself to observe a connection already torn down, i.e. the same kind of drop landing at
+  the very end of the response instead of during the write; not producible without a client that
+  aborts mid-response.
+- The `port == 0` arm of the bind-failure guidance text in `LoginAsync` — only selected when the
+  caller passes `port: 0` and then loses the free-port race between `GetFreePort`'s probe socket
+  closing and `listener.Start()` rebinding the same port; the existing bind-failure test forces the
+  exception deterministically by passing an already-bound non-zero port instead, so it always takes
+  the other arm.
+
+Aside from the residual gaps listed above, everything else — URL construction (`BuildLoginUrl`),
+callback parsing (`ParseCallback`/`ParseQuery`), nonce generation, and the loopback accept loop's
+success/unknown-path/bad-callback branches and port-bind failure — is exercised by
+`SteamLoginServiceTests` via the `openBrowser: false` seam, which drives the accept loop with a real
+loopback `HttpListener` and `HttpClient` without opening a browser. As of this writing
+`tools/coverage/report.sh` reports 90.62% line / 83.33% branch for this class — the gaps above
+account for the shortfall.
 
 ### `FcmRegistration.RegisterWithRustPlusAsync`
 

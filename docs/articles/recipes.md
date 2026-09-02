@@ -195,10 +195,13 @@ const string ConfigPath = "rustplus.config.json";
 // ── first run: acquire and persist FCM credentials ───────────────────────────
 if (!File.Exists(ConfigPath))
 {
-    Console.WriteLine("No credentials found — running registration flow (Chrome will open).");
+    Console.WriteLine("No credentials found — running registration flow (your browser will open).");
     var registration = new FcmRegistration();
     var credentials = await registration.AcquireCredentialsAsync();
-    await registration.RegisterWithRustPlusAsync(credentials);
+    var steamLogin = await registration.RegisterWithRustPlusAsync(
+        credentials,
+        onLoginUrl: url => Console.WriteLine($"Open this URL to log in: {url}"));
+    Console.WriteLine($"Steam id: {steamLogin.SteamId}");
     CredentialsStore.Save(ConfigPath, credentials);
     Console.WriteLine($"Credentials saved to {ConfigPath}.");
 }

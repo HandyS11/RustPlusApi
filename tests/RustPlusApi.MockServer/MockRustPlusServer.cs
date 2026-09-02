@@ -108,15 +108,22 @@ public sealed class MockRustPlusServer : IAsyncDisposable
                 break;
             }
 
-            if (!context.Request.IsWebSocketRequest)
+            try
             {
-                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                context.Response.Close();
-                continue;
-            }
+                if (!context.Request.IsWebSocketRequest)
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    context.Response.Close();
+                    continue;
+                }
 
-            var wsContext = await context.AcceptWebSocketAsync(subProtocol: null);
-            _ = Task.Run(() => HandleClientAsync(wsContext.WebSocket, ct), ct);
+                var wsContext = await context.AcceptWebSocketAsync(subProtocol: null);
+                _ = Task.Run(() => HandleClientAsync(wsContext.WebSocket, ct), ct);
+            }
+            catch (Exception) when (ct.IsCancellationRequested)
+            {
+                break;
+            }
         }
     }
 

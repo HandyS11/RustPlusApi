@@ -1,70 +1,116 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
+using System.Globalization;
+using System.IO;
 using System.Net;
-using System.Net.WebSockets;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 
 namespace RustPlusApi.Fcm.Registration.Steps;
 
 /// <summary>
-/// Step 5 — interactive Steam login. Launches Chrome/Chromium with the DevTools protocol enabled,
-/// injects a <c>ReactNativeWebView.postMessage</c> shim into every page via
-/// <c>Page.addScriptToEvaluateOnNewDocument</c>, and captures the Rust+ auth token the Facepunch
-/// login page hands to that shim.
+/// Step 5 — interactive Steam login. Sends the user's own browser to the Facepunch login page with
+/// a loopback <c>returnUrl</c>, and captures the <c>steamId</c> and <c>token</c> Facepunch appends
+/// when it redirects back.
 /// </summary>
-/// <param name="port">The loopback port the OAuth callback listener binds to.</param>
+/// <param name="port">The loopback port the callback listener binds to; <c>0</c> picks a free one.</param>
 /// <remarks>
-/// The Facepunch login delivers the token to its host through <c>ReactNativeWebView.postMessage</c>.
-/// Older techniques no longer work on modern Chrome: popup/opener injection is blocked by
-/// cross-origin <c>WindowProxy</c> restrictions, and <c>--load-extension</c> was disabled for
-/// stable Chrome in 137+. CDP injection runs inside the page's own main world before its scripts,
-/// so it sidesteps all of that — the same mechanism Puppeteer/Playwright use. <b>Chrome/Chromium
-/// is required</b> (native or Flatpak are auto-detected; <c>CHROME_PATH</c> overrides discovery).
-/// This step is interactive and only validatable by a real run (e.g. the
-/// <c>RustPlus.Register.ConsoleApp</c> sample); it is excluded from the coverage gate.
+/// Any browser works — the flow is an ordinary redirect, with no page scripting involved. The
+/// callback path carries a per-run nonce so a page the user happens to be browsing cannot feed a
+/// token of its own choosing into the loopback listener.
 /// </remarks>
-[ExcludeFromCodeCoverage]
 public sealed class SteamLoginService(int port = 3000)
 {
-    private static readonly string[] FlatpakAppIds =
-        ["com.google.Chrome", "org.chromium.Chromium", "com.github.Eloston.UngoogledChromium"];
+    private const string SuccessHtml =
+        "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login complete</title>"
+        + "<script>history.replaceState(null,'',location.pathname);</script>"
+        + "<h1>Done. You can close this window.</h1>";
 
-    /// <summary>Launches Chrome, navigates to the Facepunch Steam login page, and returns the captured auth token.</summary>
-    /// <param name="cancellationToken">Token to cancel the operation.</param>
-    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a token is received.</exception>
-    public Task<string> LoginAsync(CancellationToken cancellationToken = default) =>
-        LoginAsync(RegistrationConstants.SteamLoginUrl, cancellationToken);
+    private const string FailureHtml =
+        "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login failed</title>"
+        + "<h1>That callback carried no Rust+ token. Try the login link again.</h1>";
 
-    /// <summary>Drives the login against an arbitrary start URL (the Facepunch login in production).</summary>
-    /// <param name="startUrl">The URL to navigate Chrome to when the session starts.</param>
+    /// <summary>Builds the 404 body for an unrecognised callback path, naming both the expected and
+    /// the received path so a Facepunch contract change (path stripped, normalised, or otherwise
+    /// altered by the Steam OpenID round-trip) is diagnosable instead of presenting as a silent
+    /// hang while the token sits unconsumed in the browser's URL bar.</summary>
+    /// <param name="expectedPath">The per-run callback path this listener actually expects.</param>
+    /// <param name="actualPath">The path the request carried instead.</param>
+    private static string BuildNotFoundHtml(string expectedPath, string actualPath) =>
+        "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login</title>"
+        + "<h1>Unknown callback path.</h1>"
+        + $"<p>Expected <code>{WebUtility.HtmlEncode(expectedPath)}</code> but received "
+        + $"<code>{WebUtility.HtmlEncode(actualPath)}</code>.</p>";
+
+    /// <summary>Sends the user's browser to the Facepunch Steam login and returns the captured identity.</summary>
+    /// <param name="onLoginUrl">Invoked with the login URL before the browser is opened, so callers
+    /// can print it. Always invoked, including when a browser is opened successfully.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a token is received.</exception>
-    internal async Task<string> LoginAsync(string startUrl, CancellationToken cancellationToken = default)
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a callback arrives.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the callback port cannot be bound.</exception>
+    public Task<SteamLoginResult> LoginAsync(Action<string>? onLoginUrl = null,
+        CancellationToken cancellationToken = default) =>
+        LoginAsync(RegistrationConstants.SteamLoginUrl, onLoginUrl, openBrowser: true, cancellationToken);
+
+    /// <summary>Drives the login against an arbitrary login page, optionally without opening a browser.</summary>
+    /// <param name="loginUrlBase">The login page to send the user to.</param>
+    /// <param name="onLoginUrl">Invoked with the login URL before any browser is opened.</param>
+    /// <param name="openBrowser">Whether to attempt to open the user's default browser.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a callback arrives.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the callback port cannot be bound.</exception>
+    internal async Task<SteamLoginResult> LoginAsync(string loginUrlBase,
+        Action<string>? onLoginUrl,
+        bool openBrowser,
+        CancellationToken cancellationToken)
     {
+        // HttpListener cannot bind port 0, so a free port is resolved up front by opening and
+        // immediately closing a probe socket on it (GetFreePort). The window between that probe
+        // closing and listener.Start() below binding the same port is inherently racy — another
+        // process could claim the port in between — but there is no API to resolve and bind a free
+        // port as one atomic step.
+        var boundPort = port == 0 ? GetFreePort() : port;
+        var nonce = CreateNonce();
+        var callbackPath = "/callback/" + nonce;
+#pragma warning disable S6618 // string.Create(IFormatProvider, ...) needs DefaultInterpolatedStringHandler, unavailable on netstandard2.0
+        var returnUrl = FormattableString.Invariant($"http://localhost:{boundPort}{callbackPath}");
+
         using var listener = new HttpListener();
-        listener.Prefixes.Add($"http://localhost:{port}/");
-        listener.Start();
+        listener.Prefixes.Add(FormattableString.Invariant($"http://localhost:{boundPort}/"));
+#pragma warning restore S6618
+
+        try
+        {
+            listener.Start();
+        }
+        catch (HttpListenerException ex)
+        {
+            var guidance = port == 0
+                ? "It was free when probed via GetFreePort, but something else claimed it before the "
+                  + "listener could bind — an inherent race, since there is no API to probe and bind a "
+                  + "free port as one atomic step. Retry; a fresh free port is probed on each attempt."
+                : $"Another process is probably using port {boundPort} — pass steamLoginPort: 0 to pick a "
+                  + "free port automatically.";
+            throw new InvalidOperationException(
+                $"Could not bind the Steam login callback listener to http://localhost:{boundPort}/. "
+                + guidance, ex);
+        }
+
         // GetContextAsync takes no cancellation token: stopping the listener is the only way to
         // unblock the wait promptly, so cancellation must not have to wait for the next request.
 #pragma warning disable RCS1261 // CancellationTokenRegistration.DisposeAsync is not available on netstandard2.0
         using var cancellationRegistration = cancellationToken.Register(listener.Stop);
 #pragma warning restore RCS1261
 
-        var workDir = Path.Combine(Path.GetTempPath(), "rustplusapi-" + Guid.NewGuid().ToString("N"));
-        var profileDir = Path.Combine(workDir, "profile");
-        var debugPort = GetFreePort();
-        Process? chrome = null;
-        ClientWebSocket? socket = null;
-
         try
         {
-            chrome = LaunchChrome(workDir, profileDir, debugPort);
-#pragma warning disable CA2000 // socket disposed via TryDisposeSocket in finally
-            socket = await ConnectAndInjectAsync(debugPort, startUrl, cancellationToken).ConfigureAwait(false);
-#pragma warning restore CA2000
+            var loginUrl = BuildLoginUrl(loginUrlBase, returnUrl);
+            onLoginUrl?.Invoke(loginUrl);
+            if (openBrowser)
+            {
+                TryOpenBrowser(loginUrl);
+            }
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -73,284 +119,156 @@ public sealed class SteamLoginService(int port = 3000)
                 {
                     context = await listener.GetContextAsync().ConfigureAwait(false);
                 }
-                catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException)
+                catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException
+                                               or InvalidOperationException)
                 {
                     // The listener was stopped under the wait — by the cancellation registration
-                    // above (expected; rethrow as cancellation) or by an unrelated teardown.
+                    // above (expected; rethrow as cancellation) or by an unrelated teardown. The
+                    // InvalidOperationException case covers the narrow window between the loop
+                    // condition observing "not yet cancelled" and this call actually starting:
+                    // Stop() may already have run by then, and GetContextAsync on a stopped-but-not-
+                    // disposed listener throws InvalidOperationException rather than one of the other
+                    // two. If the token isn't actually cancelled, this is a genuine failure and the
+                    // rethrow below preserves it unchanged.
                     cancellationToken.ThrowIfCancellationRequested();
                     throw;
                 }
 
-                var token = await ReadTokenAsync(context.Request).ConfigureAwait(false);
-                await RespondAsync(context, "<h1>Done. You can close this window.</h1>").ConfigureAwait(false);
-                // Narrow with a pattern rather than string.IsNullOrEmpty: netstandard2.0's reference assembly lacks
-                // the [NotNullWhen(false)] annotation, so only the pattern proves non-nullness on both TFMs.
-                if (token is { Length: > 0 })
+                var requestPath = context.Request.Url?.AbsolutePath ?? "(no path)";
+                if (!string.Equals(requestPath, callbackPath, StringComparison.Ordinal))
                 {
-                    return token;
+                    Debug.WriteLine(
+                        $"[{nameof(SteamLoginService)}] Callback path mismatch: expected '{callbackPath}', "
+                        + $"received '{requestPath}'.");
+                    await RespondAsync(context, HttpStatusCode.NotFound,
+                        BuildNotFoundHtml(callbackPath, requestPath)).ConfigureAwait(false);
+                    continue;
                 }
+
+                SteamLoginResult result;
+                try
+                {
+                    result = ParseCallback(context.Request.Url!);
+                }
+                catch (InvalidOperationException)
+                {
+                    await RespondAsync(context, HttpStatusCode.BadRequest, FailureHtml).ConfigureAwait(false);
+                    continue;
+                }
+
+                await RespondAsync(context, HttpStatusCode.OK, SuccessHtml).ConfigureAwait(false);
+                return result;
             }
         }
         finally
         {
             listener.Stop();
-            TryDisposeSocket(socket);
-            TryKill(chrome);
-            TryDeleteDirectory(workDir);
         }
 
         throw new OperationCanceledException(cancellationToken);
     }
 
-    // --- DevTools protocol ---
+    /// <summary>Builds the Facepunch login URL that redirects back to <paramref name="returnUrl"/>
+    /// with <c>steamId</c> and <c>token</c> appended as query parameters.</summary>
+    /// <param name="returnUrl">The absolute URL Facepunch should redirect the browser back to.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="returnUrl"/> is blank.</exception>
+#pragma warning disable CA1055, CA1054 // Return and parameter types must be string to match the callback parsing contract
+    public static string BuildLoginUrl(string returnUrl) =>
+        BuildLoginUrl(RegistrationConstants.SteamLoginUrl, returnUrl);
+#pragma warning restore CA1055, CA1054
 
-    private async Task<ClientWebSocket> ConnectAndInjectAsync(int debugPort,
-        string startUrl,
-        CancellationToken cancellationToken)
+    /// <summary>Builds the login URL against an arbitrary base (the Facepunch login in production).</summary>
+    /// <param name="loginUrlBase">The login page to send the user to.</param>
+    /// <param name="returnUrl">The absolute URL Facepunch should redirect the browser back to.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="returnUrl"/> is blank.</exception>
+    internal static string BuildLoginUrl(string loginUrlBase, string returnUrl)
     {
-        var pageWebSocketUrl = await GetPageWebSocketUrlAsync(debugPort, cancellationToken).ConfigureAwait(false);
-
-        var socket = new ClientWebSocket();
-        await socket.ConnectAsync(new Uri(pageWebSocketUrl), cancellationToken).ConfigureAwait(false);
-
-        // Drain incoming CDP events so the socket never blocks on backpressure.
-        _ = Task.Run(() => DrainAsync(socket, cancellationToken), cancellationToken);
-
-        // Deliver the token via a POST body so it never lands in the URL (browser history, request
-        // logs). text/plain keeps it a CORS "simple request" (no preflight) and mode:'no-cors' is
-        // fine because the response is never read. If fetch fails for any reason, fall back to the
-        // old query-string navigation so the login can't break — the listener accepts both.
-        var callback = $"http://localhost:{port}/callback";
-        var shim =
-            "window.ReactNativeWebView = { postMessage: function (m) { try { var a = JSON.parse(m); " +
-            "if (a && a.Token) { " +
-            $"fetch('{callback}', {{ method: 'POST', mode: 'no-cors', headers: {{ 'Content-Type': 'text/plain' }}, body: a.Token }})" +
-            $".catch(function () {{ window.location.href = '{callback}?token=' + encodeURIComponent(a.Token); }});" +
-            " } } catch (e) {} } };";
-
-        await SendAsync(socket, 1, "Page.enable", new
+        if (string.IsNullOrWhiteSpace(returnUrl))
         {
-        }, cancellationToken).ConfigureAwait(false);
-        await SendAsync(socket, 2, "Page.addScriptToEvaluateOnNewDocument", new
-        {
-            source = shim
-        }, cancellationToken).ConfigureAwait(false);
-        await SendAsync(socket, 3, "Page.navigate", new
-        {
-            url = startUrl
-        }, cancellationToken).ConfigureAwait(false);
-
-        return socket;
-    }
-
-    private static async Task<string> GetPageWebSocketUrlAsync(int debugPort, CancellationToken cancellationToken)
-    {
-        using var http = new HttpClient
-        {
-            Timeout = TimeSpan.FromSeconds(5)
-        };
-
-        for (var attempt = 0; attempt < 50; attempt++)
-        {
-            try
-            {
-#if NET10_0_OR_GREATER
-                var json = await http.GetStringAsync(new Uri($"http://localhost:{debugPort}/json"), cancellationToken)
-                    .ConfigureAwait(false);
-#else
-                var json =
-                    await http.GetStringAsync(new Uri($"http://localhost:{debugPort}/json")).ConfigureAwait(false);
-#endif
-                using var document = JsonDocument.Parse(json);
-                foreach (var target in document.RootElement.EnumerateArray())
-                {
-                    if (target.TryGetProperty("type", out var type) && type.GetString() == "page"
-                                                                    && target.TryGetProperty("webSocketDebuggerUrl",
-                                                                        out var url))
-                    {
-                        return url.GetString()!;
-                    }
-                }
-            }
-            catch (Exception) when (!cancellationToken.IsCancellationRequested)
-            {
-                // DevTools endpoint not ready yet.
-            }
-
-            await Task.Delay(200, cancellationToken).ConfigureAwait(false);
+            throw new ArgumentException("The return URL must not be blank.", nameof(returnUrl));
         }
 
-        throw new InvalidOperationException("Chrome DevTools endpoint did not become available.");
+        return loginUrlBase + "?returnUrl=" + Uri.EscapeDataString(returnUrl);
     }
 
-    private static async Task SendAsync(ClientWebSocket socket,
-        int id,
-        string method,
-        object parameters,
-        CancellationToken cancellationToken)
+    /// <summary>Extracts the Steam identity from the callback Facepunch redirects the browser to.</summary>
+    /// <param name="callbackUri">The full callback URI, including its query string.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the callback carries no usable
+    /// <c>token</c> or <c>steamId</c> — i.e. when Facepunch has changed the callback contract.</exception>
+    public static SteamLoginResult ParseCallback(Uri callbackUri)
     {
-        var payload = JsonSerializer.Serialize(new
+        var query = ParseQuery(callbackUri.Query);
+
+        // Narrow with a pattern rather than string.IsNullOrEmpty: netstandard2.0's reference assembly
+        // lacks the [NotNullWhen(false)] annotation, so only the pattern proves non-nullness on both TFMs.
+        query.TryGetValue("token", out var token);
+        if (token is not { Length: > 0 } || token.Trim().Length == 0)
         {
-            id, method, @params = parameters
-        });
-        var bytes = Encoding.UTF8.GetBytes(payload);
-        await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cancellationToken)
-            .ConfigureAwait(false);
+            throw new InvalidOperationException(
+                "The Facepunch login callback carried no 'token' parameter. The login contract has likely "
+                + "changed upstream — re-check RegistrationConstants against rustplus.js.");
+        }
+
+        if (!query.TryGetValue("steamId", out var steamIdText)
+            || !ulong.TryParse(steamIdText, NumberStyles.None, CultureInfo.InvariantCulture, out var steamId))
+        {
+            throw new InvalidOperationException(
+                "The Facepunch login callback carried no usable 'steamId' parameter. The login contract has "
+                + "likely changed upstream — re-check RegistrationConstants against rustplus.js.");
+        }
+
+        return new SteamLoginResult(steamId, token);
     }
 
-    private static async Task DrainAsync(ClientWebSocket socket, CancellationToken cancellationToken)
+    /// <summary>Generates the per-run callback nonce as lowercase hex.</summary>
+    private static string CreateNonce()
     {
-        var buffer = new byte[8192];
+        var bytes = new byte[16];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(bytes);
+
+        var builder = new StringBuilder(bytes.Length * 2);
+        foreach (var value in bytes)
+        {
+            builder.Append(value.ToString("x2", CultureInfo.InvariantCulture));
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>Opens the user's default browser at <paramref name="url"/>, ignoring any failure.</summary>
+    /// <param name="url">The login URL to open.</param>
+    /// <remarks>Excluded from coverage: launches a real browser process, and failure is by design
+    /// unobservable — the URL has already been reported through <c>onLoginUrl</c>, so a headless
+    /// host simply opens it by hand.</remarks>
+    [ExcludeFromCodeCoverage]
+    private static void TryOpenBrowser(string url)
+    {
         try
         {
-            while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
+            ProcessStartInfo startInfo;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken)
-                    .ConfigureAwait(false);
-                if (result.MessageType == WebSocketMessageType.Close)
+                startInfo = new ProcessStartInfo(url)
                 {
-                    break;
-                }
+                    UseShellExecute = true
+                };
             }
+            else
+            {
+                var opener = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "open" : "xdg-open";
+                startInfo = new ProcessStartInfo(opener, url)
+                {
+                    UseShellExecute = false
+                };
+            }
+
+            Process.Start(startInfo)?.Dispose();
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[{nameof(SteamLoginService)}] DevTools socket closed during shutdown: {ex.Message}");
+            Debug.WriteLine($"[{nameof(SteamLoginService)}] Could not open a browser: {ex.Message}");
         }
-    }
-
-    // --- Chrome process ---
-
-    private static Process LaunchChrome(string workDir, string profileDir, int debugPort)
-    {
-        var (executable, prefixArguments) = ResolveChromeLaunch(workDir)
-                                            ?? throw new InvalidOperationException(
-                                                "Could not find Chrome/Chromium, which is required for the Steam login step. " +
-                                                "Install Google Chrome or Chromium (native or Flatpak), or set the CHROME_PATH " +
-                                                "environment variable to the executable.");
-
-        Directory.CreateDirectory(profileDir);
-
-        var chromeArguments = new[]
-        {
-            $"--user-data-dir={profileDir}",
-            $"--remote-debugging-port={debugPort.ToString(System.Globalization.CultureInfo.InvariantCulture)}",
-            "--no-first-run", "--no-default-browser-check", "about:blank"
-        };
-        var arguments = prefixArguments.Concat(chromeArguments).ToArray();
-
-        var startInfo = new ProcessStartInfo(executable)
-        {
-            UseShellExecute = false
-        };
-#if NET10_0_OR_GREATER
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-#else
-        startInfo.Arguments = string.Join(" ", arguments.Select(QuoteIfNeeded));
-#endif
-
-        return Process.Start(startInfo)
-               ?? throw new InvalidOperationException("Failed to launch Chrome/Chromium.");
-    }
-
-    /// <summary>Resolves a native Chrome/Chromium binary, or a Flatpak launcher, with any prefix args.</summary>
-    /// <param name="workDir">Temporary working directory passed to Flatpak's <c>--filesystem</c> flag when needed.</param>
-    private static (string Executable, string[] PrefixArguments)? ResolveChromeLaunch(string workDir)
-    {
-        var native = FindChrome();
-        if (native != null)
-        {
-            return (native, []);
-        }
-
-        var flatpak = ResolveOnPath("flatpak");
-        if (flatpak != null)
-        {
-            var appId = FlatpakAppIds.FirstOrDefault(IsFlatpakAppInstalled);
-            if (appId is not null)
-            {
-                return (flatpak, ["run", $"--filesystem={workDir}", appId]);
-            }
-        }
-
-        return null;
-    }
-
-    private static bool IsFlatpakAppInstalled(string appId)
-    {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var locations = new[]
-        {
-            $"/var/lib/flatpak/app/{appId}", Path.Combine(home, ".local", "share", "flatpak", "app", appId),
-        };
-        return Array.Exists(locations, Directory.Exists);
-    }
-
-    private static string? FindChrome()
-    {
-        var fromEnv = Environment.GetEnvironmentVariable("CHROME_PATH");
-        if (!string.IsNullOrEmpty(fromEnv) && File.Exists(fromEnv))
-        {
-            return fromEnv;
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            var candidates = new[]
-            {
-                @"C:\Program Files\Google\Chrome\Application\chrome.exe",
-                @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-                @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-            };
-            return Array.Find(candidates, File.Exists);
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            var candidates = new[]
-            {
-                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-                "/Applications/Chromium.app/Contents/MacOS/Chromium",
-            };
-            return Array.Find(candidates, File.Exists);
-        }
-
-        foreach (var name in new[]
-                 {
-                     "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "microsoft-edge"
-                 })
-        {
-            var resolved = ResolveOnPath(name);
-            if (resolved != null)
-            {
-                return resolved;
-            }
-        }
-
-        return null;
-    }
-
-    private static string? ResolveOnPath(string executable)
-    {
-        var pathVariable = Environment.GetEnvironmentVariable("PATH");
-        if (string.IsNullOrEmpty(pathVariable))
-        {
-            return null;
-        }
-
-        foreach (var directory in pathVariable.Split(Path.PathSeparator))
-        {
-            var candidate = Path.Combine(directory, executable);
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-        }
-
-        return null;
     }
 
     private static int GetFreePort()
@@ -370,79 +288,82 @@ public sealed class SteamLoginService(int port = 3000)
         }
     }
 
-#if !NET10_0_OR_GREATER
-    private static string QuoteIfNeeded(string argument) =>
-        argument.IndexOf(' ') >= 0 ? "\"" + argument + "\"" : argument;
-#endif
-
-    /// <summary>Extracts the auth token from a callback request: POST body (primary path, keeps the
-    /// token out of URLs) or the <c>token</c> query parameter (navigation fallback).</summary>
-    /// <param name="request">The callback request from the injected shim.</param>
-    private static async Task<string?> ReadTokenAsync(HttpListenerRequest request)
+    /// <summary>Writes an HTML response to a callback request. The write is best-effort: the browser
+    /// may already have dropped the connection (tab closed, navigation cancelled, or a local page
+    /// issuing <c>fetch(...).then(c =&gt; c.abort())</c>), which surfaces as <see cref="HttpListenerException"/>
+    /// or <see cref="IOException"/> from <c>OutputStream.WriteAsync</c>. That must not be fatal: on the
+    /// success path the caller has already parsed a valid token before calling this, so a failed write
+    /// must not lose it, and on the 404/400 paths it must not abort the accept loop either. Cancellation
+    /// is never swallowed, and <see cref="HttpListenerResponse.Close()"/> always runs so the context is
+    /// released regardless of how the write went.</summary>
+    /// <param name="context">The listener context carrying the response to write to.</param>
+    /// <param name="status">The HTTP status code to respond with.</param>
+    /// <param name="html">The HTML body to write.</param>
+    private static async Task RespondAsync(HttpListenerContext context, HttpStatusCode status, string html)
     {
-        if (request.HttpMethod == "POST")
+        try
         {
-            using var reader = new StreamReader(request.InputStream, request.ContentEncoding);
-            var body = await reader.ReadToEndAsync().ConfigureAwait(false);
-            return body.Trim();
-        }
-
-        return request.QueryString["token"];
-    }
-
-    private static async Task RespondAsync(HttpListenerContext context, string html)
-    {
-        var buffer = Encoding.UTF8.GetBytes(html);
-        context.Response.ContentType = "text/html";
-        context.Response.ContentLength64 = buffer.Length;
+            var buffer = Encoding.UTF8.GetBytes(html);
+            context.Response.StatusCode = (int)status;
+            context.Response.ContentType = "text/html; charset=utf-8";
+            context.Response.Headers[HttpResponseHeader.CacheControl] = "no-store";
+            context.Response.ContentLength64 = buffer.Length;
 #if NET10_0_OR_GREATER
-        await context.Response.OutputStream.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
+            await context.Response.OutputStream.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
 #else
-        await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+            await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
 #endif
-        context.Response.Close();
-    }
-
-    private static void TryDisposeSocket(ClientWebSocket? socket)
-    {
-        try
-        {
-            socket?.Dispose();
         }
-        catch (Exception ex) { Debug.WriteLine($"[{nameof(SteamLoginService)}] Socket dispose failed: {ex.Message}"); }
-    }
-
-    private static void TryKill(Process? process)
-    {
-        try
+        catch (Exception ex) when (ex is HttpListenerException or IOException)
         {
-            if (process is { HasExited: false })
+            Debug.WriteLine($"[{nameof(SteamLoginService)}] Could not write the callback response: {ex.Message}");
+        }
+        finally
+        {
+            // Close() itself can throw the same "connection already gone" exceptions as the write
+            // above; swallow those here too so a dropped connection can never escape this method.
+            try
             {
-#if NET10_0_OR_GREATER
-                process.Kill(entireProcessTree: true);
-#else
-                process.Kill();
-#endif
+                context.Response.Close();
+            }
+            catch (Exception ex) when (ex is HttpListenerException or IOException)
+            {
+                Debug.WriteLine($"[{nameof(SteamLoginService)}] Could not close the callback response: {ex.Message}");
             }
         }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[{nameof(SteamLoginService)}] Chrome kill failed: {ex.Message}");
-        }
     }
 
-    private static void TryDeleteDirectory(string path)
+    /// <summary>Parses a URI query string into its decoded key/value pairs. Later duplicates win.</summary>
+    /// <param name="query">The query string, with or without its leading <c>?</c>.</param>
+    private static Dictionary<string, string> ParseQuery(string query)
     {
-        try
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        var trimmed = query.TrimStart('?');
+        if (trimmed.Length == 0)
         {
-            if (Directory.Exists(path))
+            return result;
+        }
+
+        foreach (var pair in trimmed.Split('&'))
+        {
+            if (pair.Length == 0)
             {
-                Directory.Delete(path, recursive: true);
+                continue;
             }
+
+#pragma warning disable CA1307 // string.IndexOf(char, StringComparison) is not available on netstandard2.0
+            var separator = pair.IndexOf('=');
+#pragma warning restore CA1307
+            if (separator < 0)
+            {
+                result[WebUtility.UrlDecode(pair)] = string.Empty;
+                continue;
+            }
+
+            var key = WebUtility.UrlDecode(pair.Substring(0, separator));
+            result[key] = WebUtility.UrlDecode(pair.Substring(separator + 1));
         }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[{nameof(SteamLoginService)}] Profile directory cleanup failed: {ex.Message}");
-        }
+
+        return result;
     }
 }

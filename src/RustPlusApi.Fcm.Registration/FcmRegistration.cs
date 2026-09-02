@@ -8,7 +8,7 @@ namespace RustPlusApi.Fcm.Registration;
 /// Orchestrates the native credential acquisition flow, replacing the Node CLI.
 /// </summary>
 /// <param name="httpClient">Optional <see cref="HttpClient"/> to use for all HTTP requests; a new instance is created if <see langword="null"/>.</param>
-/// <param name="steamLoginPort">The loopback port the OAuth callback listener binds to.</param>
+/// <param name="steamLoginPort">The loopback port the Steam login callback listener binds to.</param>
 /// <remarks>
 /// Every network step hits live Google / Expo / Facepunch services and is upstream-fragile;
 /// it cannot be validated offline. See <see cref="RegistrationConstants"/>.
@@ -43,16 +43,19 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
 
     /// <summary>
     /// Steps 5–6: interactive Steam login, then register the device's Expo token with Rust
-    /// Companion so it receives pairing pushes. Returns the captured Steam auth token.
+    /// Companion so it receives pairing pushes. Returns the captured Steam identity.
     /// </summary>
     /// <param name="credentials">Credentials obtained from <see cref="AcquireCredentialsAsync"/>.</param>
+    /// <param name="onLoginUrl">Invoked with the Steam login URL before the browser is opened, so
+    /// callers can print it — the flow still completes on a headless host if the user opens it by hand.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <exception cref="InvalidOperationException">Thrown when <paramref name="credentials"/> is missing the Expo push token.</exception>
     /// <remarks>Excluded from coverage: post-guard flow drives live Steam login and Companion
     /// registration; the guard (missing ExpoPushToken) is unit-tested, the remainder is only
     /// validatable by a real run against the live endpoints.</remarks>
     [ExcludeFromCodeCoverage]
-    public async Task<string> RegisterWithRustPlusAsync(Credentials credentials,
+    public async Task<SteamLoginResult> RegisterWithRustPlusAsync(Credentials credentials,
+        Action<string>? onLoginUrl = null,
         CancellationToken cancellationToken = default)
     {
         // Narrow with a pattern rather than string.IsNullOrEmpty: netstandard2.0's reference assembly lacks the
@@ -64,10 +67,10 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
                 "Credentials are missing the Expo push token; call AcquireCredentialsAsync first.");
         }
 
-        var steamToken = await _steamLoginService.LoginAsync(cancellationToken).ConfigureAwait(false);
+        var steamLogin = await _steamLoginService.LoginAsync(onLoginUrl, cancellationToken).ConfigureAwait(false);
         await _rustCompanionClient
-            .RegisterAsync(steamToken, expoPushToken, cancellationToken: cancellationToken)
+            .RegisterAsync(steamLogin.Token, expoPushToken, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
-        return steamToken;
+        return steamLogin;
     }
 }
