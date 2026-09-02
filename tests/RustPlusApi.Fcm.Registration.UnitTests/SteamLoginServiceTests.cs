@@ -93,6 +93,9 @@ public class SteamLoginServiceTests
     /// it reported, plus the running task.</summary>
     /// <param name="service">The service under test.</param>
     /// <param name="cancellationToken">Token to cancel the login while it awaits a callback.</param>
+    /// <exception cref="InvalidOperationException">Thrown when <c>LoginAsync</c> finishes (almost
+    /// certainly faulted) before ever reporting a login URL, so the caller fails fast instead of
+    /// waiting on a URL that will never arrive.</exception>
     private static async Task<(Task<SteamLoginResult> Login, Uri ReturnUrl)> StartLoginAsync(
         SteamLoginService service,
         CancellationToken cancellationToken)
@@ -102,6 +105,18 @@ public class SteamLoginServiceTests
             url => reported.TrySetResult(url),
             openBrowser: false,
             cancellationToken);
+
+        // Race the reported URL against the login task itself: LoginAsync can fail before it ever
+        // invokes onLoginUrl (e.g. the acknowledged GetFreePort-then-Start bind race), and in that
+        // case reported.Task would otherwise wait forever with no signal that anything went wrong.
+        // If login wins the race, await it so its real exception surfaces instead of a hang.
+        var winner = await Task.WhenAny(reported.Task, login);
+        if (winner == login)
+        {
+            await login;
+            throw new InvalidOperationException(
+                "LoginAsync completed successfully without ever reporting a login URL.");
+        }
 
         var loginUrl = await reported.Task;
         var query = new Uri(loginUrl).Query;
@@ -205,5 +220,24 @@ public class SteamLoginServiceTests
 
         await cts.CancelAsync();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => holder);
+    }
+
+    [Fact]
+    public async Task LoginAsync_UsesADifferentNoncePerRun()
+    {
+        var serviceA = new SteamLoginService(port: 0);
+        var serviceB = new SteamLoginService(port: 0);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+        var (loginA, returnUrlA) = await StartLoginAsync(serviceA, cts.Token);
+        var (loginB, returnUrlB) = await StartLoginAsync(serviceB, cts.Token);
+
+        // The callback path is the only anti-forgery control in the flow; if the nonce were
+        // constant, two independent runs would produce the same "/callback/<nonce>" path.
+        Assert.NotEqual(returnUrlA.AbsolutePath, returnUrlB.AbsolutePath);
+
+        await cts.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => loginA);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => loginB);
     }
 }

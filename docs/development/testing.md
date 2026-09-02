@@ -187,11 +187,32 @@ Everything else must reach 100% line and branch coverage across the TFM matrix.
 **Justification:** Launches a real OS browser process (`Process.Start`, platform-specific
 `xdg-open`/`open`/shell-execute), and failure is by design unobservable from the caller — the
 login URL has already been reported through `LoginAsync`'s `onLoginUrl` callback before this runs,
-so a headless host can always open the link by hand. The rest of the class — URL construction
-(`BuildLoginUrl`), callback parsing (`ParseCallback`), and the loopback `HttpListener` accept loop
-in `LoginAsync` — is a plain redirect flow with no browser control involved, and is covered by
-`SteamLoginServiceTests` (the `openBrowser: false` seam drives the accept loop with a real
-loopback `HttpListener` and `HttpClient`, without opening a browser).
+so a headless host can always open the link by hand. This is the only member excluded from the
+coverage gate in this class.
+
+**Residual gaps, not excluded, not currently reached by `SteamLoginServiceTests`** (recorded here
+per the "no unjustified gaps" rule, rather than contorted around):
+
+- The public `LoginAsync(Action<string>?, CancellationToken)` overload — a one-line delegation to
+  the internal `openBrowser` overload with `openBrowser: true`. Its only caller is
+  `FcmRegistration.RegisterWithRustPlusAsync`, itself excluded below, and exercising it directly
+  would open a real browser.
+- The `if (openBrowser) { TryOpenBrowser(loginUrl); }` true branch inside `LoginAsync` — tests
+  always pass `openBrowser: false` (the offline seam) so this branch is never taken.
+- The bare `throw;` inside the `GetContextAsync` catch block — reached only when that call fails
+  for a reason other than the cancellation registration stopping the listener (e.g. an unrelated
+  listener teardown mid-request); not producible from a test without forcing that specific race.
+- The trailing `throw new OperationCanceledException(cancellationToken)` after the accept loop —
+  reachable only if the `while` condition itself observes cancellation between iterations rather
+  than `GetContextAsync`'s catch converting it first; a race-only path kept for correctness and
+  control-flow analysis rather than one a test can reliably hit.
+
+Everything else — URL construction (`BuildLoginUrl`), callback parsing
+(`ParseCallback`/`ParseQuery`), nonce generation, and the loopback accept loop's success/unknown-
+path/bad-callback branches and port-bind failure — is exercised by `SteamLoginServiceTests` via the
+`openBrowser: false` seam, which drives the accept loop with a real loopback `HttpListener` and
+`HttpClient` without opening a browser. As of this writing `tools/coverage/report.sh` reports
+93.13% line / 80.77% branch for this class — the gaps above account for the shortfall.
 
 ### `FcmRegistration.RegisterWithRustPlusAsync`
 

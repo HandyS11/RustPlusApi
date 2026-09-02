@@ -30,6 +30,10 @@ public sealed class SteamLoginService(int port = 3000)
         "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login failed</title>"
         + "<h1>That callback carried no Rust+ token. Try the login link again.</h1>";
 
+    private const string NotFoundHtml =
+        "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login</title>"
+        + "<h1>Unknown callback path.</h1>";
+
     /// <summary>Sends the user's browser to the Facepunch Steam login and returns the captured identity.</summary>
     /// <param name="onLoginUrl">Invoked with the login URL before the browser is opened, so callers
     /// can print it. Always invoked, including when a browser is opened successfully.</param>
@@ -52,8 +56,11 @@ public sealed class SteamLoginService(int port = 3000)
         bool openBrowser,
         CancellationToken cancellationToken)
     {
-        // HttpListener cannot bind port 0, so a free port is resolved up front. The window between
-        // resolving and binding is racy in theory and has never mattered in practice.
+        // HttpListener cannot bind port 0, so a free port is resolved up front by opening and
+        // immediately closing a probe socket on it (GetFreePort). The window between that probe
+        // closing and listener.Start() below binding the same port is inherently racy — another
+        // process could claim the port in between — but there is no API to resolve and bind a free
+        // port as one atomic step.
         var boundPort = port == 0 ? GetFreePort() : port;
         var nonce = CreateNonce();
         var callbackPath = "/callback/" + nonce;
@@ -98,17 +105,24 @@ public sealed class SteamLoginService(int port = 3000)
                 {
                     context = await listener.GetContextAsync().ConfigureAwait(false);
                 }
-                catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException)
+                catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException
+                                               or InvalidOperationException)
                 {
                     // The listener was stopped under the wait — by the cancellation registration
-                    // above (expected; rethrow as cancellation) or by an unrelated teardown.
+                    // above (expected; rethrow as cancellation) or by an unrelated teardown. The
+                    // InvalidOperationException case covers the narrow window between the loop
+                    // condition observing "not yet cancelled" and this call actually starting:
+                    // Stop() may already have run by then, and GetContextAsync on a stopped-but-not-
+                    // disposed listener throws InvalidOperationException rather than one of the other
+                    // two. If the token isn't actually cancelled, this is a genuine failure and the
+                    // rethrow below preserves it unchanged.
                     cancellationToken.ThrowIfCancellationRequested();
                     throw;
                 }
 
                 if (!string.Equals(context.Request.Url?.AbsolutePath, callbackPath, StringComparison.Ordinal))
                 {
-                    await RespondAsync(context, HttpStatusCode.NotFound, FailureHtml).ConfigureAwait(false);
+                    await RespondAsync(context, HttpStatusCode.NotFound, NotFoundHtml).ConfigureAwait(false);
                     continue;
                 }
 
