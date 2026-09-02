@@ -53,9 +53,12 @@ See [FCM Notifications](fcm-notifications.md) for the complete event table and r
 **Symptom:** registration prints the Steam login URL and then waits, but no browser window appears.
 Common on containers, SSH sessions, WSL and minimal desktop installs.
 
-**Fix:** open the printed URL yourself, in any browser. It is not a degraded path — the callback is
-served from your own machine's loopback address, so it works even if you open the link on a
-different device that can reach `localhost:<port>` of the machine running registration.
+**Fix:** open the printed URL yourself, in any browser, **on the same machine that is running
+registration** — the callback is served from that machine's own `localhost`, so opening the link on
+a different device resolves `localhost` to *that* device instead and the callback never arrives. To
+finish registration from a different device (e.g. a container or a headless remote host), forward
+the port to it first: an SSH tunnel (`ssh -L 3000:localhost:3000 host`) or a published container
+port both make the loopback callback reachable from wherever you open the link.
 
 `SteamLoginService` reports the URL through the `onLoginUrl` callback *before* attempting to open a
 browser, and never fails just because no browser could be launched.

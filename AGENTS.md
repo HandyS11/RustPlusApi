@@ -33,7 +33,7 @@ dotnet jb cleanupcode RustPlusApi.sln --profile="ReformatAndReorder"
 | `RustPlusApi` | `RustPlusSocket.cs`, `RustPlus.cs` | WebSocket client; `RustPlusSocket` = base (connect/send/receive), `RustPlus` = typed API + events |
 | `RustPlusApi.Camera` | `CameraController.cs`, `CameraRenderer.cs` | Subscribe/keep-alive/input over a `RustPlus` instance; ImageSharp rendering |
 | `RustPlusApi.Fcm` | `RustPlusFcmSocket.cs`, `RustPlusFcm.cs` | MCS protocol over TLS to `mtalk.google.com:5228`; FCM notification decryption |
-| `RustPlusApi.Fcm.Registration` | `Steps/`, `SteamLoginService.cs` | GCM check-in → Firebase/FCM/Expo registration; Steam login via CDP |
+| `RustPlusApi.Fcm.Registration` | `Steps/`, `SteamLoginService.cs` | GCM check-in → Firebase/FCM/Expo registration; Steam login via browser redirect to a loopback callback |
 | `*.Extensions.DependencyInjection` | `*ServiceCollectionExtensions.cs` | `AddRustPlus`/`AddRustPlusFcm` + factories |
 
 Protobuf contracts for core are **generated at compile time** by `protobuf-net.BuildTools` from `src/RustPlusApi/Protobuf/RustPlusContracts.proto`. Don't edit generated files in `obj/`.

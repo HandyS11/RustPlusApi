@@ -8,7 +8,7 @@ namespace RustPlusApi.Fcm.Registration;
 /// Orchestrates the native credential acquisition flow, replacing the Node CLI.
 /// </summary>
 /// <param name="httpClient">Optional <see cref="HttpClient"/> to use for all HTTP requests; a new instance is created if <see langword="null"/>.</param>
-/// <param name="steamLoginPort">The loopback port the OAuth callback listener binds to.</param>
+/// <param name="steamLoginPort">The loopback port the Steam login callback listener binds to.</param>
 /// <remarks>
 /// Every network step hits live Google / Expo / Facepunch services and is upstream-fragile;
 /// it cannot be validated offline. See <see cref="RegistrationConstants"/>.

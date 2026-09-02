@@ -202,10 +202,6 @@ per the "no unjustified gaps" rule, rather than contorted around):
 - The bare `throw;` inside the `GetContextAsync` catch block — reached only when that call fails
   for a reason other than the cancellation registration stopping the listener (e.g. an unrelated
   listener teardown mid-request); not producible from a test without forcing that specific race.
-- The trailing `throw new OperationCanceledException(cancellationToken)` after the accept loop —
-  reachable only if the `while` condition itself observes cancellation between iterations rather
-  than `GetContextAsync`'s catch converting it first; a race-only path kept for correctness and
-  control-flow analysis rather than one a test can reliably hit.
 
 Everything else — URL construction (`BuildLoginUrl`), callback parsing
 (`ParseCallback`/`ParseQuery`), nonce generation, and the loopback accept loop's success/unknown-

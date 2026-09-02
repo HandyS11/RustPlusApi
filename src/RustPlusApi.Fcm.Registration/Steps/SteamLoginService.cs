@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -30,9 +31,17 @@ public sealed class SteamLoginService(int port = 3000)
         "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login failed</title>"
         + "<h1>That callback carried no Rust+ token. Try the login link again.</h1>";
 
-    private const string NotFoundHtml =
+    /// <summary>Builds the 404 body for an unrecognised callback path, naming both the expected and
+    /// the received path so a Facepunch contract change (path stripped, normalised, or otherwise
+    /// altered by the Steam OpenID round-trip) is diagnosable instead of presenting as a silent
+    /// hang while the token sits unconsumed in the browser's URL bar.</summary>
+    /// <param name="expectedPath">The per-run callback path this listener actually expects.</param>
+    /// <param name="actualPath">The path the request carried instead.</param>
+    private static string BuildNotFoundHtml(string expectedPath, string actualPath) =>
         "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login</title>"
-        + "<h1>Unknown callback path.</h1>";
+        + "<h1>Unknown callback path.</h1>"
+        + $"<p>Expected <code>{WebUtility.HtmlEncode(expectedPath)}</code> but received "
+        + $"<code>{WebUtility.HtmlEncode(actualPath)}</code>.</p>";
 
     /// <summary>Sends the user's browser to the Facepunch Steam login and returns the captured identity.</summary>
     /// <param name="onLoginUrl">Invoked with the login URL before the browser is opened, so callers
@@ -77,10 +86,15 @@ public sealed class SteamLoginService(int port = 3000)
         }
         catch (HttpListenerException ex)
         {
+            var guidance = port == 0
+                ? "It was free when probed via GetFreePort, but something else claimed it before the "
+                  + "listener could bind — an inherent race, since there is no API to probe and bind a "
+                  + "free port as one atomic step. Retry; a fresh free port is probed on each attempt."
+                : $"Another process is probably using port {boundPort} — pass steamLoginPort: 0 to pick a "
+                  + "free port automatically.";
             throw new InvalidOperationException(
                 $"Could not bind the Steam login callback listener to http://localhost:{boundPort}/. "
-                + $"Another process is probably using port {boundPort} — pass steamLoginPort: 0 to pick a "
-                + "free port automatically.", ex);
+                + guidance, ex);
         }
 
         // GetContextAsync takes no cancellation token: stopping the listener is the only way to
@@ -120,9 +134,14 @@ public sealed class SteamLoginService(int port = 3000)
                     throw;
                 }
 
-                if (!string.Equals(context.Request.Url?.AbsolutePath, callbackPath, StringComparison.Ordinal))
+                var requestPath = context.Request.Url?.AbsolutePath ?? "(no path)";
+                if (!string.Equals(requestPath, callbackPath, StringComparison.Ordinal))
                 {
-                    await RespondAsync(context, HttpStatusCode.NotFound, NotFoundHtml).ConfigureAwait(false);
+                    Debug.WriteLine(
+                        $"[{nameof(SteamLoginService)}] Callback path mismatch: expected '{callbackPath}', "
+                        + $"received '{requestPath}'.");
+                    await RespondAsync(context, HttpStatusCode.NotFound,
+                        BuildNotFoundHtml(callbackPath, requestPath)).ConfigureAwait(false);
                     continue;
                 }
 
@@ -272,18 +291,49 @@ public sealed class SteamLoginService(int port = 3000)
         }
     }
 
+    /// <summary>Writes an HTML response to a callback request. The write is best-effort: the browser
+    /// may already have dropped the connection (tab closed, navigation cancelled, or a local page
+    /// issuing <c>fetch(...).then(c =&gt; c.abort())</c>), which surfaces as <see cref="HttpListenerException"/>
+    /// or <see cref="IOException"/> from <c>OutputStream.WriteAsync</c>. That must not be fatal: on the
+    /// success path the caller has already parsed a valid token before calling this, so a failed write
+    /// must not lose it, and on the 404/400 paths it must not abort the accept loop either. Cancellation
+    /// is never swallowed, and <see cref="HttpListenerResponse.Close()"/> always runs so the context is
+    /// released regardless of how the write went.</summary>
+    /// <param name="context">The listener context carrying the response to write to.</param>
+    /// <param name="status">The HTTP status code to respond with.</param>
+    /// <param name="html">The HTML body to write.</param>
     private static async Task RespondAsync(HttpListenerContext context, HttpStatusCode status, string html)
     {
-        var buffer = Encoding.UTF8.GetBytes(html);
-        context.Response.StatusCode = (int)status;
-        context.Response.ContentType = "text/html; charset=utf-8";
-        context.Response.ContentLength64 = buffer.Length;
+        try
+        {
+            var buffer = Encoding.UTF8.GetBytes(html);
+            context.Response.StatusCode = (int)status;
+            context.Response.ContentType = "text/html; charset=utf-8";
+            context.Response.Headers[HttpResponseHeader.CacheControl] = "no-store";
+            context.Response.ContentLength64 = buffer.Length;
 #if NET10_0_OR_GREATER
-        await context.Response.OutputStream.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
+            await context.Response.OutputStream.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
 #else
-        await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+            await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
 #endif
-        context.Response.Close();
+        }
+        catch (Exception ex) when (ex is HttpListenerException or IOException)
+        {
+            Debug.WriteLine($"[{nameof(SteamLoginService)}] Could not write the callback response: {ex.Message}");
+        }
+        finally
+        {
+            // Close() itself can throw the same "connection already gone" exceptions as the write
+            // above; swallow those here too so a dropped connection can never escape this method.
+            try
+            {
+                context.Response.Close();
+            }
+            catch (Exception ex) when (ex is HttpListenerException or IOException)
+            {
+                Debug.WriteLine($"[{nameof(SteamLoginService)}] Could not close the callback response: {ex.Message}");
+            }
+        }
     }
 
     /// <summary>Parses a URI query string into its decoded key/value pairs. Later duplicates win.</summary>

@@ -60,7 +60,7 @@ public static class RegistrationConstants
     /// <summary>Rust Companion device registration endpoint.</summary>
     public const string CompanionRegisterUrl = "https://companion-rust.facepunch.com/api/push/register";
 
-    /// <summary>Facepunch Steam login page for the Rust Companion OAuth flow.</summary>
+    /// <summary>Facepunch Steam login page for the Rust Companion login redirect flow.</summary>
     public const string SteamLoginUrl = "https://companion-rust.facepunch.com/login";
 
     /// <summary>Chrome identity used for the GCM check-in (mirrors push-receiver).</summary>

@@ -139,6 +139,12 @@ public class SteamLoginServiceTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(7UL, result.SteamId);
         Assert.Equal("abc", result.Token);
+
+        // The success page's only defence against a leaked token lingering in the browser's
+        // disk-cache index is this history.replaceState call, which strips the query string from
+        // the visible/cached URL. Guard it so it cannot be silently removed.
+        var body = await response.Content.ReadAsStringAsync(cts.Token);
+        Assert.Contains("replaceState", body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -204,6 +210,21 @@ public class SteamLoginServiceTests
         await cts.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => login);
+    }
+
+    [Fact]
+    public async Task LoginAsync_AlreadyCancelledToken_ThrowsOperationCanceled()
+    {
+        // An already-cancelled token runs its registered callback (listener.Stop()) synchronously
+        // at Register() time, so the accept loop's `while` condition is false on its very first
+        // evaluation and control falls straight through to the trailing
+        // `throw new OperationCanceledException(cancellationToken)` — deterministic, not a race.
+        var service = new SteamLoginService(port: 0);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            service.LoginAsync("https://example.invalid/login", null, openBrowser: false, cts.Token));
     }
 
     [Fact]

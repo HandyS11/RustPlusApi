@@ -37,8 +37,11 @@ var rustPlus = new RustPlus(new RustPlusConnection(pairing.Ip, pairing.Port, pai
 - **Steam login opens your default browser.** The flow is an ordinary redirect: the login page is
   opened with a `returnUrl` pointing at a loopback listener, and Facepunch redirects back with the
   Steam id and auth token. Any browser works. If no browser can be opened (containers, SSH), the
-  URL is handed to the `onLoginUrl` callback so you can open it yourself — including on another
-  machine, since the callback is served from your own loopback address.
+  URL is handed to the `onLoginUrl` callback so you can open it yourself — but it must be opened on
+  the **same machine** running registration, since `returnUrl` points at that machine's own
+  `localhost`. To finish registration from a different device, forward the port instead: an SSH
+  tunnel (`ssh -L 3000:localhost:3000 host`) or a published container port both make the loopback
+  callback reachable from wherever you open the link.
 - **Upstream-fragile.** Every step depends on live Google/Expo/Facepunch services and drifts when
   those apps change. Ported from rustplus.js / `@liamcottle/push-receiver`; if registration breaks,
   re-check `RegistrationConstants` against those sources.
