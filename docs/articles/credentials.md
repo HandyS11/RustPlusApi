@@ -28,7 +28,7 @@ sequenceDiagram
     App->>E: 4. Expo push token
     E-->>App: ExponentPushToken[...]
     App->>St: 5. Interactive Steam login (browser redirect)
-    St-->>App: Steam auth token
+    St-->>App: Steam auth token + Steam64 id
     App->>FP: 6. Register device with Rust Companion
     FP-->>App: subscribed to pairing pushes
     Note over App: 7. CredentialsStore.Save("rustplus.config.json")
