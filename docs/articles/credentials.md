@@ -17,7 +17,7 @@ sequenceDiagram
     participant App as Your app
     participant G as Google (GCM/Firebase/FCM)
     participant E as Expo
-    participant St as Steam (via Chrome)
+    participant St as Steam (your browser)
     participant FP as Facepunch (Rust Companion)
     participant Game as Rust (in game)
 
@@ -27,7 +27,7 @@ sequenceDiagram
     G-->>App: FCM token
     App->>E: 4. Expo push token
     E-->>App: ExponentPushToken[...]
-    App->>St: 5. Interactive Steam login (Chrome DevTools)
+    App->>St: 5. Interactive Steam login (browser redirect)
     St-->>App: Steam auth token
     App->>FP: 6. Register device with Rust Companion
     FP-->>App: subscribed to pairing pushes
@@ -47,8 +47,10 @@ var registration = new FcmRegistration();
 // Steps 1–4: GCM check-in → Firebase install → FCM register → Expo token.
 var credentials = await registration.AcquireCredentialsAsync();
 
-// Steps 5–6: interactive Steam login (launches Chrome) + Rust Companion device registration.
-await registration.RegisterWithRustPlusAsync(credentials);
+// Steps 5–6: interactive Steam login (opens your browser) + Rust Companion device registration.
+var steamLogin = await registration.RegisterWithRustPlusAsync(
+    credentials,
+    onLoginUrl: url => Console.WriteLine($"Open this URL to log in: {url}"));
 
 // Step 7: persist for later runs.
 CredentialsStore.Save("rustplus.config.json", credentials);
@@ -65,50 +67,39 @@ ServerPairing pairing = await listener.WaitForServerPairingAsync();
 | 2 | `AndroidFcmRegister.InstallAsync` | Firebase installation token |
 | 3 | `AndroidFcmRegister.RegisterFcmAsync` | FCM token |
 | 4 | `ExpoPushClient.GetTokenAsync` | Expo push token |
-| 5 | `SteamLoginService.LoginAsync` | Steam auth token |
+| 5 | `SteamLoginService.LoginAsync` | Steam auth token + Steam64 id |
 | 6 | `RustCompanionClient.RegisterAsync` | device subscribed to pairing pushes |
 | 7 | `CredentialsStore.Save` | `rustplus.config.json` |
 | 8 | `PairingListener` | `ServerPairing` (ip/port/playerId/playerToken) |
 
 Steps 1–7 run once. Step 8 happens every time you pair a new server in game.
 
-## Steam login requires Chrome/Chromium
+## How the Steam login works
 
-The Facepunch login page hands the auth token to its host via `ReactNativeWebView.postMessage`,
-which can only be intercepted in a Chromium browser driven through the Chrome DevTools Protocol
-(CDP). `SteamLoginService` injects a shim via `Page.addScriptToEvaluateOnNewDocument` — the same
-mechanism Puppeteer and Playwright use — so the shim runs before any page script and sidesteps the
-cross-origin `WindowProxy` restrictions that blocked older techniques. **Firefox and Safari will
-not work.**
+`SteamLoginService` binds an `HttpListener` on `http://localhost:<port>/` and sends the browser to:
 
-### Browser discovery order
+```
+https://companion-rust.facepunch.com/login?returnUrl=http://localhost:<port>/callback/<nonce>
+```
 
-`SteamLoginService.FindChrome()` and `SteamLoginService.ResolveChromeLaunch()` locate the browser
-in this exact order (source: `src/RustPlusApi.Fcm.Registration/Steps/SteamLoginService.cs`):
+Facepunch carries that `returnUrl` through the Steam OpenID round-trip and redirects the browser
+back to it with the credentials appended:
 
-1. **`CHROME_PATH` env var** — if set and the path exists as a file, it is used immediately,
-   bypassing all other discovery.
-2. **Native binary — Windows** (checked via `RuntimeInformation.IsOSPlatform`): looks for the
-   following paths in order:
-   - `C:\Program Files\Google\Chrome\Application\chrome.exe`
-   - `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
-   - `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`
-3. **Native binary — macOS**: checks in order:
-   - `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
-   - `/Applications/Chromium.app/Contents/MacOS/Chromium`
-4. **Native binary — Linux (and other platforms)**: walks `PATH` for the first match among these
-   names, in order: `google-chrome`, `google-chrome-stable`, `chromium`, `chromium-browser`,
-   `microsoft-edge`.
-5. **Flatpak** — if no native binary was found and `flatpak` is on `PATH`, checks for installed
-   Flatpak apps in this order: `com.google.Chrome`, `org.chromium.Chromium`,
-   `com.github.Eloston.UngoogledChromium`. Presence is determined by checking whether the app
-   directory exists under `/var/lib/flatpak/app/<id>` (system-wide) or
-   `~/.local/share/flatpak/app/<id>` (user install). When a Flatpak app is found, Chrome is
-   launched as `flatpak run --filesystem=<workDir> <appId>` with a temporary profile directory
-   passed in so Chrome can write its data.
+```
+http://localhost:<port>/callback/<nonce>?steamId=765611…&token=eyJhbGciOi…
+```
 
-If no browser is found at all, `LaunchChrome` throws `InvalidOperationException` with a message
-that includes instructions to install Chrome/Chromium or set `CHROME_PATH`.
+Any browser works — nothing is injected into the page. `SteamLoginService.LoginAsync` opens your
+default browser on a best-effort basis and always reports the URL through its `onLoginUrl`
+callback first, so the flow still completes on a container or over SSH by opening the link by hand.
+
+The callback path carries a per-run random nonce, and any request to a different path is answered
+with a 404 and ignored, so a page you happen to be browsing cannot push a token of its own choosing
+into the listener. The response page calls `history.replaceState` to strip the token from the URL
+your browser records.
+
+`port` defaults to `3000`; pass `steamLoginPort: 0` to `FcmRegistration` to have a free port picked
+automatically if 3000 is taken.
 
 ## Upstream fragility
 

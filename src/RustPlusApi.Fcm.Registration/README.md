@@ -22,7 +22,9 @@ using RustPlusApi.Fcm.Registration;
 var registration = new FcmRegistration();
 
 var credentials = await registration.AcquireCredentialsAsync();   // GCM/Firebase/FCM/Expo
-await registration.RegisterWithRustPlusAsync(credentials);        // Steam login + Rust Companion
+var steamLogin = await registration.RegisterWithRustPlusAsync(    // Steam login + Rust Companion
+    credentials,
+    onLoginUrl: url => Console.WriteLine($"Open this URL to log in: {url}"));
 CredentialsStore.Save("rustplus.config.json", credentials);
 
 using var listener = new PairingListener(credentials);
@@ -32,10 +34,11 @@ var rustPlus = new RustPlus(new RustPlusConnection(pairing.Ip, pairing.Port, pai
 
 ## Requirements & caveats
 
-- **Steam login requires Chrome/Chromium.** The Facepunch login delivers the token via
-  `ReactNativeWebView.postMessage`, which is intercepted by driving Chrome through the DevTools
-  protocol. Native and Flatpak installs are auto-detected; set `CHROME_PATH` to override.
-  **Firefox/Safari will not work.**
+- **Steam login opens your default browser.** The flow is an ordinary redirect: the login page is
+  opened with a `returnUrl` pointing at a loopback listener, and Facepunch redirects back with the
+  Steam id and auth token. Any browser works. If no browser can be opened (containers, SSH), the
+  URL is handed to the `onLoginUrl` callback so you can open it yourself — including on another
+  machine, since the callback is served from your own loopback address.
 - **Upstream-fragile.** Every step depends on live Google/Expo/Facepunch services and drifts when
   those apps change. Ported from rustplus.js / `@liamcottle/push-receiver`; if registration breaks,
   re-check `RegistrationConstants` against those sources.

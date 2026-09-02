@@ -48,43 +48,28 @@ for how to obtain the correct port from the pairing notification.
 
 See [FCM Notifications](fcm-notifications.md) for the complete event table and reconnect strategy.
 
-## Chrome/Chromium not found during registration
+## The browser doesn't open during registration
 
-**Symptom:** `FcmRegistration.RegisterWithRustPlusAsync` throws `InvalidOperationException` with a
-message about not finding Chrome or Chromium.
+**Symptom:** registration prints the Steam login URL and then waits, but no browser window appears.
+Common on containers, SSH sessions, WSL and minimal desktop installs.
 
-**Why Chrome is required:** The Facepunch login page hands the Steam auth token to its host via
-`ReactNativeWebView.postMessage`, which can only be intercepted via the Chrome DevTools Protocol.
-`SteamLoginService` injects a shim with `Page.addScriptToEvaluateOnNewDocument` — the same
-mechanism Puppeteer uses — and sidesteps the cross-origin restrictions that blocked older
-approaches. **Firefox and Safari will not work.**
+**Fix:** open the printed URL yourself, in any browser. It is not a degraded path — the callback is
+served from your own machine's loopback address, so it works even if you open the link on a
+different device that can reach `localhost:<port>` of the machine running registration.
 
-**Browser discovery order** (`SteamLoginService.FindChrome()` tries each in turn):
+`SteamLoginService` reports the URL through the `onLoginUrl` callback *before* attempting to open a
+browser, and never fails just because no browser could be launched.
 
-1. **`CHROME_PATH` environment variable** — if set and the file exists, it is used immediately.
-2. **Native Windows paths** (in order):
-   - `C:\Program Files\Google\Chrome\Application\chrome.exe`
-   - `C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`
-   - `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`
-3. **Native macOS paths** (in order):
-   - `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
-   - `/Applications/Chromium.app/Contents/MacOS/Chromium`
-4. **Linux `PATH` walk** — first match among: `google-chrome`, `google-chrome-stable`, `chromium`,
-   `chromium-browser`, `microsoft-edge`.
-5. **Flatpak** — if no native binary was found, checks for `com.google.Chrome`,
-   `org.chromium.Chromium`, `com.github.Eloston.UngoogledChromium` under the system-wide
-   (`/var/lib/flatpak/app/<id>`) and user (`~/.local/share/flatpak/app/<id>`) Flatpak stores.
+## Port already in use during registration
 
-**Fix:** Install Google Chrome, Chromium, or Microsoft Edge using any of the above paths, or point
-`CHROME_PATH` to the binary:
+**Symptom:** `FcmRegistration.RegisterWithRustPlusAsync` throws `InvalidOperationException` saying
+the callback listener could not bind to `http://localhost:3000/`.
 
-```bash
-export CHROME_PATH=/usr/bin/chromium
-dotnet run --project samples/RustPlus.Register.ConsoleApp
+**Fix:** pass a different port, or `0` to pick a free one automatically:
+
+```csharp
+var registration = new FcmRegistration(steamLoginPort: 0);
 ```
-
-See [Credentials](credentials.md#steam-login-requires-chromechromium) for the full discovery-order
-documentation.
 
 ## Registration fails partway through the chain
 

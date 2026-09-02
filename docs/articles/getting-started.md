@@ -5,9 +5,6 @@
 - **.NET SDK** — any target the library supports: .NET Framework 4.6.2 or later, .NET 6–10, Mono,
   or Unity. The `netstandard2.0` build covers everything; the `net10.0` build uses modern BCL
   fast-paths on .NET 10.
-- **Google Chrome or Chromium** — required for the one-time credential registration step (Step 1).
-  A native install, a Flatpak, or any path you point to via `CHROME_PATH` works. Firefox and Safari
-  will not work — see [Credentials](credentials.md#steam-login-requires-chromechromium).
 - **A Rust server with Rust+ enabled** — you need access to the in-game *Rust+* menu so you can
   choose *Pair with Server* to complete the pairing flow.
 

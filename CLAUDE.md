@@ -58,8 +58,9 @@ A committed **pre-push hook** (`.githooks/pre-push`, wired up automatically by t
   over TLS to `mtalk.google.com:5228`; `RustPlusFcm` decrypts notifications and raises pairing/
   alarm events.
 - **`RustPlusApi.Fcm.Registration`** — native credential acquisition replacing the rustplus.js
-  CLI: GCM check-in → Firebase/FCM/Expo registration (`Steps/`), Steam login via Chrome DevTools
-  Protocol (`SteamLoginService`), Rust Companion registration, `CredentialsStore` persistence.
+  CLI: GCM check-in → Firebase/FCM/Expo registration (`Steps/`), Steam login via a browser redirect
+  to a loopback callback (`SteamLoginService`), Rust Companion registration, `CredentialsStore`
+  persistence.
 - **Two `*.Extensions.DependencyInjection`** packages — `AddRustPlus`/`AddRustPlusFcm` + factories.
 
 ### Protobuf contracts
