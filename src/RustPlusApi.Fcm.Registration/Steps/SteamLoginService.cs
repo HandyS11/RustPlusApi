@@ -27,7 +27,6 @@ namespace RustPlusApi.Fcm.Registration.Steps;
 /// This step is interactive and only validatable by a real run (e.g. the
 /// <c>RustPlus.Register.ConsoleApp</c> sample); it is excluded from the coverage gate.
 /// </remarks>
-[ExcludeFromCodeCoverage]
 public sealed class SteamLoginService(int port = 3000)
 {
     private static readonly string[] FlatpakAppIds =
@@ -36,6 +35,7 @@ public sealed class SteamLoginService(int port = 3000)
     /// <summary>Launches Chrome, navigates to the Facepunch Steam login page, and returns the captured auth token.</summary>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a token is received.</exception>
+    [ExcludeFromCodeCoverage]
     public Task<string> LoginAsync(CancellationToken cancellationToken = default) =>
         LoginAsync(RegistrationConstants.SteamLoginUrl, cancellationToken);
 
@@ -43,6 +43,7 @@ public sealed class SteamLoginService(int port = 3000)
     /// <param name="startUrl">The URL to navigate Chrome to when the session starts.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a token is received.</exception>
+    [ExcludeFromCodeCoverage]
     internal async Task<string> LoginAsync(string startUrl, CancellationToken cancellationToken = default)
     {
         using var listener = new HttpListener();
@@ -105,6 +106,7 @@ public sealed class SteamLoginService(int port = 3000)
 
     // --- DevTools protocol ---
 
+    [ExcludeFromCodeCoverage]
     private async Task<ClientWebSocket> ConnectAndInjectAsync(int debugPort,
         string startUrl,
         CancellationToken cancellationToken)
@@ -144,6 +146,7 @@ public sealed class SteamLoginService(int port = 3000)
         return socket;
     }
 
+    [ExcludeFromCodeCoverage]
     private static async Task<string> GetPageWebSocketUrlAsync(int debugPort, CancellationToken cancellationToken)
     {
         using var http = new HttpClient
@@ -184,6 +187,7 @@ public sealed class SteamLoginService(int port = 3000)
         throw new InvalidOperationException("Chrome DevTools endpoint did not become available.");
     }
 
+    [ExcludeFromCodeCoverage]
     private static async Task SendAsync(ClientWebSocket socket,
         int id,
         string method,
@@ -199,6 +203,7 @@ public sealed class SteamLoginService(int port = 3000)
             .ConfigureAwait(false);
     }
 
+    [ExcludeFromCodeCoverage]
     private static async Task DrainAsync(ClientWebSocket socket, CancellationToken cancellationToken)
     {
         var buffer = new byte[8192];
@@ -222,6 +227,7 @@ public sealed class SteamLoginService(int port = 3000)
 
     // --- Chrome process ---
 
+    [ExcludeFromCodeCoverage]
     private static Process LaunchChrome(string workDir, string profileDir, int debugPort)
     {
         var (executable, prefixArguments) = ResolveChromeLaunch(workDir)
@@ -259,6 +265,7 @@ public sealed class SteamLoginService(int port = 3000)
 
     /// <summary>Resolves a native Chrome/Chromium binary, or a Flatpak launcher, with any prefix args.</summary>
     /// <param name="workDir">Temporary working directory passed to Flatpak's <c>--filesystem</c> flag when needed.</param>
+    [ExcludeFromCodeCoverage]
     private static (string Executable, string[] PrefixArguments)? ResolveChromeLaunch(string workDir)
     {
         var native = FindChrome();
@@ -280,6 +287,7 @@ public sealed class SteamLoginService(int port = 3000)
         return null;
     }
 
+    [ExcludeFromCodeCoverage]
     private static bool IsFlatpakAppInstalled(string appId)
     {
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -290,6 +298,7 @@ public sealed class SteamLoginService(int port = 3000)
         return Array.Exists(locations, Directory.Exists);
     }
 
+    [ExcludeFromCodeCoverage]
     private static string? FindChrome()
     {
         var fromEnv = Environment.GetEnvironmentVariable("CHROME_PATH");
@@ -334,6 +343,7 @@ public sealed class SteamLoginService(int port = 3000)
         return null;
     }
 
+    [ExcludeFromCodeCoverage]
     private static string? ResolveOnPath(string executable)
     {
         var pathVariable = Environment.GetEnvironmentVariable("PATH");
@@ -354,6 +364,7 @@ public sealed class SteamLoginService(int port = 3000)
         return null;
     }
 
+    [ExcludeFromCodeCoverage]
     private static int GetFreePort()
     {
 #pragma warning disable CA2000 // TcpListener is not IDisposable; Stop() + Server.Dispose() is the correct cleanup pattern.
@@ -372,6 +383,7 @@ public sealed class SteamLoginService(int port = 3000)
     }
 
 #if !NET10_0_OR_GREATER
+    [ExcludeFromCodeCoverage]
     private static string QuoteIfNeeded(string argument) =>
         argument.IndexOf(' ') >= 0 ? "\"" + argument + "\"" : argument;
 #endif
@@ -379,6 +391,7 @@ public sealed class SteamLoginService(int port = 3000)
     /// <summary>Extracts the auth token from a callback request: POST body (primary path, keeps the
     /// token out of URLs) or the <c>token</c> query parameter (navigation fallback).</summary>
     /// <param name="request">The callback request from the injected shim.</param>
+    [ExcludeFromCodeCoverage]
     private static async Task<string?> ReadTokenAsync(HttpListenerRequest request)
     {
         if (request.HttpMethod == "POST")
@@ -391,6 +404,7 @@ public sealed class SteamLoginService(int port = 3000)
         return request.QueryString["token"];
     }
 
+    [ExcludeFromCodeCoverage]
     private static async Task RespondAsync(HttpListenerContext context, string html)
     {
         var buffer = Encoding.UTF8.GetBytes(html);
@@ -404,6 +418,7 @@ public sealed class SteamLoginService(int port = 3000)
         context.Response.Close();
     }
 
+    [ExcludeFromCodeCoverage]
     private static void TryDisposeSocket(ClientWebSocket? socket)
     {
         try
@@ -413,6 +428,7 @@ public sealed class SteamLoginService(int port = 3000)
         catch (Exception ex) { Debug.WriteLine($"[{nameof(SteamLoginService)}] Socket dispose failed: {ex.Message}"); }
     }
 
+    [ExcludeFromCodeCoverage]
     private static void TryKill(Process? process)
     {
         try
@@ -432,6 +448,7 @@ public sealed class SteamLoginService(int port = 3000)
         }
     }
 
+    [ExcludeFromCodeCoverage]
     private static void TryDeleteDirectory(string path)
     {
         try
@@ -460,9 +477,7 @@ public sealed class SteamLoginService(int port = 3000)
     /// <param name="loginUrlBase">The login page to send the user to.</param>
     /// <param name="returnUrl">The absolute URL Facepunch should redirect the browser back to.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="returnUrl"/> is blank.</exception>
-#pragma warning disable CA1055, CA1054 // Return and parameter types must be string to match the callback parsing contract
     internal static string BuildLoginUrl(string loginUrlBase, string returnUrl)
-#pragma warning restore CA1055, CA1054
     {
         if (string.IsNullOrWhiteSpace(returnUrl))
         {
@@ -522,7 +537,7 @@ public sealed class SteamLoginService(int port = 3000)
                 continue;
             }
 
-#pragma warning disable CA1307 // char IndexOf has no StringComparison overload
+#pragma warning disable CA1307 // string.IndexOf(char, StringComparison) is not available on netstandard2.0
             var separator = pair.IndexOf('=');
 #pragma warning restore CA1307
             if (separator < 0)

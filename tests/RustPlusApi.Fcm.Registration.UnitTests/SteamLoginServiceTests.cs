@@ -63,4 +63,26 @@ public class SteamLoginServiceTests
         Justification = "Test parameters use string for testability")]
     public void ParseCallback_InvalidCallback_Throws(string uri) =>
         Assert.Throws<InvalidOperationException>(() => SteamLoginService.ParseCallback(new Uri(uri)));
+
+    [Fact]
+    public void ParseCallback_DuplicateParameter_LastValueWins()
+    {
+        var uri = new Uri("http://localhost:3000/callback?steamId=100&token=first&token=second&steamId=200");
+
+        var result = SteamLoginService.ParseCallback(uri);
+
+        Assert.Equal(200UL, result.SteamId);
+        Assert.Equal("second", result.Token);
+    }
+
+    [Fact]
+    public void ParseCallback_BareValuelessSegment_IgnoredParsesSuccessfully()
+    {
+        var uri = new Uri("http://localhost:3000/callback?steamId=42&token=valid&barekey&extra=1");
+
+        var result = SteamLoginService.ParseCallback(uri);
+
+        Assert.Equal(42UL, result.SteamId);
+        Assert.Equal("valid", result.Token);
+    }
 }
