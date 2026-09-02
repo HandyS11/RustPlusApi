@@ -180,20 +180,18 @@ mutation score cannot be measured.
 The following members are explicitly excluded from the coverage gate with justifications.
 Everything else must reach 100% line and branch coverage across the TFM matrix.
 
-### `SteamLoginService` (whole class)
+### `SteamLoginService.TryOpenBrowser`
 
 **File:** `src/RustPlusApi.Fcm.Registration/Steps/SteamLoginService.cs`
 
-**Justification:** Drives a live Chrome/Chromium instance over the Chrome DevTools Protocol (CDP).
-There is no meaningful offline seam — the entire class is browser-control logic (launch Chrome,
-inject a JavaScript shim via `Page.addScriptToEvaluateOnNewDocument`, navigate to the Facepunch
-Steam login URL, capture the OAuth callback token). Mocking CDP would mean reimplementing a browser.
-The class can only be validated by a real interactive run (Chrome plus a Steam login), e.g. via the
-`RustPlus.Register.ConsoleApp` sample.
-
-No pure helpers were extractable: the token arrives via an HTTP query-string parameter on the
-loopback callback listener, not from parsing a CDP JSON message, so there is no standalone parsing
-logic that could be unit-tested in isolation.
+**Justification:** Launches a real OS browser process (`Process.Start`, platform-specific
+`xdg-open`/`open`/shell-execute), and failure is by design unobservable from the caller — the
+login URL has already been reported through `LoginAsync`'s `onLoginUrl` callback before this runs,
+so a headless host can always open the link by hand. The rest of the class — URL construction
+(`BuildLoginUrl`), callback parsing (`ParseCallback`), and the loopback `HttpListener` accept loop
+in `LoginAsync` — is a plain redirect flow with no browser control involved, and is covered by
+`SteamLoginServiceTests` (the `openBrowser: false` seam drives the accept loop with a real
+loopback `HttpListener` and `HttpClient`, without opening a browser).
 
 ### `FcmRegistration.RegisterWithRustPlusAsync`
 

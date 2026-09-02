@@ -64,10 +64,11 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
                 "Credentials are missing the Expo push token; call AcquireCredentialsAsync first.");
         }
 
-        var steamToken = await _steamLoginService.LoginAsync(cancellationToken).ConfigureAwait(false);
-        await _rustCompanionClient
-            .RegisterAsync(steamToken, expoPushToken, cancellationToken: cancellationToken)
+        var steamLogin = await _steamLoginService.LoginAsync(cancellationToken: cancellationToken)
             .ConfigureAwait(false);
-        return steamToken;
+        await _rustCompanionClient
+            .RegisterAsync(steamLogin.Token, expoPushToken, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        return steamLogin.Token;
     }
 }
