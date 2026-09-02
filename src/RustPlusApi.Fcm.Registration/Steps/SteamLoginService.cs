@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
@@ -444,5 +445,96 @@ public sealed class SteamLoginService(int port = 3000)
         {
             Debug.WriteLine($"[{nameof(SteamLoginService)}] Profile directory cleanup failed: {ex.Message}");
         }
+    }
+
+    /// <summary>Builds the Facepunch login URL that redirects back to <paramref name="returnUrl"/>
+    /// with <c>steamId</c> and <c>token</c> appended as query parameters.</summary>
+    /// <param name="returnUrl">The absolute URL Facepunch should redirect the browser back to.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="returnUrl"/> is blank.</exception>
+#pragma warning disable CA1055, CA1054 // Return and parameter types must be string to match the callback parsing contract
+    public static string BuildLoginUrl(string returnUrl) =>
+        BuildLoginUrl(RegistrationConstants.SteamLoginUrl, returnUrl);
+#pragma warning restore CA1055, CA1054
+
+    /// <summary>Builds the login URL against an arbitrary base (the Facepunch login in production).</summary>
+    /// <param name="loginUrlBase">The login page to send the user to.</param>
+    /// <param name="returnUrl">The absolute URL Facepunch should redirect the browser back to.</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="returnUrl"/> is blank.</exception>
+#pragma warning disable CA1055, CA1054 // Return and parameter types must be string to match the callback parsing contract
+    internal static string BuildLoginUrl(string loginUrlBase, string returnUrl)
+#pragma warning restore CA1055, CA1054
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl))
+        {
+            throw new ArgumentException("The return URL must not be blank.", nameof(returnUrl));
+        }
+
+        return loginUrlBase + "?returnUrl=" + Uri.EscapeDataString(returnUrl);
+    }
+
+    /// <summary>Extracts the Steam identity from the callback Facepunch redirects the browser to.</summary>
+    /// <param name="callbackUri">The full callback URI, including its query string.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the callback carries no usable
+    /// <c>token</c> or <c>steamId</c> — i.e. when Facepunch has changed the callback contract.</exception>
+    public static SteamLoginResult ParseCallback(Uri callbackUri)
+    {
+        var query = ParseQuery(callbackUri.Query);
+
+        // Narrow with a pattern rather than string.IsNullOrEmpty: netstandard2.0's reference assembly
+        // lacks the [NotNullWhen(false)] annotation, so only the pattern proves non-nullness on both TFMs.
+        query.TryGetValue("token", out var token);
+        if (token is not { Length: > 0 } || token.Trim().Length == 0)
+        {
+            throw new InvalidOperationException(
+                "The Facepunch login callback carried no 'token' parameter. The login contract has likely "
+                + "changed upstream — re-check RegistrationConstants against rustplus.js.");
+        }
+
+        if (!query.TryGetValue("steamId", out var steamIdText)
+            || !ulong.TryParse(steamIdText, NumberStyles.None, CultureInfo.InvariantCulture, out var steamId))
+        {
+            throw new InvalidOperationException(
+                "The Facepunch login callback carried no usable 'steamId' parameter. The login contract has "
+                + "likely changed upstream — re-check RegistrationConstants against rustplus.js.");
+        }
+
+        return new SteamLoginResult
+        {
+            SteamId = steamId, Token = token
+        };
+    }
+
+    /// <summary>Parses a URI query string into its decoded key/value pairs. Later duplicates win.</summary>
+    /// <param name="query">The query string, with or without its leading <c>?</c>.</param>
+    private static Dictionary<string, string> ParseQuery(string query)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        var trimmed = query.TrimStart('?');
+        if (trimmed.Length == 0)
+        {
+            return result;
+        }
+
+        foreach (var pair in trimmed.Split('&'))
+        {
+            if (pair.Length == 0)
+            {
+                continue;
+            }
+
+#pragma warning disable CA1307 // char IndexOf has no StringComparison overload
+            var separator = pair.IndexOf('=');
+#pragma warning restore CA1307
+            if (separator < 0)
+            {
+                result[WebUtility.UrlDecode(pair)] = string.Empty;
+                continue;
+            }
+
+            var key = WebUtility.UrlDecode(pair.Substring(0, separator));
+            result[key] = WebUtility.UrlDecode(pair.Substring(separator + 1));
+        }
+
+        return result;
     }
 }
