@@ -98,11 +98,21 @@ internal sealed class CredentialFlow(
             return;
         }
 
-        session.Advance(SessionState.AwaitingPairing, Deadline(options.PairingTtl));
+        // The session's own expiry is the *session's* TTL, not the pairing wait's — a pairing
+        // timeout must not make the sweeper reap the session out from under it (that would also
+        // cancel session.Lifetime, the only thing Advance below could then no-op against). The wait
+        // gets its own deadline instead: a TimeProvider-driven source (so FakeTimeProvider-driven
+        // tests can still fire it deterministically) linked to the caller's token so disposal still
+        // cuts it short.
+        session.Advance(SessionState.AwaitingPairing, Deadline(options.SessionTtl));
+
+        using var pairingDeadline = new CancellationTokenSource(options.PairingTtl, timeProvider);
+        using var linkedToken =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, pairingDeadline.Token);
 
         try
         {
-            var pairing = await steps.WaitForPairingAsync(credentials, cancellationToken).ConfigureAwait(false);
+            var pairing = await steps.WaitForPairingAsync(credentials, linkedToken.Token).ConfigureAwait(false);
 
             session.SetPairing(pairing);
             session.Advance(SessionState.Paired, Deadline(options.SessionTtl));
@@ -113,12 +123,18 @@ internal sealed class CredentialFlow(
                 pairing.PlayerToken,
                 pairing.Name)));
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            // Back to Ready, not a terminal state: the credentials are still good, so the visitor
-            // can start another pairing wait without repeating the Steam login.
+            // The pairing wait's own deadline elapsed — the caller's token is still live, so this
+            // is a genuine timeout, not a disposal. Back to Ready, not a terminal state: the
+            // credentials are still good, so the visitor can start another pairing wait without
+            // repeating the Steam login.
             session.Advance(SessionState.Ready, Deadline(options.SessionTtl));
             session.Events.Publish(new SessionEvent("expired", null));
+        }
+        catch (OperationCanceledException)
+        {
+            // The session was disposed or the host is shutting down. Nothing to report.
         }
 #pragma warning disable CA1031 // A failed socket must land the session in Failed rather than crash the host.
         catch (Exception ex)
