@@ -7,7 +7,8 @@ coverage, how to run mutation testing, and why certain members are excluded from
 
 ## Test projects
 
-The monolithic test project was split into **seven** focused projects under `tests/`:
+The monolithic test project was split into **seven** focused projects under `tests/`, plus one
+covering the build-time proto tool:
 
 | Source project | Unit tests | Integration tests |
 | --- | --- | --- |
@@ -17,6 +18,13 @@ The monolithic test project was split into **seven** focused projects under `tes
 | `RustPlusApi.Camera` | `RustPlusApi.Camera.UnitTests` | `RustPlusApi.Camera.IntegrationTests` |
 | `RustPlusApi.Extensions.DependencyInjection` | `RustPlusApi.Extensions.DependencyInjection.UnitTests` | — (none yet) |
 | `RustPlusApi.Fcm.Extensions.DependencyInjection` | `RustPlusApi.Fcm.Extensions.DependencyInjection.UnitTests` | — (none yet) |
+
+`ProtoGen.UnitTests` covers `tools/update-proto/ProtoGen`, the tool that regenerates
+`RustPlusContracts.proto` from the decompiled Rust server. It is the one test project that does
+**not** follow the multi-TFM parity rule below: ProtoGen is a `net10.0`-only build-time tool rather
+than a shipped library, so the project targets `net10.0` alone. It is likewise excluded from the
+coverage gate (`[ProtoGen]*` in `coverlet.runsettings`), matching Sonar's existing `**/tools/**`
+coverage exclusion — the tool must not move the shipped libraries' aggregate in either direction.
 
 `RustPlusApi.MockServer` is the shared in-process test server used by integration tests.
 Integration test projects for `RustPlusApi.Fcm` and `RustPlusApi.Fcm.Registration` will be added
@@ -68,7 +76,8 @@ below.
 
 ## Multi-TFM parity mechanism
 
-The test projects target `net8.0;net10.0`. The production libraries target `netstandard2.0;net10.0`.
+The test projects target `net8.0;net10.0` (except `ProtoGen.UnitTests`, see above). The production
+libraries target `netstandard2.0;net10.0`.
 
 When the test runner uses a `net8.0` host, it cannot load the `net10.0` asset of a multi-targeted
 library; the .NET SDK resolves the `netstandard2.0` build instead. When the runner uses a `net10.0`

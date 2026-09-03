@@ -9,7 +9,11 @@
 # Field numbers/types/names are recovered downstream by parsing those methods (Step 3), not
 # by reflection. See proto-refresh-plan.md and §6 notes.
 #
-# Self-installs ilspycmd as a dotnet global tool if missing.
+# Self-installs ilspycmd at a PINNED version into a script-local tool dir. The version is
+# pinned deliberately: the decompiled *shape* of Deserialize is what ProtoGen parses, so an
+# unpinned decompiler makes the whole pipeline non-reproducible — a silent decompiler upgrade
+# between runs can change field recovery without any server change. Bump ILSPY_VERSION
+# consciously, and re-run to confirm the proto is unchanged.
 #
 # Usage:
 #   ./2-decompile.sh --list   List candidate assemblies/types holding AppRequest/AppMessage.
@@ -18,6 +22,7 @@
 # Env:
 #   CONTRACT_DLL   Assembly to decompile (default: Rust.Data.dll). Override if a future Rust
 #                  update relocates the App* contracts.
+#   ILSPY_VERSION  ilspycmd version to use (default: the pinned version below).
 
 set -euo pipefail
 
@@ -27,19 +32,24 @@ OUT_DIR="${SCRIPT_DIR}/decompiled"
 MANAGED_DIR="${RDS_DIR}/RustDedicated_Data/Managed"
 CONTRACT_DLL="${CONTRACT_DLL:-${MANAGED_DIR}/Rust.Data.dll}"
 
+# Pinned decompiler — see the header note. Not "latest": reproducibility is the point.
+ILSPY_VERSION="${ILSPY_VERSION:-11.0.0.9375}"
+ILSPY_DIR="${SCRIPT_DIR}/.tools/ilspycmd-${ILSPY_VERSION}"
+
 if [[ ! -d "${MANAGED_DIR}" ]]; then
     echo "ERROR: ${MANAGED_DIR} not found. Run ./1-fetch-server.sh first." >&2
     exit 1
 fi
 
-# Ensure ilspycmd is available (global dotnet tool).
-ILSPY_BIN="$(command -v ilspycmd || true)"
-if [[ -z "${ILSPY_BIN}" ]]; then
-    echo ">> ilspycmd not found — installing as a dotnet global tool..."
-    dotnet tool install -g ilspycmd >/dev/null
-    export PATH="${PATH}:${HOME}/.dotnet/tools"
-    ILSPY_BIN="$(command -v ilspycmd)"
+# Ensure the *pinned* ilspycmd is available. Installed into a script-local tool dir rather
+# than -g so an ambient global ilspycmd of a different version cannot silently change the
+# decompiled output (and hence the regenerated proto).
+ILSPY_BIN="${ILSPY_DIR}/ilspycmd"
+if [[ ! -x "${ILSPY_BIN}" ]]; then
+    echo ">> installing pinned ilspycmd ${ILSPY_VERSION} into ${ILSPY_DIR}"
+    dotnet tool install ilspycmd --version "${ILSPY_VERSION}" --tool-path "${ILSPY_DIR}" >/dev/null
 fi
+echo ">> ilspycmd version: ${ILSPY_VERSION}"
 
 # --list: which managed assemblies *define* the companion contracts? (strings is enough to
 # spot the type names in metadata; Rust.Data.dll is the expected home.)
@@ -71,6 +81,10 @@ mkdir -p "${OUT_DIR}"
 # ilspycmd emits one Rust.Data.decompiled.cs for the whole assembly; Step 3 scopes to the
 # companion subset (App* roots + transitive closure within namespace ProtoBuf).
 "${ILSPY_BIN}" "${CONTRACT_DLL}" -o "${OUT_DIR}"
+
+# Stamp the decompiler version next to its output: the regenerated proto is only meaningful
+# relative to the decompiler that produced the input ProtoGen parses.
+echo "${ILSPY_VERSION}" > "${OUT_DIR}/.ilspy-version"
 
 # Sanity check: the SilentOrbit contract types are present (NOT protobuf-net attributes).
 if ! grep -rql 'IProto<AppMessage>\|class AppMessage' "${OUT_DIR}"; then

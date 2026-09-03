@@ -21,10 +21,15 @@ internal sealed class ServerParser
     public IReadOnlyDictionary<string, Message> Messages => _messages;
     public IReadOnlyDictionary<string, EnumDef> Enums => _enums;
 
-    public static ServerParser Parse(string decompiledCsPath)
+    /// <summary>Parses the decompiled contracts from a file.</summary>
+    /// <param name="decompiledCsPath">Path to the ilspycmd output.</param>
+    public static ServerParser Parse(string decompiledCsPath) => ParseSource(File.ReadAllText(decompiledCsPath));
+
+    /// <summary>Parses decompiled contracts from source text (the file-free seam used by tests).</summary>
+    /// <param name="source">Decompiled C# source.</param>
+    public static ServerParser ParseSource(string source)
     {
-        var text = File.ReadAllText(decompiledCsPath);
-        var tree = CSharpSyntaxTree.ParseText(text);
+        var tree = CSharpSyntaxTree.ParseText(source);
         var root = tree.GetCompilationUnitRoot();
 
         var parser = new ServerParser();
@@ -61,6 +66,18 @@ internal sealed class ServerParser
 
         return parser;
     }
+
+    /// <summary>The requested root messages that the decompiled contracts do not define.</summary>
+    /// <remarks>
+    /// A missing root collapses the authoritative closure to nothing, so every committed type falls
+    /// through to the emitter's "preserved verbatim" path and the regenerated proto reproduces the
+    /// committed one exactly — no diff, and nothing for <see cref="FieldLossGuard" /> to compare.
+    /// Callers must treat a non-empty result as a failure rather than as "no drift".
+    /// </remarks>
+    /// <param name="roots">Qualified root message names, e.g. AppRequest.</param>
+    /// <returns>The roots absent from the parsed model, in the order given.</returns>
+    public IReadOnlyList<string> MissingRoots(IEnumerable<string> roots) =>
+        roots.Where(r => !_messages.ContainsKey(r)).ToList();
 
     /// <summary>First pass: register every message/enum and the parent/child structure.</summary>
     /// <param name="member">The syntax node to register.</param>
@@ -152,13 +169,9 @@ internal sealed class ServerParser
         }
 
         var seen = new HashSet<int>();
-        foreach (var sw in deser.DescendantNodes().OfType<SwitchStatementSyntax>())
+        foreach (var arm in CollectDispatchArms(deser))
         {
-            var fieldNumberMode = IsKeyFieldSwitch(sw);
-            foreach (var section in sw.Sections)
-            {
-                AddFieldsFromSection(section, decls, fieldNumberMode, qualified, msg, seen);
-            }
+            AddFieldsFromArm(arm, decls, qualified, msg, seen);
         }
 
         msg.Fields.Sort((a, b) => a.Number.CompareTo(b.Number));
@@ -189,38 +202,38 @@ internal sealed class ServerParser
         return decls;
     }
 
-    /// <summary>Recovers every field assigned in one <c>Deserialize</c> switch section and appends it to
+    /// <summary>Recovers every field assigned in one dispatch arm and appends it to
     /// <paramref name="msg"/>, skipping field numbers already <paramref name="seen"/>.</summary>
-    /// <param name="section">The switch section to analyze.</param>
+    /// <param name="arm">The dispatch arm to analyze.</param>
     /// <param name="decls">Declared field types for the enclosing message.</param>
-    /// <param name="fieldNumberMode">True when case labels are field numbers rather than wire keys.</param>
     /// <param name="qualified">Qualified name of the message being filled (resolution scope).</param>
     /// <param name="msg">The message to append recovered fields to.</param>
     /// <param name="seen">Field numbers already recorded for this message.</param>
-    private void AddFieldsFromSection(
-        SwitchSectionSyntax section,
+    private void AddFieldsFromArm(
+        DispatchArm arm,
         Dictionary<string, (string CsType, bool Repeated, string Element)> decls,
-        bool fieldNumberMode,
         string qualified,
         Message msg,
         HashSet<int> seen)
     {
-        var fieldName = FindFieldName(section);
+        var fieldName = FindFieldName(arm.Body);
         if (fieldName is null || !decls.TryGetValue(fieldName, out var d))
         {
             return;
         }
 
-        var readMethod = FindReadMethod(section);
+        var readMethod = FindReadMethod(arm.Body);
 
-        foreach (var label in section.Labels.OfType<CaseSwitchLabelSyntax>())
+        foreach (var raw in arm.Constants)
         {
-            if (!TryParseInt(label.Value, out var raw) || raw <= 0)
+            // Non-positive labels are never fields: `case -1` is ILSpy's folded end-of-stream
+            // guard and `0` is the generator's "invalid field id" throw.
+            if (raw <= 0)
             {
                 continue;
             }
 
-            var number = fieldNumberMode ? raw : raw >> 3;
+            var number = arm.FieldNumberMode ? raw : raw >> 3;
             if (number <= 0 || !seen.Add(number))
             {
                 continue;
@@ -232,6 +245,84 @@ internal sealed class ServerParser
                 Name = fieldName, Number = number, ProtoType = protoType, Repeated = d.Repeated,
             });
         }
+    }
+
+    /// <summary>Every field-dispatch arm in a <c>Deserialize</c> body, in source order.</summary>
+    /// <remarks>
+    /// The decompiler decides whether to render the dispatch as a <c>switch</c> or as an
+    /// <c>if</c>/<c>else if</c> chain, and that choice is not stable across decompiler versions or
+    /// across the number of fields in a message. Both shapes are read here so field recovery does
+    /// not depend on it. A shape that is recognised by neither yields no fields, which
+    /// <see cref="FieldLossGuard" /> turns into a hard failure rather than a silent empty message.
+    /// </remarks>
+    /// <param name="deser">The <c>Deserialize</c> method to scan.</param>
+    private static List<DispatchArm> CollectDispatchArms(MethodDeclarationSyntax deser)
+    {
+        var arms = new List<DispatchArm>();
+
+        // One document-order walk, so switch and if arms interleave exactly as written. Ordering is
+        // behaviour, not presentation: the first arm to claim a field number wins (see the `seen`
+        // set in FillFields), and the generated code dispatches the same field from both an
+        // optimized raw-key arm and a key.Field fallback arm.
+        foreach (var node in deser.DescendantNodes())
+        {
+            switch (node)
+            {
+                case SwitchStatementSyntax sw:
+                    AddSwitchArms(sw, arms);
+                    break;
+                case IfStatementSyntax ifStatement when TryReadEqualityArm(ifStatement, out var arm):
+                    arms.Add(arm);
+                    break;
+            }
+        }
+
+        return arms;
+    }
+
+    /// <summary>Appends one arm per <c>case</c> section carrying at least one integer label.</summary>
+    /// <param name="sw">The switch statement to read.</param>
+    /// <param name="arms">The list to append to.</param>
+    private static void AddSwitchArms(SwitchStatementSyntax sw, List<DispatchArm> arms)
+    {
+        var fieldNumberMode = IsFieldNumberExpression(sw.Expression);
+        foreach (var section in sw.Sections)
+        {
+            var constants = section.Labels.OfType<CaseSwitchLabelSyntax>()
+                .Select(l => TryParseInt(l.Value, out var v) ? v : (int?)null)
+                .OfType<int>()
+                .ToList();
+            if (constants.Count > 0)
+            {
+                arms.Add(new DispatchArm(constants, section, fieldNumberMode));
+            }
+        }
+    }
+
+    /// <summary>Reads an <c>if (num == 10)</c> / <c>if (key.Field == 33)</c> arm.</summary>
+    /// <param name="ifStatement">The if statement to inspect.</param>
+    /// <param name="arm">The recovered arm, when the condition is a constant equality test.</param>
+    /// <returns><c>true</c> when the condition is an equality comparison against an integer constant.</returns>
+    private static bool TryReadEqualityArm(IfStatementSyntax ifStatement, out DispatchArm arm)
+    {
+        arm = default!;
+        if (ifStatement.Condition is not BinaryExpressionSyntax bin ||
+            !bin.OperatorToken.IsKind(SyntaxKind.EqualsEqualsToken))
+        {
+            return false;
+        }
+
+        // Either operand may hold the constant (`num == 10` or `10 == num`).
+        var (dispatched, constantExpr) = TryParseInt(bin.Right, out _)
+            ? (bin.Left, bin.Right)
+            : (bin.Right, bin.Left);
+        if (!TryParseInt(constantExpr, out var constant))
+        {
+            return false;
+        }
+
+        arm = new DispatchArm([constant], ifStatement.Statement, IsFieldNumberExpression(dispatched));
+        return true;
     }
 
     // ---- helpers ----
@@ -265,14 +356,15 @@ internal sealed class ServerParser
         return _messages.ContainsKey(qualified) ? qualified : null;
     }
 
-    /// <summary>When the switch expression is <c>key.Field</c>, case labels are field numbers; otherwise they are wire keys.</summary>
-    /// <param name="sw">The switch statement to inspect.</param>
-    private static bool IsKeyFieldSwitch(SwitchStatementSyntax sw) =>
-        sw.Expression is MemberAccessExpressionSyntax { Name.Identifier.Text: "Field" };
+    /// <summary>When the dispatched expression is <c>key.Field</c> the constants are field numbers;
+    /// otherwise they are raw wire keys and need <c>&gt;&gt; 3</c> to yield the field number.</summary>
+    /// <param name="dispatched">The expression the constants are compared against.</param>
+    private static bool IsFieldNumberExpression(ExpressionSyntax dispatched) =>
+        dispatched is MemberAccessExpressionSyntax { Name.Identifier.Text: "Field" };
 
-    /// <summary>The field assigned in a switch section: prefer assignment / .Add / ref target.</summary>
-    /// <param name="section">The switch section to analyze.</param>
-    private static string? FindFieldName(SwitchSectionSyntax section)
+    /// <summary>The field assigned in a dispatch arm: prefer assignment / .Add / ref target.</summary>
+    /// <param name="section">The arm body to analyze.</param>
+    private static string? FindFieldName(SyntaxNode section)
     {
         // instance.X = ...
         foreach (var asg in section.DescendantNodes().OfType<AssignmentExpressionSyntax>())
@@ -319,7 +411,9 @@ internal sealed class ServerParser
             ? ma.Name.Identifier.Text
             : null;
 
-    private static string? FindReadMethod(SwitchSectionSyntax section)
+    /// <summary>The <c>ProtocolParser.Read*</c> call in a dispatch arm, which reveals the wire type.</summary>
+    /// <param name="section">The arm body to analyze.</param>
+    private static string? FindReadMethod(SyntaxNode section)
     {
         foreach (var inv in section.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
@@ -464,4 +558,11 @@ internal sealed class ServerParser
             }
         }
     }
+
+    /// <summary>One arm of a field dispatch: the constants that select it, its body, and whether
+    /// those constants are field numbers (<c>key.Field</c>) or raw wire keys.</summary>
+    /// <param name="Constants">The integer constants selecting this arm.</param>
+    /// <param name="Body">The arm body, scanned for the assigned field and the read method.</param>
+    /// <param name="FieldNumberMode">True when <paramref name="Constants" /> are already field numbers.</param>
+    private sealed record DispatchArm(IReadOnlyList<int> Constants, SyntaxNode Body, bool FieldNumberMode);
 }
