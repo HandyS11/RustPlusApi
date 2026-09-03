@@ -43,6 +43,29 @@ public sealed class EventEndpointTests
         return names;
     }
 
+    /// <summary>Reads one line, turning a timed-out wait into a named assertion failure instead of
+    /// a raw <see cref="OperationCanceledException"/> — so a regression that drops the SSE frame
+    /// terminator (or a separating blank line) fails with a message pointing at what broke, rather
+    /// than a 10-second <c>TaskCanceledException</c> that looks like a hung test.</summary>
+    /// <param name="reader">The stream reader to read a line from.</param>
+    /// <param name="timeoutMessage">What to report if the read never completes in time.</param>
+    /// <param name="cancellationToken">The bounding timeout token.</param>
+    private static async Task<string?> ReadLineOrFailAsync(
+        StreamReader reader,
+        string timeoutMessage,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await reader.ReadLineAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            Assert.Fail(timeoutMessage);
+            return null; // Unreachable: Assert.Fail always throws.
+        }
+    }
+
     private static Session NewSession(CredentialsWebFactory factory)
     {
         var store = factory.Services.GetRequiredService<SessionStore>();
@@ -124,9 +147,11 @@ public sealed class EventEndpointTests
         await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
         using var reader = new StreamReader(stream);
 
-        await reader.ReadLineAsync(timeout.Token);
-        var dataLine = await reader.ReadLineAsync(timeout.Token);
-        var terminatorLine = await reader.ReadLineAsync(timeout.Token);
+        await ReadLineOrFailAsync(reader, "The SSE frame's event: line never arrived within 10s.", timeout.Token);
+        var dataLine = await ReadLineOrFailAsync(
+            reader, "The SSE frame's data: line never arrived within 10s.", timeout.Token);
+        var terminatorLine = await ReadLineOrFailAsync(
+            reader, "SSE frame was not terminated by a blank line within 10s.", timeout.Token);
 
         Assert.Equal("""data: {"state":"Registering"}""", dataLine);
         // A dropped blank line is silent: EventSource never dispatches an incomplete frame, so this
@@ -155,7 +180,11 @@ public sealed class EventEndpointTests
         var lines = new List<string?>();
         for (var i = 0; i < 6; i++)
         {
-            lines.Add(await reader.ReadLineAsync(timeout.Token));
+            lines.Add(await ReadLineOrFailAsync(
+                reader,
+                $"Line {i} of the two SSE frames never arrived within 10s — a dropped separator or "
+                + "terminator likely stalled the read.",
+                timeout.Token));
         }
 
         // Pins both frames in full, including the blank line that separates them and the one that
