@@ -114,4 +114,52 @@ public sealed class AppOptionsValidatorTests
         Assert.NotNull(error);
         Assert.Contains("SessionTtl", error, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Validate_Rejects_NonPositivePairingLimit()
+    {
+        var options = Valid();
+        options.MaxConcurrentPairings = 0;
+
+        var error = AppOptionsValidator.Validate(options);
+
+        Assert.NotNull(error);
+        Assert.Contains("MaxConcurrentPairings", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_Rejects_NonPositiveCompletionsPerIpPerHour()
+    {
+        var options = Valid();
+        options.MaxCompletionsPerIpPerHour = 0;
+
+        var error = AppOptionsValidator.Validate(options);
+
+        Assert.NotNull(error);
+        Assert.Contains("MaxCompletionsPerIpPerHour", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_Rejects_NonPositiveCreatedTtl()
+    {
+        var options = Valid();
+        options.CreatedTtl = TimeSpan.Zero;
+
+        var error = AppOptionsValidator.Validate(options);
+
+        Assert.NotNull(error);
+        Assert.Contains("CreatedTtl", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_Rejects_NonPositivePairingTtl()
+    {
+        var options = Valid();
+        options.PairingTtl = TimeSpan.Zero;
+
+        var error = AppOptionsValidator.Validate(options);
+
+        Assert.NotNull(error);
+        Assert.Contains("PairingTtl", error, StringComparison.Ordinal);
+    }
 }
