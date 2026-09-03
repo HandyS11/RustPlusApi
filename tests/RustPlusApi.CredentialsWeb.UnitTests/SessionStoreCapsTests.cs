@@ -112,6 +112,27 @@ public sealed class SessionStoreCapsTests
     }
 
     [Fact]
+    public void RecordCompletion_StillCounts_AfterItsAddressWasPrunedToEmptyAndUnlinked()
+    {
+        var (store, time) = NewStore(o => o.MaxCompletionsPerIpPerHour = 1);
+        using var _s = store;
+        store.RecordCompletion("203.0.113.7");
+
+        time.Advance(TimeSpan.FromMinutes(61));
+
+        // The stale entry is now more than an hour old. This TryCreate's hourly check prunes
+        // "203.0.113.7"'s completions list to empty and unlinks it from the per-IP map — the exact
+        // moment a same-address RecordCompletion must not lose its write.
+        Assert.True(store.TryCreate("203.0.113.7", out var session, out _));
+        store.Remove(session!.SessionId);
+
+        store.RecordCompletion("203.0.113.7");
+
+        Assert.False(store.TryCreate("203.0.113.7", out _, out var failure));
+        Assert.Equal(SessionCreateFailure.HourlyLimit, failure);
+    }
+
+    [Fact]
     public void TryAcquirePairingSlot_HonoursTheGlobalPairingCap()
     {
         var (store, _) = NewStore(o => o.MaxConcurrentPairings = 2);

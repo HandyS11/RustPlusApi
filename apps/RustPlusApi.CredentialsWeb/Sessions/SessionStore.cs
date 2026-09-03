@@ -93,13 +93,17 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
                && _bySessionId.TryGetValue(sessionId, out session);
     }
 
-    /// <summary>Records that <paramref name="clientIp"/> finished a flow, for the rolling hourly cap.</summary>
+    /// <summary>Records that <paramref name="clientIp"/> finished a flow, for the rolling hourly cap.
+    /// Runs under the same gate as <see cref="TryCreate"/> rather than a per-list lock: a per-list
+    /// lock lets a completion race the exact moment <see cref="CountCompletionsUnderGate"/> prunes
+    /// that address's list to empty and unlinks it from the map, silently losing the completion.
+    /// A single gate removes that interleaving entirely instead of patching around it.</summary>
     /// <param name="clientIp">The caller's address.</param>
     internal void RecordCompletion(string clientIp)
     {
-        var stamps = _completionsByIp.GetOrAdd(clientIp, static _ => []);
-        lock (stamps)
+        lock (_createGate)
         {
+            var stamps = _completionsByIp.GetOrAdd(clientIp, static _ => []);
             stamps.Add(timeProvider.GetUtcNow());
         }
     }
@@ -158,7 +162,7 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
 
         lock (_createGate)
         {
-            if (CountCompletions(clientIp) >= options.MaxCompletionsPerIpPerHour)
+            if (CountCompletionsUnderGate(clientIp) >= options.MaxCompletionsPerIpPerHour)
             {
                 failure = SessionCreateFailure.HourlyLimit;
                 return false;
@@ -207,10 +211,14 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     internal bool TryGet(string sessionId, [NotNullWhen(true)] out Session? session) =>
         _bySessionId.TryGetValue(sessionId, out session);
 
-    /// <summary>Completions by this address inside the trailing hour, pruning older entries as it goes
-    /// so the map cannot grow without bound.</summary>
+    /// <summary>Completions by this address inside the trailing hour, pruning older entries as it goes.
+    /// This bounds an address's own list only when that address calls <see cref="TryCreate"/> again —
+    /// it is the only caller, so an address that keeps calling <see cref="RecordCompletion"/> without
+    /// ever retrying <see cref="TryCreate"/> keeps growing its list, since nothing else visits it to
+    /// prune. Must be called while already holding <see cref="_createGate"/>: it does no locking of
+    /// its own and relies on the caller for exclusive access to <see cref="_completionsByIp"/>.</summary>
     /// <param name="clientIp">The caller's address.</param>
-    private int CountCompletions(string clientIp)
+    private int CountCompletionsUnderGate(string clientIp)
     {
         if (!_completionsByIp.TryGetValue(clientIp, out var stamps))
         {
@@ -218,15 +226,12 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
         }
 
         var cutoff = timeProvider.GetUtcNow().AddHours(-1);
-        lock (stamps)
+        stamps.RemoveAll(stamp => stamp < cutoff);
+        if (stamps.Count == 0)
         {
-            stamps.RemoveAll(stamp => stamp < cutoff);
-            if (stamps.Count == 0)
-            {
-                _completionsByIp.TryRemove(clientIp, out _);
-            }
-
-            return stamps.Count;
+            _completionsByIp.TryRemove(clientIp, out _);
         }
+
+        return stamps.Count;
     }
 }
