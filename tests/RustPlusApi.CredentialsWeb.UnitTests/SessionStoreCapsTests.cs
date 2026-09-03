@@ -164,7 +164,10 @@ public sealed class SessionStoreCapsTests
         const int prunerThreadCount = 50;
         const int recordTotal = addressCount * recordersPerAddress;
 
+        const int gateTimeoutSeconds = 10;
+
         var lostWrites = new List<string>();
+        var gateTimeouts = 0;
 
         for (var storm = 0; storm < storms; storm++)
         {
@@ -187,10 +190,20 @@ public sealed class SessionStoreCapsTests
             using var allReady = new CountdownEvent(recorderThreadCount + prunerThreadCount);
             using var go = new ManualResetEventSlim(initialState: false);
 
+            // go.Wait() is bounded and a timed-out worker simply returns having recorded nothing,
+            // rather than parking forever: if allReady.Wait below ever fails (a starved CI runner
+            // failing to spin up every thread in time), go.Set() is never reached, and an unbounded
+            // wait here would hang the process instead of surfacing a clean assertion failure.
+            // Workers are also background threads for the same reason, as defence in depth.
+
             void RecordWorker()
             {
                 allReady.Signal();
-                go.Wait();
+                if (!go.Wait(TimeSpan.FromSeconds(gateTimeoutSeconds)))
+                {
+                    Interlocked.Increment(ref gateTimeouts);
+                    return;
+                }
 
                 int unit;
 
@@ -207,7 +220,11 @@ public sealed class SessionStoreCapsTests
             void PruneWorker()
             {
                 allReady.Signal();
-                go.Wait();
+                if (!go.Wait(TimeSpan.FromSeconds(gateTimeoutSeconds)))
+                {
+                    Interlocked.Increment(ref gateTimeouts);
+                    return;
+                }
 
                 int index;
                 while ((index = Interlocked.Increment(ref nextPruneAddress)) < addressCount)
@@ -222,12 +239,18 @@ public sealed class SessionStoreCapsTests
             var threads = new List<Thread>(recorderThreadCount + prunerThreadCount);
             for (var t = 0; t < recorderThreadCount; t++)
             {
-                threads.Add(new Thread(RecordWorker));
+                threads.Add(new Thread(RecordWorker)
+                {
+                    IsBackground = true
+                });
             }
 
             for (var t = 0; t < prunerThreadCount; t++)
             {
-                threads.Add(new Thread(PruneWorker));
+                threads.Add(new Thread(PruneWorker)
+                {
+                    IsBackground = true
+                });
             }
 
             foreach (var thread in threads)
@@ -254,6 +277,15 @@ public sealed class SessionStoreCapsTests
                 Assert.Equal(SessionCreateFailure.HourlyLimit, failure);
             }
         }
+
+        // Checked separately from lostWrites and with its own message: a gate timeout means some
+        // workers never ran, which would otherwise masquerade as a lost write and misattribute an
+        // environment slowdown to the production race this test targets.
+        Assert.True(
+            gateTimeouts == 0,
+            $"{gateTimeouts} storm worker(s) timed out waiting for the release gate instead of "
+            + "running, so the counts below cannot be trusted as a race-detection signal — the "
+            + "test environment is too slow or throttled for this test's timing budget.");
 
         Assert.Empty(lostWrites);
     }
