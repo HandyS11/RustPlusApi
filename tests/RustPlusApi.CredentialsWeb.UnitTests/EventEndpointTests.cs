@@ -126,7 +126,78 @@ public sealed class EventEndpointTests
 
         await reader.ReadLineAsync(timeout.Token);
         var dataLine = await reader.ReadLineAsync(timeout.Token);
+        var terminatorLine = await reader.ReadLineAsync(timeout.Token);
 
         Assert.Equal("""data: {"state":"Registering"}""", dataLine);
+        // A dropped blank line is silent: EventSource never dispatches an incomplete frame, so this
+        // is the one gap the line-by-line assertions above cannot catch on their own.
+        Assert.Equal(string.Empty, terminatorLine);
+    }
+
+    [Fact]
+    public async Task Events_SeparatesConsecutiveFramesWithABlankLine()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+        var session = NewSession(factory);
+        session.Advance(SessionState.Authenticated, DateTimeOffset.MaxValue);
+        session.Advance(SessionState.Registering, DateTimeOffset.MaxValue);
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var response = await client.GetAsync(
+            new Uri($"/api/sessions/{session.SessionId}/events", UriKind.Relative),
+            HttpCompletionOption.ResponseHeadersRead,
+            timeout.Token);
+
+        await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
+        using var reader = new StreamReader(stream);
+
+        var lines = new List<string?>();
+        for (var i = 0; i < 6; i++)
+        {
+            lines.Add(await reader.ReadLineAsync(timeout.Token));
+        }
+
+        // Pins both frames in full, including the blank line that separates them and the one that
+        // terminates the second — a dropped separator would merge the two frames into one that
+        // EventSource cannot parse, which none of the count-based replay tests above would notice.
+        Assert.Equal(
+            new List<string?>
+            {
+                "event: step",
+                """data: {"state":"Authenticated"}""",
+                string.Empty,
+                "event: step",
+                """data: {"state":"Registering"}""",
+                string.Empty
+            },
+            lines);
+    }
+
+    [Fact]
+    public async Task Events_SerializesASteam64PayloadFieldAsAQuotedString()
+    {
+        // Steam64 exceeds Number.MAX_SAFE_INTEGER: an unquoted JSON number would silently corrupt
+        // it in the browser. This is the highest-consequence serialization rule in this endpoint.
+        const string steam64 = "76561198249527954";
+
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+        var session = NewSession(factory);
+        session.Events.Publish(new SessionEvent("credentials", new CredentialsPayload(steam64, "{}")));
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var response = await client.GetAsync(
+            new Uri($"/api/sessions/{session.SessionId}/events", UriKind.Relative),
+            HttpCompletionOption.ResponseHeadersRead,
+            timeout.Token);
+
+        await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
+        using var reader = new StreamReader(stream);
+
+        await reader.ReadLineAsync(timeout.Token);
+        var dataLine = await reader.ReadLineAsync(timeout.Token);
+
+        Assert.Equal($$"""data: {"steamId":"{{steam64}}","configJson":"{}"}""", dataLine);
     }
 }
