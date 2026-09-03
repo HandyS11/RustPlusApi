@@ -886,7 +886,7 @@ public sealed class SessionTests
     {
         using var session = NewSession();
 
-        session.SetSteamLogin(new SteamLoginResult { SteamId = 76561198249527954, Token = "steam-token" });
+        session.SetSteamLogin(new SteamLoginResult(76561198249527954, "steam-token"));
 
         Assert.Equal(76561198249527954UL, session.SteamId);
         Assert.Equal("steam-token", session.SteamToken);
@@ -896,7 +896,7 @@ public sealed class SessionTests
     public void ClearSteamToken_DropsTokenButKeepsSteamId()
     {
         using var session = NewSession();
-        session.SetSteamLogin(new SteamLoginResult { SteamId = 76561198249527954, Token = "steam-token" });
+        session.SetSteamLogin(new SteamLoginResult(76561198249527954, "steam-token"));
 
         session.ClearSteamToken();
 
@@ -933,7 +933,7 @@ public sealed class SessionTests
     public void Dispose_ClearsSecretsAndCancelsLifetime()
     {
         var session = NewSession();
-        session.SetSteamLogin(new SteamLoginResult { SteamId = 1, Token = "steam-token" });
+        session.SetSteamLogin(new SteamLoginResult(1, "steam-token"));
         session.SetCredentials(new Credentials { ExpoPushToken = "expo-token" });
         session.SetPairing(new ServerPairing { Ip = "10.0.0.1", Port = 1, PlayerId = 1, PlayerToken = 2 });
 
@@ -2564,7 +2564,7 @@ public sealed class CredentialFlowPairingTests
         store.TryCreate("203.0.113.7", out var session, out _);
         await flow.CompleteRegistrationAsync(
             session!,
-            new SteamLoginResult { SteamId = 76561198249527954, Token = "steam-token" },
+            new SteamLoginResult(76561198249527954, "steam-token"),
             CancellationToken.None);
 
         steps.Calls.Clear();
