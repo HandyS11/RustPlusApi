@@ -83,6 +83,13 @@ function listen(id) {
         if (e.data) {
             fail(JSON.parse(e.data).message);
             source.close();
+        } else if (source.readyState === EventSource.CLOSED) {
+            // A non-2xx response (e.g. a 404 for an unknown or swept session) makes the browser
+            // fail the connection permanently rather than retry, leaving readyState CLOSED. A
+            // transient network blip leaves it CONNECTING and the browser retries on its own, so
+            // only CLOSED means the session is actually gone.
+            sessionStorage.removeItem(SESSION_KEY);
+            fail("This session has expired. Start over — nothing was saved.");
         }
     });
     source.addEventListener("expired", () => {
