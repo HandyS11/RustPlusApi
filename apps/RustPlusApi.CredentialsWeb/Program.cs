@@ -73,6 +73,7 @@ app.UseStaticFiles();
 
 app.MapSessionEndpoints();
 app.MapCallbackEndpoints();
+app.MapEventEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);
 return 0;
