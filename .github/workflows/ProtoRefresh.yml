@@ -58,12 +58,32 @@ jobs:
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
           exit 0
 
+      # The decompiled contracts are the input ProtoGen parses. Keeping them lets a
+      # surprising diff be traced back to the exact decompiled shape without re-running the
+      # multi-GB fetch — the drift issue alone is not enough to debug a parser regression.
+      - name: Upload decompiled contracts artifact
+        if: always() && steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: decompiled-contracts
+          path: tools/update-proto/decompiled/
+          if-no-files-found: warn
+
       - name: Upload diff artifact
         if: steps.gate.outputs.run == 'true' && steps.refresh.outputs.exit_code == '1'
         uses: actions/upload-artifact@v7
         with:
           name: proto-diff
           path: tools/update-proto/out/proto.diff
+
+      # 0 = clean, 1 = drift (handled below). Anything else is a pipeline/tool failure —
+      # notably ProtoGen's field-loss guard (exit 3) — and must go red rather than quietly
+      # producing no issue.
+      - name: Fail on pipeline error
+        if: steps.gate.outputs.run == 'true' && steps.refresh.outputs.exit_code != '0' && steps.refresh.outputs.exit_code != '1'
+        run: |
+          echo "::error::proto refresh failed with exit code ${{ steps.refresh.outputs.exit_code }} — see the 'Run proto refresh' step."
+          exit 1
 
       - name: Open or update drift issue
         if: steps.gate.outputs.run == 'true' && steps.refresh.outputs.exit_code == '1'
@@ -74,6 +94,7 @@ jobs:
           set -euo pipefail
           manifest="tools/update-proto/rds/steamapps/appmanifest_258550.acf"
           build_id="$(grep -o '"buildid"[^0-9]*[0-9]*' "$manifest" 2>/dev/null | grep -o '[0-9]*' || echo unknown)"
+          ilspy_version="$(cat tools/update-proto/decompiled/.ilspy-version 2>/dev/null || echo unknown)"
 
           {
             echo "The Rust dedicated server's Companion contracts have drifted from the committed"
@@ -81,6 +102,7 @@ jobs:
             echo
             echo "- **Server build id:** \`${build_id}\`"
             echo "- **Workflow run:** ${RUN_URL}"
+            echo "- **Decompiler:** \`ilspycmd ${ilspy_version}\`"
             echo
             echo "Review the diff and apply the genuine wire changes (plus any matching \`Data/*\` model"
             echo "and \`Extensions/*\` mapper updates), then open a PR. See \`tools/update-proto/README.md\`."
