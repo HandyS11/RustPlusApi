@@ -157,6 +157,40 @@ public sealed class SessionTests
     }
 
     [Fact]
+    public void Dispose_DoesNotThrow_WhenACancellationCallbackThrows()
+    {
+        var session = NewSession();
+        session.Lifetime.Token.Register(() => throw new InvalidOperationException("Simulated callback failure"));
+
+        var exception = Record.Exception(session.Dispose);
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task Dispose_StillCompletesEventsAndDisposesLifetime_WhenACancellationCallbackThrows()
+    {
+        var session = NewSession();
+        session.Lifetime.Token.Register(() => throw new InvalidOperationException("Simulated callback failure"));
+
+        session.Dispose();
+
+        // Events.Complete() ran despite Cancel() throwing: the stream is closed rather than left
+        // open for a subscriber that would otherwise never see it end.
+        var received = new List<SessionEvent>();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await foreach (var item in session.Events.SubscribeAsync(timeout.Token))
+        {
+            received.Add(item);
+        }
+
+        Assert.Empty(received);
+
+        // Lifetime.Dispose() ran too: a disposed CancellationTokenSource throws on Token access.
+        Assert.Throws<ObjectDisposedException>(() => _ = session.Lifetime.Token);
+    }
+
+    [Fact]
     public void SetSteamLogin_AfterDispose_DoesNotResurrectToken()
     {
         var session = NewSession();

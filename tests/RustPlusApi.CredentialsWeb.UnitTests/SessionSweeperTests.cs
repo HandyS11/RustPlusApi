@@ -76,8 +76,12 @@ public sealed class SessionSweeperTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_ContinuesAfterSweepThrows()
+    public async Task ExecuteAsync_RemovesSessionWithThrowingCallback_AndKeepsSweepingOthers()
     {
+        // A session whose cancellation callback throws (Cancel() rethrows callback exceptions) must
+        // no longer disrupt sweeping at all: Session.Dispose() now swallows that exception and still
+        // completes its own cleanup, and the sweeper must still go on to reap sessions on other IPs.
+        // This models the real scenario where pairing tasks register callbacks that may throw.
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
         var options = new AppOptions
         {
@@ -85,8 +89,6 @@ public sealed class SessionSweeperTests
         };
         using var store = new SessionStore(options, time);
 
-        // Create a session that will throw when disposed (via Lifetime.Token callback).
-        // This models the real scenario where pairing tasks register callbacks that may throw.
         // Expires at 5 minutes.
         store.TryCreate("203.0.113.7", out var throwingSession, out _);
         throwingSession!.Lifetime.Token.Register(() =>
@@ -102,9 +104,8 @@ public sealed class SessionSweeperTests
         using var sweeper = new SessionSweeper(store, time, NullLogger);
         await sweeper.StartAsync(CancellationToken.None);
 
-        // Advance past the canary's TTL. The tick that removes the throwing session will fail with exception,
-        // but the service should log and continue. A later tick must remove the canary.
-        // If the service had died on the first exception, the canary would never be removed.
+        // Advance past the canary's TTL. If the sweeper had died (or SweepExpired had aborted the
+        // rest of its own loop) on the throwing session, the canary would never be removed.
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (store.TryGet(canary!.SessionId, out _))
         {
@@ -115,9 +116,18 @@ public sealed class SessionSweeperTests
 
         await sweeper.StopAsync(CancellationToken.None);
 
-        // Canary removal proves the service survived the throwing session's removal.
-        Assert.False(store.TryGet(canary.SessionId, out _),
-            "Canary should be removed (proves sweeper survived exception)");
+        Assert.False(store.TryGet(throwingSession.SessionId, out _),
+            "Session with a throwing cancellation callback should still be removed");
         Assert.Equal(0, store.Count);
+
+        // The stronger property Copilot's finding calls for: this wasn't a removal that aborted
+        // partway through Dispose() because Cancel() threw. A disposed CancellationTokenSource
+        // throws ObjectDisposedException on Token access, which only holds if Session.Dispose()
+        // still reached Lifetime.Dispose() despite Cancel() throwing above it. Before the fix, the
+        // exception from Cancel() escaped Dispose() before Events.Complete()/Lifetime.Dispose() ran,
+        // so this assertion fails against the unfixed code even though the two removal assertions
+        // above already pass there (the sweeper's own outer try/catch was already enough to recover
+        // on the next tick).
+        Assert.Throws<ObjectDisposedException>(() => _ = throwingSession.Lifetime.Token);
     }
 }
