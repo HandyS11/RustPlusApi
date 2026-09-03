@@ -62,6 +62,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlus.Camera.ConsoleApp"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusApi.Camera.IntegrationTests", "tests\RustPlusApi.Camera.IntegrationTests\RustPlusApi.Camera.IntegrationTests.csproj", "{20A96556-CCED-4AF7-8CB9-F853CC8C77E3}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "apps", "apps", "{1787FE1D-075E-9E68-7218-25F1BD1BBEAB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusApi.CredentialsWeb", "apps\RustPlusApi.CredentialsWeb\RustPlusApi.CredentialsWeb.csproj", "{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RustPlusApi.CredentialsWeb.UnitTests", "tests\RustPlusApi.CredentialsWeb.UnitTests\RustPlusApi.CredentialsWeb.UnitTests.csproj", "{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -324,6 +330,30 @@ Global
 		{20A96556-CCED-4AF7-8CB9-F853CC8C77E3}.Release|x64.Build.0 = Release|Any CPU
 		{20A96556-CCED-4AF7-8CB9-F853CC8C77E3}.Release|x86.ActiveCfg = Release|Any CPU
 		{20A96556-CCED-4AF7-8CB9-F853CC8C77E3}.Release|x86.Build.0 = Release|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Debug|x64.Build.0 = Debug|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Debug|x86.Build.0 = Debug|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Release|x64.ActiveCfg = Release|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Release|x64.Build.0 = Release|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Release|x86.ActiveCfg = Release|Any CPU
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05}.Release|x86.Build.0 = Release|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Debug|x64.Build.0 = Debug|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Debug|x86.Build.0 = Debug|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Release|x64.ActiveCfg = Release|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Release|x64.Build.0 = Release|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Release|x86.ActiveCfg = Release|Any CPU
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -350,6 +380,8 @@ Global
 		{09FE4712-EC55-47C6-9780-4C3A33C30832} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{AE59D626-EC9F-490F-884B-E229D202B23A} = {0B23F464-4021-46B2-9AD7-04C16FA9B6F1}
 		{20A96556-CCED-4AF7-8CB9-F853CC8C77E3} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{2A9FBB1E-A489-4899-90A6-AA4CF605BA05} = {1787FE1D-075E-9E68-7218-25F1BD1BBEAB}
+		{02446C8C-88FC-45FC-BFD7-BFEDFEF007BB} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A4B4251F-ADA4-418D-95B5-27BA99A307A3}
