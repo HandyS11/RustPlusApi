@@ -99,6 +99,50 @@ public sealed class SessionEndpointTests
     }
 
     [Fact]
+    public async Task CreateSession_EvictsThisAddressesFailedSession()
+    {
+        // Nothing in a Failed session is resumable, so the app's own "Start over" flow — which
+        // leads straight back into POST /api/sessions — must not be refused because of it.
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+        var store = factory.Services.GetRequiredService<SessionStore>();
+
+        var first = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var firstBody = await first.Content.ReadFromJsonAsync<CreateSessionResponse>();
+        store.TryGet(firstBody!.SessionId, out var failedSession);
+        failedSession!.Advance(SessionState.Failed, factory.Time.GetUtcNow().AddMinutes(15));
+
+        var second = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+
+        second.EnsureSuccessStatusCode();
+        Assert.False(store.TryGet(firstBody.SessionId, out _));
+        Assert.Equal(1, store.Count);
+    }
+
+    [Fact]
+    public async Task CreateSession_Returns429WithADistinctMessage_WhenThisAddressHasAResumableSession()
+    {
+        // Distinct from the generic "at capacity" 429: a session past Created and not Failed
+        // carries real, resumable upstream work, and the false "at capacity" framing sent a visitor
+        // into a needless wait instead of pointing them back at the session they already have.
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+        var store = factory.Services.GetRequiredService<SessionStore>();
+
+        var first = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var firstBody = await first.Content.ReadFromJsonAsync<CreateSessionResponse>();
+        store.TryGet(firstBody!.SessionId, out var activeSession);
+        activeSession!.Advance(SessionState.Authenticated, factory.Time.GetUtcNow().AddMinutes(15));
+
+        var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("already have a session", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("docker run", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Responses_CarryTheSecurityHeaders()
     {
         await using var factory = new CredentialsWebFactory();

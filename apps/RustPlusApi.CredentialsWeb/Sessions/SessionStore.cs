@@ -51,15 +51,26 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
 
     /// <summary>Forgets a session and disposes it, invalidating its return token.</summary>
     /// <param name="sessionId">The session handle.</param>
-    internal void Remove(string sessionId)
+    internal void Remove(string sessionId) => RemoveFromMaps(sessionId)?.Dispose();
+
+    /// <summary>Removes a session from both lookup maps without disposing it.</summary>
+    /// <remarks>Splitting removal from disposal lets <see cref="TryCreate"/> collect every victim
+    /// while holding <see cref="_createGate"/> and dispose them only after releasing it: disposal
+    /// cancels <see cref="Session.Lifetime"/>, and running cancellation callbacks — arbitrary code
+    /// registered against that token — while still holding the gate that serialises every session
+    /// creation would let that code call back into this store and deadlock, or simply hold up every
+    /// other creation for as long as the callback takes.</remarks>
+    /// <param name="sessionId">The session handle.</param>
+    /// <returns>The removed session, or <see langword="null"/> when it was already gone.</returns>
+    private Session? RemoveFromMaps(string sessionId)
     {
         if (!_bySessionId.TryRemove(sessionId, out var session))
         {
-            return;
+            return null;
         }
 
         _byReturnToken.TryRemove(session.ReturnToken, out _);
-        session.Dispose();
+        return session;
     }
 
     /// <summary>Disposes every session whose expiry has passed. Returns how many were removed.</summary>
@@ -145,11 +156,12 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     }
 
     /// <summary>Creates a session for <paramref name="clientIp"/>, or explains why it could not.
-    /// A session from the same address that is still in <see cref="SessionState.Created"/> is
-    /// evicted rather than blocking: a visitor who closed the tab and started over must not be
-    /// locked out by their own abandoned attempt. An address holding a session past
-    /// <see cref="SessionState.Created"/> is refused instead — real upstream work exists there,
-    /// and that session is resumable via its handle.</summary>
+    /// A session from the same address that is still in <see cref="SessionState.Created"/> or
+    /// already <see cref="SessionState.Failed"/> is evicted rather than blocking: nothing in either
+    /// is resumable — the former never touched upstream, the latter is terminal — so a visitor who
+    /// closed the tab, or whose flow simply failed, must not be locked out by their own abandoned or
+    /// dead attempt. An address holding a session in any other state is refused instead — real,
+    /// resumable upstream work exists there, reachable via that session's handle.</summary>
     /// <param name="clientIp">The caller's address.</param>
     /// <param name="session">The new session on success.</param>
     /// <param name="failure">Why creation was refused.</param>
@@ -159,49 +171,71 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
         out SessionCreateFailure failure)
     {
         session = null;
+        List<Session>? evicted = null;
 
-        lock (_createGate)
+        try
         {
-            if (CountCompletionsUnderGate(clientIp) >= options.MaxCompletionsPerIpPerHour)
+            lock (_createGate)
             {
-                failure = SessionCreateFailure.HourlyLimit;
-                return false;
-            }
-
-            foreach (var (sessionId, existing) in _bySessionId)
-            {
-                if (!string.Equals(existing.ClientIp, clientIp, StringComparison.Ordinal))
+                if (CountCompletionsUnderGate(clientIp) >= options.MaxCompletionsPerIpPerHour)
                 {
-                    continue;
-                }
-
-                if (existing.State != SessionState.Created)
-                {
-                    failure = SessionCreateFailure.ActiveSessionForIp;
+                    failure = SessionCreateFailure.HourlyLimit;
                     return false;
                 }
 
-                Remove(sessionId);
-            }
+                foreach (var (sessionId, existing) in _bySessionId)
+                {
+                    if (!string.Equals(existing.ClientIp, clientIp, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
 
-            if (_bySessionId.Count >= options.MaxConcurrentSessions)
+                    if (existing.State != SessionState.Created && existing.State != SessionState.Failed)
+                    {
+                        failure = SessionCreateFailure.ActiveSessionForIp;
+                        return false;
+                    }
+
+                    // Removed from the maps now, but ownership passes to `evicted`: disposal is
+                    // deliberately deferred to the `finally` below, after the gate is released —
+                    // see the remarks on RemoveFromMaps. CA2000 cannot see that far.
+#pragma warning disable CA2000
+                    if (RemoveFromMaps(sessionId) is { } victim)
+                    {
+                        (evicted ??= []).Add(victim);
+                    }
+#pragma warning restore CA2000
+                }
+
+                if (_bySessionId.Count >= options.MaxConcurrentSessions)
+                {
+                    failure = SessionCreateFailure.GlobalLimit;
+                    return false;
+                }
+
+                var created = new Session(
+                    SessionIds.New(),
+                    SessionIds.New(),
+                    clientIp,
+                    timeProvider.GetUtcNow().Add(options.CreatedTtl));
+
+                _bySessionId[created.SessionId] = created;
+                _byReturnToken[created.ReturnToken] = created.SessionId;
+
+                session = created;
+                failure = SessionCreateFailure.None;
+                return true;
+            }
+        }
+        finally
+        {
+            if (evicted is not null)
             {
-                failure = SessionCreateFailure.GlobalLimit;
-                return false;
+                foreach (var victim in evicted)
+                {
+                    victim.Dispose();
+                }
             }
-
-            var created = new Session(
-                SessionIds.New(),
-                SessionIds.New(),
-                clientIp,
-                timeProvider.GetUtcNow().Add(options.CreatedTtl));
-
-            _bySessionId[created.SessionId] = created;
-            _byReturnToken[created.ReturnToken] = created.SessionId;
-
-            session = created;
-            failure = SessionCreateFailure.None;
-            return true;
         }
     }
 

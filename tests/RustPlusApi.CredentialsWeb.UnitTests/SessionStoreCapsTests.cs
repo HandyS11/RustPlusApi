@@ -64,6 +64,30 @@ public sealed class SessionStoreCapsTests
     }
 
     [Fact]
+    public void TryCreate_EvictsAFailedSession_FromTheSameIp()
+    {
+        // Nothing in a Failed session is resumable — it is terminal — so it must not block its own
+        // address the way a genuinely active session does. Before the fix, a Failed session carried
+        // the full 15-minute SessionTtl and TryCreate evicted only Created sessions, so the app's own
+        // "Start over" button led straight into a false "at capacity" 429 for up to 15 minutes.
+        var (store, time) = NewStore();
+        using var _s = store;
+        store.TryCreate("203.0.113.7", out var failed, out _);
+        failed!.Advance(SessionState.Failed, time.GetUtcNow().AddMinutes(15));
+
+        Assert.True(store.TryCreate("203.0.113.7", out var replacement, out var failure));
+
+        Assert.Equal(SessionCreateFailure.None, failure);
+        Assert.NotSame(failed, replacement);
+        Assert.False(store.TryGet(failed.SessionId, out _));
+        Assert.True(store.TryGet(replacement!.SessionId, out _));
+        Assert.Equal(1, store.Count);
+        // The eviction actually disposed the old session (cancelling its Lifetime) rather than just
+        // dropping it from the maps — Dispose() is the only thing that ever cancels Lifetime.
+        Assert.True(failed.Lifetime.IsCancellationRequested);
+    }
+
+    [Fact]
     public void TryCreate_IsUnaffectedByOtherAddresses()
     {
         var (store, time) = NewStore();

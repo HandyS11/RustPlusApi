@@ -16,6 +16,9 @@ internal static class SessionEndpoints
         "This instance is at capacity. Try again in a few minutes — or run your own: "
         + "docker run -p 8080:8080 ghcr.io/handys11/rustplusapi-credentials";
 
+    private const string ActiveSessionMessage =
+        "You already have a session in progress. Reopen that tab, or wait a few minutes and try again.";
+
     private const string PairingBusyMessage =
         "This instance is already holding as many pairing listeners as it allows. Try again in a "
         + "few minutes — or run your own: docker run -p 8080:8080 ghcr.io/handys11/rustplusapi-credentials";
@@ -26,9 +29,16 @@ internal static class SessionEndpoints
     {
         app.MapPost("/api/sessions", (HttpContext context, SessionStore store, AppOptions options) =>
         {
-            if (!store.TryCreate(ClientAddress.Of(context), out var session, out _))
+            if (!store.TryCreate(ClientAddress.Of(context), out var session, out var failure))
             {
-                return Results.Json(new ErrorPayload(OverCapacityMessage), statusCode: 429);
+                // ActiveSessionForIp means a resumable session already exists for this address —
+                // "at capacity" would be false and would send the visitor into a five-minute wait
+                // for no reason. GlobalLimit and HourlyLimit are genuine capacity/rate limits, so
+                // they keep the existing message.
+                var message = failure == SessionCreateFailure.ActiveSessionForIp
+                    ? ActiveSessionMessage
+                    : OverCapacityMessage;
+                return Results.Json(new ErrorPayload(message), statusCode: 429);
             }
 
             var returnUrl = $"{options.PublicBaseUrl}/callback/{session.ReturnToken}";
