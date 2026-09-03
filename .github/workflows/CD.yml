@@ -138,10 +138,15 @@ jobs:
 
     - name: Compute image tags
       run: |
-        TAGS="ghcr.io/${{ github.repository_owner }}/rustplusapi-credentials:$VERSION"
+        # Docker repository names must be lowercase; github.repository_owner expands to the
+        # capitalized "HandyS11" and buildx rejects that outright. Hardcoded rather than
+        # lowercased dynamically, to match the image reference documented throughout the app
+        # (README, Caddyfile.example, SessionEndpoints' self-host pointer).
+        OWNER="handys11"
+        TAGS="ghcr.io/$OWNER/rustplusapi-credentials:$VERSION"
         # 'latest' only follows stable releases, so a prerelease never becomes the default pull.
         if [[ "$IS_PRERELEASE" == "false" ]]; then
-          TAGS="$TAGS,ghcr.io/${{ github.repository_owner }}/rustplusapi-credentials:latest"
+          TAGS="$TAGS,ghcr.io/$OWNER/rustplusapi-credentials:latest"
         fi
         echo "TAGS=$TAGS" >> "$GITHUB_ENV"
 
