@@ -1,6 +1,13 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace ProtoGen;
+
+/// <summary>A field as declared in the committed proto.</summary>
+/// <param name="Message">Qualified message name, e.g. "AppMap.Monument".</param>
+/// <param name="Number">Proto field number.</param>
+/// <param name="Label">The proto2 label: required, optional or repeated.</param>
+internal sealed record CommittedField(string Message, int Number, string Label);
 
 /// <summary>
 /// Light line-based reader of the committed <c>RustPlusContracts.proto</c>. We need the bits the
@@ -10,8 +17,14 @@ namespace ProtoGen;
 /// </summary>
 internal sealed partial class CommittedProto
 {
+    private readonly List<CommittedField> _fields = [];
+
     /// <summary>Maps "QualifiedName#FieldNumber" to the field label (required/optional/repeated).</summary>
     private readonly Dictionary<string, string> _labels = new(StringComparer.Ordinal);
+
+    /// <summary>Every field declared in the committed proto, in document order. This is the baseline
+    /// the field-loss guard compares the regenerated model against.</summary>
+    public IReadOnlyList<CommittedField> Fields => _fields;
 
     /// <summary>Qualified names of every message/enum declaration, in document order.</summary>
     public List<string> DeclOrder { get; } = [];
@@ -32,11 +45,17 @@ internal sealed partial class CommittedProto
         return repeated ? "repeated" : "optional";
     }
 
-    public static CommittedProto Parse(string protoPath)
+    /// <summary>Parses the committed proto from a file.</summary>
+    /// <param name="protoPath">Path to <c>RustPlusContracts.proto</c>.</param>
+    public static CommittedProto Parse(string protoPath) => ParseLines(File.ReadLines(protoPath));
+
+    /// <summary>Parses the committed proto from lines (the file-free seam used by tests).</summary>
+    /// <param name="lines">The proto source, line by line.</param>
+    public static CommittedProto ParseLines(IEnumerable<string> lines)
     {
         var result = new CommittedProto();
         var state = new ParseState();
-        foreach (var rawLine in File.ReadLines(protoPath))
+        foreach (var rawLine in lines)
         {
             result.ProcessLine(rawLine, state);
         }
@@ -128,7 +147,9 @@ internal sealed partial class CommittedProto
         if (field.Success && state.Stack.Count > 0)
         {
             var qualified = string.Join('.', state.Stack);
-            _labels[$"{qualified}#{field.Groups[2].Value}"] = field.Groups[1].Value;
+            var number = int.Parse(field.Groups[2].Value, CultureInfo.InvariantCulture);
+            _labels[$"{qualified}#{number}"] = field.Groups[1].Value;
+            _fields.Add(new CommittedField(qualified, number, field.Groups[1].Value));
         }
     }
 
