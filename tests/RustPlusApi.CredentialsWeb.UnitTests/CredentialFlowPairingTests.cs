@@ -100,8 +100,12 @@ public sealed class CredentialFlowPairingTests
 #pragma warning disable CA2025
         var pending = flow.WaitForPairingAsync(session, CancellationToken.None);
 #pragma warning restore CA2025
+        // Bounded: a regression that never reaches AwaitingPairing must fail as an assertion,
+        // not park a foreground thread and hang the test process.
+        using var reachTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (session.State != SessionState.AwaitingPairing)
         {
+            Assert.False(reachTimeout.IsCancellationRequested, "The flow never reached AwaitingPairing.");
             await Task.Delay(10);
         }
 
@@ -143,8 +147,12 @@ public sealed class CredentialFlowPairingTests
 #pragma warning disable CA2025
         var pending = flow.WaitForPairingAsync(session, cancellation.Token);
 #pragma warning restore CA2025
+        // Bounded: a regression that never reaches AwaitingPairing must fail as an assertion,
+        // not park a foreground thread and hang the test process.
+        using var reachTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (session.State != SessionState.AwaitingPairing)
         {
+            Assert.False(reachTimeout.IsCancellationRequested, "The flow never reached AwaitingPairing.");
             await Task.Delay(10);
         }
 
@@ -172,8 +180,12 @@ public sealed class CredentialFlowPairingTests
 #pragma warning disable CA2025
         var pending = flow.WaitForPairingAsync(session, cancellation.Token);
 #pragma warning restore CA2025
+        // Bounded: a regression that never reaches AwaitingPairing must fail as an assertion,
+        // not park a foreground thread and hang the test process.
+        using var reachTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (session.State != SessionState.AwaitingPairing)
         {
+            Assert.False(reachTimeout.IsCancellationRequested, "The flow never reached AwaitingPairing.");
             await Task.Delay(10);
         }
 
