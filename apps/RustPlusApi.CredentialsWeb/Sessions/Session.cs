@@ -13,6 +13,7 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     : IDisposable
 {
     private readonly Lock _gate = new();
+    private bool _claimedForEviction;
     private bool _disposed;
 
     private DateTimeOffset _expiresAt = expiresAt;
@@ -112,14 +113,14 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     }
 
     /// <summary>Moves to <paramref name="state"/>, resets the expiry and publishes a <c>step</c> event.
-    /// A no-op once the session is disposed.</summary>
+    /// A no-op once the session is disposed or <see cref="TryClaimForEviction"/> has claimed it.</summary>
     /// <param name="state">The new state.</param>
     /// <param name="newExpiry">The new expiry instant.</param>
     internal void Advance(SessionState state, DateTimeOffset newExpiry)
     {
         lock (_gate)
         {
-            if (_disposed)
+            if (_disposed || _claimedForEviction)
             {
                 return;
             }
@@ -144,13 +145,14 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     /// <param name="now">The current instant, from the ambient <see cref="TimeProvider"/>.</param>
     internal bool IsExpired(DateTimeOffset now) => now >= ExpiresAt;
 
-    /// <summary>Stores the credentials from steps 1-3. A no-op once the session is disposed.</summary>
+    /// <summary>Stores the credentials from steps 1-3. A no-op once the session is disposed or
+    /// <see cref="TryClaimForEviction"/> has claimed it.</summary>
     /// <param name="credentials">The acquired credentials.</param>
     internal void SetCredentials(Credentials credentials)
     {
         lock (_gate)
         {
-            if (_disposed)
+            if (_disposed || _claimedForEviction)
             {
                 return;
             }
@@ -159,13 +161,14 @@ internal sealed class Session(string sessionId, string returnToken, string clien
         }
     }
 
-    /// <summary>Stores the pairing from step 6. A no-op once the session is disposed.</summary>
+    /// <summary>Stores the pairing from step 6. A no-op once the session is disposed or
+    /// <see cref="TryClaimForEviction"/> has claimed it.</summary>
     /// <param name="pairing">The pairing that arrived.</param>
     internal void SetPairing(ServerPairing pairing)
     {
         lock (_gate)
         {
-            if (_disposed)
+            if (_disposed || _claimedForEviction)
             {
                 return;
             }
@@ -175,19 +178,57 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     }
 
     /// <summary>Stores the Steam identity captured from the Facepunch callback. A no-op once the
-    /// session is disposed.</summary>
+    /// session is disposed or <see cref="TryClaimForEviction"/> has claimed it.</summary>
     /// <param name="login">The parsed callback result.</param>
     internal void SetSteamLogin(SteamLoginResult login)
     {
         lock (_gate)
         {
-            if (_disposed)
+            if (_disposed || _claimedForEviction)
             {
                 return;
             }
 
             SteamId = login.SteamId;
             SteamToken = login.Token;
+        }
+    }
+
+    /// <summary><para>Atomically decides, with respect to any concurrent <see cref="Advance"/> call,
+    /// whether <see cref="SessionStore.TryCreate"/> may evict this session. Only a session still in
+    /// <see cref="SessionState.Created"/> (it never touched upstream) or terminally
+    /// <see cref="SessionState.Failed"/> is evictable; anything else has resumable upstream work and
+    /// the caller must refuse instead of evicting.</para>
+    ///
+    /// <para>This runs under the same <see cref="_gate"/> that <see cref="Advance"/> writes
+    /// <see cref="State"/> under, so a racing <see cref="Advance"/> call can never interleave with
+    /// the decision: it either commits first — this call then observes the new state and returns
+    /// <see langword="false"/>, correctly refusing rather than evicting mid-flight work — or it
+    /// loses the race, in which case this call marks the session so that <see cref="Advance"/> (and
+    /// every other setter) becomes a no-op instead of resurrecting a session that is about to be
+    /// disposed. Deliberately a separate flag from <see cref="_disposed"/>: unlike disposal, a claim
+    /// here does not itself run any cleanup — <see cref="Dispose"/> still has to.</para>
+    ///
+    /// <para>A session that is already disposed returns <see langword="true"/> too: something else
+    /// (the sweeper, a concurrent eviction) already claimed and is disposing it, so there is nothing
+    /// left here to protect, and refusing would incorrectly block a new session over one that is
+    /// already gone.</para></summary>
+    internal bool TryClaimForEviction()
+    {
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return true;
+            }
+
+            if (State != SessionState.Created && State != SessionState.Failed)
+            {
+                return false;
+            }
+
+            _claimedForEviction = true;
+            return true;
         }
     }
 }

@@ -161,7 +161,10 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     /// is resumable — the former never touched upstream, the latter is terminal — so a visitor who
     /// closed the tab, or whose flow simply failed, must not be locked out by their own abandoned or
     /// dead attempt. An address holding a session in any other state is refused instead — real,
-    /// resumable upstream work exists there, reachable via that session's handle.</summary>
+    /// resumable upstream work exists there, reachable via that session's handle. The eligibility
+    /// check itself is atomic with <see cref="Session.Advance"/> (see
+    /// <see cref="Session.TryClaimForEviction"/>): a plain read of <c>existing.State</c> here would
+    /// race a callback that is concurrently advancing the session past <see cref="SessionState.Created"/>.</summary>
     /// <param name="clientIp">The caller's address.</param>
     /// <param name="session">The new session on success.</param>
     /// <param name="failure">Why creation was refused.</param>
@@ -190,7 +193,7 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
                         continue;
                     }
 
-                    if (existing.State != SessionState.Created && existing.State != SessionState.Failed)
+                    if (!existing.TryClaimForEviction())
                     {
                         failure = SessionCreateFailure.ActiveSessionForIp;
                         return false;

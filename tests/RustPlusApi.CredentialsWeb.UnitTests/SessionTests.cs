@@ -241,6 +241,71 @@ public sealed class SessionTests
     }
 
     [Fact]
+    public void TryClaimForEviction_SucceedsForCreatedState()
+    {
+        using var session = NewSession();
+
+        Assert.True(session.TryClaimForEviction());
+    }
+
+    [Fact]
+    public void TryClaimForEviction_SucceedsForFailedState()
+    {
+        using var session = NewSession();
+        session.Advance(SessionState.Failed, Origin.AddMinutes(5));
+
+        Assert.True(session.TryClaimForEviction());
+    }
+
+    [Fact]
+    public void TryClaimForEviction_RefusesForAnyOtherState()
+    {
+        // Theory + InlineData(SessionState.X) is unavailable here: SessionState is internal and an
+        // InlineData-decorated test method must be public, which the runtime rejects (CS0051) for a
+        // parameter less accessible than the method. Looping internally instead.
+        SessionState[] resumableStates =
+        [
+            SessionState.Authenticated, SessionState.Registering, SessionState.Ready,
+            SessionState.AwaitingPairing, SessionState.Paired
+        ];
+
+        foreach (var state in resumableStates)
+        {
+            using var session = NewSession();
+            session.Advance(state, Origin.AddMinutes(5));
+
+            Assert.False(session.TryClaimForEviction());
+        }
+    }
+
+    [Fact]
+    public void TryClaimForEviction_SucceedsForAnAlreadyDisposedSession()
+    {
+        // Something else (the sweeper, a concurrent eviction) already disposed it; there is nothing
+        // left to protect, so this must not block a new session over one that is already gone.
+        var session = NewSession();
+        session.Dispose();
+
+        Assert.True(session.TryClaimForEviction());
+    }
+
+    [Fact]
+    public void TryClaimForEviction_MakesASubsequentAdvanceANoOp()
+    {
+        // This is the race SessionStore.TryCreate closes: once claimed, a concurrent Advance call
+        // that lands afterwards (the visitor's Facepunch callback landing just after eviction won
+        // the race) must not resurrect state on a session that is about to be disposed.
+        using var session = NewSession();
+
+        Assert.True(session.TryClaimForEviction());
+
+        session.Advance(SessionState.Authenticated, Origin.AddMinutes(15));
+
+        Assert.Equal(SessionState.Created, session.State);
+        Assert.Equal(Origin.AddMinutes(5), session.ExpiresAt);
+    }
+
+    [Fact]
     public void SessionIds_AreThirtyTwoLowercaseHexCharsAndUnique()
     {
         var first = SessionIds.New();

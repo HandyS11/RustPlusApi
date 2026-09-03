@@ -315,6 +315,104 @@ public sealed class SessionStoreCapsTests
     }
 
     [Fact]
+    public void TryCreate_NeverEvicts_ASessionThatConcurrentlyAdvancedPastCreated()
+    {
+        // The pre-fix code reads existing.State via a plain, unsynchronised property read while only
+        // holding _createGate — a different lock than the one Session.Advance writes State under. So
+        // TryCreate can decide "Created, evict" a moment before a concurrent Advance commits
+        // Authenticated, then go on to evict anyway: the session ends up both disposed (Lifetime
+        // cancelled) *and* showing State == Authenticated, destroying a session with real, resumable
+        // upstream work in flight (the exact scenario in CredentialFlow.CompleteRegistrationAsync,
+        // where the Facepunch callback calls SetSteamLogin then Advance(Authenticated) right after
+        // TryCreate might be evaluating the same address).
+        //
+        // The fixed code makes the check-and-evict decision atomic with Advance under the session's
+        // own lock (Session.TryClaimForEviction), so that combination can never be observed: either
+        // the eviction claim wins the lock first (Advance then no-ops instead of resurrecting state)
+        // or Advance wins it first (the claim then sees the new state and refuses instead of evicting).
+        //
+        // The window between TryCreate's read and its eventual Dispose() spans several dictionary
+        // operations under _createGate (much wider than the nanosecond-scale race in
+        // RecordCompletion_NeverLosesAWrite_UnderConcurrentPruning above), so a modest number of
+        // gated two-thread trials is enough to hit it reliably against the pre-fix code (verified
+        // empirically — see the fix report).
+        const int trials = 500;
+        const int gateTimeoutSeconds = 10;
+
+        var violations = 0;
+        var gateTimeouts = 0;
+
+        for (var trial = 0; trial < trials; trial++)
+        {
+            var (store, time) = NewStore();
+            using var _s = store;
+            store.TryCreate("203.0.113.7", out var session, out _);
+
+            using var allReady = new CountdownEvent(2);
+            using var go = new ManualResetEventSlim(initialState: false);
+            var evictorTimedOut = false;
+            var advancerTimedOut = false;
+
+            var evictor = new Thread(() =>
+            {
+                allReady.Signal();
+                if (!go.Wait(TimeSpan.FromSeconds(gateTimeoutSeconds)))
+                {
+                    evictorTimedOut = true;
+                    return;
+                }
+
+                store.TryCreate("203.0.113.7", out _, out _);
+            })
+            {
+                IsBackground = true
+            };
+
+            var advancer = new Thread(() =>
+            {
+                allReady.Signal();
+                if (!go.Wait(TimeSpan.FromSeconds(gateTimeoutSeconds)))
+                {
+                    advancerTimedOut = true;
+                    return;
+                }
+
+                session!.Advance(SessionState.Authenticated, time.GetUtcNow().AddMinutes(15));
+            })
+            {
+                IsBackground = true
+            };
+
+            evictor.Start();
+            advancer.Start();
+
+            Assert.True(allReady.Wait(TimeSpan.FromSeconds(10)));
+            go.Set();
+
+            Assert.True(evictor.Join(TimeSpan.FromSeconds(10)));
+            Assert.True(advancer.Join(TimeSpan.FromSeconds(10)));
+
+            if (evictorTimedOut || advancerTimedOut)
+            {
+                gateTimeouts++;
+                continue;
+            }
+
+            if (session!.Lifetime.IsCancellationRequested && session.State == SessionState.Authenticated)
+            {
+                violations++;
+            }
+        }
+
+        Assert.True(
+            gateTimeouts == 0,
+            $"{gateTimeouts} trial(s) timed out waiting for the release gate instead of running, so "
+            + "results below cannot be trusted as a race-detection signal — the test environment is "
+            + "too slow or throttled for this test's timing budget.");
+        Assert.Equal(0, violations);
+    }
+
+    [Fact]
     public void TryAcquirePairingSlot_HonoursTheGlobalPairingCap()
     {
         var (store, _) = NewStore(o => o.MaxConcurrentPairings = 2);
