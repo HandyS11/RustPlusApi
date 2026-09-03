@@ -106,12 +106,19 @@ internal sealed class CredentialFlow(
         // cuts it short.
         session.Advance(SessionState.AwaitingPairing, Deadline(options.SessionTtl));
 
-        using var pairingDeadline = new CancellationTokenSource(options.PairingTtl, timeProvider);
-        using var linkedToken =
-            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, pairingDeadline.Token);
-
         try
         {
+            // Constructed inside the try, not before it: new CancellationTokenSource(delay, ...)
+            // throws ArgumentOutOfRangeException for a delay above ~49.7 days, and a misconfigured
+            // PairingTtl is only guarded against being zero or negative (AppOptionsValidator), not
+            // against being unreasonably large. Building these here — rather than between the
+            // Advance above and this try, where such a throw would escape past the finally below —
+            // keeps "this method always releases the pairing slot" true unconditionally instead of
+            // depending on validation staying in sync with CancellationTokenSource's own limits.
+            using var pairingDeadline = new CancellationTokenSource(options.PairingTtl, timeProvider);
+            using var linkedToken =
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, pairingDeadline.Token);
+
             var pairing = await steps.WaitForPairingAsync(credentials, linkedToken.Token).ConfigureAwait(false);
 
             session.SetPairing(pairing);
