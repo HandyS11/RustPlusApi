@@ -44,17 +44,32 @@ jobs:
     - name: Restore .NET tools
       run: dotnet tool restore
 
-    - name: Merge coverage reports
+    - name: Merge coverage reports (libraries)
       run: >
         dotnet tool run reportgenerator --
         "-reports:${{ github.workspace }}/TestResults/**/coverage.opencover.xml"
         "-targetdir:${{ github.workspace }}/TestResults/merged"
+        "-assemblyfilters:-RustPlusApi.CredentialsWeb"
         "-reporttypes:Cobertura"
 
-    - name: Enforce coverage threshold
-      # Merged aggregate across all 7 test projects and both TFMs (ReportGenerator union).
+    - name: Merge coverage reports (web app)
+      run: >
+        dotnet tool run reportgenerator --
+        "-reports:${{ github.workspace }}/TestResults/**/coverage.opencover.xml"
+        "-targetdir:${{ github.workspace }}/TestResults/merged-web"
+        "-assemblyfilters:+RustPlusApi.CredentialsWeb"
+        "-reporttypes:Cobertura"
+
+    - name: Enforce coverage threshold (libraries)
+      # Merged aggregate across every library test project and both TFMs (ReportGenerator union).
+      # The web app is filtered out so it cannot dilute the libraries' number.
       # Metric: ReportGenerator-merged Cobertura line-rate/branch-rate.
-      # Achieved: ~96.7% line / ~91.4% branch. Gate floor: line 95 / branch 90 —
-      # keep in sync with docs/development/testing.md ("Coverage gate").
+      # Gate floor: line 95 / branch 90 — keep in sync with docs/development/testing.md.
       working-directory: ${{ github.workspace }}
       run: python3 tools/coverage/check_threshold.py 95 90
+
+    - name: Enforce coverage threshold (web app)
+      # Same floor. The app can meet it because its two untestable regions — host wiring and the
+      # live-network adapter — are [ExcludeFromCodeCoverage] with justifications.
+      working-directory: ${{ github.workspace }}
+      run: python3 tools/coverage/check_threshold.py 95 90 TestResults/merged-web/Cobertura.xml

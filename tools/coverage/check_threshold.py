@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 """Fail (exit 1) if merged coverage is below the given line/branch thresholds.
 
-Usage: check_threshold.py <line_min> <branch_min>
-Reads the single merged Cobertura report produced by ReportGenerator at
-TestResults/merged/Cobertura.xml (a union across every test project and TFM,
-de-duplicated by ReportGenerator) and checks its overall line-rate and
-branch-rate against the floors.
+Usage: check_threshold.py <line_min> <branch_min> [report_path]
+Reads a merged Cobertura report produced by ReportGenerator (by default
+TestResults/merged/Cobertura.xml, the union across every library test project
+and TFM) and checks its overall line-rate and branch-rate against the floors.
 """
 import sys
 import os
 import xml.etree.ElementTree as ET
 
-if len(sys.argv) != 3:
-    print("Usage: check_threshold.py <line_min> <branch_min>")
+if len(sys.argv) not in (3, 4):
+    print("Usage: check_threshold.py <line_min> <branch_min> [report_path]")
     sys.exit(2)
 
 line_min, branch_min = float(sys.argv[1]), float(sys.argv[2])
-report = 'TestResults/merged/Cobertura.xml'
+report = sys.argv[3] if len(sys.argv) == 4 else 'TestResults/merged/Cobertura.xml'
 if not os.path.exists(report):
     print(f"Merged coverage report not found at {report}")
     sys.exit(1)
