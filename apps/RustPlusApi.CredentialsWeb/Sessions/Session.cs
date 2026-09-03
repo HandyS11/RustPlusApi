@@ -15,6 +15,8 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     private readonly Lock _gate = new();
     private bool _disposed;
 
+    private DateTimeOffset _expiresAt = expiresAt;
+
     /// <summary>Background work started for this session, kept so it is observed rather than fire-and-forget.</summary>
     internal Task BackgroundWork { get; set; } = Task.CompletedTask;
 
@@ -27,8 +29,19 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     /// <summary>This session's event stream.</summary>
     internal SessionEventStream Events { get; } = new();
 
-    /// <summary>When this session becomes sweepable.</summary>
-    internal DateTimeOffset ExpiresAt { get; private set; } = expiresAt;
+    /// <summary>When this session becomes sweepable. The getter takes <see cref="_gate"/>: the
+    /// sweeper reads this concurrently with <see cref="Advance"/>'s writes on the flow's own thread,
+    /// and <see cref="DateTimeOffset"/> is not guaranteed to read or write atomically.</summary>
+    internal DateTimeOffset ExpiresAt
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _expiresAt;
+            }
+        }
+    }
 
     /// <summary>Cancelled on disposal, so any in-flight upstream work stops with the session.</summary>
     internal CancellationTokenSource Lifetime { get; } = new();
@@ -45,7 +58,8 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     /// <summary>The Steam64 from the callback. Not a secret; kept for display.</summary>
     internal ulong SteamId { get; private set; }
 
-    /// <summary>The Steam auth token. Dropped the moment step 5 succeeds.</summary>
+    /// <summary>The Steam auth token. Dropped on success, failure and cancellation alike — never
+    /// retained once step 5 has run to any conclusion.</summary>
     internal string? SteamToken { get; private set; }
 
     /// <summary>Where the visitor is in the flow.</summary>
@@ -87,7 +101,7 @@ internal sealed class Session(string sessionId, string returnToken, string clien
             }
 
             State = state;
-            ExpiresAt = newExpiry;
+            _expiresAt = newExpiry;
         }
 
         Events.Publish(new SessionEvent("step", new StepPayload(state.ToString())));
