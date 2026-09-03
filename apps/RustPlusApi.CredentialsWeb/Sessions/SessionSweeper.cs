@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace RustPlusApi.CredentialsWeb.Sessions;
 
@@ -6,7 +7,9 @@ namespace RustPlusApi.CredentialsWeb.Sessions;
 /// and a set of credentials can live in memory.</summary>
 /// <param name="store">The registry to sweep.</param>
 /// <param name="timeProvider">Clock, injected so the interval is testable.</param>
-internal sealed class SessionSweeper(SessionStore store, TimeProvider timeProvider) : BackgroundService
+/// <param name="logger">For logging sweep failures without losing the exception and retrying on the next tick.</param>
+internal sealed class SessionSweeper(SessionStore store, TimeProvider timeProvider, ILogger<SessionSweeper> logger)
+    : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
 
@@ -19,7 +22,14 @@ internal sealed class SessionSweeper(SessionStore store, TimeProvider timeProvid
         {
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
             {
-                store.SweepExpired();
+                try
+                {
+                    store.SweepExpired();
+                }
+                catch (Exception ex)
+                {
+                    logger.LogSweepFailed(ex);
+                }
             }
         }
         catch (OperationCanceledException)
