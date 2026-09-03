@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using RustPlusApi.CredentialsWeb.Upstream;
 
@@ -25,6 +26,8 @@ internal sealed class CredentialsWebFactory : WebApplicationFactory<Program>
         }
     }
 
+    internal CapturingLoggerProvider Logs { get; } = new();
+
     internal FakeRegistrationSteps Steps { get; } = new();
 
     internal FakeTimeProvider Time { get; } = new(Origin);
@@ -32,14 +35,22 @@ internal sealed class CredentialsWebFactory : WebApplicationFactory<Program>
     private List<string> EnvironmentKeys { get; } = [];
 
     /// <inheritdoc/>
-    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
-        builder.ConfigureServices(services =>
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureLogging(logging =>
+        {
+            // Trace, deliberately: the point is to prove the secret is absent even when everything
+            // the app is willing to emit is captured.
+            logging.SetMinimumLevel(LogLevel.Trace);
+            logging.AddProvider(Logs);
+        }).ConfigureServices(services =>
         {
             services.RemoveAll<IRegistrationSteps>();
             services.AddSingleton<IRegistrationSteps>(Steps);
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Time);
         });
+    }
 
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
