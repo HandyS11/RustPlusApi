@@ -2634,8 +2634,12 @@ public sealed class CredentialFlowPairingTests
         store.TryAcquirePairingSlot();
 
         var pending = flow.WaitForPairingAsync(session, CancellationToken.None);
+        // Bounded: a regression that never reaches AwaitingPairing must fail as an assertion,
+        // not park a foreground thread and hang the test process.
+        using var reachTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (session.State != SessionState.AwaitingPairing)
         {
+            Assert.False(reachTimeout.IsCancellationRequested, "The flow never reached AwaitingPairing.");
             await Task.Delay(10);
         }
 
@@ -2673,8 +2677,12 @@ public sealed class CredentialFlowPairingTests
 
         using var cancellation = new CancellationTokenSource();
         var pending = flow.WaitForPairingAsync(session, cancellation.Token);
+        // Bounded: a regression that never reaches AwaitingPairing must fail as an assertion,
+        // not park a foreground thread and hang the test process.
+        using var reachTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (session.State != SessionState.AwaitingPairing)
         {
+            Assert.False(reachTimeout.IsCancellationRequested, "The flow never reached AwaitingPairing.");
             await Task.Delay(10);
         }
 
@@ -2698,8 +2706,12 @@ public sealed class CredentialFlowPairingTests
 
         using var cancellation = new CancellationTokenSource();
         var pending = flow.WaitForPairingAsync(session, cancellation.Token);
+        // Bounded: a regression that never reaches AwaitingPairing must fail as an assertion,
+        // not park a foreground thread and hang the test process.
+        using var reachTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (session.State != SessionState.AwaitingPairing)
         {
+            Assert.False(reachTimeout.IsCancellationRequested, "The flow never reached AwaitingPairing.");
             await Task.Delay(10);
         }
 
@@ -3725,8 +3737,12 @@ public sealed class PairingEndpointTests
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
 
+        // Bounded: a regression that never reaches AwaitingPairing must fail as an assertion,
+        // not park a foreground thread and hang the test process.
+        using var reachTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (session.State != SessionState.AwaitingPairing)
         {
+            Assert.False(reachTimeout.IsCancellationRequested, "The flow never reached AwaitingPairing.");
             await Task.Delay(10);
         }
 
