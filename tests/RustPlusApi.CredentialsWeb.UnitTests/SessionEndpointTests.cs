@@ -103,6 +103,30 @@ public sealed class SessionEndpointTests
 
         var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
 
+        AssertSecurityHeaders(response);
+    }
+
+    [Fact]
+    public async Task ErrorResponses_CarryTheSecurityHeadersToo()
+    {
+        // The security-headers middleware sits ahead of the endpoint and writes via OnStarting, so
+        // it should apply no matter what status code the endpoint eventually returns — including
+        // the 429 capacity response, where a missing Cache-Control: no-store would matter most.
+        await using var factory = new CredentialsWebFactory(
+            new Dictionary<string, string> { ["CredentialsWeb__MaxConcurrentSessions"] = "1" });
+        using var client = factory.CreateClient();
+        var store = factory.Services.GetRequiredService<SessionStore>();
+        store.TryCreate("198.51.100.1", out var occupant, out _);
+        occupant!.Advance(SessionState.Authenticated, factory.Time.GetUtcNow().AddMinutes(15));
+
+        var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+        AssertSecurityHeaders(response);
+    }
+
+    private static void AssertSecurityHeaders(HttpResponseMessage response)
+    {
         Assert.Equal("no-referrer", response.Headers.GetValues("Referrer-Policy").Single());
         Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
         Assert.Contains("no-store", response.Headers.CacheControl!.ToString(), StringComparison.Ordinal);
@@ -130,5 +154,31 @@ public sealed class SessionEndpointTests
 
         response.EnsureSuccessStatusCode();
         Assert.Equal(1, store.Count);
+    }
+
+    [Fact]
+    public async Task CreateSession_AppliesForwardedFor_WhenAProxyIsConfigured()
+    {
+        // The inverse of CreateSession_IgnoresForwardedFor_WhenNoProxyIsConfigured. Once the
+        // operator names their proxy, a forwarded address must actually be applied — otherwise
+        // every visitor behind that proxy would still collapse into the one shared per-IP bucket
+        // the setting exists to prevent, just silently instead of loudly. Both requests below
+        // claim a different address; correctly applied, they land in two separate buckets and
+        // both sessions survive (Count == 2), the opposite of the no-proxy-configured case above.
+        await using var factory = new CredentialsWebFactory(
+            new Dictionary<string, string> { ["CredentialsWeb__KnownProxies__0"] = "127.0.0.1" });
+        using var client = factory.CreateClient();
+        var store = factory.Services.GetRequiredService<SessionStore>();
+
+        using var first = new HttpRequestMessage(HttpMethod.Post, new Uri("/api/sessions", UriKind.Relative));
+        first.Headers.Add("X-Forwarded-For", "203.0.113.7");
+        (await client.SendAsync(first)).EnsureSuccessStatusCode();
+
+        using var second = new HttpRequestMessage(HttpMethod.Post, new Uri("/api/sessions", UriKind.Relative));
+        second.Headers.Add("X-Forwarded-For", "198.51.100.42");
+        var response = await client.SendAsync(second);
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(2, store.Count);
     }
 }
