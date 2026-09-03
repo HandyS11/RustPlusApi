@@ -28,6 +28,15 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     private readonly ConcurrentDictionary<string, string> _byReturnToken = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, Session> _bySessionId = new(StringComparer.Ordinal);
 
+    private readonly ConcurrentDictionary<string, List<DateTimeOffset>> _completionsByIp =
+        new(StringComparer.Ordinal);
+
+    private readonly Lock _createGate = new();
+    private int _activePairings;
+
+    /// <summary>Live MCS sockets.</summary>
+    internal int ActivePairings => Volatile.Read(ref _activePairings);
+
     /// <summary>Live sessions in any state.</summary>
     internal int Count => _bySessionId.Count;
 
@@ -81,10 +90,62 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     {
         session = null;
         return _byReturnToken.TryRemove(returnToken, out var sessionId)
-            && _bySessionId.TryGetValue(sessionId, out session);
+               && _bySessionId.TryGetValue(sessionId, out session);
     }
 
-    /// <summary>Creates a session for <paramref name="clientIp"/>, or explains why it could not.</summary>
+    /// <summary>Records that <paramref name="clientIp"/> finished a flow, for the rolling hourly cap.</summary>
+    /// <param name="clientIp">The caller's address.</param>
+    internal void RecordCompletion(string clientIp)
+    {
+        var stamps = _completionsByIp.GetOrAdd(clientIp, static _ => []);
+        lock (stamps)
+        {
+            stamps.Add(timeProvider.GetUtcNow());
+        }
+    }
+
+    /// <summary>Releases a pairing slot. Safe to call more often than it was acquired.</summary>
+    internal void ReleasePairingSlot()
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref _activePairings);
+            if (current == 0)
+            {
+                return;
+            }
+
+            if (Interlocked.CompareExchange(ref _activePairings, current - 1, current) == current)
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>Takes one of the globally capped MCS socket slots.</summary>
+    internal bool TryAcquirePairingSlot()
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref _activePairings);
+            if (current >= options.MaxConcurrentPairings)
+            {
+                return false;
+            }
+
+            if (Interlocked.CompareExchange(ref _activePairings, current + 1, current) == current)
+            {
+                return true;
+            }
+        }
+    }
+
+    /// <summary>Creates a session for <paramref name="clientIp"/>, or explains why it could not.
+    /// A session from the same address that is still in <see cref="SessionState.Created"/> is
+    /// evicted rather than blocking: a visitor who closed the tab and started over must not be
+    /// locked out by their own abandoned attempt. An address holding a session past
+    /// <see cref="SessionState.Created"/> is refused instead — real upstream work exists there,
+    /// and that session is resumable via its handle.</summary>
     /// <param name="clientIp">The caller's address.</param>
     /// <param name="session">The new session on success.</param>
     /// <param name="failure">Why creation was refused.</param>
@@ -95,24 +156,49 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     {
         session = null;
 
-        if (_bySessionId.Count >= options.MaxConcurrentSessions)
+        lock (_createGate)
         {
-            failure = SessionCreateFailure.GlobalLimit;
-            return false;
+            if (CountCompletions(clientIp) >= options.MaxCompletionsPerIpPerHour)
+            {
+                failure = SessionCreateFailure.HourlyLimit;
+                return false;
+            }
+
+            foreach (var (sessionId, existing) in _bySessionId)
+            {
+                if (!string.Equals(existing.ClientIp, clientIp, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (existing.State != SessionState.Created)
+                {
+                    failure = SessionCreateFailure.ActiveSessionForIp;
+                    return false;
+                }
+
+                Remove(sessionId);
+            }
+
+            if (_bySessionId.Count >= options.MaxConcurrentSessions)
+            {
+                failure = SessionCreateFailure.GlobalLimit;
+                return false;
+            }
+
+            var created = new Session(
+                SessionIds.New(),
+                SessionIds.New(),
+                clientIp,
+                timeProvider.GetUtcNow().Add(options.CreatedTtl));
+
+            _bySessionId[created.SessionId] = created;
+            _byReturnToken[created.ReturnToken] = created.SessionId;
+
+            session = created;
+            failure = SessionCreateFailure.None;
+            return true;
         }
-
-        var created = new Session(
-            SessionIds.New(),
-            SessionIds.New(),
-            clientIp,
-            timeProvider.GetUtcNow().Add(options.CreatedTtl));
-
-        _bySessionId[created.SessionId] = created;
-        _byReturnToken[created.ReturnToken] = created.SessionId;
-
-        session = created;
-        failure = SessionCreateFailure.None;
-        return true;
     }
 
     /// <summary>Looks a session up by its handle. The return token is deliberately not accepted here.</summary>
@@ -120,4 +206,27 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     /// <param name="session">The session when found.</param>
     internal bool TryGet(string sessionId, [NotNullWhen(true)] out Session? session) =>
         _bySessionId.TryGetValue(sessionId, out session);
+
+    /// <summary>Completions by this address inside the trailing hour, pruning older entries as it goes
+    /// so the map cannot grow without bound.</summary>
+    /// <param name="clientIp">The caller's address.</param>
+    private int CountCompletions(string clientIp)
+    {
+        if (!_completionsByIp.TryGetValue(clientIp, out var stamps))
+        {
+            return 0;
+        }
+
+        var cutoff = timeProvider.GetUtcNow().AddHours(-1);
+        lock (stamps)
+        {
+            stamps.RemoveAll(stamp => stamp < cutoff);
+            if (stamps.Count == 0)
+            {
+                _completionsByIp.TryRemove(clientIp, out _);
+            }
+
+            return stamps.Count;
+        }
+    }
 }
