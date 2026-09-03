@@ -18,13 +18,14 @@ public sealed class SessionSweeperTests
         using var sweeper = new SessionSweeper(store, time);
         await sweeper.StartAsync(CancellationToken.None);
 
-        time.Advance(TimeSpan.FromMinutes(6));
-
+        // Advance past TTL. Tolerate the startup race: the sweeper may not have created its timer yet,
+        // so repeated advances ensure it fires after being created.
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         while (store.TryGet(session!.SessionId, out _))
         {
             timeout.Token.ThrowIfCancellationRequested();
-            await Task.Delay(20, timeout.Token);
+            time.Advance(TimeSpan.FromSeconds(31)); // Advance past sweep interval to ensure timer fires
+            await Task.Delay(10, timeout.Token);
         }
 
         await sweeper.StopAsync(CancellationToken.None);
@@ -42,7 +43,8 @@ public sealed class SessionSweeperTests
         using var sweeper = new SessionSweeper(store, time);
         await sweeper.StartAsync(CancellationToken.None);
 
-        time.Advance(TimeSpan.FromMinutes(1));
+        // Advance past one sweep interval to ensure the sweeper demonstrably ran, but not past TTL
+        time.Advance(TimeSpan.FromSeconds(31));
         await Task.Delay(100);
 
         await sweeper.StopAsync(CancellationToken.None);
