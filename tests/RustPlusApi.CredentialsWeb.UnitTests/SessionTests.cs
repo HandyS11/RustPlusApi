@@ -145,6 +145,50 @@ public sealed class SessionTests
     }
 
     [Fact]
+    public void SetSteamLogin_AfterDispose_DoesNotResurrectToken()
+    {
+        var session = NewSession();
+        session.Dispose();
+
+        session.SetSteamLogin(new SteamLoginResult(76561198249527954, "steam-token"));
+
+        Assert.Null(session.SteamToken);
+    }
+
+    [Fact]
+    public void SetCredentials_AfterDispose_DoesNotResurrectCredentials()
+    {
+        var session = NewSession();
+        session.Dispose();
+
+        session.SetCredentials(new Credentials { ExpoPushToken = "expo-token" });
+
+        Assert.Null(session.Credentials);
+    }
+
+    [Fact]
+    public void SetPairing_AfterDispose_DoesNotResurrectPairing()
+    {
+        var session = NewSession();
+        session.Dispose();
+
+        session.SetPairing(new ServerPairing { Ip = "10.0.0.1", Port = 1, PlayerId = 1, PlayerToken = 2 });
+
+        Assert.Null(session.Pairing);
+    }
+
+    [Fact]
+    public void Advance_AfterDispose_DoesNotChangeState()
+    {
+        var session = NewSession();
+        session.Dispose();
+
+        session.Advance(SessionState.Registering, Origin.AddMinutes(15));
+
+        Assert.Equal(SessionState.Created, session.State);
+    }
+
+    [Fact]
     public void SessionIds_AreThirtyTwoLowercaseHexCharsAndUnique()
     {
         var first = SessionIds.New();

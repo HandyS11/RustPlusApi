@@ -73,13 +73,19 @@ internal sealed class Session(string sessionId, string returnToken, string clien
         Lifetime.Dispose();
     }
 
-    /// <summary>Moves to <paramref name="state"/>, resets the expiry and publishes a <c>step</c> event.</summary>
+    /// <summary>Moves to <paramref name="state"/>, resets the expiry and publishes a <c>step</c> event.
+    /// A no-op once the session is disposed.</summary>
     /// <param name="state">The new state.</param>
     /// <param name="newExpiry">The new expiry instant.</param>
     internal void Advance(SessionState state, DateTimeOffset newExpiry)
     {
         lock (_gate)
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             State = state;
             ExpiresAt = newExpiry;
         }
@@ -100,32 +106,48 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     /// <param name="now">The current instant, from the ambient <see cref="TimeProvider"/>.</param>
     internal bool IsExpired(DateTimeOffset now) => now >= ExpiresAt;
 
-    /// <summary>Stores the credentials from steps 1-3.</summary>
+    /// <summary>Stores the credentials from steps 1-3. A no-op once the session is disposed.</summary>
     /// <param name="credentials">The acquired credentials.</param>
     internal void SetCredentials(Credentials credentials)
     {
         lock (_gate)
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             Credentials = credentials;
         }
     }
 
-    /// <summary>Stores the pairing from step 6.</summary>
+    /// <summary>Stores the pairing from step 6. A no-op once the session is disposed.</summary>
     /// <param name="pairing">The pairing that arrived.</param>
     internal void SetPairing(ServerPairing pairing)
     {
         lock (_gate)
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             Pairing = pairing;
         }
     }
 
-    /// <summary>Stores the Steam identity captured from the Facepunch callback.</summary>
+    /// <summary>Stores the Steam identity captured from the Facepunch callback. A no-op once the
+    /// session is disposed.</summary>
     /// <param name="login">The parsed callback result.</param>
     internal void SetSteamLogin(SteamLoginResult login)
     {
         lock (_gate)
         {
+            if (_disposed)
+            {
+                return;
+            }
+
             SteamId = login.SteamId;
             SteamToken = login.Token;
         }
