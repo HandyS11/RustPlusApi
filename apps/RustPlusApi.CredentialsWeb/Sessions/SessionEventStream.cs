@@ -13,6 +13,18 @@ internal sealed class SessionEventStream
     private readonly List<Channel<SessionEvent>> _subscribers = [];
     private bool _completed;
 
+    /// <summary>The current number of active subscribers. For testing only.</summary>
+    internal int SubscriberCount
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _subscribers.Count;
+            }
+        }
+    }
+
     /// <summary>Appends an event to the history and pushes it to every live subscriber.
     /// Ignored once <see cref="Complete"/> has been called.</summary>
     /// <param name="sessionEvent">The event to publish.</param>
@@ -61,27 +73,34 @@ internal sealed class SessionEventStream
     internal async IAsyncEnumerable<SessionEvent> SubscribeAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var (history, reader) = Subscribe();
+        var (history, channel) = Subscribe();
 
         foreach (var item in history)
         {
             yield return item;
         }
 
-        if (reader is null)
+        if (channel is null)
         {
             yield break;
         }
 
-        await foreach (var item in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        try
         {
-            yield return item;
+            await foreach (var item in channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+            {
+                yield return item;
+            }
+        }
+        finally
+        {
+            Unsubscribe(channel);
         }
     }
 
     /// <summary>Snapshots the history and registers a subscriber under one lock, so no event can slip
-    /// between the two. Returns a null reader when the stream is already complete.</summary>
-    private (IReadOnlyList<SessionEvent> History, ChannelReader<SessionEvent>? Reader) Subscribe()
+    /// between the two. Returns a null channel when the stream is already complete.</summary>
+    private (IReadOnlyList<SessionEvent> History, Channel<SessionEvent>? Channel) Subscribe()
     {
         lock (_gate)
         {
@@ -98,7 +117,18 @@ internal sealed class SessionEventStream
             });
 
             _subscribers.Add(channel);
-            return (history, channel.Reader);
+            return (history, channel);
+        }
+    }
+
+    /// <summary>Deregisters a subscriber when its enumeration ends. Safe to call even if the channel
+    /// is not currently registered (e.g., if <see cref="Complete"/> already cleared <see cref="_subscribers"/>).</summary>
+    /// <param name="channel">The channel to remove.</param>
+    private void Unsubscribe(Channel<SessionEvent> channel)
+    {
+        lock (_gate)
+        {
+            _subscribers.Remove(channel);
         }
     }
 }

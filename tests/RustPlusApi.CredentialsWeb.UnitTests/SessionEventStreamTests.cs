@@ -116,4 +116,38 @@ public sealed class SessionEventStreamTests
 
         Assert.Empty(received);
     }
+
+    [Fact]
+    public async Task SubscribeAsync_DeregistersSubscriberWhenEnumerationEnds()
+    {
+        var stream = new SessionEventStream();
+        stream.Publish(new SessionEvent("first", null));
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var enumerator = stream.SubscribeAsync(timeout.Token).GetAsyncEnumerator(timeout.Token);
+
+        Assert.True(await enumerator.MoveNextAsync());
+        Assert.Equal("first", enumerator.Current.Type);
+        Assert.Equal(1, stream.SubscriberCount);
+
+        // Cancel to end the enumeration
+        await timeout.CancelAsync();
+
+        try
+        {
+            await enumerator.MoveNextAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected
+        }
+
+        await enumerator.DisposeAsync();
+
+        // Subscriber should be deregistered after enumeration ends
+        Assert.Equal(0, stream.SubscriberCount);
+
+        // Publishing after deregistration should not affect the removed subscriber
+        stream.Publish(new SessionEvent("second", null));
+    }
 }
