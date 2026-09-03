@@ -1,0 +1,17 @@
+# Example only. The important part is the log format: the default one records the full URI,
+# including the ?steamId=…&token=… that Facepunch appends to the callback.
+creds.example.org {
+	reverse_proxy 127.0.0.1:8080
+
+	log {
+		output file /var/log/caddy/creds.log
+		# Drop the query string entirely. Without this filter the Steam auth token is written
+		# to disk on every successful login.
+		format filter {
+			request>uri query {
+				delete steamId
+				delete token
+			}
+		}
+	}
+}
