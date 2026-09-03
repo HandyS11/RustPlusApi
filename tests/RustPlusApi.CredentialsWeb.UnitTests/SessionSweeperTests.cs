@@ -69,4 +69,41 @@ public sealed class SessionSweeperTests
         Assert.True(store.TryGet(liveSession!.SessionId, out _), "Live session should survive sweep");
     }
 
+    [Fact]
+    public async Task ExecuteAsync_ContinuesAfterSweepThrows()
+    {
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
+        var options = new AppOptions { PublicBaseUrl = "https://creds.example.org" };
+        using var store = new SessionStore(options, time);
+
+        // Create a session that will throw when disposed (via Lifetime.Token callback).
+        // This models the real scenario where pairing tasks register callbacks that may throw.
+        store.TryCreate("203.0.113.7", out var throwingSession, out _);
+        throwingSession!.Lifetime.Token.Register(() => throw new InvalidOperationException("Simulated callback failure"));
+
+        // Create a canary session from a different IP that will also expire
+        store.TryCreate("203.0.113.8", out var canary, out _);
+
+        using var sweeper = new SessionSweeper(store, time, NullLogger);
+        await sweeper.StartAsync(CancellationToken.None);
+
+        // Advance past both sessions' TTL. The first sweep will hit the throwing session and fail,
+        // but the service should continue. The second sweep should succeed and remove the canary.
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (store.TryGet(canary!.SessionId, out _))
+        {
+            timeout.Token.ThrowIfCancellationRequested();
+            time.Advance(TimeSpan.FromSeconds(31)); // Advance past sweep interval to ensure timer fires
+            await Task.Delay(10, timeout.Token);
+        }
+
+        await sweeper.StopAsync(CancellationToken.None);
+
+        // Both sessions should be gone: throwing session on first sweep (despite exception),
+        // canary on a later tick. If the service had died on the exception, the canary would still be there.
+        Assert.False(store.TryGet(throwingSession.SessionId, out _), "Throwing session should be removed despite exception");
+        Assert.False(store.TryGet(canary.SessionId, out _), "Canary session should be removed on later sweep");
+        Assert.Equal(0, store.Count);
+    }
+
 }
