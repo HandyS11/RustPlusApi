@@ -7,19 +7,33 @@ creds.example.org {
 	log {
 		output file /var/log/caddy/creds.log
 		format filter {
-			request>uri query {
-				# Drop the query string entirely. Without this filter the Steam auth token is
-				# written to disk on every successful login.
-				delete steamId
-				delete token
-			}
-			# The session id travels in a URL fragment on the post-login redirect, which keeps it
-			# out of *that* log line — but the browser then opens
-			# GET /api/sessions/{sessionId}/events, putting the same id in the request path of
-			# every such request. That id is the sole authenticator for a stream that replays the
-			# full credentials payload once acquired, so redact it here too, not just the query
-			# string above.
-			request>uri regexp (sessions/)[0-9a-f]{32} ${1}REDACTED
+			# One filter per field: Caddy's format-filter config is keyed by field path
+			# (`request>uri` here), and a second directive for the same field silently replaces
+			# the first rather than combining with it — on older Caddy releases it refuses to
+			# start instead. A separate `request>uri query { delete steamId; delete token }`
+			# block used to sit here alongside this regexp; it was folded in below so there is
+			# only ever one `request>uri` entry. Do not re-split it.
+			#
+			# Redacts, in the full request URI:
+			#   - ?steamId=... and &token=... — the Steam identity and Rust+ auth token
+			#     Facepunch appends to the login callback.
+			#   - the session id in GET /api/sessions/{sessionId}/events — the sole
+			#     authenticator for a stream that replays the full credentials payload once
+			#     acquired. (It never appears in the callback URI itself: that id travels in a
+			#     URL fragment on the post-login redirect, which browsers never send to a
+			#     server.)
+			#
+			# The two query keys are matched as `[?&](steamId|token)=` followed by everything up
+			# to the next `&` (or end of string) — *not* stopped at `/`, because a token value is
+			# free to contain an unencoded `/` (it's a legal, unreserved-adjacent character in a
+			# URI query component per RFC 3986) and stopping there would leave the remainder of
+			# the token in the log. The session id instead is matched by its known fixed shape,
+			# exactly 32 lowercase hex characters (see Sessions/SessionIds.cs), which lets it stop
+			# precisely at the id without consuming the following /events. `regexp` here is Go's
+			# regexp.ReplaceAllString with no Caddy placeholder expansion, so ${1}/${2} are plain
+			# regexp capture references: exactly one of the two groups matches per hit, and Go
+			# expands an unmatched group to the empty string, so concatenating both is safe.
+			request>uri regexp ([?&](steamId|token)=)[^&]*|(sessions/)[0-9a-f]{32} ${1}${3}REDACTED
 		}
 	}
 }
