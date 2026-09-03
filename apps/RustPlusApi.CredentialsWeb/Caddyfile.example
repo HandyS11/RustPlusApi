@@ -1,17 +1,25 @@
 # Example only. The important part is the log format: the default one records the full URI,
-# including the ?steamId=…&token=… that Facepunch appends to the callback.
+# including the ?steamId=…&token=… that Facepunch appends to the callback, and the session id in
+# the path of every /api/sessions/{sessionId}/... request.
 creds.example.org {
 	reverse_proxy 127.0.0.1:8080
 
 	log {
 		output file /var/log/caddy/creds.log
-		# Drop the query string entirely. Without this filter the Steam auth token is written
-		# to disk on every successful login.
 		format filter {
 			request>uri query {
+				# Drop the query string entirely. Without this filter the Steam auth token is
+				# written to disk on every successful login.
 				delete steamId
 				delete token
 			}
+			# The session id travels in a URL fragment on the post-login redirect, which keeps it
+			# out of *that* log line — but the browser then opens
+			# GET /api/sessions/{sessionId}/events, putting the same id in the request path of
+			# every such request. That id is the sole authenticator for a stream that replays the
+			# full credentials payload once acquired, so redact it here too, not just the query
+			# string above.
+			request>uri regexp (sessions/)[0-9a-f]{32} ${1}REDACTED
 		}
 	}
 }

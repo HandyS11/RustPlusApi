@@ -26,7 +26,7 @@ dotnet run --project apps/RustPlusApi.CredentialsWeb \
   -- --CredentialsWeb:PublicBaseUrl=http://localhost:5000 --CredentialsWeb:AllowInsecureBaseUrl=true
 ```
 
-## Two things that will bite you behind a reverse proxy
+## Three things that will bite you behind a reverse proxy
 
 **Your access log will record Steam auth tokens.** Facepunch appends the token to the callback URL
 as a query parameter (`?steamId=...&token=...`). The app itself never logs it — the ASP.NET Core
@@ -35,6 +35,15 @@ hosting request logger is switched off outright for exactly this reason, and
 access-log format records the full request line regardless. Filter the query string before it
 reaches disk; `Caddyfile.example` in this directory shows how (it drops `steamId` and `token` from
 the logged URI).
+
+**Your access log will also record the session handle.** The post-login redirect carries the
+session id in a URL fragment (`/#session=...`), which keeps it out of that one callback log line
+and out of `Referer` headers — but the browser immediately opens
+`GET /api/sessions/{sessionId}/events` to attach the event stream, and *that* request puts the
+handle straight in the path, where a default access log records it like any other URL. The handle
+is the sole authenticator for a stream that replays the full credentials payload once they're
+acquired, so treat it as sensitive too. `Caddyfile.example` redacts the session path alongside
+`steamId` and `token`.
 
 **Your per-IP limits will silently do nothing.** Without the proxy's own address listed in
 `CredentialsWeb__KnownProxies__0` (and `__1`, `__2`, ... for more than one), every visitor presents
@@ -76,7 +85,9 @@ variable, `--CredentialsWeb:Name` on the command line).
 
 - **In memory only.** No database, no session cache, no disk. A restart wipes everything.
 - **The Steam auth token is dropped** the moment your device is registered with Rust Companion.
-- **Nothing is logged.** Asserted by `SecretsAreNeverLoggedTests`, not just intended.
+- **No credential is logged.** Session ids, step names and exception text do appear in the app's
+  own logs — but never a Steam token, FCM/GCM/Expo credential or `playerToken`. Asserted by
+  `SecretsAreNeverLoggedTests`, not just intended.
 - **The callback responds 302**, so the token-bearing URL never becomes a browser history entry,
   and the session handle travels in a URL fragment, which browsers never send to a server.
 - **The server does see the token** in the request line. Facepunch decides the callback shape and

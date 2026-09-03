@@ -153,9 +153,15 @@ token-bearing URL never becomes one. This is strictly better than the library's 
 lands on a 200 and scrubs the query afterwards with `history.replaceState`.
 
 **The redirect target carries the session in a fragment (`/#session=…`).** Fragments are never sent
-to the server, so the session handle stays out of access logs and `Referer` headers entirely. It
-also makes the flow work when the Steam login is completed in a *different* browser from the one
-holding the SSE stream — a phone, say — mirroring the library's headless story at no cost.
+to the server, so the session handle stays out of the *callback* log line and out of `Referer`
+headers. It does **not** stay out of access logs entirely: the client immediately opens
+`GET /api/sessions/{sessionId}/events` to attach the SSE stream, which puts the handle in the
+request path of every such request, and a default access-log format records that. The handle is
+the sole authenticator for a stream that replays the full credentials payload, so an operator
+following the Caddyfile example must redact the session path too, not just `steamId` and `token` —
+see `Caddyfile.example`. It also makes the flow work when the Steam login is completed in a
+*different* browser from the one holding the SSE stream — a phone, say — mirroring the library's
+headless story at no cost.
 
 **No endpoint returns the credentials.** They arrive once over SSE; the page assembles
 `rustplus.config.json` client-side as a `Blob` for download. One less route serving secrets.
@@ -247,12 +253,13 @@ A `PeriodicTimer` background service sweeps expired sessions and disposes their 
 requests get a 429 whose body says "try again shortly — or run your own instance", with the
 `docker run` line.
 
-**Eviction, not rejection, for abandoned sessions.** A one-session-per-IP cap would otherwise lock a
-user out for five minutes because they closed the tab and started over — the single most likely
-thing a confused first-time visitor does. So `POST /api/sessions` from an IP that already holds a
-session in `Created` state **evicts** the old one and issues a new one. An IP holding a session past
-`Created` — one where real upstream work has been done — gets the 429 instead; that session is
-resumable via its `sessionId`, so there is nothing to start over.
+**Eviction, not rejection, for abandoned or dead sessions.** A one-session-per-IP cap would otherwise
+lock a user out for minutes over an attempt that cannot be resumed — the single most likely thing a
+confused first-time visitor runs into. So `POST /api/sessions` from an IP that already holds a
+session in `Created` **or** `Failed` state **evicts** the old one and issues a new one: `Created`
+never touched upstream, and `Failed` is terminal, so neither has anything left to resume. An IP
+holding a session in any other state — one where real, still-live upstream work has been done — gets
+the 429 instead; that session is resumable via its `sessionId`, so there is nothing to start over.
 
 Captcha was rejected: a third-party script tag would undermine the single-auditable-file property
 that the trust story leans on, and it adds a Cloudflare dependency plus a knob self-hosters must be
@@ -274,7 +281,8 @@ be correct in the shipped compose file and called out in the README.
 | Any of steps 1,2,3,5 fails upstream | Session → `Failed` with a step-named message over SSE. Credentials already acquired are dropped, not retried automatically. |
 | Pairing push never arrives before TTL | Socket disposed, pairing slot released, session returns to `Ready` and an `expired` event is emitted. The page offers to retry the pairing step without redoing the Steam login. |
 | SSE stream drops | Client reconnects with the same `sessionId` and resumes; server-side state and the MCS socket are untouched. |
-| Any cap exceeded | 429 with the self-host pointer. |
+| Global or hourly cap exceeded | 429 with the self-host pointer. |
+| This address already holds a resumable session | 429 pointing back at that session instead — not the self-host pointer, since capacity was never the problem. |
 | `PublicBaseUrl` missing or not `https` | Startup fails with a message naming the setting and the escape hatch. |
 
 ## Testing
