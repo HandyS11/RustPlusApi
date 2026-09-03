@@ -110,6 +110,29 @@ don't trip the gate.
 
 ---
 
+## Credentials web app
+
+`apps/RustPlusApi.CredentialsWeb` targets `net10.0` only — it is an ASP.NET Core app, not a
+multi-targeted library — so it sits outside the multi-TFM parity mechanism described above and is
+exercised on a single TFM host rather than two.
+
+It is gated separately, at the same **95% line / 90% branch** bar as the libraries, via a second
+ReportGenerator merge that `tools/coverage/report.sh` produces and checks alongside the library one:
+`TestResults/merged-web/Cobertura.xml`, filtered to just `RustPlusApi.CredentialsWeb`. The library
+merge (`TestResults/merged/Cobertura.xml`) explicitly filters the app assembly *out*, so the
+library gate stays exactly what it was before the app existed — folding a net10.0-only app into
+that aggregate would change the bar the libraries have to clear.
+
+Two members are excluded from the app's coverage gate:
+
+- **`Program`** (`apps/RustPlusApi.CredentialsWeb/Program.cs`) — host wiring: composition only,
+  exercised end to end by the endpoint tests.
+- **`LiveRegistrationSteps`** (`apps/RustPlusApi.CredentialsWeb/Upstream/LiveRegistrationSteps.cs`)
+  — a live-network seam: every member drives Google, Expo, Facepunch or the MCS socket and cannot
+  be validated offline. All logic above it is tested against the `IRegistrationSteps` abstraction.
+
+---
+
 ## Running mutation testing (Stryker.NET)
 
 Each mutation-tested source project has its own `stryker-config.json` located in its corresponding

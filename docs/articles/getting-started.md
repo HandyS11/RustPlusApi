@@ -21,10 +21,15 @@ dotnet add package RustPlusApi.Fcm.Extensions.DependencyInjection   # DI registr
 
 ## 1. Get your credentials
 
-You need credentials to connect. The recommended way is the native
-[RustPlusApi.Fcm.Registration](credentials.md) package, which logs you into Steam and links your
-account with Rust+ — no Node.js required. The quickest path is the `RustPlus.Register.ConsoleApp`
-sample:
+You need credentials to connect. The quickest way — no .NET SDK required — is the
+[Rust+ credentials website](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md):
+a browser flow that logs you into Steam and hands back the four pairing values plus a downloadable
+`rustplus.config.json`. Self-host it with `docker run` (see its README for the full command and
+two footguns to read before putting it behind a reverse proxy).
+
+If you'd rather stay entirely in .NET, the native [RustPlusApi.Fcm.Registration](credentials.md)
+package does the same thing from your own code — no Node.js required. The quickest path is the
+`RustPlus.Register.ConsoleApp` sample:
 
 ```bash
 dotnet run --project samples/RustPlus.Register.ConsoleApp

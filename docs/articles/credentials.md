@@ -10,6 +10,29 @@ To use Rust+ you need credentials. There are two kinds:
 The `RustPlusApi.Fcm.Registration` package acquires both natively, replacing the
 `rustplus.js` Node CLI.
 
+## The credentials website (recommended)
+
+The fastest way to get both kinds of credentials — no .NET SDK required — is the
+[Rust+ credentials website](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md):
+a single-page app that walks you through the Steam login in a browser and hands back the four
+pairing values plus a downloadable `rustplus.config.json`. It is both a self-host starter and the
+code behind the public instance. Self-host it with:
+
+```bash
+docker run -p 8080:8080 \
+  -e CredentialsWeb__PublicBaseUrl=https://creds.example.org \
+  ghcr.io/handys11/rustplusapi-credentials
+```
+
+See the
+[website's README](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md)
+for the full self-host guide — including two reverse-proxy footguns worth reading before you put
+anything in front of it.
+
+Everything below documents the same registration chain driven directly from your own code — what
+the website's server does under the hood, and the route to use if you're integrating
+`RustPlusApi.Fcm.Registration` into your own app (the local route) rather than running the website.
+
 ## The flow
 
 ```mermaid
@@ -27,8 +50,8 @@ sequenceDiagram
     G-->>App: FCM token
     App->>E: 4. Expo push token
     E-->>App: ExponentPushToken[...]
-    App->>St: 5. Interactive Steam login (browser redirect)
-    St-->>App: Steam auth token + Steam64 id
+    App->>St: 5. Interactive Steam login (browser redirect to App's own /callback/<nonce>)
+    St-->>App: Steam auth token + Steam64 id, delivered at that callback
     App->>FP: 6. Register device with Rust Companion
     FP-->>App: subscribed to pairing pushes
     Note over App: 7. CredentialsStore.Save("rustplus.config.json")
@@ -75,6 +98,10 @@ ServerPairing pairing = await listener.WaitForServerPairingAsync();
 Steps 1–7 run once. Step 8 happens every time you pair a new server in game.
 
 ## How the Steam login works
+
+This section covers the local route — driving `SteamLoginService` yourself, as the console app
+does. The credentials website above uses the same mechanism, except the callback listener is the
+website's own `/callback/<nonce>` endpoint rather than a `localhost` `HttpListener`.
 
 `SteamLoginService` binds an `HttpListener` on `http://localhost:<port>/` and sends the browser to:
 

@@ -24,6 +24,8 @@ dotnet test RustPlusApi.sln -f net8.0
 dotnet test RustPlusApi.sln -f net10.0
 
 # Coverage with per-class gap report + CI gate (line 95 / branch 90):
+# Runs two gates: the libraries (unchanged since before apps/RustPlusApi.CredentialsWeb existed)
+# and the net10.0-only web app, merged and checked separately so the app can't move the library bar.
 tools/coverage/report.sh
 
 # Formatting + member reordering (ReSharper CLI; whitespace rules from .editorconfig, the
@@ -62,6 +64,12 @@ A committed **pre-push hook** (`.githooks/pre-push`, wired up automatically by t
   to a loopback callback (`SteamLoginService`), Rust Companion registration, `CredentialsStore`
   persistence.
 - **Two `*.Extensions.DependencyInjection`** packages — `AddRustPlus`/`AddRustPlusFcm` + factories.
+- **`apps/RustPlusApi.CredentialsWeb`** — a **net10.0-only** ASP.NET Core app (not a NuGet package)
+  that consumes `RustPlusApi.Fcm.Registration`'s public API to walk a browser visitor through the
+  same registration chain as the console app, but reordered to `4 → 1,2,3 → 5`: the Steam login
+  runs first so an anonymous visitor can't trigger a Google device registration without first
+  authenticating. Being net10.0-only, it sits outside the netstandard2.0 multi-TFM parity story
+  that governs `src/`; see `docs/development/testing.md`.
 
 ### Protobuf contracts
 
