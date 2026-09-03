@@ -85,6 +85,58 @@ internal sealed class CredentialFlow(
         }
     }
 
+    /// <summary>Step 6: hold an MCS socket until a pairing push arrives, the TTL runs out, or the
+    /// session is disposed. The caller must already hold a pairing slot; this method always
+    /// releases it.</summary>
+    /// <param name="session">A session in <see cref="SessionState.Ready"/>.</param>
+    /// <param name="cancellationToken">Token to abandon the wait.</param>
+    internal async Task WaitForPairingAsync(Session session, CancellationToken cancellationToken)
+    {
+        if (session.State != SessionState.Ready || session.Credentials is not { } credentials)
+        {
+            store.ReleasePairingSlot();
+            return;
+        }
+
+        session.Advance(SessionState.AwaitingPairing, Deadline(options.PairingTtl));
+
+        try
+        {
+            var pairing = await steps.WaitForPairingAsync(credentials, cancellationToken).ConfigureAwait(false);
+
+            session.SetPairing(pairing);
+            session.Advance(SessionState.Paired, Deadline(options.SessionTtl));
+            session.Events.Publish(new SessionEvent("paired", new PairedPayload(
+                pairing.Ip,
+                pairing.Port,
+                pairing.PlayerId.ToString(CultureInfo.InvariantCulture),
+                pairing.PlayerToken,
+                pairing.Name)));
+        }
+        catch (OperationCanceledException)
+        {
+            // Back to Ready, not a terminal state: the credentials are still good, so the visitor
+            // can start another pairing wait without repeating the Steam login.
+            session.Advance(SessionState.Ready, Deadline(options.SessionTtl));
+            session.Events.Publish(new SessionEvent("expired", null));
+        }
+#pragma warning disable CA1031 // A failed socket must land the session in Failed rather than crash the host.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            logger.LogPairingFailed(session.SessionId, ex);
+            session.Advance(SessionState.Failed, Deadline(options.SessionTtl));
+            session.Events.Publish(new SessionEvent("error", new ErrorPayload(
+                "The pairing listener stopped unexpectedly. Your credentials are still valid — "
+                + "try the pairing step again.")));
+        }
+        finally
+        {
+            // A leaked slot permanently shrinks this instance's pairing capacity and nothing reports it.
+            store.ReleasePairingSlot();
+        }
+    }
+
     /// <summary>Now plus <paramref name="ttl"/>, from the injected clock.</summary>
     /// <param name="ttl">How long the session should live from now.</param>
     private DateTimeOffset Deadline(TimeSpan ttl) => timeProvider.GetUtcNow().Add(ttl);
