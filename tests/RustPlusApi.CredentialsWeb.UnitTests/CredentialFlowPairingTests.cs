@@ -16,7 +16,10 @@ public sealed class CredentialFlowPairingTests
         ReadySessionAsync(Action<AppOptions>? configure = null)
     {
         var time = new FakeTimeProvider(Origin);
-        var options = new AppOptions { PublicBaseUrl = "https://creds.example.org" };
+        var options = new AppOptions
+        {
+            PublicBaseUrl = "https://creds.example.org"
+        };
         configure?.Invoke(options);
         var store = new SessionStore(options, time);
         var steps = new FakeRegistrationSteps();

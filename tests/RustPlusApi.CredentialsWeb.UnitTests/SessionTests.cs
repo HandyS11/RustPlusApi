@@ -80,8 +80,14 @@ public sealed class SessionTests
     public void SetCredentialsAndPairing_AreExposed()
     {
         using var session = NewSession();
-        var credentials = new Credentials { ExpoPushToken = "expo-token" };
-        var pairing = new ServerPairing { Ip = "10.0.0.1", Port = 28082, PlayerId = 1, PlayerToken = 2 };
+        var credentials = new Credentials
+        {
+            ExpoPushToken = "expo-token"
+        };
+        var pairing = new ServerPairing
+        {
+            Ip = "10.0.0.1", Port = 28082, PlayerId = 1, PlayerToken = 2
+        };
 
         session.SetCredentials(credentials);
         session.SetPairing(pairing);
@@ -106,8 +112,14 @@ public sealed class SessionTests
     {
         var session = NewSession();
         session.SetSteamLogin(new SteamLoginResult(1, "steam-token"));
-        session.SetCredentials(new Credentials { ExpoPushToken = "expo-token" });
-        session.SetPairing(new ServerPairing { Ip = "10.0.0.1", Port = 1, PlayerId = 1, PlayerToken = 2 });
+        session.SetCredentials(new Credentials
+        {
+            ExpoPushToken = "expo-token"
+        });
+        session.SetPairing(new ServerPairing
+        {
+            Ip = "10.0.0.1", Port = 1, PlayerId = 1, PlayerToken = 2
+        });
 
         session.Dispose();
 
@@ -161,7 +173,10 @@ public sealed class SessionTests
         var session = NewSession();
         session.Dispose();
 
-        session.SetCredentials(new Credentials { ExpoPushToken = "expo-token" });
+        session.SetCredentials(new Credentials
+        {
+            ExpoPushToken = "expo-token"
+        });
 
         Assert.Null(session.Credentials);
     }
@@ -172,7 +187,10 @@ public sealed class SessionTests
         var session = NewSession();
         session.Dispose();
 
-        session.SetPairing(new ServerPairing { Ip = "10.0.0.1", Port = 1, PlayerId = 1, PlayerToken = 2 });
+        session.SetPairing(new ServerPairing
+        {
+            Ip = "10.0.0.1", Port = 1, PlayerId = 1, PlayerToken = 2
+        });
 
         Assert.Null(session.Pairing);
     }

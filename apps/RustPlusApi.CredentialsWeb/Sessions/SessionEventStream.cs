@@ -8,8 +8,8 @@ namespace RustPlusApi.CredentialsWeb.Sessions;
 /// which matters because the drop happens exactly when the visitor alt-tabs into fullscreen Rust.</summary>
 internal sealed class SessionEventStream
 {
-    private readonly List<SessionEvent> _history = [];
     private readonly Lock _gate = new();
+    private readonly List<SessionEvent> _history = [];
     private readonly List<Channel<SessionEvent>> _subscribers = [];
     private bool _completed;
 
@@ -112,8 +112,7 @@ internal sealed class SessionEventStream
 
             var channel = Channel.CreateUnbounded<SessionEvent>(new UnboundedChannelOptions
             {
-                SingleReader = true,
-                SingleWriter = false
+                SingleReader = true, SingleWriter = false
             });
 
             _subscribers.Add(channel);

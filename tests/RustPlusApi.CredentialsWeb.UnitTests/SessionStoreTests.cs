@@ -12,7 +12,10 @@ public sealed class SessionStoreTests
     private static (SessionStore Store, FakeTimeProvider Time) NewStore()
     {
         var time = new FakeTimeProvider(Origin);
-        var options = new AppOptions { PublicBaseUrl = "https://creds.example.org" };
+        var options = new AppOptions
+        {
+            PublicBaseUrl = "https://creds.example.org"
+        };
         return (new SessionStore(options, time), time);
     }
 

@@ -15,7 +15,10 @@ public sealed class PairingEndpointTests
     private static async Task<Session> ReadySessionAsync(CredentialsWebFactory factory)
     {
         using var client = factory.CreateClient(
-            new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+            {
+                AllowAutoRedirect = false
+            });
 
         var store = factory.Services.GetRequiredService<SessionStore>();
         store.TryCreate("203.0.113.7", out var session, out _);
@@ -83,7 +86,10 @@ public sealed class PairingEndpointTests
     public async Task Pairing_Returns429_WhenThePairingCapIsFull()
     {
         await using var factory = new CredentialsWebFactory(
-            new Dictionary<string, string> { ["CredentialsWeb__MaxConcurrentPairings"] = "1" });
+            new Dictionary<string, string>
+            {
+                ["CredentialsWeb__MaxConcurrentPairings"] = "1"
+            });
         var session = await ReadySessionAsync(factory);
         using var client = factory.CreateClient();
 

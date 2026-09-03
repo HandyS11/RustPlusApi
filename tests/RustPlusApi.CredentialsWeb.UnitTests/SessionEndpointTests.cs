@@ -79,7 +79,10 @@ public sealed class SessionEndpointTests
     public async Task CreateSession_Returns429WithASelfHostPointer_WhenTheGlobalCapIsFull()
     {
         await using var factory = new CredentialsWebFactory(
-            new Dictionary<string, string> { ["CredentialsWeb__MaxConcurrentSessions"] = "1" });
+            new Dictionary<string, string>
+            {
+                ["CredentialsWeb__MaxConcurrentSessions"] = "1"
+            });
         using var client = factory.CreateClient();
 
         // Occupy the only slot from a different address, and move it out of Created so the
@@ -113,7 +116,10 @@ public sealed class SessionEndpointTests
         // it should apply no matter what status code the endpoint eventually returns — including
         // the 429 capacity response, where a missing Cache-Control: no-store would matter most.
         await using var factory = new CredentialsWebFactory(
-            new Dictionary<string, string> { ["CredentialsWeb__MaxConcurrentSessions"] = "1" });
+            new Dictionary<string, string>
+            {
+                ["CredentialsWeb__MaxConcurrentSessions"] = "1"
+            });
         using var client = factory.CreateClient();
         var store = factory.Services.GetRequiredService<SessionStore>();
         store.TryCreate("198.51.100.1", out var occupant, out _);
@@ -166,7 +172,10 @@ public sealed class SessionEndpointTests
         // claim a different address; correctly applied, they land in two separate buckets and
         // both sessions survive (Count == 2), the opposite of the no-proxy-configured case above.
         await using var factory = new CredentialsWebFactory(
-            new Dictionary<string, string> { ["CredentialsWeb__KnownProxies__0"] = "127.0.0.1" });
+            new Dictionary<string, string>
+            {
+                ["CredentialsWeb__KnownProxies__0"] = "127.0.0.1"
+            });
         using var client = factory.CreateClient();
         var store = factory.Services.GetRequiredService<SessionStore>();
 

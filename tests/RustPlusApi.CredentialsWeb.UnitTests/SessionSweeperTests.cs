@@ -15,7 +15,10 @@ public sealed class SessionSweeperTests
     public async Task ExecuteAsync_RemovesExpiredSessionsOnTick()
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
-        var options = new AppOptions { PublicBaseUrl = "https://creds.example.org" };
+        var options = new AppOptions
+        {
+            PublicBaseUrl = "https://creds.example.org"
+        };
         using var store = new SessionStore(options, time);
         store.TryCreate("203.0.113.7", out var session, out _);
 
@@ -40,7 +43,10 @@ public sealed class SessionSweeperTests
     public async Task ExecuteAsync_LeavesLiveSessionsAlone()
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
-        var options = new AppOptions { PublicBaseUrl = "https://creds.example.org" };
+        var options = new AppOptions
+        {
+            PublicBaseUrl = "https://creds.example.org"
+        };
         using var store = new SessionStore(options, time);
 
         // Create a canary session from one IP at time 0, expires at 5 minutes
@@ -73,14 +79,18 @@ public sealed class SessionSweeperTests
     public async Task ExecuteAsync_ContinuesAfterSweepThrows()
     {
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
-        var options = new AppOptions { PublicBaseUrl = "https://creds.example.org" };
+        var options = new AppOptions
+        {
+            PublicBaseUrl = "https://creds.example.org"
+        };
         using var store = new SessionStore(options, time);
 
         // Create a session that will throw when disposed (via Lifetime.Token callback).
         // This models the real scenario where pairing tasks register callbacks that may throw.
         // Expires at 5 minutes.
         store.TryCreate("203.0.113.7", out var throwingSession, out _);
-        throwingSession!.Lifetime.Token.Register(() => throw new InvalidOperationException("Simulated callback failure"));
+        throwingSession!.Lifetime.Token.Register(() =>
+            throw new InvalidOperationException("Simulated callback failure"));
 
         // Advance time by 1 minute so the canary's expiry is staggered.
         time.Advance(TimeSpan.FromMinutes(1));
@@ -106,7 +116,8 @@ public sealed class SessionSweeperTests
         await sweeper.StopAsync(CancellationToken.None);
 
         // Canary removal proves the service survived the throwing session's removal.
-        Assert.False(store.TryGet(canary.SessionId, out _), "Canary should be removed (proves sweeper survived exception)");
+        Assert.False(store.TryGet(canary.SessionId, out _),
+            "Canary should be removed (proves sweeper survived exception)");
         Assert.Equal(0, store.Count);
     }
 }

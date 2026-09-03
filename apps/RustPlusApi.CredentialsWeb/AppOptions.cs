@@ -52,13 +52,13 @@ internal static class AppOptionsValidator
         if (string.IsNullOrWhiteSpace(options.PublicBaseUrl))
         {
             return $"{AppOptions.SectionName}:PublicBaseUrl is required. Set it to the externally "
-                + "reachable origin of this instance, for example https://creds.example.org.";
+                   + "reachable origin of this instance, for example https://creds.example.org.";
         }
 
         if (!Uri.TryCreate(options.PublicBaseUrl, UriKind.Absolute, out var baseUri))
         {
             return $"{AppOptions.SectionName}:PublicBaseUrl must be an absolute URL, "
-                + $"but was '{options.PublicBaseUrl}'.";
+                   + $"but was '{options.PublicBaseUrl}'.";
         }
 
         if (options.PublicBaseUrl.EndsWith('/'))
@@ -70,8 +70,8 @@ internal static class AppOptionsValidator
             && !options.AllowInsecureBaseUrl)
         {
             return $"{AppOptions.SectionName}:PublicBaseUrl must use https, because it carries the "
-                + "Steam auth token back from Facepunch. Set "
-                + $"{AppOptions.SectionName}:AllowInsecureBaseUrl=true only for local development.";
+                   + "Steam auth token back from Facepunch. Set "
+                   + $"{AppOptions.SectionName}:AllowInsecureBaseUrl=true only for local development.";
         }
 
         foreach (var proxy in options.KnownProxies)
@@ -79,7 +79,7 @@ internal static class AppOptionsValidator
             if (!IPAddress.TryParse(proxy, out _))
             {
                 return $"{AppOptions.SectionName}:KnownProxies contains '{proxy}', which is not an "
-                    + "IP address.";
+                       + "IP address.";
             }
         }
 

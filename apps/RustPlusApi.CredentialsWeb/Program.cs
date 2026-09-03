@@ -81,7 +81,9 @@ return 0;
 /// <summary>Entry point marker so <c>WebApplicationFactory&lt;Program&gt;</c> can boot the app in tests.</summary>
 [ExcludeFromCodeCoverage(Justification = "Host wiring: composition only, exercised end to end by the endpoint tests.")]
 [SuppressMessage("Design", "CA1515:Consider making public types internal",
-    Justification = "Must stay public: WebApplicationFactory<Program> in the test assembly needs a public type parameter.")]
+    Justification =
+        "Must stay public: WebApplicationFactory<Program> in the test assembly needs a public type parameter.")]
 [SuppressMessage("Major Code Smell", "S1118:Utility classes should not have public constructors",
-    Justification = "Not a utility class — an empty marker type WebApplicationFactory<Program> uses to locate the app's assembly.")]
+    Justification =
+        "Not a utility class — an empty marker type WebApplicationFactory<Program> uses to locate the app's assembly.")]
 public partial class Program;

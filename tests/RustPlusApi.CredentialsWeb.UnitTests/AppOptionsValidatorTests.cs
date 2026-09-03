@@ -5,7 +5,10 @@ namespace RustPlusApi.CredentialsWeb.UnitTests;
 
 public sealed class AppOptionsValidatorTests
 {
-    private static AppOptions Valid() => new() { PublicBaseUrl = "https://creds.example.org" };
+    private static AppOptions Valid() => new()
+    {
+        PublicBaseUrl = "https://creds.example.org"
+    };
 
     [Fact]
     public void Validate_ReturnsNull_ForHttpsBaseUrl()
