@@ -67,6 +67,18 @@ internal sealed class ServerParser
         return parser;
     }
 
+    /// <summary>The requested root messages that the decompiled contracts do not define.</summary>
+    /// <remarks>
+    /// A missing root collapses the authoritative closure to nothing, so every committed type falls
+    /// through to the emitter's "preserved verbatim" path and the regenerated proto reproduces the
+    /// committed one exactly — no diff, and nothing for <see cref="FieldLossGuard" /> to compare.
+    /// Callers must treat a non-empty result as a failure rather than as "no drift".
+    /// </remarks>
+    /// <param name="roots">Qualified root message names, e.g. AppRequest.</param>
+    /// <returns>The roots absent from the parsed model, in the order given.</returns>
+    public IReadOnlyList<string> MissingRoots(IEnumerable<string> roots) =>
+        roots.Where(r => !_messages.ContainsKey(r)).ToList();
+
     /// <summary>First pass: register every message/enum and the parent/child structure.</summary>
     /// <param name="member">The syntax node to register.</param>
     /// <param name="parentQualified">Qualified name of the enclosing type, or null at file scope.</param>
@@ -248,31 +260,43 @@ internal sealed class ServerParser
     {
         var arms = new List<DispatchArm>();
 
-        foreach (var sw in deser.DescendantNodes().OfType<SwitchStatementSyntax>())
+        // One document-order walk, so switch and if arms interleave exactly as written. Ordering is
+        // behaviour, not presentation: the first arm to claim a field number wins (see the `seen`
+        // set in FillFields), and the generated code dispatches the same field from both an
+        // optimized raw-key arm and a key.Field fallback arm.
+        foreach (var node in deser.DescendantNodes())
         {
-            var fieldNumberMode = IsFieldNumberExpression(sw.Expression);
-            foreach (var section in sw.Sections)
+            switch (node)
             {
-                var constants = section.Labels.OfType<CaseSwitchLabelSyntax>()
-                    .Select(l => TryParseInt(l.Value, out var v) ? v : (int?)null)
-                    .OfType<int>()
-                    .ToList();
-                if (constants.Count > 0)
-                {
-                    arms.Add(new DispatchArm(constants, section, fieldNumberMode));
-                }
-            }
-        }
-
-        foreach (var ifStatement in deser.DescendantNodes().OfType<IfStatementSyntax>())
-        {
-            if (TryReadEqualityArm(ifStatement, out var arm))
-            {
-                arms.Add(arm);
+                case SwitchStatementSyntax sw:
+                    AddSwitchArms(sw, arms);
+                    break;
+                case IfStatementSyntax ifStatement when TryReadEqualityArm(ifStatement, out var arm):
+                    arms.Add(arm);
+                    break;
             }
         }
 
         return arms;
+    }
+
+    /// <summary>Appends one arm per <c>case</c> section carrying at least one integer label.</summary>
+    /// <param name="sw">The switch statement to read.</param>
+    /// <param name="arms">The list to append to.</param>
+    private static void AddSwitchArms(SwitchStatementSyntax sw, List<DispatchArm> arms)
+    {
+        var fieldNumberMode = IsFieldNumberExpression(sw.Expression);
+        foreach (var section in sw.Sections)
+        {
+            var constants = section.Labels.OfType<CaseSwitchLabelSyntax>()
+                .Select(l => TryParseInt(l.Value, out var v) ? v : (int?)null)
+                .OfType<int>()
+                .ToList();
+            if (constants.Count > 0)
+            {
+                arms.Add(new DispatchArm(constants, section, fieldNumberMode));
+            }
+        }
     }
 
     /// <summary>Reads an <c>if (num == 10)</c> / <c>if (key.Field == 33)</c> arm.</summary>

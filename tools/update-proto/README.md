@@ -96,6 +96,13 @@ So ProtoGen now **fails with exit code 3** if any field in the committed proto i
 regenerated one, naming each loss. Messages outside the authoritative closure are exempt: they are
 copied verbatim from the committed proto and cannot lose anything.
 
+It likewise **fails with exit code 4** when a root message (`AppRequest`/`AppMessage`) is absent
+from the decompiled contracts. Without a root the closure is empty, every committed type falls
+through to the preserved-verbatim path, and the output reproduces the committed proto exactly — so
+a total parse failure would otherwise be reported as "no changes, the committed proto matches the
+current server". Unknown command-line options are rejected (exit 2) rather than ignored, so a
+mistyped `--allow-field-removal` cannot look like it took effect.
+
 Facepunch can of course genuinely remove a field. Confirm that deliberately:
 
 ```bash

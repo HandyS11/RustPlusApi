@@ -227,4 +227,60 @@ public class ServerParserTests
         Assert.Equal(1, field.Number);
         Assert.Equal("bool", field.ProtoType);
     }
+
+    [Fact]
+    public void MissingRoots_ReportsRootsAbsentFromTheContracts()
+    {
+        // A missing root collapses the authoritative closure, which makes the regenerated proto a
+        // verbatim copy of the committed one — "no drift" reported for a total parse failure.
+        var parser = ServerParser.ParseSource(Source("""
+                                                     public class AppMessage : IProto<AppMessage>
+                                                     {
+                                                         public uint seq;
+                                                     }
+                                                     """));
+
+        Assert.Equal(["AppRequest"], parser.MissingRoots(["AppRequest", "AppMessage"]));
+        Assert.Empty(parser.MissingRoots(["AppMessage"]));
+    }
+
+    [Fact]
+    public void ParseSource_PrefersTheFirstArmClaimingAFieldNumber_InDocumentOrder()
+    {
+        // The generated code dispatches the same field from an optimized raw-key arm and again from
+        // a key.Field fallback. Arms are collected in document order and the first claim wins, so
+        // the optimized arm above must supply the field — not whichever shape is scanned first.
+        var parser = ServerParser.ParseSource(Source("""
+                                                     public class AppSendMessage : IProto<AppSendMessage>
+                                                     {
+                                                         public string message;
+                                                         public string decoy;
+
+                                                         public static AppSendMessage Deserialize(Stream stream, AppSendMessage instance, long limit)
+                                                         {
+                                                             while (true)
+                                                             {
+                                                                 int num = stream.ReadByte();
+                                                                 if (num == 10)
+                                                                 {
+                                                                     instance.message = ProtocolParser.ReadString(stream);
+                                                                     continue;
+                                                                 }
+                                                                 Key key = ProtocolParser.ReadKey((byte)num, stream);
+                                                                 switch (key.Field)
+                                                                 {
+                                                                 case 1:
+                                                                     instance.decoy = ProtocolParser.ReadString(stream);
+                                                                     continue;
+                                                                 }
+                                                                 return instance;
+                                                             }
+                                                         }
+                                                     }
+                                                     """));
+
+        var field = Assert.Single(parser.Messages["AppSendMessage"].Fields);
+        Assert.Equal(1, field.Number);
+        Assert.Equal("message", field.Name);
+    }
 }
