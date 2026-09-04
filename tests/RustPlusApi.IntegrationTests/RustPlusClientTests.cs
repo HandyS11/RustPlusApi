@@ -33,6 +33,7 @@ public class RustPlusClientTests
         Assert.Equal("Mock Rust Server", response.Data!.Name);
         Assert.Equal(4000u, response.Data.MapSize);
         Assert.Equal(42u, response.Data.PlayerCount);
+        Assert.True(response.Data.CamerasEnabled);
     }
 
     [Fact]

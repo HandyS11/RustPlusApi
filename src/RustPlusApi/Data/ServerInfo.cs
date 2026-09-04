@@ -47,4 +47,10 @@ public sealed record ServerInfo
 
     /// <summary>Zone identifier within the Nexus cluster.</summary>
     public string? NexusZone { get; init; }
+
+    /// <summary>
+    /// Whether the server allows CCTV camera access through the companion app, or
+    /// <see langword="null"/> if the server is too old to report it.
+    /// </summary>
+    public bool? CamerasEnabled { get; init; }
 }

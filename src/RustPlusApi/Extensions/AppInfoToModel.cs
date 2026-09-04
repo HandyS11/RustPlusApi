@@ -26,7 +26,8 @@ public static class AppInfoToModel
             LogoImage = appInfo.LogoImage,
             Nexus = appInfo.Nexus,
             NexusId = appInfo.ShouldSerializeNexusId() ? appInfo.NexusId : null,
-            NexusZone = appInfo.NexusZone
+            NexusZone = appInfo.NexusZone,
+            CamerasEnabled = appInfo.ShouldSerializeCamerasEnabled() ? appInfo.CamerasEnabled : null
         };
     }
 }

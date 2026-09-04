@@ -231,4 +231,25 @@ public class RemainingMapperTests
         Assert.False(info.ShouldSerializeNexusId());
         Assert.Null(info.ToServerInfo().NexusId);
     }
+
+    [Fact]
+    public void ToServerInfo_MapsCamerasEnabled()
+    {
+        var info = MockResponses.SampleInfo();
+        Assert.True(info.ShouldSerializeCamerasEnabled());
+        Assert.Equal(info.CamerasEnabled, info.ToServerInfo().CamerasEnabled);
+    }
+
+    [Fact]
+    public void ToServerInfo_AbsentCamerasEnabled_IsNull()
+    {
+        // cameras_enabled arrived in server build 25083359; an older server omits it, and that
+        // must map to null rather than a fabricated false.
+        var info = new AppInfo
+        {
+            Name = "n", HeaderImage = "h", Url = "u", Map = "m"
+        };
+        Assert.False(info.ShouldSerializeCamerasEnabled());
+        Assert.Null(info.ToServerInfo().CamerasEnabled);
+    }
 }

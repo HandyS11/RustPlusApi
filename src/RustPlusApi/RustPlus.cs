@@ -412,6 +412,24 @@ public class RustPlus(
     }
 
     /// <summary>
+    /// Kicks a player out of the team asynchronously.
+    /// </summary>
+    /// <param name="steamId">The Steam ID of the player to kick.</param>
+    /// <returns>A <see cref="Task{TResult}"/> representing the asynchronous operation. The task result contains a payload-free <see cref="Response"/> indicating the success of the operation.</returns>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    public async Task<Response> KickFromTeamAsync(ulong steamId, CancellationToken cancellationToken = default)
+    {
+        var request = new AppRequest
+        {
+            KickFromTeam = new AppTeamKick
+            {
+                SteamId = steamId
+            }
+        };
+        return await ProcessAckRequestAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Promotes a player to leader asynchronously.
     /// </summary>
     /// <param name="steamId">The Steam ID of the player to promote.</param>
