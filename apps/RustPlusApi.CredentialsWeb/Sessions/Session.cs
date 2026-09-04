@@ -66,13 +66,20 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     /// <summary>Where the visitor is in the flow.</summary>
     internal SessionState State { get; private set; } = SessionState.Created;
 
-    /// <summary>Cancels in-flight work, ends the event stream and drops every secret. Idempotent
-    /// and never throws: <see cref="CancellationTokenSource.Cancel()"/> rethrows any exception a
-    /// registered callback raises, and letting that escape here would abort cleanup for whichever
-    /// caller is disposing this session — the sweeper mid-sweep, or <see cref="SessionStore.TryCreate"/>
-    /// evicting a batch — and skip <see cref="Events"/>' completion and <see cref="Lifetime"/>'s own
-    /// disposal for good measure, leaking both. The callback exception is swallowed instead, and the
-    /// rest of cleanup runs in a <c>finally</c> regardless.</summary>
+    /// <summary><para>Cancels in-flight work, ends the event stream and drops every secret.
+    /// Idempotent and never throws. <see cref="CancellationTokenSource.Cancel()"/> rethrows any
+    /// exception a registered callback raises, and letting that escape here would abort cleanup
+    /// for whichever caller is disposing this session — the sweeper mid-sweep, or
+    /// <see cref="SessionStore.TryCreate"/> evicting a batch — and skip <see cref="Events"/>'
+    /// completion and <see cref="Lifetime"/>'s own disposal for good measure, leaking both.</para>
+    ///
+    /// <para>Each of the three steps below runs in isolation via <see cref="RunCleanupStep"/>
+    /// rather than only guarding <see cref="CancellationTokenSource.Cancel()"/>: today it is the
+    /// only one that can actually throw (<see cref="SessionEventStream.Complete"/> is a lock, a
+    /// bool check and two list operations; <see cref="CancellationTokenSource.Dispose()"/> has no
+    /// user code to run), but guarding only it would make "all three steps always run, and
+    /// Dispose() never throws" true by accident rather than by construction — a future change to
+    /// either could quietly reintroduce exactly the bug this fixes.</para></summary>
     public void Dispose()
     {
         lock (_gate)
@@ -89,28 +96,33 @@ internal sealed class Session(string sessionId, string returnToken, string clien
         }
 
         // Outside the lock: cancellation callbacks may re-enter session code.
+        RunCleanupStep(Lifetime.Cancel);
+        RunCleanupStep(Events.Complete);
+        RunCleanupStep(Lifetime.Dispose);
+    }
+
+    /// <summary>Runs one <see cref="Dispose"/> cleanup step, swallowing any exception it raises so
+    /// that the remaining steps still run and <see cref="Dispose"/> itself never throws. Not logged:
+    /// a swallowed exception here indicates a bug in whatever registered a throwing callback on
+    /// <see cref="Lifetime"/>'s token, not in the session itself, and <see cref="Session"/> carries
+    /// no logger today — it is constructed directly by <see cref="SessionStore"/> rather than
+    /// through DI, so threading one through every construction site (including the many direct
+    /// <c>new Session(...)</c> calls in tests) for a single defensive catch was judged not worth the
+    /// added surface. A misbehaving callback is caught by <c>SessionSweeperTests</c> instead.</summary>
+    /// <param name="step">The cleanup step to run.</param>
+#pragma warning disable CA1031, RCS1075 // Deliberate: see the remarks on Dispose() and this method.
+    private static void RunCleanupStep(Action step)
+    {
         try
         {
-            Lifetime.Cancel();
+            step();
         }
-#pragma warning disable CA1031, RCS1075 // Deliberate: Dispose() must never throw; see the remarks above.
         catch (Exception)
-#pragma warning restore CA1031, RCS1075
         {
-            // Swallowed by design (see remarks). Not logged: this indicates a bug in whatever
-            // registered the throwing callback on Lifetime.Token, not in the session itself, and
-            // Session carries no logger today — it is constructed directly by SessionStore rather
-            // than through DI, so threading one through every construction site (including the
-            // many direct `new Session(...)` calls in tests) for a single defensive catch was
-            // judged not worth the added surface. A misbehaving callback is caught by
-            // SessionSweeperTests instead.
-        }
-        finally
-        {
-            Events.Complete();
-            Lifetime.Dispose();
+            // Swallowed by design; see the remarks above.
         }
     }
+#pragma warning restore CA1031, RCS1075
 
     /// <summary>Moves to <paramref name="state"/>, resets the expiry and publishes a <c>step</c> event.
     /// A no-op once the session is disposed or <see cref="TryClaimForEviction"/> has claimed it.</summary>

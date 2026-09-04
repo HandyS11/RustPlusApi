@@ -131,6 +131,17 @@ Two members are excluded from the app's coverage gate:
   — a live-network seam: every member drives Google, Expo, Facepunch or the MCS socket and cannot
   be validated offline. All logic above it is tested against the `IRegistrationSteps` abstraction.
 
+`SessionSweeper` (`apps/RustPlusApi.CredentialsWeb/Sessions/SessionSweeper.cs`) is **not** excluded,
+but its per-class figures in `tools/coverage/report.sh`'s gap list (currently ~75% line / 50%
+branch) are expected rather than a regression to chase. `ExecuteAsync`'s `catch (Exception ex)`
+around `store.SweepExpired()` is retained defensive coding — the right response if a future change
+to what `SessionStore.SweepExpired()`/`Session.Dispose()` can throw ever reintroduces a failure
+mode — but nothing reachable today throws there: `Session.Dispose()` was fixed to never throw (see
+`Session.Dispose`'s remarks), which was the only source of an exception on that path. The branch is
+therefore permanently unreachable through legitimate application behaviour, and inventing a
+contrived throw just to exercise it would test nothing real. The app's aggregate gate absorbs this
+without difficulty (headroom same as the libraries, above).
+
 ---
 
 ## Running mutation testing (Stryker.NET)
