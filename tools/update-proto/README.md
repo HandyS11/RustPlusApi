@@ -64,17 +64,63 @@ dotnet run --project ProtoGen -- \
 ### How ProtoGen works
 
 `ProtoGen` (Roslyn) parses the decompiled SilentOrbit classes and regenerates the proto:
-field **number** from each `Deserialize` `case` (`wirekey >> 3`, or the field number directly
-in the `switch (key.Field)` fallback), **type** from the field declaration + the
+field **number** from each `Deserialize` dispatch arm (`wirekey >> 3`, or the field number
+directly when the arm tests `key.Field`), **type** from the field declaration + the
 `ProtocolParser.Read*` call (incl. `ReadZInt32 → sint32`, `NetworkableId/ReadUInt64 → uint64`,
 `ArraySegment<byte> → bytes`), and **nesting** from the C# nested-class structure. It is
 authoritative for names/types/numbers/repeated and for new fields/messages/enums; it preserves
 the committed proto's conventions that the binary does not carry — `required`/`optional` labels,
 declaration order, and hand-maintained well-known types (`Vector2/3/4`, `Color`, `Ray`).
 
+The decompiler renders that dispatch as either a `switch` or an `if`/`else if` chain, and the
+choice is not ours: it varies with the decompiler version *and* with Facepunch's code generator.
+Build `25083359` moved single-field messages from `switch` to `if`, which is why both shapes are
+read. See **Field-loss guard** below for what happens when a future shape fits neither.
+
 > **Review, don't blindly overwrite.** A diff is the *server's* current truth; decide per change
 > whether to adopt it (e.g. a field rename) or keep a deliberate library convention. With the v2
 > refresh applied, the gate is currently empty.
+
+### Field-loss guard
+
+ProtoGen recovers wire information by pattern-matching decompiled C#. When it meets a dispatch
+shape it does not recognise, it has no way to tell "this message has no fields" from "I could not
+read this message" — so it used to emit an empty message and exit cleanly, and the drift report
+presented the result as a genuine server-side field removal.
+
+That is not hypothetical: it produced [#120](https://github.com/HandyS11/RustPlusApi/issues/120),
+where 13 committed fields (`AppSendMessage.message`, `AppCameraSubscribe.camera_id`,
+`AppError.error`, …) appeared to have been deleted by a game update. They had not been.
+
+So ProtoGen now **fails with exit code 3** if any field in the committed proto is missing from the
+regenerated one, naming each loss. Messages outside the authoritative closure are exempt: they are
+copied verbatim from the committed proto and cannot lose anything.
+
+It likewise **fails with exit code 4** when a root message (`AppRequest`/`AppMessage`) is absent
+from the decompiled contracts. Without a root the closure is empty, every committed type falls
+through to the preserved-verbatim path, and the output reproduces the committed proto exactly — so
+a total parse failure would otherwise be reported as "no changes, the committed proto matches the
+current server". Unknown command-line options are rejected (exit 2) rather than ignored, so a
+mistyped `--allow-field-removal` cannot look like it took effect.
+
+Facepunch can of course genuinely remove a field. Confirm that deliberately:
+
+```bash
+dotnet run --project ProtoGen -- <decompiled.cs> <committed.proto> <out.proto> --allow-field-removal
+```
+
+Prefer reading the decompiled `Deserialize` of one named message first. A whole message emptying
+out, or many messages each losing exactly one field, is the signature of a parser gap — not of a
+game update.
+
+### Reproducibility
+
+`2-decompile.sh` pins `ilspycmd` (`ILSPY_VERSION`) and installs it into a script-local `.tools/`
+directory rather than `-g`. The decompiled *shape* is ProtoGen's input, so an unpinned or ambient
+decompiler makes the whole pipeline non-reproducible. Bump the pin consciously and re-run to
+confirm the proto is unchanged. The version is stamped into `decompiled/.ilspy-version`, reported
+in the drift issue, and the decompiled source is uploaded as a CI artifact so a surprising diff can
+be traced to the shape that produced it without repeating the multi-GB fetch.
 
 Working dirs (`steamcmd/`, `rds/`, `decompiled/`, `out/`, `ProtoGen/bin|obj`) are gitignored.
 

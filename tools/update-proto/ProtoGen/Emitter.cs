@@ -27,11 +27,20 @@ internal sealed partial class Emitter
         _committed = committed;
     }
 
-    public static string Emit(ServerParser server, CommittedProto committed, IEnumerable<string> roots)
+    /// <summary>Renders the proto and reports which messages were regenerated authoritatively.</summary>
+    /// <param name="server">The model recovered from the decompiled server.</param>
+    /// <param name="committed">The committed proto, for labels, ordering and preserved blocks.</param>
+    /// <param name="roots">Root message names to compute the authoritative closure from.</param>
+    /// <returns>The proto text and the set of authoritatively regenerated messages. The scope is
+    /// returned because only those messages can lose a field — see <see cref="FieldLossGuard" />.</returns>
+    public static (string Proto, IReadOnlySet<string> ScopeMessages) Emit(
+        ServerParser server,
+        CommittedProto committed,
+        IEnumerable<string> roots)
     {
         var e = new Emitter(server, committed);
         e.ComputeScope(roots);
-        return e.Render();
+        return (e.Render(), e._scopeMessages);
     }
 
     /// <summary>Authoritative scope = transitive closure of messages/enums reachable from the roots.

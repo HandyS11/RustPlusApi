@@ -6,7 +6,7 @@
         <Configuration>
           <Format>opencover,cobertura</Format>
           <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
-          <Exclude>[RustPlusApi.MockServer]*</Exclude>
+          <Exclude>[RustPlusApi.MockServer]*,[ProtoGen]*</Exclude>
           <ExcludeByFile>**/obj/**,**/ProtoBuf/Mcs.cs,**/Protobuf/CheckinContracts.cs</ExcludeByFile>
           <SkipAutoProps>true</SkipAutoProps>
           <UseSourceLink>true</UseSourceLink>

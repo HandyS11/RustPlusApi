@@ -62,7 +62,9 @@ jobs:
 
     - name: Enforce coverage threshold (libraries)
       # Merged aggregate across every library test project and both TFMs (ReportGenerator union).
-      # The web app is filtered out so it cannot dilute the libraries' number.
+      # Two things are kept out of this number: the web app, filtered out above so it cannot
+      # dilute the libraries' figure, and ProtoGen.UnitTests, which covers the build-time proto
+      # tool and is excluded via coverlet.runsettings.
       # Metric: ReportGenerator-merged Cobertura line-rate/branch-rate.
       # Gate floor: line 95 / branch 90 — keep in sync with docs/development/testing.md.
       working-directory: ${{ github.workspace }}

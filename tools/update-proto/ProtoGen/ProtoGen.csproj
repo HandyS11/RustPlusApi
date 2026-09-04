@@ -13,4 +13,8 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ProtoGen.UnitTests" />
+  </ItemGroup>
+
 </Project>
