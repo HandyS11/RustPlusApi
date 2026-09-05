@@ -101,6 +101,53 @@ public sealed class SessionEventStreamTests
     }
 
     [Fact]
+    public async Task SubscribeAsync_EndsNaturallyWhenTheStreamIsCompletedMidEnumeration()
+    {
+        // The other completion test completes the stream *before* subscribing, which takes the
+        // "no channel, replay only" shortcut. This one pins the live-subscriber path: Complete()
+        // must close an in-flight enumeration without anyone cancelling it.
+        var stream = new SessionEventStream();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        var received = new List<SessionEvent>();
+        var drain = Task.Run(
+            async () =>
+            {
+                await foreach (var item in stream.SubscribeAsync(timeout.Token))
+                {
+                    received.Add(item);
+                }
+            },
+            timeout.Token);
+
+        while (stream.SubscriberCount == 0)
+        {
+            timeout.Token.ThrowIfCancellationRequested();
+            await Task.Delay(10, timeout.Token);
+        }
+
+        stream.Publish(new SessionEvent("step", null));
+        stream.Complete();
+
+        await drain.WaitAsync(timeout.Token);
+
+        Assert.Single(received);
+        Assert.Equal(0, stream.SubscriberCount);
+    }
+
+    [Fact]
+    public void Complete_IsIdempotent()
+    {
+        var stream = new SessionEventStream();
+        stream.Publish(new SessionEvent("step", null));
+
+        stream.Complete();
+        var second = Record.Exception(stream.Complete);
+
+        Assert.Null(second);
+    }
+
+    [Fact]
     public async Task Publish_AfterComplete_IsIgnored()
     {
         var stream = new SessionEventStream();

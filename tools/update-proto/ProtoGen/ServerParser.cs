@@ -77,7 +77,7 @@ internal sealed class ServerParser
     /// <param name="roots">Qualified root message names, e.g. AppRequest.</param>
     /// <returns>The roots absent from the parsed model, in the order given.</returns>
     public IReadOnlyList<string> MissingRoots(IEnumerable<string> roots) =>
-        roots.Where(r => !_messages.ContainsKey(r)).ToList();
+        [.. roots.Where(r => !_messages.ContainsKey(r))];
 
     /// <summary>First pass: register every message/enum and the parent/child structure.</summary>
     /// <param name="member">The syntax node to register.</param>

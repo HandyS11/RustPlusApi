@@ -100,7 +100,11 @@ public class ClanNexusClientTests
             TaskCreationOptions.RunContinuationsAsynchronously);
         var (server, client) = await ConnectAsync(request =>
         {
-            if (request.KickFromTeam is not null) kick.TrySetResult(request.KickFromTeam);
+            if (request.KickFromTeam is not null)
+            {
+                kick.TrySetResult(request.KickFromTeam);
+            }
+
             return MockResponses.Default(request);
         });
         await using var _ = server;

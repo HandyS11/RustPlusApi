@@ -75,6 +75,38 @@ public class SteamLoginServiceTests
         Assert.Throws<ArgumentException>(() => new SteamLoginResult(7, token!));
 
     [Fact]
+    public void SteamLoginResult_WithNonBlankToken_ReplacesTheToken()
+    {
+        var original = new SteamLoginResult(7, "first");
+
+        var copy = original with
+        {
+            Token = "second"
+        };
+
+        Assert.Equal("second", copy.Token);
+        Assert.Equal(7UL, copy.SteamId);
+        Assert.Equal("first", original.Token);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SteamLoginResult_WithBlankToken_Throws(string? token)
+    {
+        // The `with` path runs the init accessor rather than the field initializer the constructor
+        // uses, so it needs pinning separately: without it a copy could carry a blank token past
+        // validation the constructor already rejects.
+        var original = new SteamLoginResult(7, "first");
+
+        Assert.Throws<ArgumentException>(() => original with
+        {
+            Token = token!
+        });
+    }
+
+    [Fact]
     public void ParseCallback_DuplicateParameter_LastValueWins()
     {
         var uri = new Uri("http://localhost:3000/callback?steamId=100&token=first&token=second&steamId=200");

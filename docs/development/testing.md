@@ -101,7 +101,7 @@ ReportGenerator into `TestResults/merged/Cobertura.xml`, prints per-class gaps, 
 **ReportGenerator-merged Cobertura line-rate/branch-rate** (not per-TFM opencover numbers). CI
 (`.github/workflows/CI.yml`) runs it at **line 95 / branch 90**.
 
-Achieved at the time of writing: **≈ 96.7% line / 91.4% branch** (merged Cobertura aggregate
+Achieved at the time of writing: **≈ 97.0% line / 93.6% branch** (merged Cobertura aggregate
 across all test projects and both TFMs).
 The gap to a literal 100% is irreducible and lives mostly in:
 
@@ -116,6 +116,32 @@ The gap to a literal 100% is irreducible and lives mostly in:
 These are not dead code (so they were not removed) and not cleanly excludable per-branch, so the
 gate floor sits below the achieved figures rather than at 100%, with headroom so routine changes
 don't trip the gate.
+
+---
+
+## SonarQube coverage
+
+`.github/workflows/Sonar.yml` reports coverage to SonarQube as a **single pre-merged report**, not
+as the raw per-project/per-TFM opencover files.
+
+This matters because of the parity mechanism above. `dotnet test` writes one opencover report per
+test project *per TFM*, and a file with a `#if NET10_0_OR_GREATER` fork is only fully covered when
+those reports are unioned — the `net10.0` report covers the `#if` lines, the `net8.0` one covers the
+`#else` lines. SonarQube does not union them: handed the raw set it settles on one report per file,
+so every line the other TFM covered is reported as uncovered. `HtmlColorParser` is the clearest
+casualty — genuinely 100/100 across the matrix, but previously shown at 56.5% line coverage.
+
+So the workflow runs ReportGenerator first (the same merge `tools/coverage/report.sh` gates on),
+emits `-reporttypes:SonarQube` to `TestResults/sonarqube/SonarQube.xml`, and passes it via
+`sonar.coverageReportPaths` (the generic coverage format) instead of
+`sonar.cs.opencover.reportsPaths`.
+
+The analysis run uses **`tools/coverage/sonar.runsettings`** rather than the per-test-project
+`coverlet.runsettings`. The two are identical apart from `UseSourceLink`, which is deliberately
+omitted for Sonar: with it on, coverlet writes `raw.githubusercontent.com` URLs in place of file
+paths and SonarQube cannot match them against the files it indexed. Keeping the exclusions in sync
+is what makes SonarQube measure the same thing the local gate does — if you change one file's
+`Exclude`/`ExcludeByFile`/`ExcludeByAttribute` rules, change both.
 
 ---
 
@@ -267,7 +293,7 @@ callback parsing (`ParseCallback`/`ParseQuery`), nonce generation, and the loopb
 success/unknown-path/bad-callback branches and port-bind failure — is exercised by
 `SteamLoginServiceTests` via the `openBrowser: false` seam, which drives the accept loop with a real
 loopback `HttpListener` and `HttpClient` without opening a browser. As of this writing
-`tools/coverage/report.sh` reports 90.62% line / 83.33% branch for this class — the gaps above
+`tools/coverage/report.sh` reports 90.45% line / 83.33% branch for this class — the gaps above
 account for the shortfall.
 
 ### `FcmRegistration.RegisterWithRustPlusAsync`
@@ -297,6 +323,20 @@ and handshake sequence itself requires the live Google endpoint.
 **Justification:** Calls `_fcm.ConnectAsync()` internally, which requires a live FCM connection (see
 above). The pairing-notification mapping helper (`ToServerPairing`) is `internal static` and is fully
 unit-tested in `RegistrationTests` independently of the live flow.
+
+### `System.Index` / `System.Range` netstandard2.0 polyfill
+
+**File:** `src/RustPlusApi.Fcm.Registration/Polyfills/IndexRange.cs`
+
+**Justification:** Pure compiler scaffolding. `netstandard2.0` has no `System.Index`/`System.Range`,
+and the C# compiler refuses `..`/`^` syntax unless those types exist somewhere — so the polyfill has
+to be compiled into the `netstandard2.0` asset even though nothing calls it. Roslyn lowers every
+current use site (`SteamLoginService.ParseQuery`'s `pair[..separator]` / `pair[(separator + 1)..]`)
+straight to `string.Substring`, so not a single member of either struct is reachable at runtime and
+no test can make one execute. Excluding it keeps 20 permanently-unreachable lines and 12 branches
+out of the library gate's denominator. If a future use site takes an actual `Index`/`Range` value
+(e.g. a from-end `^n`), the calls become reachable and this exclusion should be dropped in favour of
+real tests.
 
 ### Generated protobuf contract files (via `ExcludeByFile`)
 

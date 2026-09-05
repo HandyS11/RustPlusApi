@@ -191,15 +191,14 @@ public sealed class EventEndpointTests
         // terminates the second — a dropped separator would merge the two frames into one that
         // EventSource cannot parse, which none of the count-based replay tests above would notice.
         Assert.Equal(
-            new List<string?>
-            {
+            [
                 "event: step",
                 """data: {"state":"Authenticated"}""",
                 string.Empty,
                 "event: step",
                 """data: {"state":"Registering"}""",
                 string.Empty
-            },
+            ],
             lines);
     }
 

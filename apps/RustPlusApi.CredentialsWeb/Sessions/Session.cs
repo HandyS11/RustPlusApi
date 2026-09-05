@@ -17,7 +17,9 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     private bool _claimedForEviction;
     private bool _disposed;
 
+#pragma warning disable IDE0032 // Explicit backing field; see the remarks on ExpiresAt below.
     private DateTimeOffset _expiresAt = expiresAt;
+#pragma warning restore IDE0032
 
     /// <summary>Background work started for this session, kept so it is observed rather than fire-and-forget.</summary>
     internal Task BackgroundWork { get; set; } = Task.CompletedTask;
@@ -34,6 +36,10 @@ internal sealed class Session(string sessionId, string returnToken, string clien
     /// <summary>When this session becomes sweepable. The getter takes <see cref="_gate"/>: the
     /// sweeper reads this concurrently with <see cref="Advance"/>'s writes on the flow's own thread,
     /// and <see cref="DateTimeOffset"/> is not guaranteed to read or write atomically.</summary>
+    /// <remarks>Not an auto property, and IDE0032 is suppressed on the backing field accordingly:
+    /// the getter has to take <see cref="_gate"/>, which an auto property cannot do, and
+    /// <see cref="Advance"/>/<see cref="TryClaimForPairing"/> assign the field from outside the
+    /// accessor, which rules out the <c>field</c> keyword as well.</remarks>
     internal DateTimeOffset ExpiresAt
     {
         get

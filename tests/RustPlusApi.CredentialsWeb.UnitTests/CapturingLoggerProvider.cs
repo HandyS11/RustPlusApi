@@ -15,7 +15,7 @@ internal sealed class CapturingLoggerProvider : ILoggerProvider
         {
             lock (_records)
             {
-                return _records.ToArray();
+                return [.. _records];
             }
         }
     }
