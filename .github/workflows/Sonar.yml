@@ -59,10 +59,18 @@ jobs:
           dotnet tool update dotnet-sonarscanner --tool-path ./.sonar/scanner
 
       - name: Build and analyze
+        # Coverage is handed to SonarQube as ONE pre-merged report rather than the raw per-project,
+        # per-TFM opencover files. Passing the raw set understates coverage: the libraries are
+        # multi-targeted, so a file with a `#if NET10_0_OR_GREATER` fork is fully covered only across
+        # both reports, and SonarQube does not union them — it settles on one, and every line the
+        # other TFM covered reads as uncovered. ReportGenerator merges them properly first (the same
+        # merge tools/coverage/report.sh gates on), then emits SonarQube's generic coverage format.
         run: |
-          ./.sonar/scanner/dotnet-sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.exclusions="**/samples/**" /d:sonar.coverage.exclusions="**/samples/**,**/tests/**,**/tools/**" /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
+          ./.sonar/scanner/dotnet-sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.exclusions="**/samples/**" /d:sonar.coverage.exclusions="**/samples/**,**/tests/**,**/tools/**" /d:sonar.coverageReportPaths="TestResults/sonarqube/SonarQube.xml"
           dotnet build
-          dotnet test --no-build --collect:"XPlat Code Coverage;Format=opencover" --blame-hang-timeout 60s
+          dotnet test --no-build --settings tools/coverage/sonar.runsettings --results-directory ./TestResults --blame-hang-timeout 60s
+          dotnet tool restore
+          dotnet tool run reportgenerator -- "-reports:TestResults/**/coverage.opencover.xml" "-targetdir:TestResults/sonarqube" "-reporttypes:SonarQube"
           ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
       - name: Upload coverage reports to Codecov

@@ -360,8 +360,8 @@ public sealed class SteamLoginService(int port = 3000)
                 continue;
             }
 
-            var key = WebUtility.UrlDecode(pair.Substring(0, separator));
-            result[key] = WebUtility.UrlDecode(pair.Substring(separator + 1));
+            var key = WebUtility.UrlDecode(pair[..separator]);
+            result[key] = WebUtility.UrlDecode(pair[(separator + 1)..]);
         }
 
         return result;

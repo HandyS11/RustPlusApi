@@ -42,11 +42,16 @@ internal sealed class FakeRegistrationSteps : IRegistrationSteps
 
     internal bool PairingWaitsForGate { get; set; }
 
+    /// <summary>Runs at the top of <see cref="AcquireDeviceCredentialsAsync"/>, so a test can change
+    /// the session's state while the flow is between steps.</summary>
+    internal Action? OnAcquire { get; set; }
+
     internal string? SteamTokenSeen { get; private set; }
 
     public Task<Credentials> AcquireDeviceCredentialsAsync(CancellationToken cancellationToken)
     {
         Calls.Add(nameof(AcquireDeviceCredentialsAsync));
+        OnAcquire?.Invoke();
         return AcquireFailure is not null
             ? Task.FromException<Credentials>(AcquireFailure)
             : Task.FromResult(CredentialsToReturn);

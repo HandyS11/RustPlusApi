@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Coverage settings for the SonarQube analysis run only (.github/workflows/Sonar.yml).
+
+     Identical to the per-test-project coverlet.runsettings that drives the local/CI coverage gate,
+     except that UseSourceLink is off: with it on, coverlet writes raw.githubusercontent.com URLs in
+     place of file paths, and SonarQube cannot match those against the files it indexed. Keeping the
+     exclusions in sync is what makes SonarQube measure the same thing tools/coverage/report.sh
+     gates on — see docs/development/testing.md. -->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>opencover</Format>
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <Exclude>[RustPlusApi.MockServer]*,[ProtoGen]*</Exclude>
+          <ExcludeByFile>**/obj/**,**/ProtoBuf/Mcs.cs,**/Protobuf/CheckinContracts.cs</ExcludeByFile>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

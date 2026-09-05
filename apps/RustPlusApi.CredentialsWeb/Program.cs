@@ -78,12 +78,12 @@ app.MapEventEndpoints();
 await app.RunAsync().ConfigureAwait(false);
 return 0;
 
-/// <summary>Entry point marker so <c>WebApplicationFactory&lt;Program&gt;</c> can boot the app in tests.</summary>
+/// <summary>Entry point marker so <c>WebApplicationFactory&lt;Program&gt;</c> can boot the app in tests.
+/// No accessibility modifier: since .NET 10 the compiler already emits the top-level-statement
+/// <c>Program</c> class as public, so restating it here is what ASP0027 flags. This part only
+/// carries the attributes below.</summary>
 [ExcludeFromCodeCoverage(Justification = "Host wiring: composition only, exercised end to end by the endpoint tests.")]
-[SuppressMessage("Design", "CA1515:Consider making public types internal",
-    Justification =
-        "Must stay public: WebApplicationFactory<Program> in the test assembly needs a public type parameter.")]
 [SuppressMessage("Major Code Smell", "S1118:Utility classes should not have public constructors",
     Justification =
         "Not a utility class — an empty marker type WebApplicationFactory<Program> uses to locate the app's assembly.")]
-public partial class Program;
+partial class Program;

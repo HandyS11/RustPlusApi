@@ -130,4 +130,67 @@ public sealed class SessionSweeperTests
         // on the next tick).
         Assert.Throws<ObjectDisposedException>(() => _ = throwingSession.Lifetime.Token);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_LogsAndKeepsTickingWhenASweepThrows()
+    {
+        // The per-tick try/catch is the only thing standing between one bad sweep and a sweeper that
+        // never runs again — and a dead sweeper is silent, so nothing else in the app would notice
+        // that sessions had stopped expiring. Fail one sweep outright, then let the next succeed.
+        var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
+        var options = new AppOptions
+        {
+            PublicBaseUrl = "https://creds.example.org"
+        };
+
+        // Only the store's clock is made to fail: the sweeper keeps a working one so its timer
+        // still ticks while SweepExpired throws.
+        var storeClock = new FailableTimeProvider(time);
+        using var store = new SessionStore(options, storeClock);
+        store.TryCreate("203.0.113.7", out var session, out _);
+
+        var records = new CapturingLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder => builder
+            .SetMinimumLevel(LogLevel.Trace)
+            .AddProvider(records));
+
+        using var sweeper = new SessionSweeper(store, time, loggerFactory.CreateLogger<SessionSweeper>());
+        await sweeper.StartAsync(CancellationToken.None);
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+        storeClock.Failing = true;
+        while (!records.Records.Any(r => r.Contains("Sweep failed", StringComparison.Ordinal)))
+        {
+            timeout.Token.ThrowIfCancellationRequested();
+            time.Advance(TimeSpan.FromSeconds(31));
+            await Task.Delay(10, timeout.Token);
+        }
+
+        // Recovery: with the clock working again the sweeper must still be running its loop.
+        storeClock.Failing = false;
+        time.Advance(TimeSpan.FromMinutes(10));
+        while (store.TryGet(session!.SessionId, out _))
+        {
+            timeout.Token.ThrowIfCancellationRequested();
+            time.Advance(TimeSpan.FromSeconds(31));
+            await Task.Delay(10, timeout.Token);
+        }
+
+        await sweeper.StopAsync(CancellationToken.None);
+        Assert.Equal(0, store.Count);
+    }
+
+    /// <summary>A clock that can be made to throw on demand, so <c>SweepExpired</c> fails without
+    /// the test needing a seam inside the store.</summary>
+    /// <param name="inner">The clock to delegate to while healthy.</param>
+    private sealed class FailableTimeProvider(TimeProvider inner) : TimeProvider
+    {
+        internal bool Failing { get; set; }
+
+        public override DateTimeOffset GetUtcNow() =>
+            Failing
+                ? throw new InvalidOperationException("Simulated clock failure")
+                : inner.GetUtcNow();
+    }
 }

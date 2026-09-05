@@ -178,6 +178,23 @@ public sealed class CredentialFlowTests
     }
 
     [Fact]
+    public async Task CompleteRegistrationAsync_FailsWhenTheSteamTokenIsGoneByCompanionRegistration()
+    {
+        // The token is dropped as soon as it has no further use, and disposal drops it too, so
+        // between device registration and the companion call it can legitimately be null. That
+        // must land the session in Failed rather than dereference null.
+        var h = NewHarness();
+        using var _s = h.Store;
+        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Steps.OnAcquire = session!.ClearSteamToken;
+
+        await h.Flow.CompleteRegistrationAsync(session, Login(), CancellationToken.None);
+
+        Assert.Equal(SessionState.Failed, session.State);
+        Assert.DoesNotContain(nameof(FakeRegistrationSteps.RegisterWithCompanionAsync), h.Steps.Calls);
+    }
+
+    [Fact]
     public async Task CompleteRegistrationAsync_StaysQuietWhenCancelled()
     {
         var h = NewHarness();
