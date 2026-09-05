@@ -106,6 +106,7 @@ and the mapper's message.
 | `GetTeamChatAsync()` | `Response<TeamChatInfo?>` | Recent team chat history. |
 | `SendTeamMessageAsync(message)` | `Response<TeamMessage?>` | Sends text; reply is the echo broadcast for your own message. |
 | `PromoteToLeaderAsync(steamId)` | `Response` | Promotes the specified team member to leader. |
+| `KickFromTeamAsync(steamId)` | `Response` | Kicks the specified member out of the team. Leader only. |
 
 ### Clan
 

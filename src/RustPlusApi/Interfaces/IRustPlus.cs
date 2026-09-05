@@ -151,6 +151,11 @@ public interface IRustPlus : IRustPlusSocket
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
     Task<Response<TimeInfo?>> GetTimeAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Kicks a member out of the team.</summary>
+    /// <param name="steamId">Steam64 ID of the member to kick.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation requests.</param>
+    Task<Response> KickFromTeamAsync(ulong steamId, CancellationToken cancellationToken = default);
+
     /// <summary>Promotes a team member to team leader.</summary>
     /// <param name="steamId">Steam64 ID of the member to promote.</param>
     /// <param name="cancellationToken">A token to observe for cancellation requests.</param>

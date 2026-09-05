@@ -94,6 +94,27 @@ public class ClanNexusClientTests
     }
 
     [Fact]
+    public async Task KickFromTeamAsync_SendsSteamIdAndReportsSuccess()
+    {
+        var kick = new TaskCompletionSource<RustPlusContracts.AppTeamKick>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var (server, client) = await ConnectAsync(request =>
+        {
+            if (request.KickFromTeam is not null) kick.TrySetResult(request.KickFromTeam);
+            return MockResponses.Default(request);
+        });
+        await using var _ = server;
+        await using var __ = client;
+
+        var response = await client.KickFromTeamAsync(PlayerId).WaitAsync(Timeout);
+
+        Assert.True(response.IsSuccess);
+        Assert.Null(response.Error);
+        // The bare ack would pass even for an empty request, so pin the payload the server receives.
+        Assert.Equal(PlayerId, (await kick.Task.WaitAsync(Timeout)).SteamId);
+    }
+
+    [Fact]
     public async Task ClanMessageBroadcast_RaisesOnClanChatReceived()
     {
         var (server, client) = await ConnectAsync();

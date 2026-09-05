@@ -146,6 +146,7 @@ message AppRequest {
 	optional AppCameraSubscribe camera_subscribe = 30;
 	optional AppEmpty camera_unsubscribe = 31;
 	optional AppCameraInput camera_input = 32;
+	optional AppTeamKick kick_from_team = 33;
 }
 
 message AppMessage {
@@ -226,6 +227,7 @@ message AppInfo {
 	optional string nexus = 13;
 	optional int32 nexus_id = 14;
 	optional string nexus_zone = 15;
+	optional bool cameras_enabled = 16;
 }
 
 message AppTime {
@@ -440,4 +442,8 @@ message AppCameraRays {
 		required Vector3 size = 5;
 		optional string name = 6;
 	}
+}
+
+message AppTeamKick {
+	optional uint64 steam_id = 1;
 }

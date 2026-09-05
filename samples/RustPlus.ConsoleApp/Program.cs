@@ -65,6 +65,8 @@ await Menu.RunAsync("Main menu",
         new MenuItem("Get Team Chat", () => new GetTeamChat(rustPlus).GetTeamChatAsync()),
         new MenuItem("Promote to Leader", () =>
             new PromoteToLeader(rustPlus).PromoteToLeaderAsync(ids.GetUlong("steamId"))),
+        new MenuItem("Kick from Team", () =>
+            new KickFromTeam(rustPlus).KickFromTeamAsync(ids.GetUlong("steamId"))),
         new MenuItem("Send Team Message", () =>
         {
             Console.Write("\nType your message to send to the team: ");

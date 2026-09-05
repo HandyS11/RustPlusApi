@@ -232,7 +232,8 @@ public static class MockResponses
         LogoImage = ExampleBaseUrl + "/logo.png",
         Nexus = "",
         NexusId = 123,
-        NexusZone = ""
+        NexusZone = "",
+        CamerasEnabled = true
     };
 
     public static AppTime SampleTime() => new()
