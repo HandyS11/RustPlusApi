@@ -1,0 +1,23 @@
+services:
+  credentials:
+    image: ghcr.io/handys11/rustplusapi-credentials:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      # Must be the externally reachable origin, with no trailing slash. This is the value
+      # Facepunch redirects back to, so it cannot be inferred from what Kestrel sees.
+      CredentialsWeb__PublicBaseUrl: "https://creds.example.org"
+      # Per-IP limits are silently void unless the proxy's address is trusted here: without it
+      # every visitor presents as the proxy and shares one bucket. Set this to the proxy's address
+      # on the container network, and never to a host you do not control. Leave it unset when the
+      # app is reached directly, so X-Forwarded-For from a caller is ignored.
+      CredentialsWeb__KnownProxies__0: "172.18.0.2"
+    # Enforces "nothing is written to disk" at the runtime level rather than by intent.
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL

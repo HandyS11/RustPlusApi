@@ -44,18 +44,34 @@ jobs:
     - name: Restore .NET tools
       run: dotnet tool restore
 
-    - name: Merge coverage reports
+    - name: Merge coverage reports (libraries)
       run: >
         dotnet tool run reportgenerator --
         "-reports:${{ github.workspace }}/TestResults/**/coverage.opencover.xml"
         "-targetdir:${{ github.workspace }}/TestResults/merged"
+        "-assemblyfilters:-RustPlusApi.CredentialsWeb"
         "-reporttypes:Cobertura"
 
-    - name: Enforce coverage threshold
-      # Merged aggregate across all 8 test projects and both TFMs (ReportGenerator union).
-      # ProtoGen.UnitTests covers the build-time proto tool and is excluded from the metric.
+    - name: Merge coverage reports (web app)
+      run: >
+        dotnet tool run reportgenerator --
+        "-reports:${{ github.workspace }}/TestResults/**/coverage.opencover.xml"
+        "-targetdir:${{ github.workspace }}/TestResults/merged-web"
+        "-assemblyfilters:+RustPlusApi.CredentialsWeb"
+        "-reporttypes:Cobertura"
+
+    - name: Enforce coverage threshold (libraries)
+      # Merged aggregate across every library test project and both TFMs (ReportGenerator union).
+      # Two things are kept out of this number: the web app, filtered out above so it cannot
+      # dilute the libraries' figure, and ProtoGen.UnitTests, which covers the build-time proto
+      # tool and is excluded via coverlet.runsettings.
       # Metric: ReportGenerator-merged Cobertura line-rate/branch-rate.
-      # Achieved: ~96.7% line / ~91.4% branch. Gate floor: line 95 / branch 90 —
-      # keep in sync with docs/development/testing.md ("Coverage gate").
+      # Gate floor: line 95 / branch 90 — keep in sync with docs/development/testing.md.
       working-directory: ${{ github.workspace }}
       run: python3 tools/coverage/check_threshold.py 95 90
+
+    - name: Enforce coverage threshold (web app)
+      # Same floor. The app can meet it because its two untestable regions — host wiring and the
+      # live-network adapter — are [ExcludeFromCodeCoverage] with justifications.
+      working-directory: ${{ github.workspace }}
+      run: python3 tools/coverage/check_threshold.py 95 90 TestResults/merged-web/Cobertura.xml

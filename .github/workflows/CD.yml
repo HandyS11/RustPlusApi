@@ -101,3 +101,61 @@ jobs:
           PRERELEASE_FLAG="--prerelease"
         fi
         gh release create "$GITHUB_REF_NAME" ./**/*.nupkg ./**/*.snupkg --generate-notes $PRERELEASE_FLAG
+
+  publish-image:
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v7
+
+    - name: Resolve Version from Tag
+      run: |
+        VERSION="${GITHUB_REF_NAME#v}"
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        if [[ "$VERSION" == *-* ]]; then
+          echo "IS_PRERELEASE=true" >> "$GITHUB_ENV"
+        else
+          echo "IS_PRERELEASE=false" >> "$GITHUB_ENV"
+        fi
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Compute image tags
+      run: |
+        # Docker repository names must be lowercase; github.repository_owner expands to the
+        # capitalized "HandyS11" and buildx rejects that outright. Hardcoded rather than
+        # lowercased dynamically, to match the image reference documented throughout the app
+        # (both READMEs, docker-compose.yml, docs/articles/credentials.md, SessionEndpoints'
+        # self-host pointer).
+        OWNER="handys11"
+        TAGS="ghcr.io/$OWNER/rustplusapi-credentials:$VERSION"
+        # 'latest' only follows stable releases, so a prerelease never becomes the default pull.
+        if [[ "$IS_PRERELEASE" == "false" ]]; then
+          TAGS="$TAGS,ghcr.io/$OWNER/rustplusapi-credentials:latest"
+        fi
+        echo "TAGS=$TAGS" >> "$GITHUB_ENV"
+
+    - name: Build and push
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: apps/RustPlusApi.CredentialsWeb/Dockerfile
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ env.TAGS }}

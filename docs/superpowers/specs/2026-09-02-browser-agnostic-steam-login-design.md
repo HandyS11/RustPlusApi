@@ -52,9 +52,19 @@ The path of `returnUrl` is preserved and the query is appended to it.
   was verified. Nothing suggests an allowlist — the value passes through opaquely — but the
   website spec depends on `https://` working and should confirm it.
 
-  **Outcome (2026-09-03): still open.** The live run used the default port 3000 over `http://`
-  on loopback, so neither half of this assumption was exercised. The website spec still depends
-  on an external `https://` return URL being accepted and must confirm it.
+  **Outcome (verified 2026-09-03).** Both halves confirmed, and the host question largely closed:
+
+  - `https://localhost:7443/callback/<nonce>` completed a real Steam login end to end and received
+    `steamId` plus a 193-character `token` — so the `https` scheme and a non-3000 port are proven.
+  - An external host (`https://rustplus-creds.example.org/callback/abc123XYZ`) was reflected
+    verbatim by `GET /login` and accepted by `POST /login`, which 302'd to Steam OpenID with no
+    validation error. There is no allowlist at either gate; the value rides inside the encrypted
+    `state` blob exactly as loopback does.
+
+  Not conclusively proven: the final `/signin-steam` hop to an external hostname, which would
+  require `/signin-steam` to deliberately re-validate a value it receives encrypted. Tracked in
+  `2026-09-03-credential-acquisition-website-design.md` for re-confirmation against the first
+  staging deployment.
 
 ## Design
 

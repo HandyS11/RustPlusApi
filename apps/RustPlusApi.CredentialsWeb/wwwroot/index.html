@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rust+ credentials</title>
+    <link rel="stylesheet" href="app.css">
+</head>
+<body>
+<main>
+    <h1>Get your Rust+ credentials</h1>
+
+    <section id="intro">
+        <p>
+            Sign in through Steam, then pair in game. You end up with the four values a Rust+ client
+            needs, and a <code>rustplus.config.json</code> you can download.
+        </p>
+        <details open>
+            <summary>What this server sees, and what it keeps</summary>
+            <ul>
+                <li>Your Steam auth token reaches this server, because Facepunch sends it here as a
+                    query parameter and nothing can change that. It is dropped the moment your device
+                    is registered.</li>
+                <li>Nothing is written to disk or to a database. Everything lives in memory and is
+                    discarded when your session ends or the process restarts.</li>
+                <li>No credential is written to any log. The web server's request logging is turned
+                    off precisely because it would record that query parameter.</li>
+                <li>Your <code>playerToken</code> is full access to your Rust+ account. Treat it like
+                    a password and don't paste it anywhere public.</li>
+                <li>Prefer not to trust someone else's server? <a href="https://github.com/HandyS11/RustPlusApi">Run your own.</a></li>
+            </ul>
+        </details>
+        <button id="start" type="button">Sign in with Steam</button>
+    </section>
+
+    <section id="progress" hidden>
+        <h2>Working…</h2>
+        <p id="status">Registering a device with Google and Rust Companion.</p>
+    </section>
+
+    <section id="ready" hidden>
+        <h2>Credentials ready</h2>
+        <p>Signed in as <code id="steam-id"></code>.</p>
+        <button id="download" type="button">Download rustplus.config.json</button>
+        <h3>Optional: get your pairing values</h3>
+        <p>
+            To get <code>ip</code>, <code>port</code>, <code>playerId</code> and
+            <code>playerToken</code>, this server has to hold a connection open to Google while you
+            pair in game. Start it only when you're ready to alt-tab into Rust.
+        </p>
+        <button id="pair" type="button">Wait for my pairing</button>
+        <p id="pair-note"></p>
+    </section>
+
+    <section id="waiting" hidden>
+        <h2>Waiting for your pairing</h2>
+        <p>Open Rust, join a server, and choose <strong>Pair with Server</strong>.</p>
+    </section>
+
+    <section id="paired" hidden>
+        <h2>Paired</h2>
+        <dl>
+            <dt>Server</dt><dd id="server-name"></dd>
+            <dt>IP</dt><dd id="pair-ip"></dd>
+            <dt>Port</dt><dd id="pair-port"></dd>
+            <dt>Player ID</dt><dd id="pair-player-id"></dd>
+            <dt>Player token</dt><dd id="pair-player-token"></dd>
+        </dl>
+        <pre id="snippet"></pre>
+        <button id="download-paired" type="button">Download rustplus.config.json</button>
+    </section>
+
+    <section id="failed" hidden>
+        <h2>Something went wrong</h2>
+        <p id="error"></p>
+        <button id="restart" type="button">Start over</button>
+    </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

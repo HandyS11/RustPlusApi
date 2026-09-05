@@ -101,6 +101,25 @@ npx @liamcottle/rustplus.js fcm-register
 
 See [Credentials — upstream fragility](credentials.md#upstream-fragility) for more context.
 
+## Credentials website
+
+Issues specific to the [Rust+ credentials website](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md)
+rather than the library.
+
+**The callback returns 404.** The return token in the callback URL is single-use: once Facepunch
+has redirected the browser back and the site has consumed it, that exact URL will always 404 —
+refreshing the page, going back, or reopening a bookmarked callback link all hit an already-consumed
+token. Start the flow over from the beginning; there is no way to resume a used callback URL.
+
+**I get a 429.** The instance you're using is at capacity — either its global session/pairing caps
+are full, or you've completed more flows in the last hour than its per-IP limit allows. Wait a few
+minutes and try again, or self-host your own instance (`docker run`, see the website's README).
+
+**The pairing never arrives.** The wait for a pairing push is capped at the instance's `PairingTtl`
+(10 minutes by default). Make sure you press **Pair with Server** in game *while* the page still
+says it is waiting. Your credentials remain valid even if the wait times out, so retry just the
+pairing step rather than starting the whole flow — including the Steam login — over again.
+
 ## Entity events never fire
 
 **Symptom:** `OnSmartDeviceTriggered` or `OnStorageMonitorTriggered` never fires even when the
