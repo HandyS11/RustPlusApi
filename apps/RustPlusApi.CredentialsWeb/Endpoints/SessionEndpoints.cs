@@ -57,6 +57,10 @@ internal static class SessionEndpoints
                 return Results.NotFound();
             }
 
+            // Advisory: it settles the ordinary 409 without starting anything, but it is a read of
+            // a state a concurrent request can change a moment later. What actually holds a session
+            // to one pairing wait is Session.TryClaimForPairing, which
+            // CredentialFlow.WaitForPairingAsync takes before it touches the network.
             if (session.State != SessionState.Ready)
             {
                 return Results.Conflict(new ErrorPayload(

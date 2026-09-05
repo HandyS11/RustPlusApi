@@ -331,4 +331,61 @@ public sealed class CredentialFlowPairingTests
         Assert.Empty(steps.Calls);
         Assert.Equal(0, store.ActivePairings);
     }
+
+    [Fact]
+    public async Task WaitForPairingAsync_RefusesOnceTheSessionHasBeenDisposed()
+    {
+        // Disposal drops the credentials but leaves State alone, so a session removed between the
+        // endpoint's advisory Ready check and this call still reads Ready here. The claim refuses on
+        // the missing credentials instead of opening a socket with nothing to pair against — and
+        // reads them under the session's own lock, so they cannot be nulled between check and use.
+        var (flow, store, steps, session) = await ReadySessionAsync();
+        using var _s = store;
+        store.Remove(session.SessionId);
+        store.TryAcquirePairingSlot();
+
+        await flow.WaitForPairingAsync(session, CancellationToken.None);
+
+        Assert.Equal(SessionState.Ready, session.State);
+        Assert.Empty(steps.Calls);
+        Assert.Equal(0, store.ActivePairings);
+    }
+
+    [Fact]
+    public async Task WaitForPairingAsync_LetsOnlyOneOfTwoConcurrentWaitsClaimTheSession()
+    {
+        // Two POSTs to /api/sessions/{sessionId}/pairing for one session — two tabs on the same
+        // handle, or a retried request — both clear the endpoint's advisory Ready check and both
+        // land here. A Ready check followed by a separate Advance let both through, so both opened
+        // an MCS socket against the same credentials and whichever finished last overwrote the
+        // other's outcome: a timeout dropping an already-Paired session back to Ready with a
+        // spurious `expired` event, or a socket error flipping it to Failed.
+        // Session.TryClaimForPairing is what now holds the session to a single wait.
+        var (flow, store, steps, session) = await ReadySessionAsync();
+        using var _s = store;
+        steps.PairingWaitsForGate = true;
+        Assert.True(store.TryAcquirePairingSlot());
+        Assert.True(store.TryAcquirePairingSlot());
+
+        // CA2025: both tasks are awaited below, well before `_s`/`store` are disposed at method end.
+#pragma warning disable CA2025
+        var winner = flow.WaitForPairingAsync(session, CancellationToken.None);
+        var loser = flow.WaitForPairingAsync(session, CancellationToken.None);
+#pragma warning restore CA2025
+
+        // The claim runs before the first await, so the second dispatch has already lost by the time
+        // it hands its task back: nothing started, and its slot handed straight back.
+        await loser;
+
+        Assert.Equal(SessionState.AwaitingPairing, session.State);
+        Assert.Equal(1, store.ActivePairings);
+        Assert.Single(steps.Calls);
+
+        // The winner still finishes normally: one socket, one outcome, nothing to overwrite it.
+        steps.PairingGate.SetResult();
+        await winner;
+
+        Assert.Equal(SessionState.Paired, session.State);
+        Assert.Equal(0, store.ActivePairings);
+    }
 }

@@ -88,23 +88,29 @@ internal sealed class CredentialFlow(
     /// <summary>Step 6: hold an MCS socket until a pairing push arrives, the TTL runs out, or the
     /// session is disposed. The caller must already hold a pairing slot; this method always
     /// releases it.</summary>
-    /// <param name="session">A session in <see cref="SessionState.Ready"/>.</param>
+    /// <param name="session">The session to pair. Refused unless the claim below finds it still in
+    /// <see cref="SessionState.Ready"/> with credentials to pair against.</param>
     /// <param name="cancellationToken">Token to abandon the wait.</param>
     internal async Task WaitForPairingAsync(Session session, CancellationToken cancellationToken)
     {
-        if (session.State != SessionState.Ready || session.Credentials is not { } credentials)
+        // One atomic claim rather than a Ready check followed by a separate Advance: the endpoint
+        // dispatches this against a state it read a moment earlier, so two concurrent pairing POSTs
+        // for one session can both arrive here believing it is Ready. Session.TryClaimForPairing
+        // settles that under the session's own lock — the loser starts nothing and hands its slot
+        // straight back — and returns the credentials it read there, so a racing disposal cannot
+        // null them between the check and their use.
+        //
+        // The expiry it commits is the *session's* TTL, not the pairing wait's — a pairing timeout
+        // must not make the sweeper reap the session out from under it (that would also cancel
+        // session.Lifetime, the only thing the Advance calls below could then no-op against). The
+        // wait gets its own deadline instead: a TimeProvider-driven source (so FakeTimeProvider-
+        // driven tests can still fire it deterministically) linked to the caller's token so
+        // disposal still cuts it short.
+        if (!session.TryClaimForPairing(Deadline(options.SessionTtl), out var credentials))
         {
             store.ReleasePairingSlot();
             return;
         }
-
-        // The session's own expiry is the *session's* TTL, not the pairing wait's — a pairing
-        // timeout must not make the sweeper reap the session out from under it (that would also
-        // cancel session.Lifetime, the only thing Advance below could then no-op against). The wait
-        // gets its own deadline instead: a TimeProvider-driven source (so FakeTimeProvider-driven
-        // tests can still fire it deterministically) linked to the caller's token so disposal still
-        // cuts it short.
-        session.Advance(SessionState.AwaitingPairing, Deadline(options.SessionTtl));
 
         try
         {

@@ -1,5 +1,6 @@
 using RustPlusApi.Fcm.Data;
 using RustPlusApi.Fcm.Registration;
+using System.Diagnostics.CodeAnalysis;
 
 namespace RustPlusApi.CredentialsWeb.Sessions;
 
@@ -242,5 +243,53 @@ internal sealed class Session(string sessionId, string returnToken, string clien
             _claimedForEviction = true;
             return true;
         }
+    }
+
+    /// <summary><para>Atomically decides, with respect to any concurrent claim, whether a pairing
+    /// wait may start on this session, and commits the <see cref="SessionState.Ready"/> to
+    /// <see cref="SessionState.AwaitingPairing"/> transition together with the credentials that wait
+    /// needs. The pairing endpoint's own <see cref="SessionState.Ready"/> check is only an advisory
+    /// fast path for its 409: two concurrent <c>POST /api/sessions/{sessionId}/pairing</c> calls
+    /// (two tabs on one session handle, or a retried request) can both read
+    /// <see cref="SessionState.Ready"/> there, so this claim — not that check — is what holds a
+    /// session to a single pairing wait. Without it both callers would open an MCS socket against
+    /// the same credentials and whichever finished last would overwrite the other's outcome: a
+    /// timeout dropping an already-<see cref="SessionState.Paired"/> session back to
+    /// <see cref="SessionState.Ready"/> with a spurious <c>expired</c> event, or a socket error
+    /// flipping it to <see cref="SessionState.Failed"/>.</para>
+    ///
+    /// <para>This runs under the same <see cref="_gate"/> that <see cref="Advance"/> writes
+    /// <see cref="State"/> under, so the loser of a race reads the winner's
+    /// <see cref="SessionState.AwaitingPairing"/> rather than the stale
+    /// <see cref="SessionState.Ready"/> it was dispatched on. The two conditions below also
+    /// subsume the two flags every other setter tests explicitly, which is why neither is repeated
+    /// here and why both would be unreachable if it were: a session claimed by
+    /// <see cref="TryClaimForEviction"/> is in <see cref="SessionState.Created"/> or
+    /// <see cref="SessionState.Failed"/> by that method's own precondition and so never
+    /// <see cref="SessionState.Ready"/>, and a disposed one has had <see cref="Credentials"/>
+    /// nulled under this very lock.</para></summary>
+    /// <param name="newExpiry">The new expiry instant — the session's TTL, not the pairing wait's.</param>
+    /// <param name="credentials">The credentials to pair against, read under the lock so a racing
+    /// <see cref="Dispose"/> cannot null them out from under the caller.</param>
+    /// <returns><see langword="true"/> if the caller now owns this session's pairing wait.</returns>
+    internal bool TryClaimForPairing(DateTimeOffset newExpiry, [NotNullWhen(true)] out Credentials? credentials)
+    {
+        lock (_gate)
+        {
+            if (State != SessionState.Ready || Credentials is not { } acquired)
+            {
+                credentials = null;
+                return false;
+            }
+
+            credentials = acquired;
+            State = SessionState.AwaitingPairing;
+            _expiresAt = newExpiry;
+        }
+
+        // Outside the lock, and identical to what Advance would have published: the browser sees one
+        // step event per state change either way.
+        Events.Publish(new SessionEvent("step", new StepPayload(nameof(SessionState.AwaitingPairing))));
+        return true;
     }
 }
