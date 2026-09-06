@@ -1,0 +1,28 @@
+# Example only. The Steam token no longer travels in any URL: a remote visitor pastes it back as a
+# POST body, so there's nothing left in the callback query string worth redacting. What's still
+# worth keeping off disk is the session handle — GET /api/sessions/{sessionId}/events is the sole
+# authenticator for a stream that replays the full credentials payload, and it travels in the
+# request path, where a default access log records it like any other URL.
+creds.example.org {
+	reverse_proxy 127.0.0.1:8080 {
+		# Caddy's default is to append the immediate client's address to whatever X-Forwarded-For
+		# the client already sent, so a caller wanting to dodge the per-IP caps just has to send a
+		# trusted-looking value first and let Caddy tack itself on after it. Overwriting instead
+		# discards whatever the client sent and replaces the header outright with the address Caddy
+		# itself observed, which the client cannot control. Pair this with
+		# CredentialsWeb__KnownProxies__0 set to this proxy's own address on the app's network —
+		# without that, the app trusts no X-Forwarded-For at all, proxy included, and every visitor
+		# looks like the proxy.
+		header_up X-Forwarded-For {http.request.remote.host}
+	}
+
+	log {
+		output file /var/log/caddy/creds.log
+		format filter {
+			# Matches exactly 32 lowercase hex characters — the session id's fixed shape (see
+			# Sessions/SessionIds.cs) — wherever it appears in the request path, so the redaction
+			# stops precisely at the id without consuming the following /events.
+			request>uri regexp [0-9a-f]{32} REDACTED
+		}
+	}
+}

@@ -17,21 +17,23 @@ The fastest way to get both kinds of credentials — no .NET SDK required — is
 a single-page app that walks you through the Steam login in a browser and hands back the four
 pairing values plus a downloadable `rustplus.config.json`.
 
-You run it on your own machine and browse to it from that same machine. There is no public instance
-and there cannot be one: Facepunch only honours the login redirect for a loopback address, so a
-hosted deployment gets a login that never calls back. Run it with:
+> **Public instance:** *the public instance's URL goes here.*
+
+Open it and sign in with Steam. Because you're not browsing from the same machine as the server,
+Facepunch hands your browser a loopback address that nothing is listening on rather than
+redirecting you straight back — you'll see a connection failure with that dead address in your
+browser's bar. Copy the whole thing and paste it back into the page, and it picks up from there.
+
+Prefer to run it yourself? It needs no configuration:
 
 ```bash
-docker run -p 127.0.0.1:8080:8080 \
-  -e CredentialsWeb__PublicBaseUrl=http://localhost:8080 \
-  -e CredentialsWeb__AllowInsecureBaseUrl=true \
-  ghcr.io/handys11/rustplusapi-credentials
+docker run -p 127.0.0.1:8080:8080 ghcr.io/handys11/rustplusapi-credentials
 ```
 
-See the
+Then browse to <http://localhost:8080> from that same machine and Steam signs you in with the
+ordinary automatic redirect instead of the paste step above — see the
 [website's README](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md)
-for the details, including why the loopback restriction exists and what it means for the flow's
-long-term stability.
+for both modes and every setting.
 
 Everything below documents the same registration chain driven directly from your own code — what
 the website's server does under the hood, and the route to use if you're integrating
@@ -104,10 +106,7 @@ Steps 1–7 run once. Step 8 happens every time you pair a new server in game.
 ## How the Steam login works
 
 This section covers the local route — driving `SteamLoginService` yourself, as the console app
-does. The credentials website above uses the same mechanism, except the callback listener is the
-website's own `/callback/<nonce>` endpoint rather than a `localhost` `HttpListener`. Both are
-loopback listeners, and that is not incidental: Facepunch only honours the `returnUrl` redirect when
-it points at a loopback address, which is why the website has to run on the machine you browse from.
+does — and it also explains what the credentials website's two modes both build on underneath.
 
 `SteamLoginService` binds an `HttpListener` on `http://localhost:<port>/` and sends the browser to:
 
@@ -121,6 +120,20 @@ back to it with the credentials appended:
 ```
 http://localhost:<port>/callback/<nonce>?steamId=765611…&token=eyJhbGciOi…
 ```
+
+Facepunch decides whether to honour that redirect purely from the *shape* of `returnUrl` — a
+loopback address always qualifies, whether or not anything is actually listening there, because
+Facepunch's own servers cannot reach your `localhost` any more than they can reach an unroutable LAN
+address. What happens next depends on whether something is actually listening at that address:
+
+- **Something is** — the console app's own `HttpListener`, or the credentials website running on
+  the machine you're browsing from. The redirect lands there directly and the flow continues with
+  no visible extra step.
+- **Nothing is** — the credentials website, reached from anywhere else. The browser fails to
+  connect and shows the dead `http://localhost:<port>/callback/<nonce>?...` address, Steam token
+  included, right in its address bar. The visitor copies that address and pastes it back into the
+  page they started from, which parses it exactly as if the redirect had arrived on its own. This
+  was verified against the live Facepunch endpoint on 2026-09-06, from a non-loopback origin.
 
 Any browser works — nothing is injected into the page. `SteamLoginService.LoginAsync` opens your
 default browser on a best-effort basis and always reports the URL through its `onLoginUrl`

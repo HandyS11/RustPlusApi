@@ -2,19 +2,14 @@ services:
   credentials:
     image: ghcr.io/handys11/rustplusapi-credentials:latest
     restart: unless-stopped
-    # Loopback only, and not just for hardening: the Steam login completes solely when the browser
-    # reaches this app over loopback, so exposing it on a routable address would not make it usable
-    # from another machine anyway. See README.md, "Why this is loopback-only".
+    # Loopback here is what gets you the automatic Steam redirect (see README.md, "Two modes,
+    # chosen automatically"): the browser doing the login has to look loopback to this container.
+    # Reached from anywhere else — a LAN address, a phone on the same network — the app still works,
+    # it just falls back to the paste flow.
     ports:
       - "127.0.0.1:8080:8080"
-    environment:
-      # The loopback origin you actually open, matching the published port above. This is the value
-      # Facepunch redirects back to; a non-loopback value is accepted at startup but the Steam login
-      # will fail with "Failed to send login message to the Rust+ app".
-      CredentialsWeb__PublicBaseUrl: "http://localhost:8080"
-      # Startup otherwise requires https, which is left over from the abandoned hosted design.
-      # On loopback, plain http is the normal case.
-      CredentialsWeb__AllowInsecureBaseUrl: "true"
+    # No required setting any more — PublicBaseUrl and AllowInsecureBaseUrl are gone. See the
+    # commented "hosted" service below for the settings worth setting behind a reverse proxy.
     # Enforces "nothing is written to disk" at the runtime level rather than by intent.
     read_only: true
     tmpfs:
@@ -23,3 +18,29 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+
+  # Hosted example. Reaching this from more than one visitor — a public instance, or self-hosting
+  # for others on a LAN — needs a routable port and a reverse proxy in front; see Caddyfile.example
+  # for the matching proxy config.
+  # credentials:
+  #   image: ghcr.io/handys11/rustplusapi-credentials:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"   # published for the proxy to reach, not restricted to loopback
+  #   environment:
+  #     # The proxy's own address on this network. Without this, the app trusts no
+  #     # X-Forwarded-For at all and every visitor's per-IP accounting collapses onto the proxy;
+  #     # set too loosely, a visitor can spoof their way past the caps instead. See
+  #     # Caddyfile.example for the matching proxy-side header configuration.
+  #     CredentialsWeb__KnownProxies__0: "172.18.0.2"
+  #     # Off by default: the pairing wait holds a socket open to Google per visitor. Someone
+  #     # self-hosting this for themselves on a LAN address can turn it back on; a public instance
+  #     # should leave it off.
+  #     # CredentialsWeb__AllowRemotePairing: "true"
+  #   read_only: true
+  #   tmpfs:
+  #     - /tmp
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   cap_drop:
+  #     - ALL
