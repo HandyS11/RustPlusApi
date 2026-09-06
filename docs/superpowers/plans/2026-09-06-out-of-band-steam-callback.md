@@ -38,6 +38,11 @@ static HTML/CSS/JS with no build step.
   `dotnet jb cleanupcode RustPlusApi.sln --profile="ReformatAndReorder"` must produce no diff. It
   also reorders members, so run it before committing and take whatever ordering it produces. The
   committed pre-push hook rejects a push that the formatter would change.
+- **The formatter runs solution-wide.** It will reformat files this branch never touched, because the
+  pre-push hook only ever formatted outgoing files, so untouched corners of the repo are not clean.
+  Stage and commit ONLY files your task touched. If `git status` shows changes outside them, leave
+  them alone and name them in your report; the controller reverts them. Never run `git restore`,
+  `git checkout --` or any other command that discards changes.
 - **Test command:** always scope a filtered run to the project. Verified 2026-09-06 in this
   repo: `dotnet test RustPlusApi.sln --filter ...` reports **"0 tests found" with exit code 0**,
   so a filtered solution-level run looks green while running nothing. It fails the same way with
@@ -585,10 +590,18 @@ internal static class CallbackParsing
 
         var trimmed = pasted.Trim();
 
-        // The scheme is checked rather than assumed, and the prefixed form tried second, because
-        // "localhost:54321/callback/..." is itself a well-formed absolute URI whose scheme is
-        // "localhost" — so a scheme-less paste would otherwise parse into nonsense rather than fail.
-        if (!TryAsWebUri(trimmed, out var uri) && !TryAsWebUri($"http://{trimmed}", out uri))
+        // Safari copies an address without its scheme, so a scheme-less paste gets one. The test for
+        // "already has a scheme" is "://" rather than "parses as an absolute URI", because
+        // "localhost:54321/callback/..." parses as an absolute URI whose *scheme* is "localhost" —
+        // that is the case the prefix exists for. Prepending to something that does name a scheme
+        // would be worse than useless: "http://" + "ftp://host/p" parses cleanly as host "ftp" with
+        // the rest as path, so a scheme this method rejects would sneak back in looking valid.
+#pragma warning disable S5332 // Not a transport choice: this is a loopback callback address the
+        // visitor's own browser was redirected to, and it is parsed, never fetched.
+        var candidate = trimmed.Contains("://", StringComparison.Ordinal) ? trimmed : $"http://{trimmed}";
+#pragma warning restore S5332
+
+        if (!TryAsWebUri(candidate, out var uri))
         {
             return false;
         }
