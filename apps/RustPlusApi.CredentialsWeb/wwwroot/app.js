@@ -49,10 +49,26 @@ function download(name, text) {
     URL.revokeObjectURL(url);
 }
 
+// The label each button had before its first un-restored flash, keyed by the button itself. Without
+// this, a second click within the two seconds would capture the transient label ("Copied") as the
+// one to restore and the button would wear it permanently.
+const flashes = new WeakMap();
+
 function flash(button, text) {
-    const original = button.textContent;
+    const pending = flashes.get(button);
+    if (pending) {
+        clearTimeout(pending.timer);
+    }
+
+    const original = pending ? pending.original : button.textContent;
     button.textContent = text;
-    setTimeout(() => { button.textContent = original; }, 2000);
+    flashes.set(button, {
+        original,
+        timer: setTimeout(() => {
+            button.textContent = original;
+            flashes.delete(button);
+        }, 2000)
+    });
 }
 
 function toggleJson(force) {
@@ -129,11 +145,23 @@ async function submitPaste() {
     button.disabled = true;
     error.textContent = "";
 
-    const response = await fetch("/api/callback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url })
-    });
+    let response;
+    try {
+        response = await fetch("/api/callback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url })
+        });
+    } catch {
+        // A dropped connection rejects the fetch outright, with the button already disabled. This
+        // visitor is holding a live Steam token in their clipboard, so a dead Continue button is the
+        // worst place to strand them: the button has to come back and the address has to stay put.
+        error.textContent =
+            "Couldn't reach this server. Check your connection and press Continue again — the "
+            + "address is still in the box.";
+        button.disabled = false;
+        return;
+    }
 
     if (response.ok) {
         // The address carries the Steam token, so it does not linger in the field.
@@ -211,7 +239,17 @@ async function start() {
     const button = document.getElementById("start");
     button.disabled = true;
 
-    const response = await fetch("/api/sessions", { method: "POST" });
+    let response;
+    try {
+        response = await fetch("/api/sessions", { method: "POST" });
+    } catch {
+        // Same hazard as submitPaste: the fetch rejects with the button already disabled. Nothing
+        // has been created yet, so re-enabling it makes Start over land back on a working button.
+        button.disabled = false;
+        fail("Couldn't reach this server. Check your connection and try again.");
+        return;
+    }
+
     if (!response.ok) {
         const body = await response.json().catch(() => ({ message: "This instance is busy." }));
         fail(body.message);
@@ -242,7 +280,19 @@ async function pair() {
     const button = document.getElementById("pair");
     button.disabled = true;
 
-    const response = await fetch("/api/sessions/" + sessionId + "/pairing", { method: "POST" });
+    let response;
+    try {
+        response = await fetch("/api/sessions/" + sessionId + "/pairing", { method: "POST" });
+    } catch {
+        // Deliberately not fail(): the failure screen would hide credentials that are already on
+        // screen and still valid. The note beside the button is where the "no pairing arrived"
+        // case reports too, and it leaves the visitor exactly where they were.
+        button.disabled = false;
+        document.getElementById("pair-note").textContent =
+            "Couldn't reach this server. Your credentials above are unaffected — try again.";
+        return;
+    }
+
     if (!response.ok) {
         const body = await response.json().catch(() => ({ message: "Could not start the pairing wait." }));
         fail(body.message);
@@ -287,6 +337,12 @@ document.addEventListener("click", event => {
         copyText(value.textContent, button, value);
     }
 });
+
+// Named rather than hard-coded so it is correct on every deployment — a self-hosted
+// http://localhost:8080 as much as a public origin. The visitor is being asked to paste a Steam
+// token, and this is the only thing distinguishing this page from a copy of it, so it has to be the
+// origin they are actually on.
+document.getElementById("expected-origin").textContent = location.origin;
 
 // The server decides this, and says so in the create-session response. Until then the page guesses
 // from its own address, which is right in every ordinary case and only cosmetic when it is not.
