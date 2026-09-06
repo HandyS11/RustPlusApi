@@ -53,7 +53,8 @@ visitor into remote/paste mode, the same as the public instance. Two things foll
 
 - **The pairing wait is local-only by default.** It is the one step that holds a socket open to
   Google per visitor — the one genuinely scarce resource here — so it is offered to local visitors
-  only unless you opt in. Self-hosting for yourself on a LAN address? Set `AllowRemotePairing=true`.
+  only unless you opt in. Self-hosting for yourself on a LAN address? Set
+  `CredentialsWeb__AllowRemotePairing=true`.
 - **Set up a reverse proxy correctly if you use one.** `Caddyfile.example` in this directory is a
   worked configuration: it overwrites `X-Forwarded-For` rather than appending to it, so a visitor
   can't spoof their way past the per-IP caps, and it pairs with `CredentialsWeb__KnownProxies__0`

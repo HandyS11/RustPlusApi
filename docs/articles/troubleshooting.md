@@ -144,7 +144,8 @@ visitor, so by default it's offered to local visitors only — reached any other
 public instance, you still get your credentials, just not that button. Run the app on your own
 machine to get the four pairing values that way instead, or use `PairingListener` from
 `RustPlusApi.Fcm.Registration` directly with the credentials you already have. Self-hosting on a
-LAN address for people you trust? Set `AllowRemotePairing=true` to turn the button back on.
+LAN address for people you trust? Set `CredentialsWeb__AllowRemotePairing=true` to turn the button
+back on.
 
 **I get a 429.** The instance is at capacity — either its global session/pairing caps are full, or
 more flows have completed in the last hour than the per-IP limit allows. On a public or otherwise

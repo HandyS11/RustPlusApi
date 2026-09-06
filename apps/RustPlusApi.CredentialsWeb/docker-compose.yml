@@ -9,7 +9,8 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     # No required setting any more — PublicBaseUrl and AllowInsecureBaseUrl are gone. See the
-    # commented "hosted" service below for the settings worth setting behind a reverse proxy.
+    # commented "credentials-hosted" service below for the settings worth setting behind a reverse
+    # proxy.
     # Enforces "nothing is written to disk" at the runtime level rather than by intent.
     read_only: true
     tmpfs:
@@ -19,10 +20,13 @@ services:
     cap_drop:
       - ALL
 
-  # Hosted example. Reaching this from more than one visitor — a public instance, or self-hosting
-  # for others on a LAN — needs a routable port and a reverse proxy in front; see Caddyfile.example
-  # for the matching proxy config.
-  # credentials:
+  # Hosted example, as an alternative to the "credentials" service above, not an addition to it —
+  # both publish container port 8080, so running both at once collides on the host port. Remove or
+  # comment out "credentials" above before uncommenting this one; it is named differently so
+  # uncommenting it alone never produces a duplicate service key. Reaching this from more than one
+  # visitor — a public instance, or self-hosting for others on a LAN — needs a routable port and a
+  # reverse proxy in front; see Caddyfile.example for the matching proxy config.
+  # credentials-hosted:
   #   image: ghcr.io/handys11/rustplusapi-credentials:latest
   #   restart: unless-stopped
   #   ports:
