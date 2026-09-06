@@ -1,5 +1,7 @@
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using RustPlusApi.CredentialsWeb.Endpoints;
 using RustPlusApi.CredentialsWeb.Sessions;
 using RustPlusApi.Fcm.Registration;
 using Xunit;
@@ -97,5 +99,37 @@ public sealed class SecretsAreNeverLoggedTests
         Assert.DoesNotContain(
             factory.Logs.Records,
             record => record.Contains("ExponentPushToken", StringComparison.Ordinal));
+    }
+
+    private static async Task<CredentialsWebFactory> RunPastedFlowAsync()
+    {
+        var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+
+        var store = factory.Services.GetRequiredService<SessionStore>();
+        store.TryCreate("203.0.113.7", isLocal: false, out var session, out _);
+
+        await client.PostAsJsonAsync(
+            new Uri("/api/callback", UriKind.Relative),
+            new PasteCallbackRequest(
+                $"http://localhost:54321/callback/{session!.ReturnToken}"
+                + $"?steamId=76561198249527954&token={SteamTokenSentinel}"));
+        await session.BackgroundWork;
+
+        return factory;
+    }
+
+    [Fact]
+    public async Task ThePastedAddressNeverReachesALogRecord()
+    {
+        await using var factory = await RunPastedFlowAsync();
+
+        Assert.NotEmpty(factory.Logs.Records);
+        Assert.DoesNotContain(
+            factory.Logs.Records,
+            record => record.Contains(SteamTokenSentinel, StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            factory.Logs.Records,
+            record => record.Contains("/api/callback", StringComparison.Ordinal));
     }
 }
