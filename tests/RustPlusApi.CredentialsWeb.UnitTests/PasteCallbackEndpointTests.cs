@@ -40,6 +40,23 @@ public sealed class PasteCallbackEndpointTests
     }
 
     [Fact]
+    public async Task Paste_NamesTheSessionOnTheWireInCamelCase()
+    {
+        // app.js reads `sessionId` off this response to follow the session the pasted address named,
+        // which is not necessarily the one the tab created. Deserializing into PasteCallbackResponse
+        // is case-insensitive and so cannot catch a rename; the property name has to be asserted raw.
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+        var session = NewSession(factory);
+
+        var response = await client.PostAsJsonAsync(Route, new PasteCallbackRequest(Pasted(session.ReturnToken)));
+        await session.BackgroundWork;
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains($"\"sessionId\":\"{session.SessionId}\"", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Paste_Returns404_ForAnUnknownReturnToken()
     {
         await using var factory = new CredentialsWebFactory();

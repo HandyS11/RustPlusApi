@@ -17,6 +17,8 @@ let sessionId = null;
 let configJson = null;
 let callbackMode = "redirect";
 let pairingAvailable = true;
+// The stream this tab is currently following, kept only so adopting another session can close it.
+let stream = null;
 
 function show(name) {
     for (const [key, element] of Object.entries(view)) {
@@ -166,6 +168,20 @@ async function submitPaste() {
     if (response.ok) {
         // The address carries the Steam token, so it does not linger in the field.
         input.value = "";
+
+        // The pasted address names its own session, which is not necessarily the one this tab is
+        // watching: a visitor who came back in a tab with no session handle — a fresh one, or the
+        // tab that failed to load — has to press Start to reach this screen at all, and that mints a
+        // second session. Pasting the first session's address would then leave them staring at a
+        // stream that never moves while the flow runs on the session they can no longer see. The
+        // 202 says which session the token belonged to, so this tab follows that one instead.
+        const body = await response.json().catch(() => null);
+        if (body?.sessionId && body.sessionId !== sessionId) {
+            sessionId = body.sessionId;
+            sessionStorage.setItem(SESSION_KEY, sessionId);
+            listen(sessionId);
+        }
+
         show("progress");
         return;
     }
@@ -206,6 +222,11 @@ function onPaired(payload) {
 
 function listen(id) {
     const source = new EventSource("/api/sessions/" + id + "/events");
+
+    // One stream at a time. The handlers below close their own `source`, so the module-level handle
+    // is only ever read here, and a stale handler can never close the stream that replaced it.
+    stream?.close();
+    stream = source;
 
     source.addEventListener("step", e => onStep(JSON.parse(e.data)));
     source.addEventListener("credentials", e => onCredentials(JSON.parse(e.data)));
