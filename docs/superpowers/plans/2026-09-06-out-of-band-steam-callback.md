@@ -1520,11 +1520,25 @@ assertion that the paste body never surfaces:
         Assert.DoesNotContain(
             factory.Logs.Records,
             record => record.Contains(SteamTokenSentinel, StringComparison.Ordinal));
+        // The whole pasted address, which carries the Steam token, the steamId and the single-use
+        // return token. Asserting on the address rather than the route path is deliberate: the path
+        // is not a secret, and demanding its absence would mean silencing routing diagnostics the
+        // operator legitimately wants, to protect nothing.
         Assert.DoesNotContain(
             factory.Logs.Records,
-            record => record.Contains("/api/callback", StringComparison.Ordinal));
+            record => record.Contains(PastedAddress, StringComparison.Ordinal));
     }
 ```
+
+Hoist the pasted address into a field both the driver and the assertion use, so they cannot drift:
+
+```csharp
+    private static readonly string PastedAddress =
+        $"http://localhost:54321/callback/{{0}}?steamId=76561198249527954&token={SteamTokenSentinel}";
+```
+
+and build the request with `string.Format(CultureInfo.InvariantCulture, PastedAddress, session!.ReturnToken)`,
+asserting against that same formatted string.
 
 Add `using System.Net.Http.Json;` and `using RustPlusApi.CredentialsWeb.Endpoints;` to the file.
 
