@@ -317,7 +317,23 @@ async function pair() {
 
     if (!response.ok) {
         const body = await response.json().catch(() => ({ message: "Could not start the pairing wait." }));
-        fail(body.message);
+
+        if (response.status === 403) {
+            // This instance will not run the wait for this session, ever, so the offer is withdrawn
+            // rather than left looking live and inviting a retry that cannot succeed. That state is
+            // reachable with the button enabled: a tab that adopted a session from a #session
+            // fragment never saw the create response, so it starts from the optimistic default.
+            // Deliberately not fail(): the refusal's own message says the credentials above are the
+            // part that matters, and the failure screen would hide exactly those.
+            pairingAvailable = false;
+            sessionStorage.setItem(PAIRING_KEY, "false");
+            applyPairingAvailability();
+            return;
+        }
+
+        // Same reasoning as the catch above: report beside the button, where the visitor already is,
+        // and leave it usable — a 409 or a capacity 429 is worth retrying.
+        document.getElementById("pair-note").textContent = body.message;
         button.disabled = false;
     }
 }
