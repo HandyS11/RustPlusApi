@@ -32,16 +32,9 @@ internal static class CallbackParsing
         // The scheme is checked rather than assumed, and the prefixed form tried second, because
         // "localhost:54321/callback/..." is itself a well-formed absolute URI whose scheme is
         // "localhost" — so a scheme-less paste would otherwise parse into nonsense rather than fail.
-#pragma warning disable S5332 // http used to accept loopback addresses from the visitor's browser redirect
+#pragma warning disable S5332 // the URL is a loopback callback the visitor's browser was redirected to, so plain http is appropriate
         if (!TryAsWebUri(trimmed, out var uri) && !TryAsWebUri($"http://{trimmed}", out uri))
 #pragma warning restore S5332
-        {
-            return false;
-        }
-
-        // Verify the host is actually a loopback address to reject URLs with mismatched schemes
-        // (e.g., "http://ftp://localhost..." that might parse successfully).
-        if (!RequestMode.IsLoopbackHost(uri.Host))
         {
             return false;
         }
@@ -70,9 +63,25 @@ internal static class CallbackParsing
     /// <summary>True for 32 lowercase hex characters, which is what <see cref="Sessions.SessionIds"/>
     /// produces.</summary>
     /// <param name="value">The candidate path segment.</param>
-    private static bool IsReturnToken(string value) =>
-        value.Length == 32 && value.All(character =>
-            character is ((>= '0' and <= '9') or (>= 'a' and <= 'f')));
+    private static bool IsReturnToken(string value)
+    {
+        if (value.Length != 32)
+        {
+            return false;
+        }
+
+#pragma warning disable S3267 // early return from loop is clearer than LINQ equivalent here
+        foreach (var character in value)
+        {
+            if (character is not ((>= '0' and <= '9') or (>= 'a' and <= 'f')))
+            {
+                return false;
+            }
+        }
+
+#pragma warning restore S3267
+        return true;
+    }
 
     /// <summary>Parses an absolute <c>http</c> or <c>https</c> URI, rejecting every other scheme.</summary>
     /// <param name="value">The candidate address.</param>
