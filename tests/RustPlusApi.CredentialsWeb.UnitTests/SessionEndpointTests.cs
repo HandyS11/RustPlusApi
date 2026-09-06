@@ -315,4 +315,35 @@ public sealed class SessionEndpointTests
             record => record.Contains("PublicBaseUrl", StringComparison.Ordinal)
                       && record.Contains("no longer read", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public async Task Startup_SaysWhatAnEmptyKnownProxiesMeansBehindAProxy()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+
+        // Force the host to build; the message is emitted during startup.
+        await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+
+        Assert.Contains(
+            factory.Logs.Records,
+            record => record.Contains("KnownProxies is empty", StringComparison.Ordinal)
+                      && record.Contains("evict each other", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Startup_SaysNothingAboutKnownProxiesWhenOneIsConfigured()
+    {
+        await using var factory = new CredentialsWebFactory(new Dictionary<string, string>
+        {
+            ["CredentialsWeb__KnownProxies__0"] = "172.18.0.2"
+        });
+        using var client = factory.CreateClient();
+
+        await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+
+        Assert.DoesNotContain(
+            factory.Logs.Records,
+            record => record.Contains("KnownProxies is empty", StringComparison.Ordinal));
+    }
 }

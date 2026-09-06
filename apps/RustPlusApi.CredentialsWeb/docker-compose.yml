@@ -32,10 +32,15 @@ services:
   #   ports:
   #     - "8080:8080"   # published for the proxy to reach, not restricted to loopback
   #   environment:
-  #     # The proxy's own address on this network. Without this, the app trusts no
-  #     # X-Forwarded-For at all and every visitor's per-IP accounting collapses onto the proxy;
-  #     # set too loosely, a visitor can spoof their way past the caps instead. See
-  #     # Caddyfile.example for the matching proxy-side header configuration.
+  #     # The proxy's own address on this network. Not optional behind a proxy: without it the app
+  #     # trusts no X-Forwarded-For at all, every visitor is accounted as the proxy, and the caps
+  #     # stop being per-visitor. That does not make them lax — it makes this instance effectively
+  #     # single-user. Five completed flows stop it serving anyone for an hour, the
+  #     # one-session-per-address rule becomes a global lock, and a visitor merely loading the page
+  #     # evicts the session of whoever is mid-Steam-login, whose perfectly good pasted address is
+  #     # then rejected as already used. Set too loosely, a visitor can spoof their way past the
+  #     # caps instead. See Caddyfile.example for the matching proxy-side header configuration, and
+  #     # for why a named site block (not a catch-all) is also part of getting this right.
   #     CredentialsWeb__KnownProxies__0: "172.18.0.2"
   #     # Off by default: the pairing wait holds a socket open to Google per visitor. Someone
   #     # self-hosting this for themselves on a LAN address can turn it back on; a public instance

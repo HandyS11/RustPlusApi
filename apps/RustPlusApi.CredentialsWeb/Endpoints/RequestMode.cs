@@ -8,7 +8,19 @@ namespace RustPlusApi.CredentialsWeb.Endpoints;
 /// <para>Both halves are required. The <c>Host</c> header alone is forgeable, but a forged value
 /// only sends the forger's own browser to their own machine, so nothing of ours leaks. The
 /// connection address alone is wrong in the deployment that matters: a reverse proxy on the same
-/// host makes every visitor look like loopback, which would hand strangers the local behaviour.</para></summary>
+/// host makes every visitor look like loopback, which would hand strangers the local behaviour.</para>
+/// <para>That same deployment is where this predicate is weakest, and the operator has to close the
+/// gap because no code here can. Behind a same-host proxy with <c>CredentialsWeb:KnownProxies</c>
+/// unset, the connection half is unconditionally true, so all that is left is <c>Host</c> — a header
+/// the caller writes. A remote caller sending <c>Host: localhost</c> then reads as local and takes
+/// the local behaviour, including the pairing wait that <c>AllowRemotePairing</c> exists to gate. No
+/// credential is disclosed by that; it is a control bypass bounded by
+/// <c>MaxConcurrentPairings</c>. So a proxied deployment must reject foreign <c>Host</c> values
+/// before they reach the app: a named site block at the proxy (a catch-all that passes the client's
+/// <c>Host</c> through does not do this), or ASP.NET Core's own host filtering via
+/// <c>AllowedHosts</c>, which sits at its <c>*</c> default here because the app ships no
+/// <c>appsettings.json</c>. See the app README's reverse-proxy section and
+/// <c>Caddyfile.example</c>.</para></summary>
 internal static class RequestMode
 {
     /// <summary>True when the connection came from a loopback address and the request names a

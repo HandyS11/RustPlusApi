@@ -16,8 +16,12 @@ internal sealed class AppOptions
 
     /// <summary>Addresses of reverse proxies whose <c>X-Forwarded-For</c> is trusted. Empty means
     /// forwarded headers are ignored, which is the safe default: trusting them from anyone lets a
-    /// caller spoof their address past every per-IP cap. Vestigial — no reverse proxy can front the
-    /// Steam login — but retained rather than silently changing behaviour.</summary>
+    /// caller spoof their address past every per-IP cap. It matters again on a hosted instance — a
+    /// remote visitor pastes the callback address back rather than being redirected to it, so a
+    /// reverse proxy can front the whole site — and leaving it empty behind one makes every visitor
+    /// present as the proxy: they share a single per-IP bucket, which turns
+    /// <see cref="MaxCompletionsPerIpPerHour"/> into a global ceiling and has visitors evicting each
+    /// other's sessions mid-login rather than loosening anything.</summary>
     internal IList<string> KnownProxies { get; } = [];
 
     /// <summary>Global cap on live sessions in any state.</summary>
