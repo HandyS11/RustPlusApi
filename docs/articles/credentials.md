@@ -17,23 +17,24 @@ The fastest way to get both kinds of credentials — no .NET SDK required — is
 a single-page app that walks you through the Steam login in a browser and hands back the four
 pairing values plus a downloadable `rustplus.config.json`.
 
-> **Public instance:** *the public instance's URL goes here.*
-
-Open it and sign in with Steam. Because you're not browsing from the same machine as the server,
-Facepunch hands your browser a loopback address that nothing is listening on rather than
-redirecting you straight back — you'll see a connection failure with that dead address in your
-browser's bar. Copy the whole thing and paste it back into the page, and it picks up from there.
-
-Prefer to run it yourself? It needs no configuration:
+Run it yourself — it needs no configuration:
 
 ```bash
 docker run -p 127.0.0.1:8080:8080 ghcr.io/handys11/rustplusapi-credentials
 ```
 
 Then browse to <http://localhost:8080> from that same machine and Steam signs you in with the
-ordinary automatic redirect instead of the paste step above — see the
-[website's README](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md)
-for both modes and every setting.
+ordinary automatic redirect.
+
+The app is also built to be hosted for other people, and if a public instance is ever stood up its
+address will be added to the
+[website's README](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md).
+Reached that way — or simply on a LAN address — the Steam login takes one extra step: because you're
+not browsing from the same machine as the server, Facepunch hands your browser a loopback address
+that nothing is listening on rather than redirecting you straight back, so you'll see a connection
+failure with that dead address in your browser's bar. You copy the whole thing and paste it back
+into the page, and it picks up from there. The website's README documents both modes and every
+setting.
 
 Everything below documents the same registration chain driven directly from your own code — what
 the website's server does under the hood, and the route to use if you're integrating

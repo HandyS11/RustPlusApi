@@ -62,13 +62,10 @@ See [`samples/`](samples/README.md) for the full walkthrough. (You can still use
 `npx @liamcottle/rustplus.js fcm-register` as a fallback.)
 
 Prefer a browser to a terminal? The [Rust+ credentials website](apps/RustPlusApi.CredentialsWeb/README.md)
-is the same registration flow behind a single-page app — no .NET SDK needed.
-
-> **Public instance:** _the public instance's URL goes here._
-
-Or run it yourself with a single `docker run`, no configuration needed — see its README for the
-command, and for how a browser reached from anywhere else completes the same flow with one extra
-paste step.
+is the same registration flow behind a single-page app — no .NET SDK needed. Run it yourself with a
+single `docker run` and no configuration; its README has the command. The app is also built to be
+hosted for other people, and if a public instance is ever stood up its address will be added there —
+until then, self-hosting is the route.
 
 **2. Talk to the server:**
 

@@ -193,8 +193,16 @@ error to expect, and the paste box. The link is a plain anchor rather than a scr
 a window after an `await` risks the popup blocker. The box submits on paste when the value parses,
 with a button as the fallback, and the original tab keeps its event stream open throughout.
 
-The paste box is also offered on the failure screen in both modes, as a rescue for a redirect that
-did not land.
+The paste box is also offered as a rescue for a redirect that did not land, in both modes.
+
+**Deviation, recorded in the final review, 2026-09-06.** The implementation offers that rescue from
+the **progress** screen, not the failure screen this paragraph originally specified, and the
+implementation is right. Every route into `Failed` runs *after* `TryConsumeReturnToken` — the `GET`
+callback handler consumes before it can advance to `Failed`, and both `CredentialFlow` failure paths
+are downstream of that — so by the time the failure screen is on display the session's return token
+is gone and a paste there could only ever answer `404`. The progress screen is where a redirect that
+never arrived actually strands the visitor, and their token is still live at that point. The design
+text is what is corrected here; the code stays as it is.
 
 **Reveal and copy.** On `Ready`, beside the existing download: a *Show JSON* toggle carrying
 `aria-expanded`, revealing the config in a `<pre>`, and a *Copy* button using
@@ -230,6 +238,21 @@ so the page names the origin the visitor should be on.
 **Unchanged.** In-memory only, no disk, no database. The token is dropped the moment the companion
 registration succeeds, and on failure and cancellation alike. No credential is logged, asserted by
 `SecretsAreNeverLoggedTests` rather than intended.
+
+**Amendment — found in the final review, 2026-09-06.** The list above was incomplete: it named the
+clipboard and missed the browser history. `GET /callback/{returnToken}` answers `302` specifically so
+the token-bearing URL never becomes a history entry, and the README repeats that claim — but in paste
+mode the visitor's browser *navigates to* the token-bearing loopback URL itself, fails to connect,
+and leaves that URL in the failed tab's address bar and in its session history. On a signed-in,
+syncing profile that history may reach the browser vendor's cloud. So the paste is not a pure
+improvement over the redirect: it takes the token out of every request line and out of every access
+log, and puts it into the visitor's own browser history instead.
+
+Nothing in the code can avoid this — the navigation happens in the visitor's browser, to an address
+no server of ours receives, and Facepunch has already committed the token to that URL by the time
+anything of ours could intervene. The mitigation is therefore instructional and has to be honest
+about being only that: the page tells the visitor to close the failed tab once the paste has landed,
+and the app README's security section records the exposure alongside the `302` claim it qualifies.
 
 ## Bounding
 
