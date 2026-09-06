@@ -73,17 +73,26 @@ function selectElement(element) {
 }
 
 async function copyText(text, button, fallback) {
-    const status = document.getElementById("copy-status");
+    // The status line is per-section: the Ready and Paired screens each have their own, and writing
+    // into a hidden one would render nothing and announce nothing.
+    const status = button.closest("section")?.querySelector(".status");
     try {
         await navigator.clipboard.writeText(text);
         flash(button, "Copied");
-        status.textContent = "Copied to the clipboard.";
+        if (status) { status.textContent = "Copied to the clipboard."; }
     } catch {
         // Clipboard access can be refused even in a secure context, for instance when the document
         // does not have focus. A selection lets the visitor finish with their own shortcut.
-        status.textContent = "Copying was blocked. The text is selected — press Ctrl+C or Cmd+C.";
+        flash(button, "Copy failed");
+        if (status) {
+            status.textContent = "Copying was blocked. The text is selected — press Ctrl+C or Cmd+C.";
+        }
         if (fallback) {
-            if (fallback.hidden) { toggleJson(true); }
+            // Unhiding is only correct for the config-JSON block: a pairing value or the snippet
+            // is never hidden by its own section being collapsed, so toggleJson would be wrong there.
+            if (fallback === document.getElementById("config-json") && fallback.hidden) {
+                toggleJson(true);
+            }
             selectElement(fallback);
         }
     }
@@ -98,6 +107,11 @@ function showPaste() {
     // Reached either straight after creating a session, when the login link is known, or from the
     // progress screen as a rescue, when it is not.
     document.getElementById("paste-intro").hidden = !document.getElementById("login-link").getAttribute("href");
+    // Every entry into this section must start usable: submitPaste disables the button and only
+    // re-enables it on failure, so a visitor returning here after a successful paste would
+    // otherwise find it dead.
+    document.getElementById("submit-pasted").disabled = false;
+    document.getElementById("paste-error").textContent = "";
     show("paste");
 }
 
