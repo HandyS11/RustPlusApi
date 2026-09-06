@@ -49,6 +49,46 @@ function download(name, text) {
     URL.revokeObjectURL(url);
 }
 
+function flash(button, text) {
+    const original = button.textContent;
+    button.textContent = text;
+    setTimeout(() => { button.textContent = original; }, 2000);
+}
+
+function toggleJson(force) {
+    const pre = document.getElementById("config-json");
+    const toggle = document.getElementById("show-json");
+    const shown = force === undefined ? pre.hidden : force;
+    pre.hidden = !shown;
+    toggle.setAttribute("aria-expanded", String(shown));
+    toggle.textContent = shown ? "Hide JSON" : "Show JSON";
+}
+
+function selectElement(element) {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+
+async function copyText(text, button, fallback) {
+    const status = document.getElementById("copy-status");
+    try {
+        await navigator.clipboard.writeText(text);
+        flash(button, "Copied");
+        status.textContent = "Copied to the clipboard.";
+    } catch {
+        // Clipboard access can be refused even in a secure context, for instance when the document
+        // does not have focus. A selection lets the visitor finish with their own shortcut.
+        status.textContent = "Copying was blocked. The text is selected — press Ctrl+C or Cmd+C.";
+        if (fallback) {
+            if (fallback.hidden) { toggleJson(true); }
+            selectElement(fallback);
+        }
+    }
+}
+
 function applyPairingAvailability() {
     document.getElementById("pair-offer").hidden = !pairingAvailable;
     document.getElementById("pair-unavailable").hidden = pairingAvailable;
@@ -105,6 +145,7 @@ function onStep(payload) {
 
 function onCredentials(payload) {
     configJson = payload.configJson;
+    document.getElementById("config-json").textContent = configJson;
     document.getElementById("steam-id").textContent = payload.steamId;
     show("ready");
 }
@@ -215,6 +256,22 @@ document.getElementById("pasted-url").addEventListener("paste", () => {
             submitPaste();
         }
     }, 0);
+});
+document.getElementById("show-json").addEventListener("click", () => toggleJson());
+document.getElementById("copy-json").addEventListener("click", event =>
+    copyText(configJson, event.currentTarget, document.getElementById("config-json")));
+document.getElementById("copy-snippet").addEventListener("click", event =>
+    copyText(document.getElementById("snippet").textContent, event.currentTarget,
+             document.getElementById("snippet")));
+
+// Delegated, because the pairing values are filled in after this script runs. The content policy
+// forbids inline handlers, so the target is named by a data attribute instead.
+document.addEventListener("click", event => {
+    const button = event.target.closest("button.copy");
+    if (button) {
+        const value = document.getElementById(button.dataset.copy);
+        copyText(value.textContent, button, value);
+    }
 });
 
 // The server decides this, and says so in the create-session response. Until then the page guesses

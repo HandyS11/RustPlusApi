@@ -63,7 +63,14 @@
     <section id="ready" hidden>
         <h2>Credentials ready</h2>
         <p>Signed in as <code id="steam-id"></code>.</p>
-        <button id="download" type="button">Download rustplus.config.json</button>
+        <div class="actions">
+            <button id="show-json" type="button" class="secondary" aria-expanded="false"
+                    aria-controls="config-json">Show JSON</button>
+            <button id="copy-json" type="button" class="secondary">Copy</button>
+            <button id="download" type="button">Download rustplus.config.json</button>
+        </div>
+        <pre id="config-json" hidden></pre>
+        <p id="copy-status" class="status" role="status" aria-live="polite"></p>
         <div id="pair-offer">
             <h3>Optional: get your pairing values</h3>
             <p>
@@ -90,14 +97,21 @@
     <section id="paired" hidden>
         <h2>Paired</h2>
         <dl>
-            <dt>Server</dt><dd id="server-name"></dd>
-            <dt>IP</dt><dd id="pair-ip"></dd>
-            <dt>Port</dt><dd id="pair-port"></dd>
-            <dt>Player ID</dt><dd id="pair-player-id"></dd>
-            <dt>Player token</dt><dd id="pair-player-token"></dd>
+            <dt>Server</dt><dd><span id="server-name"></span></dd>
+            <dt>IP</dt><dd><span id="pair-ip"></span><button class="copy" type="button"
+                                                             data-copy="pair-ip">Copy</button></dd>
+            <dt>Port</dt><dd><span id="pair-port"></span><button class="copy" type="button"
+                                                                 data-copy="pair-port">Copy</button></dd>
+            <dt>Player ID</dt><dd><span id="pair-player-id"></span><button class="copy" type="button"
+                                                                           data-copy="pair-player-id">Copy</button></dd>
+            <dt>Player token</dt><dd><span id="pair-player-token"></span><button class="copy" type="button"
+                                                                                 data-copy="pair-player-token">Copy</button></dd>
         </dl>
         <pre id="snippet"></pre>
-        <button id="download-paired" type="button">Download rustplus.config.json</button>
+        <div class="actions">
+            <button id="copy-snippet" type="button" class="secondary">Copy the snippet</button>
+            <button id="download-paired" type="button">Download rustplus.config.json</button>
+        </div>
     </section>
 
     <section id="failed" hidden>
