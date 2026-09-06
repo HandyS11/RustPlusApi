@@ -29,12 +29,20 @@ internal static class CallbackParsing
 
         var trimmed = pasted.Trim();
 
-        // The scheme is checked rather than assumed, and the prefixed form tried second, because
-        // "localhost:54321/callback/..." is itself a well-formed absolute URI whose scheme is
-        // "localhost" — so a scheme-less paste would otherwise parse into nonsense rather than fail.
-#pragma warning disable S5332 // the URL is a loopback callback the visitor's browser was redirected to, so plain http is appropriate
-        if (!TryAsWebUri(trimmed, out var uri) && !TryAsWebUri($"http://{trimmed}", out uri))
+        // Safari copies an address without its scheme, so a scheme-less paste gets one. The test for
+        // "already has a scheme" is "://" rather than "parses as an absolute URI", because
+        // "localhost:54321/callback/..." parses as an absolute URI whose *scheme* is "localhost" —
+        // that is the case the prefix exists for. Prepending to something that does name a scheme
+        // would be worse than useless: "http://" + "ftp://host/p" parses cleanly as host "ftp" with
+        // the rest as path, so a scheme this method rejects would sneak back in looking valid.
+#pragma warning disable S5332 // Not a transport choice: this is a loopback callback address the
+        // visitor's own browser was redirected to, and it is parsed, never fetched.
+        var candidate = trimmed.Contains("://", StringComparison.Ordinal)
+            ? trimmed
+            : $"http://{trimmed}";
 #pragma warning restore S5332
+
+        if (!TryAsWebUri(candidate, out var uri))
         {
             return false;
         }
