@@ -117,8 +117,17 @@ only honours the `returnUrl` redirect for loopback; for any other address it han
 `ReactNativeWebView` bridge that exists only inside the Rust+ mobile app, so an ordinary browser has
 nowhere to put it. The callback is never requested and the app logs nothing, because from its point
 of view nothing happened. Run the container on the machine you are browsing from, publish it on
-`127.0.0.1`, and set `CredentialsWeb__PublicBaseUrl` to that same `http://localhost:<port>`. There
-is no proxy configuration that fixes this — see
+`127.0.0.1`, and point `PublicBaseUrl` at that same loopback origin — `AllowInsecureBaseUrl` is
+required alongside it, because startup otherwise rejects a non-`https` base URL and exits 1:
+
+```bash
+docker run -p 127.0.0.1:8080:8080 \
+  -e CredentialsWeb__PublicBaseUrl=http://localhost:8080 \
+  -e CredentialsWeb__AllowInsecureBaseUrl=true \
+  ghcr.io/handys11/rustplusapi-credentials
+```
+
+There is no proxy configuration that fixes this — see
 [#126](https://github.com/HandyS11/RustPlusApi/issues/126).
 
 **I get a 429.** The instance is at capacity — either its global session/pairing caps are full, or

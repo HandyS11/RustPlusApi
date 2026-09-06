@@ -17,12 +17,18 @@ docker run -p 127.0.0.1:8080:8080 \
 
 Then open <http://localhost:8080> in a browser **on that same machine**.
 
-`PublicBaseUrl` is required and must be the loopback origin you will actually open, with no
+`PublicBaseUrl` is required and should be the loopback origin you will actually open, with no
 trailing slash — it is the URL Facepunch redirects the browser back to, and it must match the port
 you published. `AllowInsecureBaseUrl=true` is needed because startup otherwise insists on `https`,
 which made sense when this app was meant to be hosted; on loopback, plain `http` is the normal
-case. Startup validates all of this before the host is built and exits with code 1, printing
-`Configuration error: ...` to stderr, rather than starting misconfigured.
+case.
+
+Startup checks that `PublicBaseUrl` is present, absolute, free of a trailing slash and — unless
+`AllowInsecureBaseUrl` is set — `https`, printing `Configuration error: ...` to stderr and exiting
+with code 1 rather than starting misconfigured. It does **not** check that the origin is loopback:
+a routable value starts cleanly and then fails at the Steam step, which is what
+[#126](https://github.com/HandyS11/RustPlusApi/issues/126) reports. Failing fast on that is a
+sensible follow-up; today it is on you to get it right.
 
 For local development without a container:
 

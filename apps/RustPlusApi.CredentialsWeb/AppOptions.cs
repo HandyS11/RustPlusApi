@@ -8,9 +8,12 @@ internal sealed class AppOptions
     /// <summary>Configuration section these options bind from.</summary>
     internal const string SectionName = "CredentialsWeb";
 
-    /// <summary>The loopback origin the browser opens, with no trailing slash. Required, and it
-    /// must be a loopback one: Facepunch only honours the returnUrl redirect for loopback, so a
-    /// routable value produces a login that never calls back. See the app README.</summary>
+    /// <summary>The origin the browser opens, with no trailing slash. Required.
+    /// <para>It needs to be a loopback origin to actually work — Facepunch only honours the
+    /// returnUrl redirect for loopback, so a routable value yields a login that never calls back.
+    /// That is <b>not</b> checked here: <see cref="AppOptionsValidator"/> only rejects a blank,
+    /// relative, trailing-slash or (absent <see cref="AllowInsecureBaseUrl"/>) non-https value, so
+    /// a routable origin starts cleanly and fails later, in use. See the app README.</para></summary>
     internal string PublicBaseUrl { get; set; } = string.Empty;
 
     /// <summary>Permits a non-https <see cref="PublicBaseUrl"/>. Left over from the abandoned hosted
