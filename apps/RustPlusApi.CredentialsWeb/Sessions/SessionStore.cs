@@ -164,7 +164,10 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     /// resumable upstream work exists there, reachable via that session's handle. The eligibility
     /// check itself is atomic with <see cref="Session.Advance"/> (see
     /// <see cref="Session.TryClaimForEviction"/>): a plain read of <c>existing.State</c> here would
-    /// race a callback that is concurrently advancing the session past <see cref="SessionState.Created"/>.</summary>
+    /// race a callback that is concurrently advancing the session past <see cref="SessionState.Created"/>.
+    /// <para>An evicted <see cref="SessionState.Created"/> session's return token is carried over to
+    /// the new session rather than discarded, so a Steam login already in flight against the old
+    /// address still completes — onto the session the visitor can actually see.</para></summary>
     /// <param name="clientIp">The caller's address.</param>
     /// <param name="isLocal">Whether the request came from the machine the app runs on.</param>
     /// <param name="session">The new session on success.</param>
@@ -177,6 +180,7 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     {
         session = null;
         List<Session>? evicted = null;
+        string? inheritedReturnToken = null;
 
         try
         {
@@ -201,6 +205,24 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
                         return false;
                     }
 
+                    // A session still in Created holds a live return token, and its visitor may be
+                    // on Steam's login page at this very moment: the address they are about to paste
+                    // back names that token. Dropping it with the session would answer their paste
+                    // with "already used" and strand a Steam login that actually succeeded — and it
+                    // is precisely the visitor who came back in a tab with no session handle, and so
+                    // had to press Start to reach the paste box at all, who triggers this eviction.
+                    // The new session inherits the token instead, so that address lands here, on the
+                    // session the tab that just pressed Start is already watching. Single use is
+                    // untouched: the token is still consumed exactly once, just by a different
+                    // session than the one that minted it. The map is consulted rather than trusting
+                    // the state alone: a token another request consumed a moment ago is gone from it
+                    // and must stay gone, or an address that already ran the flow would work twice.
+                    if (existing.State == SessionState.Created
+                        && _byReturnToken.ContainsKey(existing.ReturnToken))
+                    {
+                        inheritedReturnToken = existing.ReturnToken;
+                    }
+
                     // Removed from the maps now, but ownership passes to `evicted`: disposal is
                     // deliberately deferred to the `finally` below, after the gate is released —
                     // see the remarks on RemoveFromMaps. CA2000 cannot see that far.
@@ -220,7 +242,7 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
 
                 var created = new Session(
                     SessionIds.New(),
-                    SessionIds.New(),
+                    inheritedReturnToken ?? SessionIds.New(),
                     clientIp,
                     isLocal,
                     timeProvider.GetUtcNow().Add(options.CreatedTtl));

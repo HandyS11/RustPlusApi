@@ -21,6 +21,51 @@ public sealed class PasteCallbackEndpointTests
     private static string Pasted(string returnToken) =>
         $"http://localhost:54321/callback/{returnToken}?steamId=76561198249527954&token=steam-token";
 
+    /// <summary>The address Facepunch leaves in the visitor's address bar for a given login URL,
+    /// with the Steam identity Facepunch appends to it.</summary>
+    /// <param name="loginUrl">The login URL from the create-session response.</param>
+    private static string PastedFrom(string loginUrl)
+    {
+        const string marker = "?returnUrl=";
+        var index = loginUrl.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
+        return Uri.UnescapeDataString(loginUrl[index..])
+               + "?steamId=76561198249527954&token=steam-token";
+    }
+
+    [Fact]
+    public async Task Paste_StillCompletes_WhenAFreshTabStartedASecondSessionFirst()
+    {
+        // The recovery this flow exists for. The visitor comes back in a tab with no session handle
+        // — a fresh one, or the tab that failed to load — and has to press Start to reach the paste
+        // box at all, which evicts the session they are mid-login on. Their pasted address must
+        // still land, and land on the session that tab is watching, or the Steam login they have
+        // already completed is unrecoverable.
+        await using var factory = new CredentialsWebFactory
+        {
+            RemoteIpAddress = IPAddress.Parse("203.0.113.7")
+        };
+        using var client = factory.CreateClient();
+
+        var first = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var firstBody = await first.Content.ReadFromJsonAsync<CreateSessionResponse>();
+        var second = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var secondBody = await second.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        var response = await client.PostAsJsonAsync(
+            Route,
+            new PasteCallbackRequest(PastedFrom(firstBody!.LoginUrl)));
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<PasteCallbackResponse>();
+        Assert.Equal(secondBody!.SessionId, body!.SessionId);
+
+        var store = factory.Services.GetRequiredService<SessionStore>();
+        Assert.True(store.TryGet(secondBody.SessionId, out var session));
+        await session!.BackgroundWork;
+        Assert.Equal(SessionState.Ready, session.State);
+        Assert.Equal("steam-token", factory.Steps.SteamTokenSeen);
+    }
+
     [Fact]
     public async Task Paste_DrivesTheFlowToReady()
     {

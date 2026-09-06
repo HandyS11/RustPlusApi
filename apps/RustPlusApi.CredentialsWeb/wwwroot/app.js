@@ -170,11 +170,12 @@ async function submitPaste() {
         input.value = "";
 
         // The pasted address names its own session, which is not necessarily the one this tab is
-        // watching: a visitor who came back in a tab with no session handle — a fresh one, or the
-        // tab that failed to load — has to press Start to reach this screen at all, and that mints a
-        // second session. Pasting the first session's address would then leave them staring at a
-        // stream that never moves while the flow runs on the session they can no longer see. The
-        // 202 says which session the token belonged to, so this tab follows that one instead.
+        // watching: the address may have been minted in another tab, or on another device, and
+        // pasted here. Leaving this tab on its own session would have the visitor staring at a
+        // stream that never moves while the flow runs on the one they can no longer see. The 202
+        // says which session the token belonged to, so this tab follows that one instead. (When the
+        // other session was this address's own abandoned one, SessionStore.TryCreate has already
+        // carried its return token onto this session, and the two ids agree.)
         const body = await response.json().catch(() => null);
         if (body?.sessionId && body.sessionId !== sessionId) {
             sessionId = body.sessionId;

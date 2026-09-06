@@ -137,7 +137,10 @@ cleaner copy.
 
 **The paste says it was already used.** The address is single-use — see *The callback returns 404*
 above, which is the same restriction surfacing through the paste box instead of a bare 404 page.
-Start the flow over from the beginning; there's no way to redo just the paste.
+Start the flow over from the beginning; there's no way to redo just the paste. Pressing **Start**
+again in a fresh tab is not what causes this: the session that starts takes over the return token of
+the abandoned one it replaces, so an address you were still holding lands on the session that new
+tab is watching.
 
 **There's no "wait for my pairing" option.** The pairing wait holds a socket open to Google per
 visitor, so by default it's offered to local visitors only — reached any other way, including a

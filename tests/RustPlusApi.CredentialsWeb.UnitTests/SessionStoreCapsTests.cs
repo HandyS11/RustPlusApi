@@ -47,6 +47,42 @@ public sealed class SessionStoreCapsTests
     }
 
     [Fact]
+    public void TryCreate_CarriesTheEvictedCreatedSessionsReturnTokenOntoTheReplacement()
+    {
+        // The evicted session's visitor may be on Steam's login page right now, holding an address
+        // that names that token. Dropping it with the session answers their paste with "already
+        // used" and strands a Steam login that actually succeeded — and pressing Start in a fresh
+        // tab, which is how they get back to the paste box, is exactly what causes the eviction.
+        var (store, _) = NewStore();
+        using var _s = store;
+        store.TryCreate("203.0.113.7", isLocal: false, out var abandoned, out _);
+
+        Assert.True(store.TryCreate("203.0.113.7", isLocal: false, out var replacement, out _));
+
+        Assert.Equal(abandoned!.ReturnToken, replacement!.ReturnToken);
+        Assert.NotEqual(abandoned.SessionId, replacement.SessionId);
+        Assert.True(store.TryConsumeReturnToken(abandoned.ReturnToken, out var resolved));
+        Assert.Same(replacement, resolved);
+    }
+
+    [Fact]
+    public void TryCreate_MintsAFreshReturnToken_WhenTheEvictedSessionsTokenWasAlreadyConsumed()
+    {
+        // Only a token still live is worth carrying over. One that has been consumed is spent, and
+        // re-mapping it onto the replacement would make an address that already ran the flow work a
+        // second time.
+        var (store, _) = NewStore();
+        using var _s = store;
+        store.TryCreate("203.0.113.7", isLocal: false, out var spent, out _);
+        Assert.True(store.TryConsumeReturnToken(spent!.ReturnToken, out _));
+
+        Assert.True(store.TryCreate("203.0.113.7", isLocal: false, out var replacement, out _));
+
+        Assert.NotEqual(spent.ReturnToken, replacement!.ReturnToken);
+        Assert.False(store.TryConsumeReturnToken(spent.ReturnToken, out _));
+    }
+
+    [Fact]
     public void TryCreate_Refuses_WhenTheSameIpHasAnAuthenticatedSession()
     {
         var (store, time) = NewStore();
