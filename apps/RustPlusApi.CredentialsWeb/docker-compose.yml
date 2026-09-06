@@ -2,19 +2,18 @@ services:
   credentials:
     image: ghcr.io/handys11/rustplusapi-credentials:latest
     restart: unless-stopped
-    # Loopback only, and not just for hardening: the Steam login completes solely when the browser
-    # reaches this app over loopback, so exposing it on a routable address would not make it usable
-    # from another machine anyway. See README.md, "Why this is loopback-only".
+    # Binding the published port to loopback is what keeps this instance to this machine. The
+    # automatic Steam redirect follows from the browser's side of it: reaching the app as
+    # http://localhost:8080 is what makes the request local (see README.md, "Two modes, chosen
+    # automatically") — the container itself sees the Docker bridge gateway, never loopback, which
+    # is why that decision does not require a loopback connection. Reached from anywhere else — a
+    # LAN address, a phone on the same network — the app still works, it just falls back to the
+    # paste flow.
     ports:
       - "127.0.0.1:8080:8080"
-    environment:
-      # The loopback origin you actually open, matching the published port above. This is the value
-      # Facepunch redirects back to; a non-loopback value is accepted at startup but the Steam login
-      # will fail with "Failed to send login message to the Rust+ app".
-      CredentialsWeb__PublicBaseUrl: "http://localhost:8080"
-      # Startup otherwise requires https, which is left over from the abandoned hosted design.
-      # On loopback, plain http is the normal case.
-      CredentialsWeb__AllowInsecureBaseUrl: "true"
+    # No required setting any more — PublicBaseUrl and AllowInsecureBaseUrl are gone. See the
+    # commented "credentials-hosted" service below for the settings worth setting behind a reverse
+    # proxy.
     # Enforces "nothing is written to disk" at the runtime level rather than by intent.
     read_only: true
     tmpfs:
@@ -23,3 +22,37 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+
+  # Hosted example, as an alternative to the "credentials" service above, not an addition to it —
+  # both publish container port 8080, so running both at once collides on the host port. Remove or
+  # comment out "credentials" above before uncommenting this one; it is named differently so
+  # uncommenting it alone never produces a duplicate service key. Reaching this from more than one
+  # visitor — a public instance, or self-hosting for others on a LAN — needs a routable port and a
+  # reverse proxy in front; see Caddyfile.example for the matching proxy config.
+  # credentials-hosted:
+  #   image: ghcr.io/handys11/rustplusapi-credentials:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"   # published for the proxy to reach, not restricted to loopback
+  #   environment:
+  #     # The proxy's own address on this network. Not optional behind a proxy: without it the app
+  #     # trusts no X-Forwarded-For at all, every visitor is accounted as the proxy, and the caps
+  #     # stop being per-visitor. That does not make them lax — it makes this instance effectively
+  #     # single-user. Five completed flows stop it serving anyone for an hour, the
+  #     # one-session-per-address rule becomes a global lock, and a visitor merely loading the page
+  #     # evicts the session of whoever is mid-Steam-login, whose perfectly good pasted address is
+  #     # then rejected as already used. Set too loosely, a visitor can spoof their way past the
+  #     # caps instead. See Caddyfile.example for the matching proxy-side header configuration, and
+  #     # for why a named site block (not a catch-all) is also part of getting this right.
+  #     CredentialsWeb__KnownProxies__0: "172.18.0.2"
+  #     # Off by default: the pairing wait holds a socket open to Google per visitor. Someone
+  #     # self-hosting this for themselves on a LAN address can turn it back on; a public instance
+  #     # should leave it off.
+  #     # CredentialsWeb__AllowRemotePairing: "true"
+  #   read_only: true
+  #   tmpfs:
+  #     - /tmp
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   cap_drop:
+  #     - ALL

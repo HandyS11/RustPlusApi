@@ -69,6 +69,12 @@ The path of `returnUrl` is preserved and the query is appended to it.
   gates really do accept anything, including `javascript:` — the decision is simply made later.
   See `2026-09-03-credential-acquisition-website-design.md` and issue #126.
 
+  **Update, same day.** That answer still stands — Facepunch still won't redirect anywhere but a
+  loopback-shaped address — but it is now worked around rather than accepted:
+  `2026-09-06-out-of-band-steam-callback-design.md` hands the browser a loopback `returnUrl` that
+  has nothing listening on it and has the visitor bring the address their browser fails to reach
+  back to the page by hand.
+
 ## Design
 
 ### API shape

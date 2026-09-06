@@ -18,10 +18,7 @@ public sealed class CredentialFlowTests
     private static Harness NewHarness()
     {
         var time = new FakeTimeProvider(Origin);
-        var options = new AppOptions
-        {
-            PublicBaseUrl = "https://creds.example.org"
-        };
+        var options = new AppOptions();
         var store = new SessionStore(options, time);
         var steps = new FakeRegistrationSteps();
         var flow = new CredentialFlow(steps, store, options, time, NullLogger<CredentialFlow>.Instance);
@@ -56,7 +53,7 @@ public sealed class CredentialFlowTests
     {
         var h = NewHarness();
         using var _s = h.Store;
-        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
 
@@ -74,7 +71,7 @@ public sealed class CredentialFlowTests
     {
         var h = NewHarness();
         using var _s = h.Store;
-        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
 
@@ -88,7 +85,7 @@ public sealed class CredentialFlowTests
     {
         var h = NewHarness();
         using var _s = h.Store;
-        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
 
@@ -101,7 +98,7 @@ public sealed class CredentialFlowTests
     {
         var h = NewHarness();
         using var _s = h.Store;
-        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
 
@@ -119,12 +116,12 @@ public sealed class CredentialFlowTests
         var h = NewHarness();
         using var _s = h.Store;
         h.Options.MaxCompletionsPerIpPerHour = 1;
-        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
         h.Store.Remove(session!.SessionId);
 
-        Assert.False(h.Store.TryCreate("203.0.113.7", out _, out var failure));
+        Assert.False(h.Store.TryCreate("203.0.113.7", isLocal: true, out _, out var failure));
         Assert.Equal(SessionCreateFailure.HourlyLimit, failure);
     }
 
@@ -134,7 +131,7 @@ public sealed class CredentialFlowTests
         var h = NewHarness();
         using var _s = h.Store;
         h.Steps.AcquireFailure = new HttpRequestException("upstream down");
-        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
 
@@ -152,7 +149,7 @@ public sealed class CredentialFlowTests
         var h = NewHarness();
         using var _s = h.Store;
         h.Steps.CompanionFailure = new HttpRequestException("rejected");
-        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
 
@@ -169,7 +166,7 @@ public sealed class CredentialFlowTests
         {
             ExpoPushToken = null
         };
-        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
 
@@ -185,7 +182,7 @@ public sealed class CredentialFlowTests
         // must land the session in Failed rather than dereference null.
         var h = NewHarness();
         using var _s = h.Store;
-        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
         h.Steps.OnAcquire = session!.ClearSteamToken;
 
         await h.Flow.CompleteRegistrationAsync(session, Login(), CancellationToken.None);
@@ -200,7 +197,7 @@ public sealed class CredentialFlowTests
         var h = NewHarness();
         using var _s = h.Store;
         h.Steps.AcquireFailure = new OperationCanceledException();
-        h.Store.TryCreate("203.0.113.7", out var session, out _);
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
 

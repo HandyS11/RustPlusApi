@@ -5,21 +5,19 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using RustPlusApi.CredentialsWeb.Upstream;
+using System.Net;
 
 namespace RustPlusApi.CredentialsWeb.UnitTests;
 
 /// <summary>Boots the real app with the upstream seam and the clock replaced.</summary>
 internal sealed class CredentialsWebFactory : WebApplicationFactory<Program>
 {
-    internal const string BaseUrl = "https://creds.example.org";
-
     private static readonly DateTimeOffset Origin = new(2026, 9, 3, 12, 0, 0, TimeSpan.Zero);
 
     internal CredentialsWebFactory(IDictionary<string, string>? settings = null)
     {
         // Program.cs binds configuration before builder.Build(), which is earlier than any
         // WebApplicationFactory configuration hook runs — so these must be environment variables.
-        SetEnvironment("CredentialsWeb__PublicBaseUrl", BaseUrl);
         foreach (var (key, value) in settings ?? new Dictionary<string, string>())
         {
             SetEnvironment(key, value);
@@ -27,6 +25,10 @@ internal sealed class CredentialsWebFactory : WebApplicationFactory<Program>
     }
 
     internal CapturingLoggerProvider Logs { get; } = new();
+
+    /// <summary>The connection address every request is stamped with. Loopback by default, so an
+    /// unconfigured test exercises the local path the app was originally written for.</summary>
+    internal IPAddress? RemoteIpAddress { get; set; } = IPAddress.Loopback;
 
     internal FakeRegistrationSteps Steps { get; } = new();
 
@@ -49,6 +51,7 @@ internal sealed class CredentialsWebFactory : WebApplicationFactory<Program>
             services.AddSingleton<IRegistrationSteps>(Steps);
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Time);
+            services.AddSingleton<IStartupFilter>(new RemoteIpStartupFilter(() => RemoteIpAddress));
         });
     }
 

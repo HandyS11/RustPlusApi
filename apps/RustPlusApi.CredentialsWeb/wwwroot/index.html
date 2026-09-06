@@ -18,39 +18,93 @@
         <details open>
             <summary>What this server sees, and what it keeps</summary>
             <ul>
-                <li>This app only works on the machine you are browsing from — the Steam login
-                    completes over loopback and nowhere else, so nothing here leaves your computer.</li>
-                <li>Your Steam auth token reaches this server, because Facepunch sends it here as a
-                    query parameter and nothing can change that. It is dropped the moment your device
-                    is registered.</li>
+                <li id="trust-local">This app is running on the machine you are browsing from. The
+                    Steam login completes over loopback and nowhere else, so nothing here leaves your
+                    computer.</li>
+                <li id="trust-hosted" hidden>This server is not your machine. Your Steam auth token
+                    reaches it when you paste the login address back, and nothing else about you
+                    does.</li>
+                <li>Your Steam auth token is dropped the moment your device is registered with Rust
+                    Companion. It is never written to disk and never sent back to your browser.</li>
                 <li>Nothing is written to disk or to a database. Everything lives in memory and is
                     discarded when your session ends or the process restarts.</li>
                 <li>No credential is written to any log. The web server's request logging is turned
-                    off precisely because it would record that query parameter.</li>
+                    off precisely because it would otherwise record one.</li>
                 <li>Your <code>playerToken</code> is full access to your Rust+ account. Treat it like
                     a password and don't paste it anywhere public.</li>
+                <li>If you are asked to paste an address back, that address carries your Steam auth
+                    token. It passes through your clipboard on the way here, and a clipboard manager
+                    keeps what you copy regardless of what this page does with it afterwards.</li>
+                <li>A paste box is a social-engineering surface: any site can copy this page and ask
+                    you for the same address. Check your browser's address bar before you paste — the
+                    paste step names the exact origin you should be on.</li>
+                <li>The address you paste stays in the failed tab's address bar and browser history,
+                    and on a signed-in browser that history may sync to your browser vendor. Close
+                    that tab once the paste has gone through.</li>
             </ul>
         </details>
         <button id="start" type="button">Sign in with Steam</button>
     </section>
 
+    <section id="paste" hidden>
+        <h2>One more step</h2>
+        <p id="paste-intro">
+            <a id="login-link" href="" target="_blank" rel="noopener">Open the Steam login in a new
+                tab</a>, sign in, and your browser will land on a page saying it can't connect to
+            <code>localhost</code>. <strong>That is expected</strong> — nothing is listening there,
+            and that is the point.
+        </p>
+        <p>Copy the whole address from that page and paste it below.</p>
+        <p id="paste-origin">
+            <strong>Before you paste, check your address bar.</strong> That address carries your
+            Steam auth token, and any site can copy this page to ask you for it. It belongs only on
+            <code id="expected-origin"></code>.
+        </p>
+        <label for="pasted-url">Callback address</label>
+        <input id="pasted-url" type="url" inputmode="url" autocomplete="off" spellcheck="false"
+               placeholder="http://localhost:54321/callback/…">
+        <button id="submit-pasted" type="button">Continue</button>
+        <p id="paste-error" class="error" role="alert"></p>
+        <p id="paste-history-note">
+            Once the paste has gone through, close the tab that failed to load. Until you do, that
+            address — token and all — sits in its address bar and in your browser history.
+        </p>
+    </section>
+
     <section id="progress" hidden>
         <h2>Working…</h2>
         <p id="status">Registering a device with Google and Rust Companion.</p>
+        <button id="paste-instead" type="button" class="secondary">Nothing happening? Paste the
+            login address</button>
     </section>
 
     <section id="ready" hidden>
         <h2>Credentials ready</h2>
         <p>Signed in as <code id="steam-id"></code>.</p>
-        <button id="download" type="button">Download rustplus.config.json</button>
-        <h3>Optional: get your pairing values</h3>
-        <p>
-            To get <code>ip</code>, <code>port</code>, <code>playerId</code> and
-            <code>playerToken</code>, this server has to hold a connection open to Google while you
-            pair in game. Start it only when you're ready to alt-tab into Rust.
+        <div class="actions">
+            <button id="show-json" type="button" class="secondary" aria-expanded="false"
+                    aria-controls="config-json">Show JSON</button>
+            <button id="copy-json" type="button" class="secondary">Copy</button>
+            <button id="download" type="button">Download rustplus.config.json</button>
+        </div>
+        <pre id="config-json" hidden></pre>
+        <p class="status" role="status" aria-live="polite"></p>
+        <div id="pair-offer">
+            <h3>Optional: get your pairing values</h3>
+            <p>
+                To get <code>ip</code>, <code>port</code>, <code>playerId</code> and
+                <code>playerToken</code>, this server has to hold a connection open to Google while
+                you pair in game. Start it only when you're ready to alt-tab into Rust.
+            </p>
+            <button id="pair" type="button">Wait for my pairing</button>
+            <p id="pair-note"></p>
+        </div>
+        <p id="pair-unavailable" hidden>
+            The four pairing values need a connection held open to Google while you pair in game,
+            which this instance doesn't do for visitors. Run the app on your own machine to get them,
+            or use <code>PairingListener</code> from <code>RustPlusApi.Fcm.Registration</code> with
+            the credentials above.
         </p>
-        <button id="pair" type="button">Wait for my pairing</button>
-        <p id="pair-note"></p>
     </section>
 
     <section id="waiting" hidden>
@@ -61,14 +115,22 @@
     <section id="paired" hidden>
         <h2>Paired</h2>
         <dl>
-            <dt>Server</dt><dd id="server-name"></dd>
-            <dt>IP</dt><dd id="pair-ip"></dd>
-            <dt>Port</dt><dd id="pair-port"></dd>
-            <dt>Player ID</dt><dd id="pair-player-id"></dd>
-            <dt>Player token</dt><dd id="pair-player-token"></dd>
+            <dt>Server</dt><dd><span id="server-name"></span></dd>
+            <dt>IP</dt><dd><span id="pair-ip"></span><button class="copy" type="button"
+                                                             data-copy="pair-ip">Copy</button></dd>
+            <dt>Port</dt><dd><span id="pair-port"></span><button class="copy" type="button"
+                                                                 data-copy="pair-port">Copy</button></dd>
+            <dt>Player ID</dt><dd><span id="pair-player-id"></span><button class="copy" type="button"
+                                                                           data-copy="pair-player-id">Copy</button></dd>
+            <dt>Player token</dt><dd><span id="pair-player-token"></span><button class="copy" type="button"
+                                                                                 data-copy="pair-player-token">Copy</button></dd>
         </dl>
         <pre id="snippet"></pre>
-        <button id="download-paired" type="button">Download rustplus.config.json</button>
+        <div class="actions">
+            <button id="copy-snippet" type="button" class="secondary">Copy the snippet</button>
+            <button id="download-paired" type="button">Download rustplus.config.json</button>
+        </div>
+        <p class="status" role="status" aria-live="polite"></p>
     </section>
 
     <section id="failed" hidden>

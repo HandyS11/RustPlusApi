@@ -81,3 +81,38 @@ dt { color: var(--muted); }
 dd { margin: 0; font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
 
 a { color: var(--accent); }
+
+button.secondary {
+    color: var(--fg);
+    background: transparent;
+    border: 1px solid var(--line);
+}
+
+label { color: var(--muted); font-size: 0.9rem; display: block; }
+
+input[type="url"] {
+    font: inherit;
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    margin: 0.35rem 0 0.9rem;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}
+
+.error { color: var(--accent); min-height: 1.5rem; margin: 0.75rem 0 0; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.25rem 0 0.5rem; }
+
+button.copy {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.1rem 0.5rem;
+    margin-left: 0.6rem;
+    color: var(--fg);
+    background: transparent;
+    border: 1px solid var(--line);
+}
+
+.status { color: var(--muted); min-height: 1.5rem; margin: 0.5rem 0 0; }

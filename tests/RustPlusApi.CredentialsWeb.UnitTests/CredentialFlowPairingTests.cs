@@ -16,16 +16,13 @@ public sealed class CredentialFlowPairingTests
         ReadySessionAsync(Action<AppOptions>? configure = null)
     {
         var time = new FakeTimeProvider(Origin);
-        var options = new AppOptions
-        {
-            PublicBaseUrl = "https://creds.example.org"
-        };
+        var options = new AppOptions();
         configure?.Invoke(options);
         var store = new SessionStore(options, time);
         var steps = new FakeRegistrationSteps();
         var flow = new CredentialFlow(steps, store, options, time, NullLogger<CredentialFlow>.Instance);
 
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
         await flow.CompleteRegistrationAsync(
             session!,
             new SteamLoginResult(76561198249527954, "steam-token"),
@@ -43,16 +40,13 @@ public sealed class CredentialFlowPairingTests
         Session Session, FakeTimeProvider Time)> ReadySessionWithClockAsync(Action<AppOptions>? configure = null)
     {
         var time = new FakeTimeProvider(Origin);
-        var options = new AppOptions
-        {
-            PublicBaseUrl = "https://creds.example.org"
-        };
+        var options = new AppOptions();
         configure?.Invoke(options);
         var store = new SessionStore(options, time);
         var steps = new FakeRegistrationSteps();
         var flow = new CredentialFlow(steps, store, options, time, NullLogger<CredentialFlow>.Instance);
 
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
         await flow.CompleteRegistrationAsync(
             session!,
             new SteamLoginResult(76561198249527954, "steam-token"),

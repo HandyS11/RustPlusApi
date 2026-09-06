@@ -27,23 +27,52 @@ public sealed class SessionEndpointTests
             body.LoginUrl,
             StringComparison.Ordinal);
         Assert.Contains(
-            Uri.EscapeDataString($"{CredentialsWebFactory.BaseUrl}/callback/"),
+            Uri.EscapeDataString("http://localhost/callback/"),
             body.LoginUrl,
             StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task CreateSession_ReturnsADifferentReturnTokenEachTime()
+    public async Task CreateSession_ReturnsADifferentReturnTokenForEachVisitor()
     {
+        // Asserted across two addresses rather than two calls from one: a second call from the same
+        // address deliberately inherits the token of the Created session it evicts, so that a Steam
+        // login already in flight against the old address still completes (see
+        // SessionStoreCapsTests.TryCreate_CarriesTheEvictedCreatedSessionsReturnTokenOntoTheReplacement).
         await using var factory = new CredentialsWebFactory();
         using var client = factory.CreateClient();
 
         var first = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
         var firstBody = await first.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        factory.RemoteIpAddress = IPAddress.Parse("203.0.113.7");
         var second = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
         var secondBody = await second.Content.ReadFromJsonAsync<CreateSessionResponse>();
 
-        Assert.NotEqual(firstBody!.LoginUrl, secondBody!.LoginUrl);
+        Assert.NotEqual(
+            ReturnUrlOf(firstBody!.LoginUrl).AbsolutePath,
+            ReturnUrlOf(secondBody!.LoginUrl).AbsolutePath);
+    }
+
+    [Fact]
+    public async Task CreateSession_Local_WhenTheConnectionArrivesFromAContainerBridgeGateway()
+    {
+        // The app's headline command, `docker run -p 127.0.0.1:8080:8080`, publishes the port on the
+        // host's loopback but reaches the container through the bridge, so the app sees the gateway
+        // and never loopback. Requiring a loopback connection put that run into the paste flow and
+        // then refused its pairing request with "run the app yourself" — the command just run.
+        await using var factory = new CredentialsWebFactory
+        {
+            RemoteIpAddress = IPAddress.Parse("172.17.0.1")
+        };
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var body = await response.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        Assert.Equal("redirect", body!.CallbackMode);
+        Assert.True(body.PairingAvailable);
+        Assert.Equal("localhost", ReturnUrlOf(body.LoginUrl).Host);
     }
 
     [Fact]
@@ -88,7 +117,7 @@ public sealed class SessionEndpointTests
         // Occupy the only slot from a different address, and move it out of Created so the
         // eviction rule cannot reclaim it.
         var store = factory.Services.GetRequiredService<SessionStore>();
-        store.TryCreate("198.51.100.1", out var occupant, out _);
+        store.TryCreate("198.51.100.1", isLocal: true, out var occupant, out _);
         occupant!.Advance(SessionState.Authenticated, factory.Time.GetUtcNow().AddMinutes(15));
 
         var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
@@ -166,7 +195,7 @@ public sealed class SessionEndpointTests
             });
         using var client = factory.CreateClient();
         var store = factory.Services.GetRequiredService<SessionStore>();
-        store.TryCreate("198.51.100.1", out var occupant, out _);
+        store.TryCreate("198.51.100.1", isLocal: true, out var occupant, out _);
         occupant!.Advance(SessionState.Authenticated, factory.Time.GetUtcNow().AddMinutes(15));
 
         var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
@@ -233,5 +262,117 @@ public sealed class SessionEndpointTests
 
         response.EnsureSuccessStatusCode();
         Assert.Equal(2, store.Count);
+    }
+
+    private static Uri ReturnUrlOf(string loginUrl)
+    {
+        const string marker = "?returnUrl=";
+        var index = loginUrl.IndexOf(marker, StringComparison.Ordinal);
+        return new Uri(Uri.UnescapeDataString(loginUrl[(index + marker.Length)..]));
+    }
+
+    private static HttpClient HostedClient(CredentialsWebFactory factory)
+    {
+        factory.RemoteIpAddress = IPAddress.Parse("203.0.113.7");
+        return factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://creds.example.org")
+        });
+    }
+
+    [Fact]
+    public async Task CreateSession_Local_ReturnsARedirectModeUrlPointingAtThisRequestsOrigin()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var body = await response.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        Assert.Equal("redirect", body!.CallbackMode);
+        Assert.True(body.PairingAvailable);
+        var returnUrl = ReturnUrlOf(body.LoginUrl);
+        Assert.Equal("localhost", returnUrl.Host);
+        Assert.StartsWith("/callback/", returnUrl.AbsolutePath, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateSession_Hosted_ReturnsAPasteModeUrlPointingAtADeadLoopbackPort()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = HostedClient(factory);
+
+        var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var body = await response.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        Assert.Equal("paste", body!.CallbackMode);
+        Assert.False(body.PairingAvailable);
+
+        var returnUrl = ReturnUrlOf(body.LoginUrl);
+        Assert.Equal("localhost", returnUrl.Host);
+        Assert.Equal(Uri.UriSchemeHttp, returnUrl.Scheme);
+        // The dynamic range: very unlikely to belong to something the visitor actually runs.
+        Assert.InRange(returnUrl.Port, 49152, 65535);
+    }
+
+    [Fact]
+    public async Task CreateSession_Hosted_TheReturnUrlNeverNamesThePublicHost()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = HostedClient(factory);
+
+        var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var body = await response.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        Assert.DoesNotContain("creds.example.org", body!.LoginUrl, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Startup_WarnsThatARetiredSettingIsStillConfigured()
+    {
+        await using var factory = new CredentialsWebFactory(new Dictionary<string, string>
+        {
+            ["CredentialsWeb__PublicBaseUrl"] = "https://creds.example.org"
+        });
+        using var client = factory.CreateClient();
+
+        // Force the host to build; the warning is emitted during startup.
+        await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+
+        Assert.Contains(
+            factory.Logs.Records,
+            record => record.Contains("PublicBaseUrl", StringComparison.Ordinal)
+                      && record.Contains("no longer read", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Startup_SaysWhatAnEmptyKnownProxiesMeansBehindAProxy()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+
+        // Force the host to build; the message is emitted during startup.
+        await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+
+        Assert.Contains(
+            factory.Logs.Records,
+            record => record.Contains("KnownProxies is empty", StringComparison.Ordinal)
+                      && record.Contains("evict each other", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Startup_SaysNothingAboutKnownProxiesWhenOneIsConfigured()
+    {
+        await using var factory = new CredentialsWebFactory(new Dictionary<string, string>
+        {
+            ["CredentialsWeb__KnownProxies__0"] = "172.18.0.2"
+        });
+        using var client = factory.CreateClient();
+
+        await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+
+        Assert.DoesNotContain(
+            factory.Logs.Records,
+            record => record.Contains("KnownProxies is empty", StringComparison.Ordinal));
     }
 }

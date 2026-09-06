@@ -1,0 +1,49 @@
+# Example only. Two things can end up in a URL here, and therefore in a default access log:
+#
+#   - The session handle, in the path of GET /api/sessions/{sessionId}/events. It is the sole
+#     authenticator for a stream that replays the full credentials payload.
+#   - A Steam auth token, in the query of GET /callback/{returnToken}. The paste flow itself keeps
+#     the token out of every URL — it is a POST with the address in a JSON body — but that GET route
+#     stays mapped on a hosted instance, and a visitor who "fixes" the dead loopback address by
+#     swapping in this site's hostname (a natural thing to try) sends a live token straight here.
+#
+# The log filter below covers both. Widening it to the query is the point: a 32-hex pattern alone
+# matches the return token in the path and leaves ?steamId=…&token=… untouched.
+#
+# The site block is named on purpose, and that is load-bearing beyond tidiness. Caddy routes a
+# request into a named block only when its Host matches, so a caller cannot reach the app with a
+# Host of their choosing. The app's local/remote decision is (non-routable connection) AND (loopback
+# Host), and with this proxy on the same host as the app the first half is true for every request —
+# leaving the Host header, which the caller writes, as the only thing between a stranger and the
+# local behaviour. (Setting CredentialsWeb__KnownProxies__0, below, makes the first half do real
+# work again: each visitor then presents as their own public address. Do both.) A catch-all block (`:443 { … }` or `*`) that passes the client's Host straight
+# through does NOT give you this: a request with `Host: localhost` would read as local. If you use
+# one, filter Host at the proxy yourself, or set the app's AllowedHosts environment variable — it
+# ships no appsettings.json, so ASP.NET Core's host filtering sits at its `*` default.
+creds.example.org {
+	reverse_proxy 127.0.0.1:8080 {
+		# Caddy's default is to append the immediate client's address to whatever X-Forwarded-For
+		# the client already sent, so a caller wanting to dodge the per-IP caps just has to send a
+		# trusted-looking value first and let Caddy tack itself on after it. Overwriting instead
+		# discards whatever the client sent and replaces the header outright with the address Caddy
+		# itself observed, which the client cannot control. Pair this with
+		# CredentialsWeb__KnownProxies__0 set to this proxy's own address on the app's network —
+		# without that the app trusts no X-Forwarded-For at all, proxy included, so every visitor is
+		# accounted as the proxy. That does not loosen the caps, it collapses them: the hourly
+		# completion cap becomes a global ceiling, the one-session-per-address rule becomes a global
+		# lock, and one visitor loading the page evicts the session of another who is mid-login.
+		header_up X-Forwarded-For {http.request.remote.host}
+	}
+
+	log {
+		output file /var/log/caddy/creds.log
+		format filter {
+			# One pattern, two targets. The 32-lowercase-hex alternative is the session id's fixed
+			# shape (see Sessions/SessionIds.cs) wherever it appears in the request path, so the
+			# redaction stops precisely at the id without consuming the following /events. The
+			# second alternative covers the steamId and token query values described at the top of
+			# this file, stopping at the next & so the rest of the query stays readable.
+			request>uri regexp "([0-9a-f]{32}|(steamId|token)=[^&]+)" REDACTED
+		}
+	}
+}

@@ -41,13 +41,16 @@ builder.Services.AddSingleton<IRegistrationSteps>(serviceProvider => new LiveReg
     serviceProvider.GetRequiredService<IHttpClientFactory>(),
     serviceProvider.GetRequiredService<ILoggerFactory>()));
 
-// Vestigial: the app is loopback-only (Facepunch only redirects to a loopback returnUrl), so no
-// reverse proxy can front the Steam login and this should never engage. Retained rather than
-// removed so the caps keep behaving exactly as their tests describe. See the app README.
-// Without this, every visitor behind a reverse proxy presents as the proxy and shares one per-IP
-// bucket, silently voiding the caps. Configured too loosely it is worse: trusting X-Forwarded-For
-// from anyone lets a caller spoof their way past the limits. So the operator must name their proxy
-// explicitly, and with none named the headers are ignored.
+// Forwarded headers are load-bearing again. The Steam login no longer has to reach this app
+// directly — a remote visitor pastes the callback address back instead of being redirected — so a
+// reverse proxy can front the whole site, and then every request arrives carrying the proxy's
+// address. Left unconfigured there, all of them share one per-IP bucket: MaxCompletionsPerIpPerHour
+// becomes a global ceiling, the one-session-per-address rule becomes a global lock, and — worst —
+// SessionStore.TryCreate evicts the "existing" Created session, so one visitor loading the page
+// invalidates another's return token mid-Steam-login. Configured too loosely it is worse still:
+// trusting X-Forwarded-For from anyone lets a caller spoof their way past the limits. So the
+// operator must name their proxy explicitly, and with none named the headers are ignored.
+// See the app README.
 builder.Services.Configure<ForwardedHeadersOptions>(forwarded =>
 {
     forwarded.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -59,6 +62,15 @@ builder.Services.Configure<ForwardedHeadersOptions>(forwarded =>
 
 var app = builder.Build();
 
+// These two were required until the return URL started coming from the request. An instance that
+// still sets them keeps working, so an existing `docker run` does not break — it is just told.
+string[] retiredSettings = ["PublicBaseUrl", "AllowInsecureBaseUrl"];
+foreach (var setting in retiredSettings.Where(setting =>
+             builder.Configuration[$"{AppOptions.SectionName}:{setting}"] is not null))
+{
+    app.Logger.LogRetiredSetting(setting);
+}
+
 // ForwardedHeadersOptions ships with its own default trusted network (loopback), so merely leaving
 // KnownProxies unpopulated does NOT make the middleware ignore X-Forwarded-For — it would still
 // honor it from what it considers the loopback proxy. And the documented way to stop trusting that
@@ -68,6 +80,10 @@ var app = builder.Build();
 if (options.KnownProxies.Count > 0)
 {
     app.UseForwardedHeaders();
+}
+else
+{
+    app.Logger.LogNoKnownProxies();
 }
 
 app.UseSecurityHeaders();

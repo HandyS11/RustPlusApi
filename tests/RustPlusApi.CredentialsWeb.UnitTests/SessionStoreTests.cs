@@ -14,7 +14,7 @@ public sealed class SessionStoreTests
         var time = new FakeTimeProvider(Origin);
         var options = new AppOptions
         {
-            PublicBaseUrl = "https://creds.example.org"
+            CreatedTtl = TimeSpan.FromMinutes(5)
         };
         return (new SessionStore(options, time), time);
     }
@@ -25,7 +25,7 @@ public sealed class SessionStoreTests
         var (store, _) = NewStore();
         using var _s = store;
 
-        Assert.True(store.TryCreate("203.0.113.7", out var session, out var failure));
+        Assert.True(store.TryCreate("203.0.113.7", isLocal: true, out var session, out var failure));
 
         Assert.Equal(SessionCreateFailure.None, failure);
         Assert.Equal(SessionState.Created, session.State);
@@ -40,7 +40,7 @@ public sealed class SessionStoreTests
     {
         var (store, _) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var created, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var created, out _);
 
         Assert.True(store.TryGet(created!.SessionId, out var found));
         Assert.Same(created, found);
@@ -61,7 +61,7 @@ public sealed class SessionStoreTests
     {
         var (store, _) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var created, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var created, out _);
 
         Assert.False(store.TryGet(created!.ReturnToken, out _));
     }
@@ -71,7 +71,7 @@ public sealed class SessionStoreTests
     {
         var (store, _) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var created, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var created, out _);
 
         Assert.True(store.TryConsumeReturnToken(created!.ReturnToken, out var first));
         Assert.Same(created, first);
@@ -94,7 +94,7 @@ public sealed class SessionStoreTests
     {
         var (store, _) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var created, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var created, out _);
 
         store.TryConsumeReturnToken(created!.ReturnToken, out _);
 
@@ -106,7 +106,7 @@ public sealed class SessionStoreTests
     {
         var (store, _) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var created, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var created, out _);
 
         store.Remove(created!.SessionId);
 
@@ -131,9 +131,9 @@ public sealed class SessionStoreTests
     {
         var (store, time) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var stale, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var stale, out _);
         time.Advance(TimeSpan.FromMinutes(6));
-        store.TryCreate("203.0.113.8", out var fresh, out _);
+        store.TryCreate("203.0.113.8", isLocal: true, out var fresh, out _);
 
         var swept = store.SweepExpired();
 
@@ -147,7 +147,7 @@ public sealed class SessionStoreTests
     {
         var (store, time) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
         time.Advance(TimeSpan.FromMinutes(6));
 
         store.SweepExpired();
@@ -160,9 +160,9 @@ public sealed class SessionStoreTests
     {
         var (store, time) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
-        // Authenticated sessions get SessionTtl (15 min), not CreatedTtl (5 min).
+        // Authenticated sessions get SessionTtl (15 min), not this store's CreatedTtl (5 min).
         session!.Advance(SessionState.Authenticated, time.GetUtcNow().Add(TimeSpan.FromMinutes(15)));
         time.Advance(TimeSpan.FromMinutes(6));
 
@@ -173,11 +173,29 @@ public sealed class SessionStoreTests
     public void Dispose_DisposesEverySession()
     {
         var (store, _) = NewStore();
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         store.Dispose();
 
         Assert.True(session!.Lifetime.IsCancellationRequested);
         Assert.Equal(0, store.Count);
+    }
+
+    [Fact]
+    public void TryCreate_RecordsWhetherTheVisitorReachedTheAppLocally()
+    {
+        using var store = new SessionStore(new AppOptions(), new FakeTimeProvider());
+
+        Assert.True(store.TryCreate("203.0.113.7", isLocal: false, out var remote, out _));
+        Assert.False(remote.IsLocal);
+    }
+
+    [Fact]
+    public void TryCreate_RecordsALocalVisitor()
+    {
+        using var store = new SessionStore(new AppOptions(), new FakeTimeProvider());
+
+        Assert.True(store.TryCreate("127.0.0.1", isLocal: true, out var local, out _));
+        Assert.True(local.IsLocal);
     }
 }

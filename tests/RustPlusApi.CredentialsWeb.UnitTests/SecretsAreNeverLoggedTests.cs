@@ -1,5 +1,8 @@
+using System.Globalization;
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using RustPlusApi.CredentialsWeb.Endpoints;
 using RustPlusApi.CredentialsWeb.Sessions;
 using RustPlusApi.Fcm.Registration;
 using Xunit;
@@ -10,6 +13,9 @@ public sealed class SecretsAreNeverLoggedTests
 {
     private const string SteamTokenSentinel = "SENTINEL-STEAM-TOKEN-b3a1f0c2";
     private const int PlayerTokenSentinel = 1928374650;
+
+    private const string PastedAddressFormat =
+        "http://localhost:54321/callback/{0}?steamId=76561198249527954&token=" + SteamTokenSentinel;
 
     private static async Task<(CredentialsWebFactory Factory, Session Session)> RunFullFlowAsync()
     {
@@ -29,7 +35,7 @@ public sealed class SecretsAreNeverLoggedTests
         });
 
         var store = factory.Services.GetRequiredService<SessionStore>();
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await client.GetAsync(new Uri(
             $"/callback/{session!.ReturnToken}?steamId=76561198249527954&token={SteamTokenSentinel}",
@@ -97,5 +103,43 @@ public sealed class SecretsAreNeverLoggedTests
         Assert.DoesNotContain(
             factory.Logs.Records,
             record => record.Contains("ExponentPushToken", StringComparison.Ordinal));
+    }
+
+    private static async Task<(CredentialsWebFactory Factory, string PastedAddress)> RunPastedFlowAsync()
+    {
+        var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+
+        var store = factory.Services.GetRequiredService<SessionStore>();
+        store.TryCreate("203.0.113.7", isLocal: false, out var session, out _);
+
+#pragma warning disable CA1863 // Used once: the return token is specific to each session
+        var pastedAddress = string.Format(CultureInfo.InvariantCulture, PastedAddressFormat, session!.ReturnToken);
+#pragma warning restore CA1863
+        await client.PostAsJsonAsync(
+            new Uri("/api/callback", UriKind.Relative),
+            new PasteCallbackRequest(pastedAddress));
+        await session.BackgroundWork;
+
+        return (factory, pastedAddress);
+    }
+
+    [Fact]
+    public async Task ThePastedAddressNeverReachesALogRecord()
+    {
+        var (factory, pastedAddress) = await RunPastedFlowAsync();
+        await using var _f = factory;
+
+        Assert.NotEmpty(factory.Logs.Records);
+        Assert.DoesNotContain(
+            factory.Logs.Records,
+            record => record.Contains(SteamTokenSentinel, StringComparison.Ordinal));
+        // The whole pasted address, which carries the Steam token, the steamId and the single-use
+        // return token. Asserting on the address rather than the route path is deliberate: the path
+        // is not a secret, and demanding its absence would mean silencing routing diagnostics the
+        // operator legitimately wants, to protect nothing.
+        Assert.DoesNotContain(
+            factory.Logs.Records,
+            record => record.Contains(pastedAddress, StringComparison.Ordinal));
     }
 }

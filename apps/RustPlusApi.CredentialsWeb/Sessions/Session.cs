@@ -9,8 +9,14 @@ namespace RustPlusApi.CredentialsWeb.Sessions;
 /// <param name="sessionId">The handle the browser uses for the event stream and follow-up calls.</param>
 /// <param name="returnToken">Single-use token embedded in the Facepunch <c>returnUrl</c> path.</param>
 /// <param name="clientIp">The caller's address, for per-IP accounting.</param>
+/// <param name="isLocal">Whether the visitor reached the app from the machine it runs on.</param>
 /// <param name="expiresAt">When this session becomes sweepable.</param>
-internal sealed class Session(string sessionId, string returnToken, string clientIp, DateTimeOffset expiresAt)
+internal sealed class Session(
+    string sessionId,
+    string returnToken,
+    string clientIp,
+    bool isLocal,
+    DateTimeOffset expiresAt)
     : IDisposable
 {
     private readonly Lock _gate = new();
@@ -50,6 +56,11 @@ internal sealed class Session(string sessionId, string returnToken, string clien
             }
         }
     }
+
+    /// <summary>Whether the visitor reached the app from the machine it runs on. Decided once, at
+    /// creation, from the request that created the session — never recomputed, because a later
+    /// request for the same session can arrive by a different route.</summary>
+    internal bool IsLocal { get; } = isLocal;
 
     /// <summary>Cancelled on disposal, so any in-flight upstream work stops with the session.</summary>
     internal CancellationTokenSource Lifetime { get; } = new();

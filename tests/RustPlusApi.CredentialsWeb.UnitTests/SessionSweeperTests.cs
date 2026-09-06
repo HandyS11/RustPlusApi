@@ -17,10 +17,10 @@ public sealed class SessionSweeperTests
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
         var options = new AppOptions
         {
-            PublicBaseUrl = "https://creds.example.org"
+            CreatedTtl = TimeSpan.FromMinutes(5)
         };
         using var store = new SessionStore(options, time);
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         using var sweeper = new SessionSweeper(store, time, NullLogger);
         await sweeper.StartAsync(CancellationToken.None);
@@ -45,18 +45,18 @@ public sealed class SessionSweeperTests
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
         var options = new AppOptions
         {
-            PublicBaseUrl = "https://creds.example.org"
+            CreatedTtl = TimeSpan.FromMinutes(5)
         };
         using var store = new SessionStore(options, time);
 
-        // Create a canary session from one IP at time 0, expires at 5 minutes
-        store.TryCreate("203.0.113.7", out var canary, out _);
+        // Create a canary session from one IP at time 0, expires at 5 minutes (pinned above)
+        store.TryCreate("203.0.113.7", isLocal: true, out var canary, out _);
 
         // Advance time by 1 minute
         time.Advance(TimeSpan.FromMinutes(1));
 
         // Create a live session from a different IP, expires at 1+5=6 minutes
-        store.TryCreate("203.0.113.8", out var liveSession, out _);
+        store.TryCreate("203.0.113.8", isLocal: true, out var liveSession, out _);
 
         using var sweeper = new SessionSweeper(store, time, NullLogger);
         await sweeper.StartAsync(CancellationToken.None);
@@ -85,12 +85,12 @@ public sealed class SessionSweeperTests
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
         var options = new AppOptions
         {
-            PublicBaseUrl = "https://creds.example.org"
+            CreatedTtl = TimeSpan.FromMinutes(5)
         };
         using var store = new SessionStore(options, time);
 
         // Expires at 5 minutes.
-        store.TryCreate("203.0.113.7", out var throwingSession, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var throwingSession, out _);
         throwingSession!.Lifetime.Token.Register(() =>
             throw new InvalidOperationException("Simulated callback failure"));
 
@@ -99,7 +99,7 @@ public sealed class SessionSweeperTests
 
         // Create a canary session from a different IP. Expires at 1+5=6 minutes.
         // Staggering ensures the canary can only be removed on a tick *after* the throwing session.
-        store.TryCreate("203.0.113.8", out var canary, out _);
+        store.TryCreate("203.0.113.8", isLocal: true, out var canary, out _);
 
         using var sweeper = new SessionSweeper(store, time, NullLogger);
         await sweeper.StartAsync(CancellationToken.None);
@@ -140,14 +140,14 @@ public sealed class SessionSweeperTests
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
         var options = new AppOptions
         {
-            PublicBaseUrl = "https://creds.example.org"
+            CreatedTtl = TimeSpan.FromMinutes(5)
         };
 
         // Only the store's clock is made to fail: the sweeper keeps a working one so its timer
         // still ticks while SweepExpired throws.
         var storeClock = new FailableTimeProvider(time);
         using var store = new SessionStore(options, storeClock);
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         var records = new CapturingLoggerProvider();
         using var loggerFactory = LoggerFactory.Create(builder => builder

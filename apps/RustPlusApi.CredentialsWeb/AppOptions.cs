@@ -8,22 +8,20 @@ internal sealed class AppOptions
     /// <summary>Configuration section these options bind from.</summary>
     internal const string SectionName = "CredentialsWeb";
 
-    /// <summary>The origin the browser opens, with no trailing slash. Required.
-    /// <para>It needs to be a loopback origin to actually work — Facepunch only honours the
-    /// returnUrl redirect for loopback, so a routable value yields a login that never calls back.
-    /// That is <b>not</b> checked here: <see cref="AppOptionsValidator"/> only rejects a blank,
-    /// relative, trailing-slash or (absent <see cref="AllowInsecureBaseUrl"/>) non-https value, so
-    /// a routable origin starts cleanly and fails later, in use. See the app README.</para></summary>
-    internal string PublicBaseUrl { get; set; } = string.Empty;
-
-    /// <summary>Permits a non-https <see cref="PublicBaseUrl"/>. Left over from the abandoned hosted
-    /// design: on the loopback-only deployment this app actually supports, plain http is normal.</summary>
-    internal bool AllowInsecureBaseUrl { get; set; }
+    /// <summary>Allows the pairing wait for a visitor who did not reach the app over loopback. Off by
+    /// default: the wait holds an MCS socket per visitor, which is the one genuinely scarce resource
+    /// here, and a public instance has no reason to hold one for a stranger. Turn it on when
+    /// self-hosting on an address that is yours but is not loopback, such as a LAN address.</summary>
+    internal bool AllowRemotePairing { get; set; }
 
     /// <summary>Addresses of reverse proxies whose <c>X-Forwarded-For</c> is trusted. Empty means
     /// forwarded headers are ignored, which is the safe default: trusting them from anyone lets a
-    /// caller spoof their address past every per-IP cap. Vestigial — no reverse proxy can front the
-    /// Steam login — but retained rather than silently changing behaviour.</summary>
+    /// caller spoof their address past every per-IP cap. It matters again on a hosted instance — a
+    /// remote visitor pastes the callback address back rather than being redirected to it, so a
+    /// reverse proxy can front the whole site — and leaving it empty behind one makes every visitor
+    /// present as the proxy: they share a single per-IP bucket, which turns
+    /// <see cref="MaxCompletionsPerIpPerHour"/> into a global ceiling and has visitors evicting each
+    /// other's sessions mid-login rather than loosening anything.</summary>
     internal IList<string> KnownProxies { get; } = [];
 
     /// <summary>Global cap on live sessions in any state.</summary>
@@ -35,9 +33,11 @@ internal sealed class AppOptions
     /// <summary>Per-IP cap on completed flows in a rolling hour. Bounds Google device registrations.</summary>
     internal int MaxCompletionsPerIpPerHour { get; set; } = 5;
 
-    /// <summary>Lifetime of a session that has not yet completed the Steam login. Shortest leash:
-    /// this is the cheapest state to create and therefore the cheapest to spam.</summary>
-    internal TimeSpan CreatedTtl { get; set; } = TimeSpan.FromMinutes(5);
+    /// <summary>Lifetime of a session that has not yet completed the Steam login. It has to cover a
+    /// real Steam login, two-factor included, and on a hosted instance a copy and a paste as well.
+    /// Still the shortest leash of the three: this is the cheapest state to create and so the
+    /// cheapest to spam.</summary>
+    internal TimeSpan CreatedTtl { get; set; } = TimeSpan.FromMinutes(10);
 
     /// <summary>Lifetime of a session once the Steam login has completed.</summary>
     internal TimeSpan SessionTtl { get; set; } = TimeSpan.FromMinutes(15);
@@ -55,31 +55,6 @@ internal static class AppOptionsValidator
     /// <param name="options">The options to validate.</param>
     internal static string? Validate(AppOptions options)
     {
-        if (string.IsNullOrWhiteSpace(options.PublicBaseUrl))
-        {
-            return $"{AppOptions.SectionName}:PublicBaseUrl is required. Set it to the loopback "
-                   + "origin you open in the browser, for example http://localhost:8080.";
-        }
-
-        if (!Uri.TryCreate(options.PublicBaseUrl, UriKind.Absolute, out var baseUri))
-        {
-            return $"{AppOptions.SectionName}:PublicBaseUrl must be an absolute URL, "
-                   + $"but was '{options.PublicBaseUrl}'.";
-        }
-
-        if (options.PublicBaseUrl.EndsWith('/'))
-        {
-            return $"{AppOptions.SectionName}:PublicBaseUrl must not have a trailing slash.";
-        }
-
-        if (!baseUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.Ordinal)
-            && !options.AllowInsecureBaseUrl)
-        {
-            return $"{AppOptions.SectionName}:PublicBaseUrl must use https, because it carries the "
-                   + "Steam auth token back from Facepunch. For the usual http://localhost setup, set "
-                   + $"{AppOptions.SectionName}:AllowInsecureBaseUrl=true.";
-        }
-
         foreach (var proxy in options.KnownProxies)
         {
             if (!IPAddress.TryParse(proxy, out _))

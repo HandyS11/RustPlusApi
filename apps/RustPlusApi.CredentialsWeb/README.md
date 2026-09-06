@@ -1,74 +1,117 @@
 # Rust+ credentials website
 
-A single-page web app that walks you from nothing to working Rust+ credentials.
+A single-page web app that walks you from nothing to working Rust+ credentials — no .NET SDK
+required.
 
-**It runs on your own machine, and only there.** The browser you log in with must be on the same
-machine as the container. There is no public instance, and one cannot be built — see
-[Why this is loopback-only](#why-this-is-loopback-only).
+**There is no public instance yet.** The app is built to be one — see
+[Two modes, chosen automatically](#two-modes-chosen-automatically) — and when the maintainer stands
+one up, its address will be filled in here. Until then, the route that works is running it yourself,
+which is one command.
 
-## Run it
+## Run it yourself
 
 ```bash
-docker run -p 127.0.0.1:8080:8080 \
-  -e CredentialsWeb__PublicBaseUrl=http://localhost:8080 \
-  -e CredentialsWeb__AllowInsecureBaseUrl=true \
-  ghcr.io/handys11/rustplusapi-credentials
+docker run -p 127.0.0.1:8080:8080 ghcr.io/handys11/rustplusapi-credentials
 ```
 
-Then open <http://localhost:8080> in a browser **on that same machine**.
-
-`PublicBaseUrl` is required and should be the loopback origin you will actually open, with no
-trailing slash — it is the URL Facepunch redirects the browser back to, and it must match the port
-you published. `AllowInsecureBaseUrl=true` is needed because startup otherwise insists on `https`,
-which made sense when this app was meant to be hosted; on loopback, plain `http` is the normal
-case.
-
-Startup checks that `PublicBaseUrl` is present, absolute, free of a trailing slash and — unless
-`AllowInsecureBaseUrl` is set — `https`, printing `Configuration error: ...` to stderr and exiting
-with code 1 rather than starting misconfigured. It does **not** check that the origin is loopback:
-a routable value starts cleanly and then fails at the Steam step, which is what
-[#126](https://github.com/HandyS11/RustPlusApi/issues/126) reports. Failing fast on that is a
-sensible follow-up; today it is on you to get it right.
+No environment variables needed — the app has no required setting. Open <http://localhost:8080> in
+a browser **on that same machine**, and Steam signs you in with the ordinary automatic redirect:
+your browser resolves `localhost` to the published port, and the app treats the request as local.
+That is the shortest version of this flow, and the one to prefer if it is available to you.
 
 For local development without a container:
 
 ```bash
-dotnet run --project apps/RustPlusApi.CredentialsWeb \
-  -- --CredentialsWeb:PublicBaseUrl=http://localhost:5000 --CredentialsWeb:AllowInsecureBaseUrl=true
+dotnet run --project apps/RustPlusApi.CredentialsWeb
 ```
 
-## Why this is loopback-only
+## Two modes, chosen automatically
 
-Facepunch has moved the Rust+ login off the redirect. `/signin-steam` appears to branch on the
-shape of the `returnUrl` it was given:
+The app decides how to handle each request as it arrives — nothing is configured. A request is
+**local** when both hold: the connection came from an address that is **not routable** from outside
+this machine's own network (loopback, RFC 1918 private space, IPv4 link-local, or the IPv6
+equivalents), and the `Host` header names a loopback host (`localhost`, any `*.localhost`, or a
+loopback IP literal). That is exactly what browsing to `http://localhost:8080` from the machine
+running the container looks like. Anything else — a LAN address, a hostname behind a reverse proxy,
+a hosted instance — is **remote**.
 
-- a **loopback** `returnUrl` gets the legacy `302` redirect, with `steamId` and `token` appended;
-- **anything else** gets a `window.ReactNativeWebView.postMessage(...)` call instead — the bridge
-  that exists because the Rust+ companion app loads this page in a React Native WebView. In an
-  ordinary browser that object is `undefined`, and the visitor sees *"Failed to send login message
-  to the Rust+ app."* The callback is never requested, so the app never learns anything happened.
+The connection half is wider than loopback for one concrete reason: **in a container it is never
+loopback.** `docker run -p 127.0.0.1:8080:8080` publishes the port on the host's loopback, but the
+container is reached across the Docker bridge, so the app sees the gateway (`172.17.0.1`,
+`192.168.65.1` on Docker Desktop, `10.0.2.x` under rootless Podman). A loopback-only test would put
+the command at the top of this README into the paste flow and then refuse it the pairing wait, with
+a message telling you to run the app yourself. The `Host` half is what actually carries the meaning
+— it is what says the visitor's browser will resolve the return URL back to its own machine — and it
+stays strictly loopback.
 
-A LAN address with no TLS and no proxy in the path fails identically to a public HTTPS host, which
-rules out the transport chain as the cause. Reachability is not the trigger either: Facepunch's
-servers cannot reach your `localhost` any more than they can reach an unroutable LAN IP, yet
-loopback works and the LAN IP does not.
+- **Local** keeps today's redirect. Facepunch sends the browser straight back to this app; there is
+  no extra step.
+- **Remote** gets the paste flow, because of how Facepunch's `/signin-steam` decides where it is
+  willing to send the browser back to: purely from the *shape* of the return address, not whether
+  anything can actually reach it. A loopback address always qualifies — Facepunch's own servers
+  cannot reach your `localhost` any more than they can reach an unroutable LAN address, yet loopback
+  still works. So a remote visitor is handed a loopback address that nothing is listening on. Their
+  browser fails to connect and shows that dead address — Steam token and all — right in the address
+  bar. They copy it and paste it back into the page they started from, which picks up from there
+  exactly as if the redirect had landed on its own. **This was verified against the live Facepunch
+  endpoint on 2026-09-06, from a non-loopback origin, and it worked.**
 
-This means a hosted instance cannot work. Neither branch is reachable from one: the redirect branch
-needs a loopback `returnUrl` that a hosted site cannot own, and the postMessage branch needs script
-injection into Facepunch's own window, which only something that *launches* the browser can arrange.
+## Self-hosting beyond loopback
 
-Consequently there is no reverse-proxy setup for this app. A proxy can serve the page, but the Steam
-step will fail regardless of how the proxy is configured, so none is documented.
+Running this for more than yourself — on a LAN address, or behind a reverse proxy — puts every
+visitor into remote/paste mode. Three things follow.
 
-> **Not proven.** Facepunch's source has not been read. The branch is inferred from the behaviour
-> above, from the error string matching the missing bridge exactly, and from `liamcottle/rustplus.js`
-> documenting the same change. `/signin-steam` returns a bodyless 500 to a probe without valid
-> OpenID parameters, so its own error page cannot be read. See
-> [#126](https://github.com/HandyS11/RustPlusApi/issues/126) for the full reproduction.
->
-> **This is a legacy path.** The loopback redirect is the branch Facepunch no longer uses for its
-> own app. If it is retired, this app and `SteamLoginService` — and so the console sample — stop
-> working together, and injection becomes the only remaining route.
+### The pairing wait is local-only by default
+
+It is the one step that holds a socket open to Google per visitor — the one genuinely scarce
+resource here — so it is offered to local visitors only unless you opt in. Self-hosting for yourself
+on a LAN address? Set `CredentialsWeb__AllowRemotePairing=true`.
+
+### Behind a reverse proxy, set `KnownProxies` — the caps do not work without it
+
+`Caddyfile.example` in this directory is a worked configuration, and `docker-compose.yml` has the
+matching compose wiring. The proxy must overwrite `X-Forwarded-For` rather than append to it, so a
+visitor can't spoof their way past the per-IP caps, and it has to be paired with
+`CredentialsWeb__KnownProxies__0` set to the proxy's own address on the app's network.
+
+Leaving `KnownProxies` empty behind a proxy does **not** make the caps lax. It makes the instance
+effectively single-user, because every visitor is then accounted as the proxy and they all share one
+per-IP bucket:
+
+- `MaxCompletionsPerIpPerHour` (5) becomes a **global** ceiling. After the fifth completed flow the
+  instance stops serving anybody at all for an hour.
+- The one-session-per-address rule becomes a **global** one-visitor-at-a-time lock, and the 429 it
+  answers with tells a total stranger "You already have a session in progress. Reopen that tab",
+  which is nonsense for them.
+- Worst: sessions get **evicted**. A session still in `Created` is treated as abandoned and cleared
+  out when the "same address" starts a new one — which is right per visitor and catastrophic when
+  every visitor is the same address. Visitor B merely loading the page invalidates visitor A's
+  return token while A is still on Steam's login page. A then pastes a perfectly good address and is
+  told it was already used.
+
+The app cannot detect this for you — a loopback-published local instance and a proxied hosted one
+look identical from the inside — so it logs an informational line at startup naming the setting,
+and the rest is the operator's call.
+
+### Behind a reverse proxy, reject foreign `Host` values too
+
+The local/remote decision is `(non-routable connection) AND (loopback Host)`. Set `KnownProxies` as
+above and the first half does real work on a hosted instance — every visitor presents as their own
+public address and fails it, which is stricter than a loopback-only rule managed behind a same-host
+proxy. Leave it unset behind a proxy and the first half is true for *every* request, so the `Host`
+header is all that is left — and the caller writes that header. Likewise on a LAN, where a peer's
+address is non-routable by definition. A caller sending `Host: localhost` then reads as local and
+takes the local behaviour, including the pairing wait `AllowRemotePairing` is meant to gate. No
+credential is disclosed; it is a control bypass, bounded by `MaxConcurrentPairings`.
+
+Close it at the deployment, because the app cannot close it in code:
+
+- A **named site block** at the proxy — `creds.example.org { ... }`, as in `Caddyfile.example` —
+  routes a request only when its `Host` matches, and answers nothing otherwise. That is enough.
+- A **catch-all** block that passes the client's `Host` straight through is not. If you use one,
+  filter `Host` at the proxy yourself, or set the `AllowedHosts` environment variable on the app —
+  ASP.NET Core's own host filtering, which sits at its `*` default here because the app ships no
+  `appsettings.json`.
 
 ## Configuration
 
@@ -77,40 +120,59 @@ variable, `--CredentialsWeb:Name` on the command line).
 
 | Setting | Default | What it does |
 |---|---|---|
-| `PublicBaseUrl` | *(required)* | The loopback origin you open in the browser, no trailing slash |
-| `AllowInsecureBaseUrl` | `false` | Permits a non-https base URL. Needed for the usual `http://localhost` setup |
-| `KnownProxies__0`, `__1`, ... | *(empty)* | Reverse proxy addresses whose `X-Forwarded-For` is trusted |
+| `AllowRemotePairing` | `false` | The LAN self-host switch: offers the pairing wait to non-local visitors too. Turn it on when self-hosting on an address that is yours but not loopback, for visitors you trust. |
+| `KnownProxies__0`, `__1`, ... | *(empty)* | Reverse proxy addresses whose `X-Forwarded-For` is trusted. Required behind a proxy — see above for what happens without it |
 | `MaxConcurrentSessions` | `200` | Global cap on live sessions, in any state |
 | `MaxConcurrentPairings` | `50` | Global cap on live MCS sockets held open waiting for a pairing |
 | `MaxCompletionsPerIpPerHour` | `5` | Rolling per-IP cap on completed flows |
-| `CreatedTtl` | `00:05:00` | Lifetime of a session before the Steam login completes |
+| `CreatedTtl` | `00:10:00` | Lifetime of a session before the Steam login completes. Ten minutes covers a real Steam login, two-factor included, plus a copy and a paste. |
 | `SessionTtl` | `00:15:00` | Lifetime of a session once the Steam login has completed |
 | `PairingTtl` | `00:10:00` | Maximum time an MCS socket is held waiting for a pairing push |
 
-The caps and `KnownProxies` are inherited from the abandoned hosted design and are still enforced,
-but on a single-user loopback instance they will not be reached in normal use. They are documented
-because they exist and can still refuse a request, not because they need tuning.
+`PublicBaseUrl` and `AllowInsecureBaseUrl` are gone — the return URL now comes from the request
+itself (or is a fixed loopback string on a remote request), so there is nothing left for either to
+configure. An old deployment that still sets one logs a startup warning naming it and keeps running;
+nothing breaks, but they can be removed.
 
 ## What it does with credentials
 
-The server here is your own machine, but the guarantees are worth stating because the Steam auth
-token really does pass through the process:
+The Steam auth token really does pass through this server on its way to becoming your credentials,
+so the guarantees below are worth stating plainly:
 
 - **In memory only.** No database, no session cache, no disk. A restart wipes everything.
 - **The Steam auth token is dropped** the moment your device is registered with Rust Companion.
 - **No credential is logged.** Session ids, step names and exception text do appear in the app's
   own logs — but never a Steam token, FCM/GCM/Expo credential or `playerToken`. Asserted by
   `SecretsAreNeverLoggedTests`, not just intended.
-- **The callback responds 302**, so the token-bearing URL never becomes a browser history entry,
-  and the session handle travels in a URL fragment, which browsers never send to a server.
-- **The token does appear in the request line** on the way in. Facepunch decides the callback shape
-  and nothing can change that; the design minimises its lifetime rather than pretending otherwise.
-  If you put anything in front of this app that keeps an access log, that log will record the token
-  and the session id.
+- **The callback responds 302**, so on a *local* visit the token-bearing URL never becomes a browser
+  history entry, and the session handle travels in a URL fragment, which browsers never send to a
+  server.
+- **On a remote visitor, the Steam token arrives in a request body, not a request line.** The paste
+  is a `POST` with the address in a JSON body, so — unlike the hosted design this app originally
+  carried in its own codebase, which was never actually deployed anywhere — the token never appears
+  in any URL and so never reaches an access log. What is still worth redacting is the session handle
+  in the path of `GET /api/sessions/{id}/events`; see `Caddyfile.example`.
+
+Three things worth knowing if you're pasting an address into this page, or anyone else's:
+
+- **Your clipboard manager may remember it.** The token is in whatever you copied, and a clipboard
+  history tool keeps what you copy regardless of what this page does with it afterwards.
+- **A paste box is a social-engineering surface.** Nothing stops another site from copying this
+  page's flow and asking you to paste the same address into it. That's not a new capability — anyone
+  can already clone and host this app — but "paste this address here" normalises the behaviour, so
+  check you're actually on the site you meant to be on before you paste. The page names the origin
+  you should be on, immediately above the box.
+- **The paste flow puts the token in your browser history.** This is the one place the paste is
+  *worse* than the redirect, and it is worth stating in the same breath as the `302` above. In paste
+  mode your browser genuinely navigates to the token-bearing loopback URL, fails to connect, and
+  leaves that URL in the failed tab's address bar and in its session history — and on a signed-in,
+  syncing profile, potentially in your browser vendor's cloud. Nothing in this app can prevent it:
+  the navigation happens in your browser, to an address no server here ever receives. The page tells
+  you to close that tab once the paste has landed, which is the whole mitigation.
 
 ## Flow
 
 The steps run in the order `4 → 1,2,3 → 5`, not the console app's `1,2,3 → 4 → 5`. Putting the
 Steam login first means a page load cannot trigger Google device registrations: they cost one
-dictionary entry with a five-minute TTL and nothing else. Step 6, the pairing wait, is an opt-in
+dictionary entry with a ten-minute TTL and nothing else. Step 6, the pairing wait, is an opt-in
 continuation because it is the only step that holds a socket open.

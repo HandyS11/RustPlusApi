@@ -12,10 +12,7 @@ public sealed class SessionStoreCapsTests
     private static (SessionStore Store, FakeTimeProvider Time) NewStore(Action<AppOptions>? configure = null)
     {
         var time = new FakeTimeProvider(Origin);
-        var options = new AppOptions
-        {
-            PublicBaseUrl = "https://creds.example.org"
-        };
+        var options = new AppOptions();
         configure?.Invoke(options);
         return (new SessionStore(options, time), time);
     }
@@ -25,9 +22,9 @@ public sealed class SessionStoreCapsTests
     {
         var (store, _) = NewStore(o => o.MaxConcurrentSessions = 1);
         using var _s = store;
-        store.TryCreate("203.0.113.7", out _, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out _, out _);
 
-        Assert.False(store.TryCreate("203.0.113.8", out var session, out var failure));
+        Assert.False(store.TryCreate("203.0.113.8", isLocal: true, out var session, out var failure));
 
         Assert.Null(session);
         Assert.Equal(SessionCreateFailure.GlobalLimit, failure);
@@ -38,9 +35,9 @@ public sealed class SessionStoreCapsTests
     {
         var (store, _) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var abandoned, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var abandoned, out _);
 
-        Assert.True(store.TryCreate("203.0.113.7", out var replacement, out var failure));
+        Assert.True(store.TryCreate("203.0.113.7", isLocal: true, out var replacement, out var failure));
 
         Assert.Equal(SessionCreateFailure.None, failure);
         Assert.NotSame(abandoned, replacement);
@@ -50,14 +47,50 @@ public sealed class SessionStoreCapsTests
     }
 
     [Fact]
+    public void TryCreate_CarriesTheEvictedCreatedSessionsReturnTokenOntoTheReplacement()
+    {
+        // The evicted session's visitor may be on Steam's login page right now, holding an address
+        // that names that token. Dropping it with the session answers their paste with "already
+        // used" and strands a Steam login that actually succeeded — and pressing Start in a fresh
+        // tab, which is how they get back to the paste box, is exactly what causes the eviction.
+        var (store, _) = NewStore();
+        using var _s = store;
+        store.TryCreate("203.0.113.7", isLocal: false, out var abandoned, out _);
+
+        Assert.True(store.TryCreate("203.0.113.7", isLocal: false, out var replacement, out _));
+
+        Assert.Equal(abandoned!.ReturnToken, replacement!.ReturnToken);
+        Assert.NotEqual(abandoned.SessionId, replacement.SessionId);
+        Assert.True(store.TryConsumeReturnToken(abandoned.ReturnToken, out var resolved));
+        Assert.Same(replacement, resolved);
+    }
+
+    [Fact]
+    public void TryCreate_MintsAFreshReturnToken_WhenTheEvictedSessionsTokenWasAlreadyConsumed()
+    {
+        // Only a token still live is worth carrying over. One that has been consumed is spent, and
+        // re-mapping it onto the replacement would make an address that already ran the flow work a
+        // second time.
+        var (store, _) = NewStore();
+        using var _s = store;
+        store.TryCreate("203.0.113.7", isLocal: false, out var spent, out _);
+        Assert.True(store.TryConsumeReturnToken(spent!.ReturnToken, out _));
+
+        Assert.True(store.TryCreate("203.0.113.7", isLocal: false, out var replacement, out _));
+
+        Assert.NotEqual(spent.ReturnToken, replacement!.ReturnToken);
+        Assert.False(store.TryConsumeReturnToken(spent.ReturnToken, out _));
+    }
+
+    [Fact]
     public void TryCreate_Refuses_WhenTheSameIpHasAnAuthenticatedSession()
     {
         var (store, time) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var active, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var active, out _);
         active!.Advance(SessionState.Authenticated, time.GetUtcNow().AddMinutes(15));
 
-        Assert.False(store.TryCreate("203.0.113.7", out var session, out var failure));
+        Assert.False(store.TryCreate("203.0.113.7", isLocal: true, out var session, out var failure));
 
         Assert.Null(session);
         Assert.Equal(SessionCreateFailure.ActiveSessionForIp, failure);
@@ -72,10 +105,10 @@ public sealed class SessionStoreCapsTests
         // "Start over" button led straight into a false "at capacity" 429 for up to 15 minutes.
         var (store, time) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var failed, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var failed, out _);
         failed!.Advance(SessionState.Failed, time.GetUtcNow().AddMinutes(15));
 
-        Assert.True(store.TryCreate("203.0.113.7", out var replacement, out var failure));
+        Assert.True(store.TryCreate("203.0.113.7", isLocal: true, out var replacement, out var failure));
 
         Assert.Equal(SessionCreateFailure.None, failure);
         Assert.NotSame(failed, replacement);
@@ -92,10 +125,10 @@ public sealed class SessionStoreCapsTests
     {
         var (store, time) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", out var other, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var other, out _);
         other!.Advance(SessionState.Authenticated, time.GetUtcNow().AddMinutes(15));
 
-        Assert.True(store.TryCreate("203.0.113.8", out _, out var failure));
+        Assert.True(store.TryCreate("203.0.113.8", isLocal: true, out _, out var failure));
         Assert.Equal(SessionCreateFailure.None, failure);
     }
 
@@ -107,7 +140,7 @@ public sealed class SessionStoreCapsTests
         store.RecordCompletion("203.0.113.7");
         store.RecordCompletion("203.0.113.7");
 
-        Assert.False(store.TryCreate("203.0.113.7", out _, out var failure));
+        Assert.False(store.TryCreate("203.0.113.7", isLocal: true, out _, out var failure));
         Assert.Equal(SessionCreateFailure.HourlyLimit, failure);
     }
 
@@ -117,11 +150,11 @@ public sealed class SessionStoreCapsTests
         var (store, time) = NewStore(o => o.MaxCompletionsPerIpPerHour = 1);
         using var _s = store;
         store.RecordCompletion("203.0.113.7");
-        Assert.False(store.TryCreate("203.0.113.7", out _, out _));
+        Assert.False(store.TryCreate("203.0.113.7", isLocal: true, out _, out _));
 
         time.Advance(TimeSpan.FromMinutes(61));
 
-        Assert.True(store.TryCreate("203.0.113.7", out _, out var failure));
+        Assert.True(store.TryCreate("203.0.113.7", isLocal: true, out _, out var failure));
         Assert.Equal(SessionCreateFailure.None, failure);
     }
 
@@ -132,7 +165,7 @@ public sealed class SessionStoreCapsTests
         using var _s = store;
         store.RecordCompletion("203.0.113.7");
 
-        Assert.True(store.TryCreate("203.0.113.8", out _, out _));
+        Assert.True(store.TryCreate("203.0.113.8", isLocal: true, out _, out _));
     }
 
     [Fact]
@@ -147,12 +180,12 @@ public sealed class SessionStoreCapsTests
         // The stale entry is now more than an hour old. This TryCreate's hourly check prunes
         // "203.0.113.7"'s completions list to empty and unlinks it from the per-IP map — the exact
         // moment a same-address RecordCompletion must not lose its write.
-        Assert.True(store.TryCreate("203.0.113.7", out var session, out _));
+        Assert.True(store.TryCreate("203.0.113.7", isLocal: true, out var session, out _));
         store.Remove(session!.SessionId);
 
         store.RecordCompletion("203.0.113.7");
 
-        Assert.False(store.TryCreate("203.0.113.7", out _, out var failure));
+        Assert.False(store.TryCreate("203.0.113.7", isLocal: true, out _, out var failure));
         Assert.Equal(SessionCreateFailure.HourlyLimit, failure);
     }
 
@@ -253,7 +286,7 @@ public sealed class SessionStoreCapsTests
                 int index;
                 while ((index = Interlocked.Increment(ref nextPruneAddress)) < addressCount)
                 {
-                    if (store.TryCreate(addresses[index], out var session, out _))
+                    if (store.TryCreate(addresses[index], isLocal: true, out var session, out _))
                     {
                         store.Remove(session!.SessionId);
                     }
@@ -292,7 +325,7 @@ public sealed class SessionStoreCapsTests
 
             foreach (var address in addresses)
             {
-                if (store.TryCreate(address, out _, out var failure))
+                if (store.TryCreate(address, isLocal: true, out _, out var failure))
                 {
                     lostWrites.Add(address);
                     continue;
@@ -346,7 +379,7 @@ public sealed class SessionStoreCapsTests
         {
             var (store, time) = NewStore();
             using var _s = store;
-            store.TryCreate("203.0.113.7", out var session, out _);
+            store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
             using var allReady = new CountdownEvent(2);
             using var go = new ManualResetEventSlim(initialState: false);
@@ -362,7 +395,7 @@ public sealed class SessionStoreCapsTests
                     return;
                 }
 
-                store.TryCreate("203.0.113.7", out _, out _);
+                store.TryCreate("203.0.113.7", isLocal: true, out _, out _);
             })
             {
                 IsBackground = true

@@ -1,7 +1,9 @@
 # Credential-acquisition website
 
 **Date:** 2026-09-03
-**Status:** Implemented, and **partly invalidated on 2026-09-06** — see the box below.
+**Status:** Implemented, and **partly invalidated on 2026-09-06** — see the box below. **The app is
+hosted again as of the same day**, by a different mechanism than this document designed — see
+`2026-09-06-out-of-band-steam-callback-design.md`.
 **Scope:** A new `apps/RustPlusApi.CredentialsWeb` project — a single-page web app that acquires
 Rust+ credentials. Two audiences: a self-host starter anyone can deploy, and a public instance.
 Consumes `RustPlusApi.Fcm.Registration` as-is; **no library change is required**.
@@ -381,6 +383,14 @@ requirement applies to `src/` and does not extend here.
   gate left that could plausibly enforce one") was the error: absence of a gate at `/login` did not
   imply absence of one at `/signin-steam`, which is unreadable from outside (bodyless 500 without
   valid OpenID parameters). Facepunch's source has still not been read; the branch is inferred.
+
+  **Further update, same day.** The public instance is possible again, by a route this assumption
+  never considered: `2026-09-06-out-of-band-steam-callback-design.md` doesn't need Facepunch to
+  redirect anywhere externally reachable at all. It hands the browser a *loopback* `returnUrl` that
+  simply has nothing listening on it, and has the visitor bring the resulting dead address back by
+  hand. The hosted framing this document's fallout had removed from the README,
+  `docker-compose.yml` and the user-facing docs has since been restored, describing that mechanism
+  instead of the one this document designed.
 - **`PairingListener` reliably surfaces the first pairing push after a fresh registration.** A prior
   investigation found the first push could be missed; four fixes landed. The website makes this
   user-visible in a way the console app did not — a missed first push reads as "the site is broken".
