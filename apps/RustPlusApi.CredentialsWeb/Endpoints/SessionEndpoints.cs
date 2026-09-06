@@ -44,81 +44,95 @@ internal static class SessionEndpoints
     /// <param name="app">The route builder.</param>
     internal static void MapSessionEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/sessions", (HttpContext context, SessionStore store, AppOptions options) =>
+        app.MapPost("/api/sessions", CreateSession);
+        app.MapPost("/api/sessions/{sessionId}/pairing", StartPairing);
+    }
+
+    /// <summary>Handles <c>POST /api/sessions</c>: opens a session and hands back the Facepunch login
+    /// URL to send the visitor to.</summary>
+    /// <param name="context">The request, which decides local versus remote and supplies the origin.</param>
+    /// <param name="store">The session store.</param>
+    /// <param name="options">The instance's settings.</param>
+    private static IResult CreateSession(HttpContext context, SessionStore store, AppOptions options)
+    {
+        var isLocal = RequestMode.IsLocal(context);
+
+        if (!store.TryCreate(ClientAddress.Of(context), isLocal, out var session, out var failure))
         {
-            var isLocal = RequestMode.IsLocal(context);
+            // ActiveSessionForIp means a resumable session already exists for this address —
+            // "at capacity" would be false and would send the visitor into a five-minute wait
+            // for no reason. GlobalLimit and HourlyLimit are genuine capacity/rate limits, so
+            // they keep the existing message.
+            var message = failure == SessionCreateFailure.ActiveSessionForIp
+                ? ActiveSessionMessage
+                : OverCapacityMessage;
+            return Results.Json(new ErrorPayload(message), statusCode: 429);
+        }
 
-            if (!store.TryCreate(ClientAddress.Of(context), isLocal, out var session, out var failure))
-            {
-                // ActiveSessionForIp means a resumable session already exists for this address —
-                // "at capacity" would be false and would send the visitor into a five-minute wait
-                // for no reason. GlobalLimit and HourlyLimit are genuine capacity/rate limits, so
-                // they keep the existing message.
-                var message = failure == SessionCreateFailure.ActiveSessionForIp
-                    ? ActiveSessionMessage
-                    : OverCapacityMessage;
-                return Results.Json(new ErrorPayload(message), statusCode: 429);
-            }
+        // Local: the redirect can land here, so the return URL is this very request's origin.
+        // Nothing is configured, so nothing can be configured wrong.
+        //
+        // Remote: Facepunch only honours a loopback returnUrl, and decides that from the URL's
+        // shape rather than its reachability — their servers cannot reach a visitor's localhost
+        // either. So it gets a loopback address nothing is listening on. The visitor's browser
+        // fails to connect and shows the address, which they paste back at POST /api/callback.
+        // The port comes from the dynamic range, so it is very unlikely to belong to something
+        // the visitor actually runs; if it somehow does, the single-use return token means the
+        // paste fails closed rather than the flow completing somewhere else.
+        var returnUrl = isLocal
+            ? $"{context.Request.Scheme}://{context.Request.Host}/callback/{session.ReturnToken}"
+            : $"http://localhost:{RandomNumberGenerator.GetInt32(49152, 65536)}/callback/{session.ReturnToken}";
 
-            // Local: the redirect can land here, so the return URL is this very request's origin.
-            // Nothing is configured, so nothing can be configured wrong.
-            //
-            // Remote: Facepunch only honours a loopback returnUrl, and decides that from the URL's
-            // shape rather than its reachability — their servers cannot reach a visitor's localhost
-            // either. So it gets a loopback address nothing is listening on. The visitor's browser
-            // fails to connect and shows the address, which they paste back at POST /api/callback.
-            // The port comes from the dynamic range, so it is very unlikely to belong to something
-            // the visitor actually runs; if it somehow does, the single-use return token means the
-            // paste fails closed rather than the flow completing somewhere else.
-            var returnUrl = isLocal
-                ? $"{context.Request.Scheme}://{context.Request.Host}/callback/{session.ReturnToken}"
-                : $"http://localhost:{RandomNumberGenerator.GetInt32(49152, 65536)}/callback/{session.ReturnToken}";
+        return Results.Ok(new CreateSessionResponse(
+            session.SessionId,
+            SteamLoginService.BuildLoginUrl(returnUrl),
+            isLocal ? "redirect" : "paste",
+            isLocal || options.AllowRemotePairing));
+    }
 
-            return Results.Ok(new CreateSessionResponse(
-                session.SessionId,
-                SteamLoginService.BuildLoginUrl(returnUrl),
-                isLocal ? "redirect" : "paste",
-                isLocal || options.AllowRemotePairing));
-        });
-
-        app.MapPost("/api/sessions/{sessionId}/pairing", (
-            string sessionId,
-            SessionStore store,
-            CredentialFlow flow,
-            AppOptions options) =>
+    /// <summary>Handles <c>POST /api/sessions/{sessionId}/pairing</c>: starts the background wait for
+    /// an in-game pairing.</summary>
+    /// <param name="sessionId">The session handle from the route.</param>
+    /// <param name="store">The session store.</param>
+    /// <param name="flow">The registration flow that owns the wait.</param>
+    /// <param name="options">The instance's settings.</param>
+    private static IResult StartPairing(
+        string sessionId,
+        SessionStore store,
+        CredentialFlow flow,
+        AppOptions options)
+    {
+        if (!store.TryGet(sessionId, out var session))
         {
-            if (!store.TryGet(sessionId, out var session))
-            {
-                return Results.NotFound();
-            }
+            return Results.NotFound();
+        }
 
-            // The pairing wait is the one step that holds a long-lived socket per visitor. A public
-            // instance has no reason to hold one for a stranger, so it is local-only unless the
-            // operator opts in — which someone self-hosting on a LAN address will want to.
-            if (!session.IsLocal && !options.AllowRemotePairing)
-            {
-                return Results.Json(new ErrorPayload(RemotePairingMessage), statusCode: 403);
-            }
+        // The pairing wait is the one step that holds a long-lived socket per visitor. A public
+        // instance has no reason to hold one for a stranger, so it is local-only unless the
+        // operator opts in — which someone self-hosting on a LAN address will want to.
+        if (!session.IsLocal && !options.AllowRemotePairing)
+        {
+            return Results.Json(new ErrorPayload(RemotePairingMessage), statusCode: 403);
+        }
 
-            // Advisory: it settles the ordinary 409 without starting anything, but it is a read of
-            // a state a concurrent request can change a moment later. What actually holds a session
-            // to one pairing wait is Session.TryClaimForPairing, which
-            // CredentialFlow.WaitForPairingAsync takes before it touches the network.
-            if (session.State != SessionState.Ready)
-            {
-                return Results.Conflict(new ErrorPayload(
-                    "This session is not ready to wait for a pairing."));
-            }
+        // Advisory: it settles the ordinary 409 without starting anything, but it is a read of
+        // a state a concurrent request can change a moment later. What actually holds a session
+        // to one pairing wait is Session.TryClaimForPairing, which
+        // CredentialFlow.WaitForPairingAsync takes before it touches the network.
+        if (session.State != SessionState.Ready)
+        {
+            return Results.Conflict(new ErrorPayload(
+                "This session is not ready to wait for a pairing."));
+        }
 
-            // The slot is taken here rather than inside the flow so that a refusal is a plain 429
-            // with nothing started; CredentialFlow.WaitForPairingAsync always releases it.
-            if (!store.TryAcquirePairingSlot())
-            {
-                return Results.Json(new ErrorPayload(PairingBusyMessage), statusCode: 429);
-            }
+        // The slot is taken here rather than inside the flow so that a refusal is a plain 429
+        // with nothing started; CredentialFlow.WaitForPairingAsync always releases it.
+        if (!store.TryAcquirePairingSlot())
+        {
+            return Results.Json(new ErrorPayload(PairingBusyMessage), statusCode: 429);
+        }
 
-            session.BackgroundWork = flow.WaitForPairingAsync(session, session.Lifetime.Token);
-            return Results.Accepted();
-        });
+        session.BackgroundWork = flow.WaitForPairingAsync(session, session.Lifetime.Token);
+        return Results.Accepted();
     }
 }

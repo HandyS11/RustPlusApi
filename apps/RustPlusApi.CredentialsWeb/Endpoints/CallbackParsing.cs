@@ -55,7 +55,7 @@ internal static class CallbackParsing
 
         try
         {
-            login = SteamLoginService.ParseCallback(uri!);
+            login = SteamLoginService.ParseCallback(uri);
         }
         catch (InvalidOperationException)
         {

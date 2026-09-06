@@ -115,4 +115,4 @@ button.copy {
     border: 1px solid var(--line);
 }
 
-.status { color: var(--muted); min-height: 1.5rem; margin: 0.5rem 0 0; }
+.status { display: block; color: var(--muted); min-height: 1.5rem; margin: 0.5rem 0 0; }
