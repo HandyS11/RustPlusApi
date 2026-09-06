@@ -1,10 +1,17 @@
 # Credential-acquisition website
 
 **Date:** 2026-09-03
-**Status:** Approved, not yet implemented
+**Status:** Implemented, and **partly invalidated on 2026-09-06** — see the box below.
 **Scope:** A new `apps/RustPlusApi.CredentialsWeb` project — a single-page web app that acquires
 Rust+ credentials. Two audiences: a self-host starter anyone can deploy, and a public instance.
 Consumes `RustPlusApi.Fcm.Registration` as-is; **no library change is required**.
+
+> **The public-instance half of this spec does not work and cannot be made to work.** Facepunch's
+> `/signin-steam` only honours the `returnUrl` redirect for loopback addresses; anything else is
+> handed to a `ReactNativeWebView` bridge that exists only inside the Rust+ app. The app is
+> loopback-only. This document is kept as the dated record of what was designed and why, including
+> the reasoning that turned out to be wrong — see *Verification log* and *Assumptions to re-verify*.
+> Issue #126 has the reproduction.
 
 ## Problem
 
@@ -55,6 +62,11 @@ The 2026-09-02 spec left this open. Three probes closed it:
 hostname is not conclusively proven end to end, but probes 1 and 2 show there is no gate left that
 could plausibly enforce one — `/signin-steam` would have to deliberately re-validate a value it
 receives encrypted. Re-confirm against the first staging deployment; see *Assumptions to re-verify*.
+
+> **Superseded, 2026-09-06.** That conclusion was wrong, and the hedge in it was the load-bearing
+> part: `/signin-steam` *does* branch on the `returnUrl`, and an external hostname does not complete
+> the round trip. Probe 3 succeeded because `https://localhost:7443` is loopback, not because the
+> scheme and port were the only variables left. See *Assumptions to re-verify* below and issue #126.
 
 The 2026-09-02 spec's "Assumptions to re-verify" section is amended with these outcomes.
 
@@ -157,9 +169,11 @@ to the server, so the session handle stays out of the *callback* log line and ou
 headers. It does **not** stay out of access logs entirely: the client immediately opens
 `GET /api/sessions/{sessionId}/events` to attach the SSE stream, which puts the handle in the
 request path of every such request, and a default access-log format records that. The handle is
-the sole authenticator for a stream that replays the full credentials payload, so an operator
-following the Caddyfile example must redact the session path too, not just `steamId` and `token` —
-see `Caddyfile.example`. It also makes the flow work when the Steam login is completed in a
+the sole authenticator for a stream that replays the full credentials payload, so anything keeping
+an access log in front of this app must redact the session path too, not just `steamId` and `token`.
+(`Caddyfile.example` showed how; it was removed on 2026-09-06 along with the rest of the
+reverse-proxy guidance, since no proxy can front the Steam login.) It also makes the flow work when
+the Steam login is completed in a
 *different* browser from the one holding the SSE stream — a phone, say — mirroring the library's
 headless story at no cost.
 
@@ -353,10 +367,20 @@ requirement applies to `src/` and does not extend here.
 
 ## Assumptions to re-verify
 
-- **An external non-loopback `https` hostname completes the round trip.** Probes 1 and 2 show no
-  validation gate exists that could reject one, and probe 3 proves the scheme and port. Confirm
-  against the first staging deployment before the public instance is announced. If it fails, the
-  self-host starter still works on `https://localhost` and the public instance is the only casualty.
+- ~~**An external non-loopback `https` hostname completes the round trip.**~~ **Disproven,
+  2026-09-06 (issue #126).** It does not. `/signin-steam` branches: a loopback `returnUrl` gets the
+  legacy 302, anything else gets `window.ReactNativeWebView.postMessage`, which is `undefined` in an
+  ordinary browser — the visitor sees "Failed to send login message to the Rust+ app" and the
+  callback is never requested. A plain-HTTP LAN address with no proxy and no TLS fails identically
+  to a public HTTPS host, which rules out the transport chain. The documented fallback is the
+  outcome: the app is loopback-only, the public instance is the casualty, and the hosted framing
+  has been removed from the README, `docker-compose.yml` and the user-facing docs.
+
+  Probes 1 and 2 were correct and remain so — re-run on 2026-09-06, `/login` still reflects and
+  accepts *any* `returnUrl`, including `javascript:`. The conclusion drawn from them ("there is no
+  gate left that could plausibly enforce one") was the error: absence of a gate at `/login` did not
+  imply absence of one at `/signin-steam`, which is unreadable from outside (bodyless 500 without
+  valid OpenID parameters). Facepunch's source has still not been read; the branch is inferred.
 - **`PairingListener` reliably surfaces the first pairing push after a fresh registration.** A prior
   investigation found the first push could be missed; four fixes landed. The website makes this
   user-visible in a way the console app did not — a missed first push reads as "the site is broken".

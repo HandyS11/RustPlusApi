@@ -15,19 +15,23 @@ The `RustPlusApi.Fcm.Registration` package acquires both natively, replacing the
 The fastest way to get both kinds of credentials — no .NET SDK required — is the
 [Rust+ credentials website](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md):
 a single-page app that walks you through the Steam login in a browser and hands back the four
-pairing values plus a downloadable `rustplus.config.json`. It is both a self-host starter and the
-code behind the public instance. Self-host it with:
+pairing values plus a downloadable `rustplus.config.json`.
+
+You run it on your own machine and browse to it from that same machine. There is no public instance
+and there cannot be one: Facepunch only honours the login redirect for a loopback address, so a
+hosted deployment gets a login that never calls back. Run it with:
 
 ```bash
-docker run -p 8080:8080 \
-  -e CredentialsWeb__PublicBaseUrl=https://creds.example.org \
+docker run -p 127.0.0.1:8080:8080 \
+  -e CredentialsWeb__PublicBaseUrl=http://localhost:8080 \
+  -e CredentialsWeb__AllowInsecureBaseUrl=true \
   ghcr.io/handys11/rustplusapi-credentials
 ```
 
 See the
 [website's README](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md)
-for the full self-host guide — including two reverse-proxy footguns worth reading before you put
-anything in front of it.
+for the details, including why the loopback restriction exists and what it means for the flow's
+long-term stability.
 
 Everything below documents the same registration chain driven directly from your own code — what
 the website's server does under the hood, and the route to use if you're integrating
@@ -101,7 +105,9 @@ Steps 1–7 run once. Step 8 happens every time you pair a new server in game.
 
 This section covers the local route — driving `SteamLoginService` yourself, as the console app
 does. The credentials website above uses the same mechanism, except the callback listener is the
-website's own `/callback/<nonce>` endpoint rather than a `localhost` `HttpListener`.
+website's own `/callback/<nonce>` endpoint rather than a `localhost` `HttpListener`. Both are
+loopback listeners, and that is not incidental: Facepunch only honours the `returnUrl` redirect when
+it points at a loopback address, which is why the website has to run on the machine you browse from.
 
 `SteamLoginService` binds an `HttpListener` on `http://localhost:<port>/` and sends the browser to:
 
@@ -135,6 +141,12 @@ constants drift when those apps change. The flow is ported from rustplus.js /
 `@liamcottle/push-receiver`; if registration breaks, re-check `RegistrationConstants` against
 those upstream sources. The offline test suite covers the deterministic parts; the live flow is
 validated by running the `RustPlus.Register.ConsoleApp` sample end to end.
+
+The Steam login is the most exposed of these. Facepunch has already moved its own app off the
+`returnUrl` redirect and onto a `ReactNativeWebView.postMessage` bridge, keeping the redirect only
+for loopback addresses. Everything here — `SteamLoginService`, the console sample and the
+credentials website alike — depends on that remaining branch. If it is retired, the callback simply
+never arrives and the login waits indefinitely rather than failing with a diagnostic.
 
 ## Loading credentials back
 

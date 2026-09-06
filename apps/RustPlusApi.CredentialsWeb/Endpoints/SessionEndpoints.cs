@@ -12,16 +12,22 @@ internal sealed record CreateSessionResponse(string SessionId, string LoginUrl);
 /// <summary>Session lifecycle endpoints.</summary>
 internal static class SessionEndpoints
 {
+    /// <summary>The command the capacity messages point at. Carries both settings the app requires
+    /// at startup: without them it exits 1 before serving anything, so a bare <c>docker run</c>
+    /// would be advice that cannot work.</summary>
+    private const string RunCommand =
+        "docker run -p 127.0.0.1:8080:8080 -e CredentialsWeb__PublicBaseUrl=http://localhost:8080 "
+        + "-e CredentialsWeb__AllowInsecureBaseUrl=true ghcr.io/handys11/rustplusapi-credentials";
+
     private const string OverCapacityMessage =
-        "This instance is at capacity. Try again in a few minutes — or run your own: "
-        + "docker run -p 8080:8080 ghcr.io/handys11/rustplusapi-credentials";
+        "This instance is at capacity. Try again in a few minutes — or run your own: " + RunCommand;
 
     private const string ActiveSessionMessage =
         "You already have a session in progress. Reopen that tab, or wait a few minutes and try again.";
 
     private const string PairingBusyMessage =
         "This instance is already holding as many pairing listeners as it allows. Try again in a "
-        + "few minutes — or run your own: docker run -p 8080:8080 ghcr.io/handys11/rustplusapi-credentials";
+        + "few minutes — or run your own: " + RunCommand;
 
     /// <summary>Maps <c>POST /api/sessions</c> and <c>POST /api/sessions/{sessionId}/pairing</c>.</summary>
     /// <param name="app">The route builder.</param>

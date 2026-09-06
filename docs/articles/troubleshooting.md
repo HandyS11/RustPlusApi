@@ -111,9 +111,20 @@ has redirected the browser back and the site has consumed it, that exact URL wil
 refreshing the page, going back, or reopening a bookmarked callback link all hit an already-consumed
 token. Start the flow over from the beginning; there is no way to resume a used callback URL.
 
-**I get a 429.** The instance you're using is at capacity — either its global session/pairing caps
-are full, or you've completed more flows in the last hour than its per-IP limit allows. Wait a few
-minutes and try again, or self-host your own instance (`docker run`, see the website's README).
+**Steam says "Failed to send login message to the Rust+ app".** You reached the app on something
+other than a loopback address — a LAN IP, a hostname, or anything behind a reverse proxy. Facepunch
+only honours the `returnUrl` redirect for loopback; for any other address it hands the token to a
+`ReactNativeWebView` bridge that exists only inside the Rust+ mobile app, so an ordinary browser has
+nowhere to put it. The callback is never requested and the app logs nothing, because from its point
+of view nothing happened. Run the container on the machine you are browsing from, publish it on
+`127.0.0.1`, and set `CredentialsWeb__PublicBaseUrl` to that same `http://localhost:<port>`. There
+is no proxy configuration that fixes this — see
+[#126](https://github.com/HandyS11/RustPlusApi/issues/126).
+
+**I get a 429.** The instance is at capacity — either its global session/pairing caps are full, or
+more flows have completed in the last hour than the per-IP limit allows. These caps are left over
+from an abandoned hosted design and should not be reachable on a single-user loopback instance; if
+you hit one, a stale session is the likely cause. Wait a few minutes and try again.
 
 **The pairing never arrives.** The wait for a pairing push is capped at the instance's `PairingTtl`
 (10 minutes by default). Make sure you press **Pair with Server** in game *while* the page still

@@ -18,6 +18,8 @@
         <details open>
             <summary>What this server sees, and what it keeps</summary>
             <ul>
+                <li>This app only works on the machine you are browsing from — the Steam login
+                    completes over loopback and nowhere else, so nothing here leaves your computer.</li>
                 <li>Your Steam auth token reaches this server, because Facepunch sends it here as a
                     query parameter and nothing can change that. It is dropped the moment your device
                     is registered.</li>
@@ -27,7 +29,6 @@
                     off precisely because it would record that query parameter.</li>
                 <li>Your <code>playerToken</code> is full access to your Rust+ account. Treat it like
                     a password and don't paste it anywhere public.</li>
-                <li>Prefer not to trust someone else's server? <a href="https://github.com/HandyS11/RustPlusApi">Run your own.</a></li>
             </ul>
         </details>
         <button id="start" type="button">Sign in with Steam</button>

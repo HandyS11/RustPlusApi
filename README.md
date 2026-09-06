@@ -62,8 +62,9 @@ See [`samples/`](samples/README.md) for the full walkthrough. (You can still use
 `npx @liamcottle/rustplus.js fcm-register` as a fallback.)
 
 Prefer a browser to a terminal? The [Rust+ credentials website](apps/RustPlusApi.CredentialsWeb/README.md)
-is the same registration flow behind a single-page app — no .NET SDK needed. It's both a self-host
-starter and the code behind the public instance: `docker run -p 8080:8080 -e CredentialsWeb__PublicBaseUrl=https://creds.example.org ghcr.io/handys11/rustplusapi-credentials`.
+is the same registration flow behind a single-page app — no .NET SDK needed. You run it yourself and
+browse to it on the same machine; Facepunch's Steam login only completes over loopback, so there is
+no public instance. See its README for the full command.
 
 **2. Talk to the server:**
 

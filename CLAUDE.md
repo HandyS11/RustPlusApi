@@ -69,7 +69,10 @@ A committed **pre-push hook** (`.githooks/pre-push`, wired up automatically by t
   same registration chain as the console app, but reordered to `4 → 1,2,3 → 5`: the Steam login
   runs first so an anonymous visitor can't trigger a Google device registration without first
   authenticating. Being net10.0-only, it sits outside the netstandard2.0 multi-TFM parity story
-  that governs `src/`; see `docs/development/testing.md`.
+  that governs `src/`; see `docs/development/testing.md`. **Loopback-only**: Facepunch honours the
+  `returnUrl` redirect solely for loopback addresses, so the app works only when browsed from the
+  machine it runs on. There is no public instance and no reverse-proxy story; the per-IP caps and
+  `KnownProxies` are vestiges of the abandoned hosted design. See issue #126 and the app README.
 
 ### Protobuf contracts
 
