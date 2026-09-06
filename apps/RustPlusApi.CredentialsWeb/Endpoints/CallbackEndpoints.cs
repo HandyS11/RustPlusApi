@@ -6,12 +6,29 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace RustPlusApi.CredentialsWeb.Endpoints;
 
+/// <summary>The address the visitor copied out of their browser's error page.</summary>
+/// <param name="Url">The pasted address, exactly as they gave it.</param>
+internal sealed record PasteCallbackRequest(string? Url);
+
+/// <summary>Tells the browser which session the paste belonged to, so a tab that lost its handle can
+/// pick the flow back up.</summary>
+/// <param name="SessionId">The session the return token identified.</param>
+internal sealed record PasteCallbackResponse(string SessionId);
+
 /// <summary>The Facepunch redirect target.</summary>
 internal static class CallbackEndpoints
 {
-    /// <summary>Maps <c>GET /callback/{returnToken}</c>.</summary>
+    private const string ConsumedMessage =
+        "That address was already used, or the session expired. Start over — nothing was saved.";
+
+    private const string UnreadableMessage =
+        "That doesn't look like the Rust+ callback address. Copy the whole address from the page "
+        + "that failed to load, starting with http://, and try again.";
+
+    /// <summary>Maps <c>GET /callback/{returnToken}</c> and <c>POST /api/callback</c>.</summary>
     /// <param name="app">The route builder.</param>
-    internal static void MapCallbackEndpoints(this IEndpointRouteBuilder app) =>
+    internal static void MapCallbackEndpoints(this IEndpointRouteBuilder app)
+    {
         app.MapGet("/callback/{returnToken}", (
             string returnToken,
             HttpContext context,
@@ -63,6 +80,30 @@ internal static class CallbackEndpoints
 
             return redirect;
         });
+
+        app.MapPost("/api/callback", (
+            PasteCallbackRequest request,
+            SessionStore store,
+            CredentialFlow flow) =>
+        {
+            // Parse before consuming, unlike the GET route. The visitor is looking at this response,
+            // so a fumbled paste has to leave the session intact for them to correct.
+            if (!CallbackParsing.TryParsePastedCallback(request.Url, out var returnToken, out var login))
+            {
+                return Results.Json(new ErrorPayload(UnreadableMessage), statusCode: 400);
+            }
+
+            // Single-use, exactly as for the redirect: an address pasted twice finds nothing, and an
+            // unknown token is indistinguishable from a consumed one.
+            if (!store.TryConsumeReturnToken(returnToken, out var session))
+            {
+                return Results.Json(new ErrorPayload(ConsumedMessage), statusCode: 404);
+            }
+
+            session.BackgroundWork = flow.CompleteRegistrationAsync(session, login, session.Lifetime.Token);
+            return Results.Json(new PasteCallbackResponse(session.SessionId), statusCode: 202);
+        });
+    }
 
     /// <summary>Builds the callback URI from the request and parses the Steam identity out of it.
     /// Extracted from the route handler so <see cref="UriFormatException"/> — essentially
