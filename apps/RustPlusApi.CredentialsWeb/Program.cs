@@ -16,15 +16,6 @@ var builder = WebApplication.CreateBuilder(args);
 // any middleware of ours could redact it. Enforced by SecretsAreNeverLoggedTests.
 builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 
-// Microsoft.AspNetCore.HostFiltering logs the request path at Information level when host validation
-// runs. A request body containing a pasted callback URL should not appear in logs here either.
-builder.Logging.AddFilter("Microsoft.AspNetCore.HostFiltering", LogLevel.Warning);
-
-// Various ASP.NET Core routing and MVC loggers can emit request paths at Information level.
-// These should not log the /api/callback path.
-builder.Logging.AddFilter("Microsoft.AspNetCore.Routing", LogLevel.Warning);
-builder.Logging.AddFilter("Microsoft.AspNetCore.Mvc", LogLevel.Warning);
-
 var options = new AppOptions();
 
 // Every AppOptions member is internal (this app's blanket visibility rule), so the default binder
