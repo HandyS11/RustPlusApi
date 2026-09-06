@@ -66,10 +66,11 @@ internal static class CallbackEndpoints
 
     /// <summary>Builds the callback URI from the request and parses the Steam identity out of it.
     /// Extracted from the route handler so <see cref="UriFormatException"/> — essentially
-    /// unreachable through a real request, since <see cref="AppOptions.PublicBaseUrl"/> is validated
-    /// absolute at startup and Kestrel has already rejected anything that would leave the path or
-    /// query URI-illegal — can still be forced directly in a unit test with a deliberately malformed
-    /// <paramref name="publicBaseUrl"/>, with no <c>TestServer</c> involved.</summary>
+    /// unreachable through a real request, since <paramref name="publicBaseUrl"/> is built from a
+    /// request Kestrel has already accepted, so the path and query it is concatenated with cannot be
+    /// URI-illegal by the time this handler runs — can still be forced directly in a unit test with a
+    /// deliberately malformed <paramref name="publicBaseUrl"/>, with no <c>TestServer</c>
+    /// involved.</summary>
     /// <param name="publicBaseUrl">The origin this request arrived on.</param>
     /// <param name="path">The request path.</param>
     /// <param name="queryString">The request query string.</param>

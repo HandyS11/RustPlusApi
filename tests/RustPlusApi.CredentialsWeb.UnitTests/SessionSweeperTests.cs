@@ -17,7 +17,7 @@ public sealed class SessionSweeperTests
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
         var options = new AppOptions
         {
-            PublicBaseUrl = "https://creds.example.org"
+            CreatedTtl = TimeSpan.FromMinutes(5)
         };
         using var store = new SessionStore(options, time);
         store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
@@ -45,11 +45,11 @@ public sealed class SessionSweeperTests
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
         var options = new AppOptions
         {
-            PublicBaseUrl = "https://creds.example.org"
+            CreatedTtl = TimeSpan.FromMinutes(5)
         };
         using var store = new SessionStore(options, time);
 
-        // Create a canary session from one IP at time 0, expires at 5 minutes
+        // Create a canary session from one IP at time 0, expires at 5 minutes (pinned above)
         store.TryCreate("203.0.113.7", isLocal: true, out var canary, out _);
 
         // Advance time by 1 minute
@@ -85,7 +85,7 @@ public sealed class SessionSweeperTests
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
         var options = new AppOptions
         {
-            PublicBaseUrl = "https://creds.example.org"
+            CreatedTtl = TimeSpan.FromMinutes(5)
         };
         using var store = new SessionStore(options, time);
 
@@ -140,7 +140,7 @@ public sealed class SessionSweeperTests
         var time = new FakeTimeProvider(new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
         var options = new AppOptions
         {
-            PublicBaseUrl = "https://creds.example.org"
+            CreatedTtl = TimeSpan.FromMinutes(5)
         };
 
         // Only the store's clock is made to fail: the sweeper keeps a working one so its timer

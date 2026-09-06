@@ -297,4 +297,22 @@ public sealed class SessionEndpointTests
 
         Assert.DoesNotContain("creds.example.org", body!.LoginUrl, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task Startup_WarnsThatARetiredSettingIsStillConfigured()
+    {
+        await using var factory = new CredentialsWebFactory(new Dictionary<string, string>
+        {
+            ["CredentialsWeb__PublicBaseUrl"] = "https://creds.example.org"
+        });
+        using var client = factory.CreateClient();
+
+        // Force the host to build; the warning is emitted during startup.
+        await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+
+        Assert.Contains(
+            factory.Logs.Records,
+            record => record.Contains("PublicBaseUrl", StringComparison.Ordinal)
+                      && record.Contains("no longer read", StringComparison.Ordinal));
+    }
 }

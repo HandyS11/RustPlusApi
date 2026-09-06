@@ -59,6 +59,15 @@ builder.Services.Configure<ForwardedHeadersOptions>(forwarded =>
 
 var app = builder.Build();
 
+// These two were required until the return URL started coming from the request. An instance that
+// still sets them keeps working, so an existing `docker run` does not break — it is just told.
+string[] retiredSettings = ["PublicBaseUrl", "AllowInsecureBaseUrl"];
+foreach (var setting in retiredSettings.Where(setting =>
+             builder.Configuration[$"{AppOptions.SectionName}:{setting}"] is not null))
+{
+    app.Logger.LogRetiredSetting(setting);
+}
+
 // ForwardedHeadersOptions ships with its own default trusted network (loopback), so merely leaving
 // KnownProxies unpopulated does NOT make the middleware ignore X-Forwarded-For — it would still
 // honor it from what it considers the loopback proxy. And the documented way to stop trusting that

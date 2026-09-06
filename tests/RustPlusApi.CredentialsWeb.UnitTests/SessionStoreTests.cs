@@ -14,7 +14,7 @@ public sealed class SessionStoreTests
         var time = new FakeTimeProvider(Origin);
         var options = new AppOptions
         {
-            PublicBaseUrl = "https://creds.example.org"
+            CreatedTtl = TimeSpan.FromMinutes(5)
         };
         return (new SessionStore(options, time), time);
     }
@@ -162,7 +162,7 @@ public sealed class SessionStoreTests
         using var _s = store;
         store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
-        // Authenticated sessions get SessionTtl (15 min), not CreatedTtl (5 min).
+        // Authenticated sessions get SessionTtl (15 min), not this store's CreatedTtl (5 min).
         session!.Advance(SessionState.Authenticated, time.GetUtcNow().Add(TimeSpan.FromMinutes(15)));
         time.Advance(TimeSpan.FromMinutes(6));
 

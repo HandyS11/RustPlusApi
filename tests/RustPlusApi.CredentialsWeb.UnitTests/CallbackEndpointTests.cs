@@ -131,7 +131,7 @@ public sealed class CallbackEndpointTests
     public void TryParseSteamLogin_ReturnsTrue_ForAWellFormedCallback()
     {
         var parsed = CallbackEndpoints.TryParseSteamLogin(
-            CredentialsWebFactory.BaseUrl,
+            "https://creds.example.org",
             new PathString("/callback/abc123"),
             new QueryString("?steamId=76561198249527954&token=steam-token"),
             out var login);
@@ -145,10 +145,11 @@ public sealed class CallbackEndpointTests
     [Fact]
     public void TryParseSteamLogin_ReturnsFalse_WhenBuildingTheUriThrowsUriFormatException()
     {
-        // A malformed host is unreachable through a real request — PublicBaseUrl is validated
-        // absolute at startup, and Kestrel has already rejected anything that would leave the path or
-        // query URI-illegal by the time a request is accepted. Forcing it here, directly against the
-        // extracted method, is the only way to exercise this branch without a contrived HTTP test.
+        // A malformed host is unreachable through a real request — the base URL is built from a
+        // request Kestrel has already accepted, and Kestrel has already rejected anything that would
+        // leave the path or query URI-illegal by the time a request is accepted. Forcing it here,
+        // directly against the extracted method, is the only way to exercise this branch without a
+        // contrived HTTP test.
         var parsed = CallbackEndpoints.TryParseSteamLogin(
             "https://exa mple.org",
             new PathString("/callback/abc123"),

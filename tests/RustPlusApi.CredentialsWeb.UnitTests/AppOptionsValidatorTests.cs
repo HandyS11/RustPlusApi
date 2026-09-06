@@ -5,70 +5,26 @@ namespace RustPlusApi.CredentialsWeb.UnitTests;
 
 public sealed class AppOptionsValidatorTests
 {
-    private static AppOptions Valid() => new()
-    {
-        PublicBaseUrl = "https://creds.example.org"
-    };
+    private static AppOptions Valid() => new();
 
     [Fact]
-    public void Validate_ReturnsNull_ForHttpsBaseUrl()
+    public void Validate_ReturnsNull_ForTheDefaults()
     {
         Assert.Null(AppOptionsValidator.Validate(Valid()));
     }
 
     [Fact]
-    public void Validate_Rejects_BlankBaseUrl()
+    public void CreatedTtl_DefaultsToTenMinutes()
     {
-        var options = Valid();
-        options.PublicBaseUrl = "   ";
-
-        var error = AppOptionsValidator.Validate(options);
-
-        Assert.NotNull(error);
-        Assert.Contains("PublicBaseUrl", error, StringComparison.Ordinal);
+        // The pre-login window now has to cover a real Steam login, two-factor included, plus a
+        // copy and a paste.
+        Assert.Equal(TimeSpan.FromMinutes(10), new AppOptions().CreatedTtl);
     }
 
     [Fact]
-    public void Validate_Rejects_HttpBaseUrl()
+    public void AllowRemotePairing_DefaultsToOff()
     {
-        var options = Valid();
-        options.PublicBaseUrl = "http://creds.example.org";
-
-        var error = AppOptionsValidator.Validate(options);
-
-        Assert.NotNull(error);
-        Assert.Contains("AllowInsecureBaseUrl", error, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Validate_Allows_HttpBaseUrl_WhenEscapeHatchSet()
-    {
-        var options = Valid();
-        options.PublicBaseUrl = "http://localhost:8080";
-        options.AllowInsecureBaseUrl = true;
-
-        Assert.Null(AppOptionsValidator.Validate(options));
-    }
-
-    [Fact]
-    public void Validate_Rejects_BaseUrlWithTrailingSlash()
-    {
-        var options = Valid();
-        options.PublicBaseUrl = "https://creds.example.org/";
-
-        var error = AppOptionsValidator.Validate(options);
-
-        Assert.NotNull(error);
-        Assert.Contains("trailing", error, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void Validate_Rejects_NonAbsoluteBaseUrl()
-    {
-        var options = Valid();
-        options.PublicBaseUrl = "creds.example.org";
-
-        Assert.NotNull(AppOptionsValidator.Validate(options));
+        Assert.False(new AppOptions().AllowRemotePairing);
     }
 
     [Fact]

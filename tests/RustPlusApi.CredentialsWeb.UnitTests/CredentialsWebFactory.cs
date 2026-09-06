@@ -12,15 +12,12 @@ namespace RustPlusApi.CredentialsWeb.UnitTests;
 /// <summary>Boots the real app with the upstream seam and the clock replaced.</summary>
 internal sealed class CredentialsWebFactory : WebApplicationFactory<Program>
 {
-    internal const string BaseUrl = "https://creds.example.org";
-
     private static readonly DateTimeOffset Origin = new(2026, 9, 3, 12, 0, 0, TimeSpan.Zero);
 
     internal CredentialsWebFactory(IDictionary<string, string>? settings = null)
     {
         // Program.cs binds configuration before builder.Build(), which is earlier than any
         // WebApplicationFactory configuration hook runs — so these must be environment variables.
-        SetEnvironment("CredentialsWeb__PublicBaseUrl", BaseUrl);
         foreach (var (key, value) in settings ?? new Dictionary<string, string>())
         {
             SetEnvironment(key, value);

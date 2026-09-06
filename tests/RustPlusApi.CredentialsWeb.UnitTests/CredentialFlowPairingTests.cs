@@ -16,10 +16,7 @@ public sealed class CredentialFlowPairingTests
         ReadySessionAsync(Action<AppOptions>? configure = null)
     {
         var time = new FakeTimeProvider(Origin);
-        var options = new AppOptions
-        {
-            PublicBaseUrl = "https://creds.example.org"
-        };
+        var options = new AppOptions();
         configure?.Invoke(options);
         var store = new SessionStore(options, time);
         var steps = new FakeRegistrationSteps();
@@ -43,10 +40,7 @@ public sealed class CredentialFlowPairingTests
         Session Session, FakeTimeProvider Time)> ReadySessionWithClockAsync(Action<AppOptions>? configure = null)
     {
         var time = new FakeTimeProvider(Origin);
-        var options = new AppOptions
-        {
-            PublicBaseUrl = "https://creds.example.org"
-        };
+        var options = new AppOptions();
         configure?.Invoke(options);
         var store = new SessionStore(options, time);
         var steps = new FakeRegistrationSteps();

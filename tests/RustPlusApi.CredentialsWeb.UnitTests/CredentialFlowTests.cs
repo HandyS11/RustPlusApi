@@ -18,10 +18,7 @@ public sealed class CredentialFlowTests
     private static Harness NewHarness()
     {
         var time = new FakeTimeProvider(Origin);
-        var options = new AppOptions
-        {
-            PublicBaseUrl = "https://creds.example.org"
-        };
+        var options = new AppOptions();
         var store = new SessionStore(options, time);
         var steps = new FakeRegistrationSteps();
         var flow = new CredentialFlow(steps, store, options, time, NullLogger<CredentialFlow>.Instance);

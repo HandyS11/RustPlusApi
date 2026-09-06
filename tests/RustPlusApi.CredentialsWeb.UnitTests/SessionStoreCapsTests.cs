@@ -12,10 +12,7 @@ public sealed class SessionStoreCapsTests
     private static (SessionStore Store, FakeTimeProvider Time) NewStore(Action<AppOptions>? configure = null)
     {
         var time = new FakeTimeProvider(Origin);
-        var options = new AppOptions
-        {
-            PublicBaseUrl = "https://creds.example.org"
-        };
+        var options = new AppOptions();
         configure?.Invoke(options);
         return (new SessionStore(options, time), time);
     }
