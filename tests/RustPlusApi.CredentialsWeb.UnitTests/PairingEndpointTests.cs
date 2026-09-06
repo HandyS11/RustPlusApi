@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using RustPlusApi.CredentialsWeb.Endpoints;
 using RustPlusApi.CredentialsWeb.Sessions;
 using System.Net;
+using System.Net.Http.Json;
 using Xunit;
 
 namespace RustPlusApi.CredentialsWeb.UnitTests;
@@ -30,6 +32,55 @@ public sealed class PairingEndpointTests
 
         factory.Steps.Calls.Clear();
         return session;
+    }
+
+    /// <summary>Runs a remote session to Ready through the paste route, the way a hosted visitor
+    /// does.</summary>
+    /// <param name="factory">The test host to create a session and client against.</param>
+    private static async Task<Session> RemoteReadySessionAsync(CredentialsWebFactory factory)
+    {
+        using var client = factory.CreateClient();
+        var store = factory.Services.GetRequiredService<SessionStore>();
+        store.TryCreate("203.0.113.7", isLocal: false, out var session, out _);
+
+        await client.PostAsJsonAsync(
+            new Uri("/api/callback", UriKind.Relative),
+            new PasteCallbackRequest(
+                $"http://localhost:54321/callback/{session!.ReturnToken}"
+                + "?steamId=76561198249527954&token=steam-token"));
+        await session.BackgroundWork;
+
+        factory.Steps.Calls.Clear();
+        return session;
+    }
+
+    [Fact]
+    public async Task Pairing_Returns403_ForARemoteSession()
+    {
+        await using var factory = new CredentialsWebFactory();
+        var session = await RemoteReadySessionAsync(factory);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(PairingUri(session.SessionId), null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(factory.Steps.Calls);
+    }
+
+    [Fact]
+    public async Task Pairing_IsAllowedForARemoteSession_WhenTheOperatorOptsIn()
+    {
+        await using var factory = new CredentialsWebFactory(new Dictionary<string, string>
+        {
+            ["CredentialsWeb__AllowRemotePairing"] = "true"
+        });
+        factory.Steps.PairingWaitsForGate = true;
+        var session = await RemoteReadySessionAsync(factory);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(PairingUri(session.SessionId), null);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
     }
 
     [Fact]

@@ -35,11 +35,16 @@ internal static class SessionEndpoints
         "This instance is already holding as many pairing listeners as it allows. Try again in a "
         + "few minutes — or run your own: " + RunCommand;
 
+    private const string RemotePairingMessage =
+        "Waiting for a pairing needs a socket held open to Google for as long as it takes you to "
+        + "alt-tab into Rust, so this instance doesn't offer it. Your credentials above are the part "
+        + "you need. To get the four pairing values, run the app yourself: " + RunCommand;
+
     /// <summary>Maps <c>POST /api/sessions</c> and <c>POST /api/sessions/{sessionId}/pairing</c>.</summary>
     /// <param name="app">The route builder.</param>
     internal static void MapSessionEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/sessions", (HttpContext context, SessionStore store) =>
+        app.MapPost("/api/sessions", (HttpContext context, SessionStore store, AppOptions options) =>
         {
             var isLocal = RequestMode.IsLocal(context);
 
@@ -73,17 +78,26 @@ internal static class SessionEndpoints
                 session.SessionId,
                 SteamLoginService.BuildLoginUrl(returnUrl),
                 isLocal ? "redirect" : "paste",
-                isLocal));
+                isLocal || options.AllowRemotePairing));
         });
 
         app.MapPost("/api/sessions/{sessionId}/pairing", (
             string sessionId,
             SessionStore store,
-            CredentialFlow flow) =>
+            CredentialFlow flow,
+            AppOptions options) =>
         {
             if (!store.TryGet(sessionId, out var session))
             {
                 return Results.NotFound();
+            }
+
+            // The pairing wait is the one step that holds a long-lived socket per visitor. A public
+            // instance has no reason to hold one for a stranger, so it is local-only unless the
+            // operator opts in — which someone self-hosting on a LAN address will want to.
+            if (!session.IsLocal && !options.AllowRemotePairing)
+            {
+                return Results.Json(new ErrorPayload(RemotePairingMessage), statusCode: 403);
             }
 
             // Advisory: it settles the ordinary 409 without starting anything, but it is a read of
