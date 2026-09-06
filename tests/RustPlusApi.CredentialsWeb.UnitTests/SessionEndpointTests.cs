@@ -27,7 +27,7 @@ public sealed class SessionEndpointTests
             body.LoginUrl,
             StringComparison.Ordinal);
         Assert.Contains(
-            Uri.EscapeDataString($"{CredentialsWebFactory.BaseUrl}/callback/"),
+            Uri.EscapeDataString("http://localhost/callback/"),
             body.LoginUrl,
             StringComparison.Ordinal);
     }
@@ -233,5 +233,68 @@ public sealed class SessionEndpointTests
 
         response.EnsureSuccessStatusCode();
         Assert.Equal(2, store.Count);
+    }
+
+    private static Uri ReturnUrlOf(string loginUrl)
+    {
+        const string marker = "?returnUrl=";
+        var index = loginUrl.IndexOf(marker, StringComparison.Ordinal);
+        return new Uri(Uri.UnescapeDataString(loginUrl[(index + marker.Length)..]));
+    }
+
+    private static HttpClient HostedClient(CredentialsWebFactory factory)
+    {
+        factory.RemoteIpAddress = IPAddress.Parse("203.0.113.7");
+        return factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://creds.example.org")
+        });
+    }
+
+    [Fact]
+    public async Task CreateSession_Local_ReturnsARedirectModeUrlPointingAtThisRequestsOrigin()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var body = await response.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        Assert.Equal("redirect", body!.CallbackMode);
+        Assert.True(body.PairingAvailable);
+        var returnUrl = ReturnUrlOf(body.LoginUrl);
+        Assert.Equal("localhost", returnUrl.Host);
+        Assert.StartsWith("/callback/", returnUrl.AbsolutePath, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateSession_Hosted_ReturnsAPasteModeUrlPointingAtADeadLoopbackPort()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = HostedClient(factory);
+
+        var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var body = await response.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        Assert.Equal("paste", body!.CallbackMode);
+        Assert.False(body.PairingAvailable);
+
+        var returnUrl = ReturnUrlOf(body.LoginUrl);
+        Assert.Equal("localhost", returnUrl.Host);
+        Assert.Equal(Uri.UriSchemeHttp, returnUrl.Scheme);
+        // The dynamic range: very unlikely to belong to something the visitor actually runs.
+        Assert.InRange(returnUrl.Port, 49152, 65535);
+    }
+
+    [Fact]
+    public async Task CreateSession_Hosted_TheReturnUrlNeverNamesThePublicHost()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = HostedClient(factory);
+
+        var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var body = await response.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        Assert.DoesNotContain("creds.example.org", body!.LoginUrl, StringComparison.Ordinal);
     }
 }

@@ -33,7 +33,10 @@ internal static class CallbackEndpoints
             var redirect = Results.Redirect($"/#session={session.SessionId}");
 
             if (TryParseSteamLogin(
-                    options.PublicBaseUrl, context.Request.Path, context.Request.QueryString, out var login))
+                    $"{context.Request.Scheme}://{context.Request.Host}",
+                    context.Request.Path,
+                    context.Request.QueryString,
+                    out var login))
             {
                 session.BackgroundWork = flow.CompleteRegistrationAsync(
                     session,
@@ -67,7 +70,7 @@ internal static class CallbackEndpoints
     /// absolute at startup and Kestrel has already rejected anything that would leave the path or
     /// query URI-illegal — can still be forced directly in a unit test with a deliberately malformed
     /// <paramref name="publicBaseUrl"/>, with no <c>TestServer</c> involved.</summary>
-    /// <param name="publicBaseUrl">The externally reachable origin, from <see cref="AppOptions.PublicBaseUrl"/>.</param>
+    /// <param name="publicBaseUrl">The origin this request arrived on.</param>
     /// <param name="path">The request path.</param>
     /// <param name="queryString">The request query string.</param>
     /// <param name="login">The parsed Steam identity on success.</param>

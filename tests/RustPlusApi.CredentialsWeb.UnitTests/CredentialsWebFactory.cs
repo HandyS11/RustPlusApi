@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using RustPlusApi.CredentialsWeb.Upstream;
+using System.Net;
 
 namespace RustPlusApi.CredentialsWeb.UnitTests;
 
@@ -28,6 +29,10 @@ internal sealed class CredentialsWebFactory : WebApplicationFactory<Program>
 
     internal CapturingLoggerProvider Logs { get; } = new();
 
+    /// <summary>The connection address every request is stamped with. Loopback by default, so an
+    /// unconfigured test exercises the local path the app was originally written for.</summary>
+    internal IPAddress? RemoteIpAddress { get; set; } = IPAddress.Loopback;
+
     internal FakeRegistrationSteps Steps { get; } = new();
 
     internal FakeTimeProvider Time { get; } = new(Origin);
@@ -49,6 +54,7 @@ internal sealed class CredentialsWebFactory : WebApplicationFactory<Program>
             services.AddSingleton<IRegistrationSteps>(Steps);
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Time);
+            services.AddSingleton<IStartupFilter>(new RemoteIpStartupFilter(() => RemoteIpAddress));
         });
     }
 

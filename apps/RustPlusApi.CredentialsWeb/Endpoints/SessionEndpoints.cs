@@ -1,13 +1,21 @@
 using RustPlusApi.CredentialsWeb.Flow;
 using RustPlusApi.CredentialsWeb.Sessions;
 using RustPlusApi.Fcm.Registration.Steps;
+using System.Security.Cryptography;
 
 namespace RustPlusApi.CredentialsWeb.Endpoints;
 
 /// <summary>What the browser needs to start a flow.</summary>
 /// <param name="SessionId">The handle for the event stream and follow-up calls.</param>
 /// <param name="LoginUrl">The Facepunch login URL to send the visitor to.</param>
-internal sealed record CreateSessionResponse(string SessionId, string LoginUrl);
+/// <param name="CallbackMode">"redirect" when Facepunch can deliver the callback here by itself,
+/// "paste" when the visitor has to bring the address back by hand.</param>
+/// <param name="PairingAvailable">Whether this session may start the pairing wait.</param>
+internal sealed record CreateSessionResponse(
+    string SessionId,
+    string LoginUrl,
+    string CallbackMode,
+    bool PairingAvailable);
 
 /// <summary>Session lifecycle endpoints.</summary>
 internal static class SessionEndpoints
@@ -33,10 +41,11 @@ internal static class SessionEndpoints
     /// <param name="app">The route builder.</param>
     internal static void MapSessionEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/sessions", (HttpContext context, SessionStore store, AppOptions options) =>
+        app.MapPost("/api/sessions", (HttpContext context, SessionStore store) =>
         {
-            // Task 5 replaces this with RequestMode.IsLocal(context).
-            if (!store.TryCreate(ClientAddress.Of(context), isLocal: true, out var session, out var failure))
+            var isLocal = RequestMode.IsLocal(context);
+
+            if (!store.TryCreate(ClientAddress.Of(context), isLocal, out var session, out var failure))
             {
                 // ActiveSessionForIp means a resumable session already exists for this address —
                 // "at capacity" would be false and would send the visitor into a five-minute wait
@@ -48,10 +57,25 @@ internal static class SessionEndpoints
                 return Results.Json(new ErrorPayload(message), statusCode: 429);
             }
 
-            var returnUrl = $"{options.PublicBaseUrl}/callback/{session.ReturnToken}";
+            // Local: the redirect can land here, so the return URL is this very request's origin.
+            // Nothing is configured, so nothing can be configured wrong.
+            //
+            // Remote: Facepunch only honours a loopback returnUrl, and decides that from the URL's
+            // shape rather than its reachability — their servers cannot reach a visitor's localhost
+            // either. So it gets a loopback address nothing is listening on. The visitor's browser
+            // fails to connect and shows the address, which they paste back at POST /api/callback.
+            // The port comes from the dynamic range, so it is very unlikely to belong to something
+            // the visitor actually runs; if it somehow does, the single-use return token means the
+            // paste fails closed rather than the flow completing somewhere else.
+            var returnUrl = isLocal
+                ? $"{context.Request.Scheme}://{context.Request.Host}/callback/{session.ReturnToken}"
+                : $"http://localhost:{RandomNumberGenerator.GetInt32(49152, 65536)}/callback/{session.ReturnToken}";
+
             return Results.Ok(new CreateSessionResponse(
                 session.SessionId,
-                SteamLoginService.BuildLoginUrl(returnUrl)));
+                SteamLoginService.BuildLoginUrl(returnUrl),
+                isLocal ? "redirect" : "paste",
+                isLocal));
         });
 
         app.MapPost("/api/sessions/{sessionId}/pairing", (
