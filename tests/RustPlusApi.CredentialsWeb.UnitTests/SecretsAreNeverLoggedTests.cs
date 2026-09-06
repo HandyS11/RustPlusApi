@@ -29,7 +29,7 @@ public sealed class SecretsAreNeverLoggedTests
         });
 
         var store = factory.Services.GetRequiredService<SessionStore>();
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
 
         await client.GetAsync(new Uri(
             $"/callback/{session!.ReturnToken}?steamId=76561198249527954&token={SteamTokenSentinel}",

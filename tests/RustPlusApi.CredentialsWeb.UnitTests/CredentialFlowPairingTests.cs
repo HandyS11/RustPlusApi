@@ -25,7 +25,7 @@ public sealed class CredentialFlowPairingTests
         var steps = new FakeRegistrationSteps();
         var flow = new CredentialFlow(steps, store, options, time, NullLogger<CredentialFlow>.Instance);
 
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
         await flow.CompleteRegistrationAsync(
             session!,
             new SteamLoginResult(76561198249527954, "steam-token"),
@@ -52,7 +52,7 @@ public sealed class CredentialFlowPairingTests
         var steps = new FakeRegistrationSteps();
         var flow = new CredentialFlow(steps, store, options, time, NullLogger<CredentialFlow>.Instance);
 
-        store.TryCreate("203.0.113.7", out var session, out _);
+        store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
         await flow.CompleteRegistrationAsync(
             session!,
             new SteamLoginResult(76561198249527954, "steam-token"),

@@ -88,7 +88,7 @@ public sealed class SessionEndpointTests
         // Occupy the only slot from a different address, and move it out of Created so the
         // eviction rule cannot reclaim it.
         var store = factory.Services.GetRequiredService<SessionStore>();
-        store.TryCreate("198.51.100.1", out var occupant, out _);
+        store.TryCreate("198.51.100.1", isLocal: true, out var occupant, out _);
         occupant!.Advance(SessionState.Authenticated, factory.Time.GetUtcNow().AddMinutes(15));
 
         var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
@@ -166,7 +166,7 @@ public sealed class SessionEndpointTests
             });
         using var client = factory.CreateClient();
         var store = factory.Services.GetRequiredService<SessionStore>();
-        store.TryCreate("198.51.100.1", out var occupant, out _);
+        store.TryCreate("198.51.100.1", isLocal: true, out var occupant, out _);
         occupant!.Advance(SessionState.Authenticated, factory.Time.GetUtcNow().AddMinutes(15));
 
         var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);

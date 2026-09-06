@@ -35,7 +35,8 @@ internal static class SessionEndpoints
     {
         app.MapPost("/api/sessions", (HttpContext context, SessionStore store, AppOptions options) =>
         {
-            if (!store.TryCreate(ClientAddress.Of(context), out var session, out var failure))
+            // Task 5 replaces this with RequestMode.IsLocal(context).
+            if (!store.TryCreate(ClientAddress.Of(context), isLocal: true, out var session, out var failure))
             {
                 // ActiveSessionForIp means a resumable session already exists for this address —
                 // "at capacity" would be false and would send the visitor into a five-minute wait

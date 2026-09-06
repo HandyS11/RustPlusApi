@@ -10,7 +10,7 @@ public sealed class SessionTests
     private static readonly DateTimeOffset Origin = new(2026, 9, 3, 12, 0, 0, TimeSpan.Zero);
 
     private static Session NewSession() =>
-        new("session-id", "return-token", "203.0.113.7", Origin.AddMinutes(5));
+        new("session-id", "return-token", "203.0.113.7", isLocal: true, Origin.AddMinutes(5));
 
     private static async Task<List<SessionEvent>> ReadAsync(Session session, int expected)
     {

@@ -166,10 +166,12 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     /// <see cref="Session.TryClaimForEviction"/>): a plain read of <c>existing.State</c> here would
     /// race a callback that is concurrently advancing the session past <see cref="SessionState.Created"/>.</summary>
     /// <param name="clientIp">The caller's address.</param>
+    /// <param name="isLocal">Whether the request came from the machine the app runs on.</param>
     /// <param name="session">The new session on success.</param>
     /// <param name="failure">Why creation was refused.</param>
     internal bool TryCreate(
         string clientIp,
+        bool isLocal,
         [NotNullWhen(true)] out Session? session,
         out SessionCreateFailure failure)
     {
@@ -220,6 +222,7 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
                     SessionIds.New(),
                     SessionIds.New(),
                     clientIp,
+                    isLocal,
                     timeProvider.GetUtcNow().Add(options.CreatedTtl));
 
                 _bySessionId[created.SessionId] = created;
