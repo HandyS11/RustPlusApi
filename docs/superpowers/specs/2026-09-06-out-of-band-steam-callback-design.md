@@ -78,8 +78,9 @@ carried a non-loopback `Referer` and succeeded, which answers the stronger quest
 
 **Mode is derived per request, not configured.** A request is **local** when both of these hold:
 
-- the connection's remote address is loopback (`IPAddress.IsLoopback`, after `MapToIPv4()` for an
-  IPv4-mapped IPv6 address such as `::ffff:127.0.0.1`, which `IsLoopback` otherwise rejects);
+- the connection's remote address is non-routable: loopback, RFC 1918 private space, IPv4
+  link-local, or the IPv6 equivalents (unique-local, link-local) — in each case after `MapToIPv4()`
+  for an IPv4-mapped IPv6 address such as `::ffff:127.0.0.1`, which `IsLoopback` otherwise rejects;
 - the `Host` header names a loopback host: exactly `localhost`, any `*.localhost` (reserved by
   RFC 6761 and resolved to loopback by browsers), or an IP literal that is loopback once the IPv6
   brackets are trimmed.
@@ -87,10 +88,29 @@ carried a non-loopback `Referer` and succeeded, which answers the stronger quest
 Both halves are needed. The `Host` header alone is forgeable, but a forged value only redirects the
 forger's own browser to their own machine, so nothing of ours leaks. The remote address alone is
 wrong in the deployment that matters: a reverse proxy on the same host makes every visitor look
-loopback, which would hand strangers the local behaviour. The `Host` check is what prevents that.
+alike, which would hand strangers the local behaviour. The `Host` check is what prevents that.
+
+**Corrected during implementation: the connection half is non-routable, not loopback.** It was
+specified as `IPAddress.IsLoopback` above and written that way first, which broke the one deployment
+this design leads with. `docker run -p 127.0.0.1:8080:8080` publishes the port on the host's
+loopback, but the container is reached across the bridge, so the app sees the gateway
+(`172.17.0.1`, `192.168.65.1` on Docker Desktop, `10.0.2.x` under rootless Podman) and never
+loopback. The documented local run therefore fell into paste mode and answered its own pairing
+request with *"run the app yourself"* — naming the command the visitor had just run. Only
+`dotnet run` on the host passed. Accepting non-routable space generally covers every container
+runtime without enumerating any of them.
+
+What it costs: a LAN peer sending `Host: localhost` now reads as local and takes the pairing wait
+that `AllowRemotePairing` gates — a control bypass bounded by `MaxConcurrentPairings`, disclosing
+nothing, and closed by the same `AllowedHosts`/named-site-block advice the proxy case already
+carries. A correctly configured hosted instance is *stricter* than before, not looser: with
+`KnownProxies` naming the proxy, every visitor presents as their own public address and fails this
+half, where the loopback-only rule had a same-host proxy make all of them pass it.
 
 Rejected: a `Mode` setting. It reintroduces exactly the class of mistake #126 is about, where a
-wrong value starts cleanly and fails later at the Steam step.
+wrong value starts cleanly and fails later at the Steam step. Rejected too: a setting naming extra
+addresses to treat as local, which would put a required setting back into the headline `docker run`
+— and one whose right value differs per container runtime and per compose network.
 
 **Local keeps today's automatic redirect.** The return URL is built from the request itself
 (`{scheme}://{host}/callback/{returnToken}`), so the redirect lands on the app that issued it, with
@@ -267,9 +287,11 @@ instance holds no sockets at all.
 
 New, and all ordinary unit tests:
 
-- `RequestMode` — loopback and non-loopback remote addresses, IPv4-mapped IPv6, `localhost`,
+- `RequestMode` — loopback, private and public remote addresses, IPv4-mapped IPv6, `localhost`,
   `sub.localhost`, `127.0.0.1`, `[::1]`, a public `Host` with a loopback connection (the proxy case,
-  must be remote), a loopback connection with a forged public `Host`, and the reverse.
+  must be remote), a loopback connection with a forged public `Host`, and the reverse. Plus the
+  container gateways the corrected connection half exists for, and the CGNAT range (`100.64/10`)
+  that must stay remote because it is routed by someone else's network.
 - `CallbackParsing` — valid paste, missing scheme, surrounding whitespace, wrong path shape,
   non-hex token, absent `token`, absent `steamId`, the Facepunch login URL pasted by mistake.
 - `POST /api/callback` — success starts the flow; a `400` consumes nothing and a retry with a good

@@ -33,17 +33,46 @@ public sealed class SessionEndpointTests
     }
 
     [Fact]
-    public async Task CreateSession_ReturnsADifferentReturnTokenEachTime()
+    public async Task CreateSession_ReturnsADifferentReturnTokenForEachVisitor()
     {
+        // Asserted across two addresses rather than two calls from one: a second call from the same
+        // address deliberately inherits the token of the Created session it evicts, so that a Steam
+        // login already in flight against the old address still completes (see
+        // SessionStoreCapsTests.TryCreate_CarriesTheEvictedCreatedSessionsReturnTokenOntoTheReplacement).
         await using var factory = new CredentialsWebFactory();
         using var client = factory.CreateClient();
 
         var first = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
         var firstBody = await first.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        factory.RemoteIpAddress = IPAddress.Parse("203.0.113.7");
         var second = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
         var secondBody = await second.Content.ReadFromJsonAsync<CreateSessionResponse>();
 
-        Assert.NotEqual(firstBody!.LoginUrl, secondBody!.LoginUrl);
+        Assert.NotEqual(
+            ReturnUrlOf(firstBody!.LoginUrl).AbsolutePath,
+            ReturnUrlOf(secondBody!.LoginUrl).AbsolutePath);
+    }
+
+    [Fact]
+    public async Task CreateSession_Local_WhenTheConnectionArrivesFromAContainerBridgeGateway()
+    {
+        // The app's headline command, `docker run -p 127.0.0.1:8080:8080`, publishes the port on the
+        // host's loopback but reaches the container through the bridge, so the app sees the gateway
+        // and never loopback. Requiring a loopback connection put that run into the paste flow and
+        // then refused its pairing request with "run the app yourself" — the command just run.
+        await using var factory = new CredentialsWebFactory
+        {
+            RemoteIpAddress = IPAddress.Parse("172.17.0.1")
+        };
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        var body = await response.Content.ReadFromJsonAsync<CreateSessionResponse>();
+
+        Assert.Equal("redirect", body!.CallbackMode);
+        Assert.True(body.PairingAvailable);
+        Assert.Equal("localhost", ReturnUrlOf(body.LoginUrl).Host);
     }
 
     [Fact]

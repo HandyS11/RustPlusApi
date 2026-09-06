@@ -70,8 +70,10 @@ A committed **pre-push hook** (`.githooks/pre-push`, wired up automatically by t
   runs first so an anonymous visitor can't trigger a Google device registration without first
   authenticating. Being net10.0-only, it sits outside the netstandard2.0 multi-TFM parity story
   that governs `src/`; see `docs/development/testing.md`. Two modes, derived per request rather
-  than configured: a visitor reaching the app over loopback gets Facepunch's ordinary automatic
-  redirect, while everyone else — a LAN address, a reverse-proxied hostname, a public instance —
+  than configured: a visitor whose request both arrives from a non-routable address (loopback, or a
+  container gateway — the documented `docker run` is reached across the Docker bridge and never over
+  loopback) and names a loopback `Host` gets Facepunch's ordinary automatic redirect, while everyone
+  else — a LAN address, a reverse-proxied hostname, a public instance —
   is walked through pasting back the dead loopback address their own browser lands on, since
   Facepunch only ever redirects to a loopback-shaped `returnUrl` regardless of whether anything is
   listening there. See the app README.

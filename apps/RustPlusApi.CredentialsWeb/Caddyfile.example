@@ -12,10 +12,11 @@
 #
 # The site block is named on purpose, and that is load-bearing beyond tidiness. Caddy routes a
 # request into a named block only when its Host matches, so a caller cannot reach the app with a
-# Host of their choosing. The app's local/remote decision is (loopback connection) AND (loopback
+# Host of their choosing. The app's local/remote decision is (non-routable connection) AND (loopback
 # Host), and with this proxy on the same host as the app the first half is true for every request —
 # leaving the Host header, which the caller writes, as the only thing between a stranger and the
-# local behaviour. A catch-all block (`:443 { … }` or `*`) that passes the client's Host straight
+# local behaviour. (Setting CredentialsWeb__KnownProxies__0, below, makes the first half do real
+# work again: each visitor then presents as their own public address. Do both.) A catch-all block (`:443 { … }` or `*`) that passes the client's Host straight
 # through does NOT give you this: a request with `Host: localhost` would read as local. If you use
 # one, filter Host at the proxy yourself, or set the app's AllowedHosts environment variable — it
 # ships no appsettings.json, so ASP.NET Core's host filtering sits at its `*` default.

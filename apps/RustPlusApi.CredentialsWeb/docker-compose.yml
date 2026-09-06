@@ -2,10 +2,13 @@ services:
   credentials:
     image: ghcr.io/handys11/rustplusapi-credentials:latest
     restart: unless-stopped
-    # Loopback here is what gets you the automatic Steam redirect (see README.md, "Two modes,
-    # chosen automatically"): the browser doing the login has to look loopback to this container.
-    # Reached from anywhere else — a LAN address, a phone on the same network — the app still works,
-    # it just falls back to the paste flow.
+    # Binding the published port to loopback is what keeps this instance to this machine. The
+    # automatic Steam redirect follows from the browser's side of it: reaching the app as
+    # http://localhost:8080 is what makes the request local (see README.md, "Two modes, chosen
+    # automatically") — the container itself sees the Docker bridge gateway, never loopback, which
+    # is why that decision does not require a loopback connection. Reached from anywhere else — a
+    # LAN address, a phone on the same network — the app still works, it just falls back to the
+    # paste flow.
     ports:
       - "127.0.0.1:8080:8080"
     # No required setting any more — PublicBaseUrl and AllowInsecureBaseUrl are gone. See the

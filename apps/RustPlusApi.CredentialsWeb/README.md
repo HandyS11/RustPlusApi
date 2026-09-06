@@ -15,9 +15,9 @@ docker run -p 127.0.0.1:8080:8080 ghcr.io/handys11/rustplusapi-credentials
 ```
 
 No environment variables needed — the app has no required setting. Open <http://localhost:8080> in
-a browser **on that same machine**, and Steam signs you in with the ordinary automatic redirect: to
-your browser and the container, you both look loopback to each other. That is the shortest version
-of this flow, and the one to prefer if it is available to you.
+a browser **on that same machine**, and Steam signs you in with the ordinary automatic redirect:
+your browser resolves `localhost` to the published port, and the app treats the request as local.
+That is the shortest version of this flow, and the one to prefer if it is available to you.
 
 For local development without a container:
 
@@ -28,10 +28,21 @@ dotnet run --project apps/RustPlusApi.CredentialsWeb
 ## Two modes, chosen automatically
 
 The app decides how to handle each request as it arrives — nothing is configured. A request is
-**local** when both hold: the connection came from a loopback address, and the `Host` header names
-a loopback host (`localhost`, any `*.localhost`, or a loopback IP literal). That is exactly what
-browsing to `http://localhost:8080` from the machine running the container looks like. Anything
-else — a LAN address, a hostname behind a reverse proxy, a hosted instance — is **remote**.
+**local** when both hold: the connection came from an address that is **not routable** from outside
+this machine's own network (loopback, RFC 1918 private space, IPv4 link-local, or the IPv6
+equivalents), and the `Host` header names a loopback host (`localhost`, any `*.localhost`, or a
+loopback IP literal). That is exactly what browsing to `http://localhost:8080` from the machine
+running the container looks like. Anything else — a LAN address, a hostname behind a reverse proxy,
+a hosted instance — is **remote**.
+
+The connection half is wider than loopback for one concrete reason: **in a container it is never
+loopback.** `docker run -p 127.0.0.1:8080:8080` publishes the port on the host's loopback, but the
+container is reached across the Docker bridge, so the app sees the gateway (`172.17.0.1`,
+`192.168.65.1` on Docker Desktop, `10.0.2.x` under rootless Podman). A loopback-only test would put
+the command at the top of this README into the paste flow and then refuse it the pairing wait, with
+a message telling you to run the app yourself. The `Host` half is what actually carries the meaning
+— it is what says the visitor's browser will resolve the return URL back to its own machine — and it
+stays strictly loopback.
 
 - **Local** keeps today's redirect. Facepunch sends the browser straight back to this app; there is
   no extra step.
@@ -84,10 +95,13 @@ and the rest is the operator's call.
 
 ### Behind a reverse proxy, reject foreign `Host` values too
 
-The local/remote decision is `(loopback connection) AND (loopback Host)`. With a proxy on the same
-host as the app, the first half is true for *every* request, so the `Host` header is all that is
-left — and the caller writes that header. A remote caller sending `Host: localhost` reads as local
-and takes the local behaviour, including the pairing wait `AllowRemotePairing` is meant to gate. No
+The local/remote decision is `(non-routable connection) AND (loopback Host)`. Set `KnownProxies` as
+above and the first half does real work on a hosted instance — every visitor presents as their own
+public address and fails it, which is stricter than a loopback-only rule managed behind a same-host
+proxy. Leave it unset behind a proxy and the first half is true for *every* request, so the `Host`
+header is all that is left — and the caller writes that header. Likewise on a LAN, where a peer's
+address is non-routable by definition. A caller sending `Host: localhost` then reads as local and
+takes the local behaviour, including the pairing wait `AllowRemotePairing` is meant to gate. No
 credential is disclosed; it is a control bypass, bounded by `MaxConcurrentPairings`.
 
 Close it at the deployment, because the app cannot close it in code:
