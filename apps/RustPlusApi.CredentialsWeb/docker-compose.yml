@@ -2,17 +2,19 @@ services:
   credentials:
     image: ghcr.io/handys11/rustplusapi-credentials:latest
     restart: unless-stopped
+    # Loopback only, and not just for hardening: the Steam login completes solely when the browser
+    # reaches this app over loopback, so exposing it on a routable address would not make it usable
+    # from another machine anyway. See README.md, "Why this is loopback-only".
     ports:
       - "127.0.0.1:8080:8080"
     environment:
-      # Must be the externally reachable origin, with no trailing slash. This is the value
-      # Facepunch redirects back to, so it cannot be inferred from what Kestrel sees.
-      CredentialsWeb__PublicBaseUrl: "https://creds.example.org"
-      # Per-IP limits are silently void unless the proxy's address is trusted here: without it
-      # every visitor presents as the proxy and shares one bucket. Set this to the proxy's address
-      # on the container network, and never to a host you do not control. Leave it unset when the
-      # app is reached directly, so X-Forwarded-For from a caller is ignored.
-      CredentialsWeb__KnownProxies__0: "172.18.0.2"
+      # The loopback origin you actually open, matching the published port above. This is the value
+      # Facepunch redirects back to; a non-loopback value is accepted at startup but the Steam login
+      # will fail with "Failed to send login message to the Rust+ app".
+      CredentialsWeb__PublicBaseUrl: "http://localhost:8080"
+      # Startup otherwise requires https, which is left over from the abandoned hosted design.
+      # On loopback, plain http is the normal case.
+      CredentialsWeb__AllowInsecureBaseUrl: "true"
     # Enforces "nothing is written to disk" at the runtime level rather than by intent.
     read_only: true
     tmpfs:

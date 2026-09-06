@@ -8,16 +8,22 @@ internal sealed class AppOptions
     /// <summary>Configuration section these options bind from.</summary>
     internal const string SectionName = "CredentialsWeb";
 
-    /// <summary>The externally reachable origin, with no trailing slash. Required: behind a reverse
-    /// proxy this is not what Kestrel sees, and the Facepunch returnUrl must be the external one.</summary>
+    /// <summary>The origin the browser opens, with no trailing slash. Required.
+    /// <para>It needs to be a loopback origin to actually work — Facepunch only honours the
+    /// returnUrl redirect for loopback, so a routable value yields a login that never calls back.
+    /// That is <b>not</b> checked here: <see cref="AppOptionsValidator"/> only rejects a blank,
+    /// relative, trailing-slash or (absent <see cref="AllowInsecureBaseUrl"/>) non-https value, so
+    /// a routable origin starts cleanly and fails later, in use. See the app README.</para></summary>
     internal string PublicBaseUrl { get; set; } = string.Empty;
 
-    /// <summary>Development escape hatch permitting a non-https <see cref="PublicBaseUrl"/>.</summary>
+    /// <summary>Permits a non-https <see cref="PublicBaseUrl"/>. Left over from the abandoned hosted
+    /// design: on the loopback-only deployment this app actually supports, plain http is normal.</summary>
     internal bool AllowInsecureBaseUrl { get; set; }
 
     /// <summary>Addresses of reverse proxies whose <c>X-Forwarded-For</c> is trusted. Empty means
     /// forwarded headers are ignored, which is the safe default: trusting them from anyone lets a
-    /// caller spoof their address past every per-IP cap.</summary>
+    /// caller spoof their address past every per-IP cap. Vestigial — no reverse proxy can front the
+    /// Steam login — but retained rather than silently changing behaviour.</summary>
     internal IList<string> KnownProxies { get; } = [];
 
     /// <summary>Global cap on live sessions in any state.</summary>
@@ -51,8 +57,8 @@ internal static class AppOptionsValidator
     {
         if (string.IsNullOrWhiteSpace(options.PublicBaseUrl))
         {
-            return $"{AppOptions.SectionName}:PublicBaseUrl is required. Set it to the externally "
-                   + "reachable origin of this instance, for example https://creds.example.org.";
+            return $"{AppOptions.SectionName}:PublicBaseUrl is required. Set it to the loopback "
+                   + "origin you open in the browser, for example http://localhost:8080.";
         }
 
         if (!Uri.TryCreate(options.PublicBaseUrl, UriKind.Absolute, out var baseUri))
@@ -70,8 +76,8 @@ internal static class AppOptionsValidator
             && !options.AllowInsecureBaseUrl)
         {
             return $"{AppOptions.SectionName}:PublicBaseUrl must use https, because it carries the "
-                   + "Steam auth token back from Facepunch. Set "
-                   + $"{AppOptions.SectionName}:AllowInsecureBaseUrl=true only for local development.";
+                   + "Steam auth token back from Facepunch. For the usual http://localhost setup, set "
+                   + $"{AppOptions.SectionName}:AllowInsecureBaseUrl=true.";
         }
 
         foreach (var proxy in options.KnownProxies)

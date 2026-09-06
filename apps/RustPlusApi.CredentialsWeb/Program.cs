@@ -41,6 +41,9 @@ builder.Services.AddSingleton<IRegistrationSteps>(serviceProvider => new LiveReg
     serviceProvider.GetRequiredService<IHttpClientFactory>(),
     serviceProvider.GetRequiredService<ILoggerFactory>()));
 
+// Vestigial: the app is loopback-only (Facepunch only redirects to a loopback returnUrl), so no
+// reverse proxy can front the Steam login and this should never engage. Retained rather than
+// removed so the caps keep behaving exactly as their tests describe. See the app README.
 // Without this, every visitor behind a reverse proxy presents as the proxy and shares one per-IP
 // bucket, silently voiding the caps. Configured too loosely it is worse: trusting X-Forwarded-For
 // from anyone lets a caller spoof their way past the limits. So the operator must name their proxy

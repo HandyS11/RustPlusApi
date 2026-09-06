@@ -61,10 +61,13 @@ The path of `returnUrl` is preserved and the query is appended to it.
     validation error. There is no allowlist at either gate; the value rides inside the encrypted
     `state` blob exactly as loopback does.
 
-  Not conclusively proven: the final `/signin-steam` hop to an external hostname, which would
-  require `/signin-steam` to deliberately re-validate a value it receives encrypted. Tracked in
-  `2026-09-03-credential-acquisition-website-design.md` for re-confirmation against the first
-  staging deployment.
+  **Answered, 2026-09-06 — negatively.** The final `/signin-steam` hop does *not* redirect to an
+  external hostname. It appears to branch on the shape of the `returnUrl`: loopback gets the legacy
+  302, anything else gets a `window.ReactNativeWebView.postMessage` call that only resolves inside
+  the Rust+ app's WebView. So `/signin-steam` does re-inspect the value it receives encrypted, or at
+  any rate does not use it as a redirect target. The probes above remain accurate — the two `/login`
+  gates really do accept anything, including `javascript:` — the decision is simply made later.
+  See `2026-09-03-credential-acquisition-website-design.md` and issue #126.
 
 ## Design
 
