@@ -7,16 +7,13 @@ namespace RustPlusApi.CredentialsWeb.UnitTests;
 
 public sealed class RequestModeTests
 {
-    // CA1859: TestServer doesn't provide a concrete context subclass, so we return the abstract type for compatibility.
-#pragma warning disable CA1859
-    private static HttpContext Context(string? remoteIp, string host)
+    private static DefaultHttpContext Context(string? remoteIp, string host)
     {
         var context = new DefaultHttpContext();
         context.Connection.RemoteIpAddress = remoteIp is null ? null : IPAddress.Parse(remoteIp);
         context.Request.Host = new HostString(host);
         return context;
     }
-#pragma warning restore CA1859
 
 
     [Theory]
