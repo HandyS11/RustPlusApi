@@ -1,9 +1,11 @@
 "use strict";
 
 const SESSION_KEY = "rustplus-credentials-session";
+const PAIRING_KEY = "rustplus-credentials-pairing";
 
 const view = {
     intro: document.getElementById("intro"),
+    paste: document.getElementById("paste"),
     progress: document.getElementById("progress"),
     ready: document.getElementById("ready"),
     waiting: document.getElementById("waiting"),
@@ -13,6 +15,8 @@ const view = {
 
 let sessionId = null;
 let configJson = null;
+let callbackMode = "redirect";
+let pairingAvailable = true;
 
 function show(name) {
     for (const [key, element] of Object.entries(view)) {
@@ -43,6 +47,52 @@ function download(name, text) {
     link.download = name;
     link.click();
     URL.revokeObjectURL(url);
+}
+
+function applyPairingAvailability() {
+    document.getElementById("pair-offer").hidden = !pairingAvailable;
+    document.getElementById("pair-unavailable").hidden = pairingAvailable;
+}
+
+function showPaste() {
+    // Reached either straight after creating a session, when the login link is known, or from the
+    // progress screen as a rescue, when it is not.
+    document.getElementById("paste-intro").hidden = !document.getElementById("login-link").getAttribute("href");
+    show("paste");
+}
+
+async function submitPaste() {
+    const input = document.getElementById("pasted-url");
+    const button = document.getElementById("submit-pasted");
+    const error = document.getElementById("paste-error");
+    const url = input.value.trim();
+
+    if (!url) {
+        error.textContent = "Paste the address from the page that failed to load.";
+        return;
+    }
+
+    button.disabled = true;
+    error.textContent = "";
+
+    const response = await fetch("/api/callback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+    });
+
+    if (response.ok) {
+        // The address carries the Steam token, so it does not linger in the field.
+        input.value = "";
+        show("progress");
+        return;
+    }
+
+    const body = await response.json().catch(() => ({
+        message: "That address could not be read. Copy the whole address and try again."
+    }));
+    error.textContent = body.message;
+    button.disabled = false;
 }
 
 function onStep(payload) {
@@ -114,7 +164,22 @@ async function start() {
     }
 
     const body = await response.json();
+    sessionId = body.sessionId;
+    callbackMode = body.callbackMode;
+    pairingAvailable = body.pairingAvailable;
     sessionStorage.setItem(SESSION_KEY, body.sessionId);
+    sessionStorage.setItem(PAIRING_KEY, String(body.pairingAvailable));
+    applyPairingAvailability();
+
+    if (callbackMode === "paste") {
+        // Attach the stream before the visitor leaves for Steam: the flow starts the moment they
+        // paste, and this tab is where they will be watching it.
+        listen(sessionId);
+        document.getElementById("login-link").href = body.loginUrl;
+        showPaste();
+        return;
+    }
+
     location.href = body.loginUrl;
 }
 
@@ -138,8 +203,28 @@ document.getElementById("download-paired").addEventListener("click",
     () => download("rustplus.config.json", configJson));
 document.getElementById("restart").addEventListener("click", () => {
     sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(PAIRING_KEY);
     location.href = "/";
 });
+document.getElementById("submit-pasted").addEventListener("click", submitPaste);
+document.getElementById("paste-instead").addEventListener("click", showPaste);
+document.getElementById("pasted-url").addEventListener("paste", () => {
+    // The field's value is not updated until after this event, so read it on the next tick.
+    setTimeout(() => {
+        if (document.getElementById("pasted-url").value.includes("/callback/")) {
+            submitPaste();
+        }
+    }, 0);
+});
+
+// The server decides this, and says so in the create-session response. Until then the page guesses
+// from its own address, which is right in every ordinary case and only cosmetic when it is not.
+const looksLocal = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)
+    || location.hostname.endsWith(".localhost");
+document.getElementById("trust-local").hidden = !looksLocal;
+document.getElementById("trust-hosted").hidden = looksLocal;
+pairingAvailable = sessionStorage.getItem(PAIRING_KEY) !== "false";
+applyPairingAvailability();
 
 sessionId = readSessionId();
 if (sessionId) {

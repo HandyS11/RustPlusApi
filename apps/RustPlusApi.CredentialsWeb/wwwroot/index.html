@@ -18,15 +18,18 @@
         <details open>
             <summary>What this server sees, and what it keeps</summary>
             <ul>
-                <li>This app only works on the machine you are browsing from — the Steam login
-                    completes over loopback and nowhere else, so nothing here leaves your computer.</li>
-                <li>Your Steam auth token reaches this server, because Facepunch sends it here as a
-                    query parameter and nothing can change that. It is dropped the moment your device
-                    is registered.</li>
+                <li id="trust-local">This app is running on the machine you are browsing from. The
+                    Steam login completes over loopback and nowhere else, so nothing here leaves your
+                    computer.</li>
+                <li id="trust-hosted" hidden>This server is not your machine. Your Steam auth token
+                    reaches it when you paste the login address back, and nothing else about you
+                    does.</li>
+                <li>Your Steam auth token is dropped the moment your device is registered with Rust
+                    Companion. It is never written to disk and never sent back to your browser.</li>
                 <li>Nothing is written to disk or to a database. Everything lives in memory and is
                     discarded when your session ends or the process restarts.</li>
                 <li>No credential is written to any log. The web server's request logging is turned
-                    off precisely because it would record that query parameter.</li>
+                    off precisely because it would otherwise record one.</li>
                 <li>Your <code>playerToken</code> is full access to your Rust+ account. Treat it like
                     a password and don't paste it anywhere public.</li>
             </ul>
@@ -34,23 +37,49 @@
         <button id="start" type="button">Sign in with Steam</button>
     </section>
 
+    <section id="paste" hidden>
+        <h2>One more step</h2>
+        <p id="paste-intro">
+            <a id="login-link" href="" target="_blank" rel="noopener">Open the Steam login in a new
+                tab</a>, sign in, and your browser will land on a page saying it can't connect to
+            <code>localhost</code>. <strong>That is expected</strong> — nothing is listening there,
+            and that is the point.
+        </p>
+        <p>Copy the whole address from that page and paste it below.</p>
+        <label for="pasted-url">Callback address</label>
+        <input id="pasted-url" type="url" inputmode="url" autocomplete="off" spellcheck="false"
+               placeholder="http://localhost:54321/callback/…">
+        <button id="submit-pasted" type="button">Continue</button>
+        <p id="paste-error" class="error" role="alert"></p>
+    </section>
+
     <section id="progress" hidden>
         <h2>Working…</h2>
         <p id="status">Registering a device with Google and Rust Companion.</p>
+        <button id="paste-instead" type="button" class="secondary">Nothing happening? Paste the
+            login address</button>
     </section>
 
     <section id="ready" hidden>
         <h2>Credentials ready</h2>
         <p>Signed in as <code id="steam-id"></code>.</p>
         <button id="download" type="button">Download rustplus.config.json</button>
-        <h3>Optional: get your pairing values</h3>
-        <p>
-            To get <code>ip</code>, <code>port</code>, <code>playerId</code> and
-            <code>playerToken</code>, this server has to hold a connection open to Google while you
-            pair in game. Start it only when you're ready to alt-tab into Rust.
+        <div id="pair-offer">
+            <h3>Optional: get your pairing values</h3>
+            <p>
+                To get <code>ip</code>, <code>port</code>, <code>playerId</code> and
+                <code>playerToken</code>, this server has to hold a connection open to Google while
+                you pair in game. Start it only when you're ready to alt-tab into Rust.
+            </p>
+            <button id="pair" type="button">Wait for my pairing</button>
+            <p id="pair-note"></p>
+        </div>
+        <p id="pair-unavailable" hidden>
+            The four pairing values need a connection held open to Google while you pair in game,
+            which this instance doesn't do for visitors. Run the app on your own machine to get them,
+            or use <code>PairingListener</code> from <code>RustPlusApi.Fcm.Registration</code> with
+            the credentials above.
         </p>
-        <button id="pair" type="button">Wait for my pairing</button>
-        <p id="pair-note"></p>
     </section>
 
     <section id="waiting" hidden>

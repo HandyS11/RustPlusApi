@@ -81,3 +81,24 @@ dt { color: var(--muted); }
 dd { margin: 0; font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
 
 a { color: var(--accent); }
+
+button.secondary {
+    color: var(--fg);
+    background: transparent;
+    border: 1px solid var(--line);
+}
+
+label { color: var(--muted); font-size: 0.9rem; display: block; }
+
+input[type="url"] {
+    font: inherit;
+    width: 100%;
+    padding: 0.6rem 0.7rem;
+    margin: 0.35rem 0 0.9rem;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+}
+
+.error { color: var(--accent); min-height: 1.5rem; margin: 0.75rem 0 0; }
