@@ -91,6 +91,33 @@ public sealed class PasteCallbackEndpointTests
     }
 
     [Fact]
+    public async Task Paste_Returns400_AndConsumesNothing_WhenALiveReturnTokenFailsToParse()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+        var session = NewSession(factory);
+
+        // The theory above cannot prove parse-before-consume on its own: none of its rows carries a
+        // return token, so a consume-then-parse implementation would pass it with nothing to consume.
+        // This address carries the session's real token and still has to fail — the path shape is
+        // right and the token is live, but ParseCallback rejects it for the missing steamId/token
+        // query. A consume-first implementation would burn the session here.
+        var bad = await client.PostAsJsonAsync(
+            Route,
+            new PasteCallbackRequest($"http://localhost:54321/callback/{session.ReturnToken}"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+        Assert.Equal(SessionState.Created, session.State);
+        Assert.Empty(factory.Steps.Calls);
+
+        var good = await client.PostAsJsonAsync(Route, new PasteCallbackRequest(Pasted(session.ReturnToken)));
+        await session.BackgroundWork;
+
+        Assert.Equal(HttpStatusCode.Accepted, good.StatusCode);
+        Assert.Equal(SessionState.Ready, session.State);
+    }
+
+    [Fact]
     public async Task Paste_Returns400_ForANullUrl()
     {
         await using var factory = new CredentialsWebFactory();
