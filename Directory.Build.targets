@@ -1,0 +1,19 @@
+<Project>
+
+  <!-- Roslyn's command-line driver skips analyzers whose diagnostics are all info/hidden by default,
+       which silently drops the whole IDE* code-style family from the build no matter what severity
+       .editorconfig gives them (IDE0017 pinned to `error` still never fired). Asking for a SARIF error
+       log lifts that filter — it is the same switch SonarScanner sets to import roslyn:* issues, which
+       is why Sonar reported code smells a green build had just declared clean. With it on, an IDE rule
+       raised to `warning` in .editorconfig becomes a build error through TreatWarningsAsErrors, so
+       those smells surface here instead of after the push.
+
+       This lives in .targets rather than .props because IntermediateOutputPath is only defined once
+       Microsoft.Common.CurrentVersion.targets has run; from Directory.Build.props it expands to empty
+       and drops the .sarif in the project directory. The condition leaves SonarScanner's own ErrorLog
+       alone when it runs. -->
+  <PropertyGroup Condition="'$(ErrorLog)' == ''">
+    <ErrorLog>$(IntermediateOutputPath)$(MSBuildProjectName).sarif</ErrorLog>
+  </PropertyGroup>
+
+</Project>

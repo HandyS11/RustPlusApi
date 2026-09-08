@@ -170,26 +170,28 @@ public sealed class CameraControllerSeamTests
         var renewalStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseRenewal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        var client = new FakeRustPlus();
-        client.OnSubscribe = async (call, _) =>
+        var client = new FakeRustPlus
         {
-            if (call == 1)
+            OnSubscribe = async (call, _) =>
             {
+                if (call == 1)
+                {
+                    return new Response<CameraInfo?>
+                    {
+                        IsSuccess = true, Data = FakeRustPlus.DroneInfo
+                    };
+                }
+
+                // Hold the renewal open so the dispose below cancels while it is in flight, then let it
+                // succeed. The loop therefore returns to its condition — rather than unwinding through a
+                // cancellation — and exits there.
+                renewalStarted.TrySetResult();
+                await releaseRenewal.Task;
                 return new Response<CameraInfo?>
                 {
                     IsSuccess = true, Data = FakeRustPlus.DroneInfo
                 };
             }
-
-            // Hold the renewal open so the dispose below cancels while it is in flight, then let it
-            // succeed. The loop therefore returns to its condition — rather than unwinding through a
-            // cancellation — and exits there.
-            renewalStarted.TrySetResult();
-            await releaseRenewal.Task;
-            return new Response<CameraInfo?>
-            {
-                IsSuccess = true, Data = FakeRustPlus.DroneInfo
-            };
         };
 
         var controller = await SubscribeAsync(client, FastRenewal);

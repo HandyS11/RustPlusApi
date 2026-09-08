@@ -404,6 +404,7 @@ dotnet_diagnostic.CA1819.severity = none # Properties should not return arrays �
 dotnet_diagnostic.CA1003.severity = none # Use generic event handler — wrapping EventHandler<string/Exception/T> in EventArgs subclasses is a breaking public API change
 dotnet_diagnostic.CA1062.severity = none # Validate parameters — nullable reference types provide equivalent compile-time null safety; runtime guards are redundant noise
 
+dotnet_diagnostic.IDE0017.severity = warning # Simplify object initialization — Sonar imports roslyn:IDE0017, so fail the build first
 dotnet_diagnostic.IDE0058.severity = none # Expression not used (boring with extension methods) _ = Foo()
 
 # protobuf-net.BuildTools (ships inside protobuf-net.Core 3.3+).
