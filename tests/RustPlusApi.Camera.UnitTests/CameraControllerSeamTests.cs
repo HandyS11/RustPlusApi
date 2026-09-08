@@ -19,11 +19,32 @@ public sealed class CameraControllerSeamTests
     /// <summary>Renewal cadence for tests that want the keep-alive loop to turn over promptly.</summary>
     private static readonly TimeSpan FastRenewal = TimeSpan.FromMilliseconds(20);
 
+    /// <summary>How long a "nothing happened" assertion lets the keep-alive loop misbehave before
+    /// concluding it is not running. Unlike waiting for a count to rise, this direction is
+    /// contention-safe: a slow runner can only make the assertion more true, never flakily false.</summary>
+    private static readonly TimeSpan SettleWindow = TimeSpan.FromMilliseconds(200);
+
     private static async Task<CameraController> SubscribeAsync(FakeRustPlus client, TimeSpan? interval)
     {
         var response = await CameraController.SubscribeAsync(client, "DRONE01", interval).WaitAsync(Timeout);
         Assert.True(response.IsSuccess);
         return response.Data!;
+    }
+
+    /// <summary>Polls <paramref name="condition"/> up to <see cref="Timeout"/>. Any assertion that a
+    /// renewal has <em>already</em> happened has to wait for it rather than assume a wall-clock
+    /// delay was enough, so a contended runner slows the test down instead of failing it.</summary>
+    /// <param name="condition">The condition to poll.</param>
+    /// <param name="expectation">Named in the failure message if the wait times out.</param>
+    private static async Task WaitUntilAsync(Func<bool> condition, string expectation)
+    {
+        var deadline = DateTime.UtcNow + Timeout;
+        while (DateTime.UtcNow < deadline && !condition())
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.True(condition(), $"Timed out after {Timeout.TotalSeconds:0}s waiting for {expectation}.");
     }
 
     [Fact]
@@ -35,7 +56,7 @@ public sealed class CameraControllerSeamTests
         await using (controller)
         {
             // Well past several renewals had the loop been started at FastRenewal.
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
+            await Task.Delay(SettleWindow);
             Assert.Equal(1, client.SubscribeCount);
         }
 
@@ -51,7 +72,7 @@ public sealed class CameraControllerSeamTests
 
         await using var controller = await SubscribeAsync(client, TimeSpan.FromSeconds(-1));
 
-        await Task.Delay(TimeSpan.FromMilliseconds(200));
+        await Task.Delay(SettleWindow);
         Assert.Equal(1, client.SubscribeCount);
     }
 
@@ -134,8 +155,9 @@ public sealed class CameraControllerSeamTests
         var failures = 0;
         controller.OnKeepAliveFailed += (_, _) => Interlocked.Increment(ref failures);
 
-        // Let the cancelled renewal run and end the loop, then dispose over the already-finished task.
-        await Task.Delay(TimeSpan.FromMilliseconds(200));
+        // The loop returns on the OperationCanceledException, so once the second subscribe lands the
+        // count is final — wait for it rather than assuming a fixed delay covered it.
+        await WaitUntilAsync(() => client.SubscribeCount >= 2, "the cancelled renewal to run");
         await controller.DisposeAsync();
 
         Assert.Equal(0, Volatile.Read(ref failures));
@@ -205,9 +227,7 @@ public sealed class CameraControllerSeamTests
 
         // Nothing is attached to OnKeepAliveFailed: reporting the failure must be a no-op rather
         // than a null dereference, and the loop must keep retrying past it.
-        await Task.Delay(TimeSpan.FromMilliseconds(200));
-
-        Assert.True(client.SubscribeCount > 2, $"expected repeated renewals, saw {client.SubscribeCount}");
+        await WaitUntilAsync(() => client.SubscribeCount > 2, "the loop to retry past the failed renewal");
     }
 
     [Fact]

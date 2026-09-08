@@ -101,9 +101,17 @@ ReportGenerator into `TestResults/merged/Cobertura.xml`, prints per-class gaps, 
 **ReportGenerator-merged Cobertura line-rate/branch-rate** (not per-TFM opencover numbers). CI
 (`.github/workflows/CI.yml`) runs it at **line 95 / branch 90**.
 
-Achieved at the time of writing: **≈ 97.5% line / 94.3% branch** for the libraries and
-**≈ 99.6% line / 98.5% branch** for the web app (merged Cobertura aggregates across all test
+Achieved at the time of writing: **≈ 97.2–97.5% line / 94.2–94.3% branch** for the libraries and
+**99.56% line / 98.54% branch** for the web app (merged Cobertura aggregates across all test
 projects and both TFMs).
+
+The library figure is quoted as a range because it genuinely is one: three consecutive runs of the
+same commit produced 97.22, 97.33 and 97.45% line. The variance is entirely `RustPlusSocket`
+(89.17–90.68% line across those runs), whose teardown and concurrent-dispose arms are covered or not
+depending on how the integration tests' real WebSocket teardown happens to interleave. **Do not read
+a small movement in this number as a regression or an improvement** — compare per-class figures for
+the class you actually changed, and expect `RustPlusSocket` to drift on its own. This run-to-run
+noise is part of why the gate floor sits at 95/90 rather than at the achieved figure.
 The gap to a literal 100% is irreducible and lives mostly in:
 
 - **Compiler-generated async state-machine branches** — the `MoveNext` fault/continuation arcs in
@@ -407,7 +415,12 @@ reachable only through a contrivance that would assert nothing real — the same
   of another operation, or a real socket to break mid-close. These are the "irreducible" lines the
   **Coverage gate** section refers to; an audit in 2026-09 confirmed the characterisation and found
   only `Dispose(bool)`'s finalizer arm and the default `ParseNotification` extension point to be
-  cleanly reachable — both are now covered by `RustPlusSocketBaseTests`.
+  cleanly reachable — both are now covered by `RustPlusSocketBaseTests`, which adds exactly three
+  lines (the `if (!disposing) return;` pair and `ParseNotification`'s body) plus the `!disposing`
+  branch. Because these arms depend on a race, **this class's coverage is not reproducible run to
+  run** — it moved between 89.17% and 90.68% line across three runs of one commit. That instability
+  is itself the evidence for the claim above: a line a test cannot reliably reach is a line no test
+  is really covering.
 
 ---
 
