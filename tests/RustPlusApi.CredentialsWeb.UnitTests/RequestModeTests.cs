@@ -74,6 +74,13 @@ public sealed class RequestModeTests
     public void IsLoopbackAddress_StaysStrict_ForAPrivateAddress() =>
         Assert.False(RequestMode.IsLoopbackAddress(IPAddress.Parse("172.17.0.1")));
 
+    /// <summary>The null guard is not reachable through <see cref="RequestMode.IsLocal"/> — that path
+    /// short-circuits on <see cref="RequestMode.IsLocalConnection"/>'s own null check first — so the
+    /// addressless case documented on the method (a <c>TestServer</c> request) is asserted directly.</summary>
+    [Fact]
+    public void IsLoopbackAddress_False_WhenThereIsNoConnectionAddress() =>
+        Assert.False(RequestMode.IsLoopbackAddress(null));
+
     [Theory]
     [InlineData("127.0.0.1")]
     [InlineData("10.1.2.3")]

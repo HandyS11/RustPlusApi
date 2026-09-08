@@ -101,8 +101,17 @@ ReportGenerator into `TestResults/merged/Cobertura.xml`, prints per-class gaps, 
 **ReportGenerator-merged Cobertura line-rate/branch-rate** (not per-TFM opencover numbers). CI
 (`.github/workflows/CI.yml`) runs it at **line 95 / branch 90**.
 
-Achieved at the time of writing: **≈ 97.0% line / 93.6% branch** (merged Cobertura aggregate
-across all test projects and both TFMs).
+Achieved at the time of writing: **≈ 97.2–97.5% line / 94.2–94.3% branch** for the libraries and
+**99.56% line / 98.54% branch** for the web app (merged Cobertura aggregates across all test
+projects and both TFMs).
+
+The library figure is quoted as a range because it genuinely is one: three consecutive runs of the
+same commit produced 97.22, 97.33 and 97.45% line. The variance is entirely `RustPlusSocket`
+(89.17–90.68% line across those runs), whose teardown and concurrent-dispose arms are covered or not
+depending on how the integration tests' real WebSocket teardown happens to interleave. **Do not read
+a small movement in this number as a regression or an improvement** — compare per-class figures for
+the class you actually changed, and expect `RustPlusSocket` to drift on its own. This run-to-run
+noise is part of why the gate floor sits at 95/90 rather than at the achieved figure.
 The gap to a literal 100% is irreducible and lives mostly in:
 
 - **Compiler-generated async state-machine branches** — the `MoveNext` fault/continuation arcs in
@@ -142,6 +151,21 @@ omitted for Sonar: with it on, coverlet writes `raw.githubusercontent.com` URLs 
 paths and SonarQube cannot match them against the files it indexed. Keeping the exclusions in sync
 is what makes SonarQube measure the same thing the local gate does — if you change one file's
 `Exclude`/`ExcludeByFile`/`ExcludeByAttribute` rules, change both.
+
+### Why `sonar.coverage.exclusions` is not just `samples`/`tests`/`tools`
+
+Keeping the runsettings in sync is necessary but not sufficient, because SonarQube does **not** take
+its "lines to cover" denominator from the coverage report. Each language analyzer computes the
+executable lines itself, and any line the report says nothing about is counted as uncovered. Two
+consequences, both of which the exclusion list has to absorb:
+
+| Pattern | Why |
+| --- | --- |
+| `**/wwwroot/**` | `apps/RustPlusApi.CredentialsWeb/wwwroot/app.js` is ~400 lines of browser JavaScript. Sonar's JS analyzer indexes it and reports 197 executable lines; coverlet, being a .NET tool, cannot produce coverage for it at any TFM. Left in, it read as a flat 0% and single-handedly moved the project from ~97% to 91.7% — a .NET coverage figure dominated by a file no .NET test can reach. **This is a real, acknowledged gap, not a solved one:** `app.js` has no tests. Closing it means adding a Node toolchain and feeding `sonar.javascript.lcov.reportPaths`, which is a deliberate future decision, not an oversight. |
+| `**/apps/**/Program.cs` | SonarC# honours `[ExcludeFromCodeCoverage]` when it computes executable lines, which is why `PairingListener` and `FcmRegistration` read 100% despite their excluded members. It does not connect the attribute to **top-level statements**: `Program.cs`'s statements are not syntactically inside the `partial class Program;` part that carries the attribute, so all 36 lines were counted even though coverlet excludes them correctly (they never appear in the local web gap list). The file-level exclusion restates, for Sonar, the exclusion the attribute already expresses. |
+
+Neither entry weakens the local gate — `tools/coverage/report.sh` never saw either file to begin
+with. They exist to stop SonarQube measuring something different from what CI gates on.
 
 ---
 
@@ -369,6 +393,34 @@ by the `ExcludeByAttribute` rule (`GeneratedCodeAttribute`, `CompilerGeneratedAt
 `coverlet.runsettings` files, with positional property accessors handled by `SkipAutoProps`. No
 bespoke tests are required for these members; logging behaviour is exercised through the call sites
 in `RustPlusLoggingTests` / `FcmLoggingTests`.
+
+### Accepted residual gaps (not excluded, deliberately not chased)
+
+Per the "no unjustified gaps" rule these are enumerated rather than silently left short. Each one is
+reachable only through a contrivance that would assert nothing real — the same standard applied to
+`SessionSweeper` above.
+
+- **`CredentialsStore.Save`'s `if (!OperatingSystem.IsWindows())`** (1 branch) — inside a
+  `#if NET10_0_OR_GREATER` fork. CI and local development both run Linux, so only the true arm ever
+  executes; the Windows arm needs a Windows host, not a better test. Covering it means adding a
+  Windows leg to the matrix for one branch.
+- **`SessionStore`'s two `Interlocked.CompareExchange` retry loops** (2 lines, 2 branches) — the
+  arm taken when the CAS *loses* a race. Reaching it deterministically means pausing one thread
+  inside the loop body, which requires a seam that exists only to be tested; the loops' actual
+  contract (never exceeding `MaxConcurrentPairings`) is already pinned by `SessionStoreCapsTests`.
+- **`RustPlusSocket`'s teardown and concurrent-dispose paths** (~37 lines, ~14 branches) — the
+  `catch (ObjectDisposedException)` arms around `_lifecycleLock.Release()`, the `WebSocketException`/
+  `OperationCanceledException` arms around the close handshake, and the `completed != loop` arms of
+  the `Task.WhenAny` teardown bounds. Every one requires a dispose to land inside a specific window
+  of another operation, or a real socket to break mid-close. These are the "irreducible" lines the
+  **Coverage gate** section refers to; an audit in 2026-09 confirmed the characterisation and found
+  only `Dispose(bool)`'s finalizer arm and the default `ParseNotification` extension point to be
+  cleanly reachable — both are now covered by `RustPlusSocketBaseTests`, which adds exactly three
+  lines (the `if (!disposing) return;` pair and `ParseNotification`'s body) plus the `!disposing`
+  branch. Because these arms depend on a race, **this class's coverage is not reproducible run to
+  run** — it moved between 89.17% and 90.68% line across three runs of one commit. That instability
+  is itself the evidence for the claim above: a line a test cannot reliably reach is a line no test
+  is really covering.
 
 ---
 
