@@ -1,3 +1,5 @@
+
+
 <div align="center">
 
 # RustPlusApi
@@ -52,7 +54,7 @@ dotnet add package RustPlusApi.Camera             # camera rendering (optional)
 ## Quickstart
 
 **1. Get your credentials** (once). Run the registration sample — it logs you into Steam, writes
-`rustplus.config.json`, and prints the `RustPlus(...)` arguments after you pair in game:
+`credentials.json`, and prints the `RustPlus(...)` arguments after you pair in game:
 
 ```bash
 dotnet run --project samples/RustPlus.Register.ConsoleApp
