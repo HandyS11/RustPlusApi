@@ -11,4 +11,10 @@ public sealed record ServerMapMonument
 
     /// <summary>Vertical map coordinate (south → north).</summary>
     public float? Y { get; init; }
+
+    /// <summary>
+    /// Whether <see cref="Name"/> is a custom name rather than a built-in monument token, or
+    /// <see langword="null"/> if the server is too old to report it.
+    /// </summary>
+    public bool? IsCustomName { get; init; }
 }
