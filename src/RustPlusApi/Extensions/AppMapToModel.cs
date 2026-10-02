@@ -32,8 +32,12 @@ public static class AppMapToModel
     {
         return new ServerMapMonument
         {
-            // Server field is `token` (a localization key, e.g. "lighthouse"); exposed as Name.
-            Name = appMapMonument.Token, X = appMapMonument.X, Y = appMapMonument.Y
+            // Server field is `token`: a localization key (e.g. "lighthouse"), or the literal name
+            // when is_custom_name is set; exposed as Name.
+            Name = appMapMonument.Token,
+            X = appMapMonument.X,
+            Y = appMapMonument.Y,
+            IsCustomName = appMapMonument.ShouldSerializeIsCustomName() ? appMapMonument.IsCustomName : null
         };
     }
 

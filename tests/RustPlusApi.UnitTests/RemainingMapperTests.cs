@@ -25,6 +25,33 @@ public class RemainingMapperTests
         Assert.Equal("cave", monument.Name);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ToServerMapMonument_MapsIsCustomName(bool isCustomName)
+    {
+        // Both values: an explicit false must survive as false, not collapse into "not reported".
+        var monument = new AppMap.Monument
+        {
+            Token = "My Base", X = 1, Y = 2, IsCustomName = isCustomName
+        };
+        Assert.True(monument.ShouldSerializeIsCustomName());
+        Assert.Equal(isCustomName, monument.ToServerMapMonument().IsCustomName);
+    }
+
+    [Fact]
+    public void ToServerMapMonument_AbsentIsCustomName_IsNull()
+    {
+        // is_custom_name arrived in server build 25653776; an older server omits it, and that
+        // must map to null rather than a fabricated false.
+        var monument = new AppMap.Monument
+        {
+            Token = "cave", X = 1, Y = 2
+        };
+        Assert.False(monument.ShouldSerializeIsCustomName());
+        Assert.Null(monument.ToServerMapMonument().IsCustomName);
+    }
+
     [Fact]
     public void ToSubscriptionInfo_MapsValue()
     {
