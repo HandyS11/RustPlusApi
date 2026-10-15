@@ -136,6 +136,25 @@ public class SocketErrorTests
     }
 
     [Fact]
+    public async Task ConnectAsync_WithServerId_OffersAuthAndRaisesErrorOccurredAndThrows()
+    {
+        // A ServerId exercises the companion-socket branch: the auth subprotocols are added to the
+        // handshake, which the companion host rejects for an unknown server and a bogus token.
+        await using var client = new RustPlus(new RustPlusConnection("example.invalid", 28083, 1, 1)
+        {
+            ServerId = Guid.Empty, AuthToken = "not-a-real-token"
+        });
+        var error = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        client.ErrorOccurred += (_, ex) => error.TrySetResult(ex);
+
+        await Assert.ThrowsAnyAsync<Exception>(() => client.ConnectAsync().WaitAsync(Timeout));
+
+        var ex = await error.Task.WaitAsync(Timeout);
+        Assert.NotNull(ex);
+        Assert.False(client.IsConnected);
+    }
+
+    [Fact]
     public async Task SendRequestAsync_NeverConnected_ThrowsInvalidOperationException()
     {
         // Fail fast with a clear error instead of queueing into a 30s TimeoutException

@@ -20,4 +20,11 @@ public sealed record ServerPairing
 
     /// <summary>The server's display name, if present in the notification.</summary>
     public string? Name { get; init; }
+
+    /// <summary>
+    /// Facepunch's id for the server. Pass it as <c>RustPlusConnection.ServerId</c> (with the companion
+    /// auth token) to connect through the companion socket, which works where direct connections no
+    /// longer do.
+    /// </summary>
+    public Guid ServerId { get; init; }
 }

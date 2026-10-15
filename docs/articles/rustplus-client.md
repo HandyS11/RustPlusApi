@@ -19,9 +19,31 @@ await rustPlus.ConnectAsync();
 | `PlayerId` | Your Steam ID. |
 | `PlayerToken` | The player token from pairing. |
 | `UseFacepunchProxy` | Route through the Facepunch proxy instead of connecting directly. |
+| `ServerId` | *(init, optional)* Facepunch's server id (`ServerPairing.ServerId`). Connects through the companion socket instead of `Server`/`Port`. |
+| `AuthToken` | *(init, optional)* The Rust+ companion auth token from the Steam login. Required with `ServerId`. |
 
-> `RustPlusConnection.ToString()` redacts `PlayerToken` (it prints as `***`) so the credential is not
-> accidentally leaked through logs or exceptions.
+> `RustPlusConnection.ToString()` redacts `PlayerToken` and `AuthToken` (they print as `***`) so the
+> credentials are not accidentally leaked through logs or exceptions.
+
+### Companion socket
+
+Facepunch removed direct connections to a server's companion port, and the legacy proxy
+(`UseFacepunchProxy`) no longer accepts connections. The official app now connects through
+`wss://companion-rust.facepunch.com/socket/{serverId}`, authenticated with the companion auth token.
+Set `ServerId` and `AuthToken` to use the same route; the other members still identify the player:
+
+```csharp
+var connection = new RustPlusConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken)
+{
+    ServerId = pairing.ServerId, // from the server pairing notification
+    AuthToken = authToken,       // the Rust+ companion token from the Steam login
+};
+using var rustPlus = new RustPlus(connection);
+await rustPlus.ConnectAsync();
+```
+
+A handshake that fails with HTTP 403 means the auth token was rejected (sign in again); 404 means
+the server id is unknown. A wrong player token still connects and fails requests with `not_found`.
 
 ## Connection lifecycle
 

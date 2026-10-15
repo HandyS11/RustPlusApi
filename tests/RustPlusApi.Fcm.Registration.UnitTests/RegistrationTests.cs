@@ -105,6 +105,7 @@ public class RegistrationTests
     {
         var notification = new Notification<ServerEvent?>
         {
+            ServerId = new Guid("089941d9-064e-4628-9c60-eaeb01a943e8"),
             PlayerId = 76561198000000000,
             PlayerToken = 123456789,
             Data = new ServerEvent
@@ -120,6 +121,7 @@ public class RegistrationTests
         Assert.Equal(76561198000000000UL, pairing.PlayerId);
         Assert.Equal(123456789, pairing.PlayerToken);
         Assert.Equal("My Server", pairing.Name);
+        Assert.Equal(new Guid("089941d9-064e-4628-9c60-eaeb01a943e8"), pairing.ServerId);
     }
 
     /// <summary>

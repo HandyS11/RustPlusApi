@@ -208,10 +208,12 @@ public abstract class RustPlusSocket(
 
             var webSocket = new ClientWebSocket();
             webSocket.Options.KeepAliveInterval = _options.KeepAliveInterval;
+            foreach (var subProtocol in RustPlusEndpoint.GetSubProtocols(connection))
+            {
+                webSocket.Options.AddSubProtocol(subProtocol);
+            }
 
-            var uri = connection.UseFacepunchProxy
-                ? new Uri($"wss://companion-rust.facepunch.com/game/{connection.Server}/{connection.Port}")
-                : new Uri($"ws://{connection.Server}:{connection.Port}");
+            var uri = RustPlusEndpoint.GetUri(connection);
 
             Connecting?.Invoke(this, EventArgs.Empty);
 
