@@ -32,6 +32,15 @@ keeps unformatted code from leaving your machine:
 
 Pre-existing local edits are ignored: only files the formatter itself modifies fail the check.
 
+The same hook also lints the credentials web app's browser script when the push touches
+`apps/RustPlusApi.CredentialsWeb/wwwroot/*.js` or that app's lint setup (`eslint.config.mjs`,
+`tsconfig.json`, `package.json`, `package-lock.json`). It runs `npm run lint` in the app directory
+(installing the pinned toolchain from the lockfile on first use) and rejects the push on any
+finding. The ESLint configuration there mirrors the JavaScript rules SonarQube applies to `develop`
+— typescript-eslint's type-aware promise rules plus SonarSource's `eslint-plugin-sonarjs` — so a
+code smell fails on your machine rather than on the SonarQube dashboard after the merge. This step
+needs Node.js; CI (`CI.yml`, job `lint-web`) runs the same lint on every push and pull request.
+
 ### Setup
 
 None. Building any project once (`dotnet build`) points git at the committed hooks via

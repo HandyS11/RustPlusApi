@@ -2,17 +2,22 @@
 # pre-push: run the ReSharper formatter + member reordering (ReformatAndReorder
 # profile in RustPlusApi.sln.DotSettings) on the files being pushed and block the
 # push when it produces changes, so unformatted/unordered code never leaves the
-# machine. Bypass for emergencies with `git push --no-verify`.
+# machine. When the credentials web app's browser script (or its lint setup) is
+# among the pushed files, also run its ESLint mirror of SonarQube's JavaScript
+# rules (apps/RustPlusApi.CredentialsWeb/eslint.config.mjs) and block the push
+# on any finding. Bypass for emergencies with `git push --no-verify`.
 set -u
 
 repo_root=$(git rev-parse --show-toplevel) || exit 1
 cd "$repo_root" || exit 1
 
 default_branch=origin/develop
+web_app=apps/RustPlusApi.CredentialsWeb
 
 # Collect the files touched by the commits being pushed (stdin lines:
 # "<local ref> <local sha> <remote ref> <remote sha>").
 changed=""
+web_changed=""
 while read -r _local_ref local_sha _remote_ref remote_sha; do
     # Deleting a remote branch pushes the zero sha — nothing to format.
     case "$local_sha" in
@@ -33,7 +38,36 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
     files=$(git diff --name-only --diff-filter=ACMR "$base" "$local_sha" -- \
         '*.cs' '*.csproj' '*.props' '*.targets')
     changed=$(printf '%s\n%s' "$changed" "$files")
+
+    files=$(git diff --name-only --diff-filter=ACMR "$base" "$local_sha" -- \
+        "$web_app/wwwroot/*.js" "$web_app/eslint.config.mjs" \
+        "$web_app/tsconfig.json" "$web_app/package.json" "$web_app/package-lock.json")
+    web_changed=$(printf '%s\n%s' "$web_changed" "$files")
 done
+
+web_changed=$(printf '%s' "$web_changed" | sort -u | sed '/^$/d')
+if [ -n "$web_changed" ]; then
+    echo "pre-push: linting the credentials web app's browser script..."
+    if ! command -v npm >/dev/null 2>&1; then
+        echo "pre-push: npm is not installed, and the push touches $web_app's JavaScript."
+        echo "Install Node.js (CI runs the same lint and will reject the push's findings otherwise)."
+        echo "(Bypass once with: git push --no-verify)"
+        exit 1
+    fi
+    # The lockfile is the source of truth: install only when node_modules is missing, since
+    # `npm ci` would otherwise wipe and refetch it on every push.
+    if [ ! -d "$web_app/node_modules" ]; then
+        npm --prefix "$web_app" ci --no-fund --no-audit || exit 1
+    fi
+    npm --prefix "$web_app" run --silent lint || {
+        echo ""
+        echo "pre-push: ESLint found problems in $web_app (the same rules SonarQube applies)."
+        echo "Fix them, amend/commit, then push again."
+        echo "(Bypass once with: git push --no-verify)"
+        exit 1
+    }
+    echo "pre-push: lint OK."
+fi
 
 changed=$(printf '%s' "$changed" | sort -u | sed '/^$/d')
 [ -z "$changed" ] && exit 0
@@ -66,7 +100,14 @@ dotnet jb cleanupcode RustPlusApi.sln \
     --profile="ReformatAndReorder" \
     --include="$include" \
     --no-build \
-    --verbosity=ERROR || exit 1
+    --verbosity=ERROR
+rc=$?
+# Exit code 3 is ReSharper's "No items were found to cleanup": the push touched
+# only .csproj/.props/.targets files, which the cleanup profile has no items
+# for. There is nothing to compare, so that is a pass, not a rejection.
+if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ]; then
+    exit 1
+fi
 
 after=$(hash_diffs)
 

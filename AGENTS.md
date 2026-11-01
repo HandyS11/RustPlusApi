@@ -16,12 +16,15 @@ tools/coverage/report.sh               # full suite + merged coverage report + C
 
 dotnet tool restore
 dotnet jb cleanupcode RustPlusApi.sln --profile="ReformatAndReorder"
+
+npm --prefix apps/RustPlusApi.CredentialsWeb ci        # lint toolchain for the web app's wwwroot/app.js
+npm --prefix apps/RustPlusApi.CredentialsWeb run lint  # ESLint mirror of SonarQube's JavaScript rules
 ```
 
 ## Critical Conventions
 
 - **Never bump versions in project files.** `Version=1.0.0` is the local placeholder; CD injects real versions via `-p:Version=<tag>`.
-- **Format before pushing.** The pre-push hook (`.githooks/pre-push`, wired by `dotnet build`) runs the ReSharper formatter and **rejects** the push on any diff. Run `dotnet jb cleanupcode` first.
+- **Format before pushing.** The pre-push hook (`.githooks/pre-push`, wired by `dotnet build`) runs the ReSharper formatter and **rejects** the push on any diff. Run `dotnet jb cleanupcode` first. When the push touches `apps/RustPlusApi.CredentialsWeb/wwwroot/*.js`, the hook also runs that app's `npm run lint` (SonarQube's JavaScript rules) and rejects the push on any finding.
 - **100% line/branch coverage is expected** for all new code. Exclusions require `[ExcludeFromCodeCoverage]` *with a justification comment*, and the member must be added to the exclusion list in [docs/development/testing.md](docs/development/testing.md).
 - **`#if NET10_0_OR_GREATER` forks must be pinned by tests** asserting identical results on both TFMs. See the `HtmlColorParser` pattern in [docs/development/testing.md](docs/development/testing.md).
 - **Stryker cannot mutate `RustPlusApi.csproj`** (protobuf-net.BuildTools breaks Stryker's rollback compiler). Pin core behavior with exact-assertion unit tests instead.
@@ -52,3 +55,4 @@ See [docs/development/testing.md](docs/development/testing.md) for the full guid
 - C# `latest`, `Nullable enable`, `ImplicitUsings enable`
 - 4-space indent, 120-column max, LF line endings (enforced by `.editorconfig`)
 - All analyzer warnings are errors — fix them, don't suppress
+- The web app's browser JavaScript (`apps/RustPlusApi.CredentialsWeb/wwwroot/app.js`) is linted by ESLint (`eslint.config.mjs` beside it, mirroring SonarQube's JS rules); an intentionally unawaited Promise is marked with `void` and a comment saying where its failures are handled
