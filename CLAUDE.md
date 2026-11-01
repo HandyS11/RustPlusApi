@@ -28,6 +28,11 @@ dotnet test RustPlusApi.sln -f net10.0
 # and the net10.0-only web app, merged and checked separately so the app can't move the library bar.
 tools/coverage/report.sh
 
+# Lint the credentials web app's browser JavaScript (ESLint mirror of SonarQube's JS rules; also run by
+# CI's lint-web job and by the pre-push hook when wwwroot/*.js or the lint setup changes):
+npm --prefix apps/RustPlusApi.CredentialsWeb ci
+npm --prefix apps/RustPlusApi.CredentialsWeb run lint
+
 # Formatting + member reordering (ReSharper CLI; whitespace rules from .editorconfig, the
 # ReformatAndReorder cleanup profile + member layout live in RustPlusApi.sln.DotSettings):
 dotnet tool restore
@@ -42,7 +47,8 @@ docfx docs/docfx.json --serve
 
 A committed **pre-push hook** (`.githooks/pre-push`, wired up automatically by the first
 `dotnet build`) runs the ReSharper formatter **and member reordering** on outgoing files and
-**rejects the push** if it changes anything — format before pushing.
+**rejects the push** if it changes anything — format before pushing. It also runs the ESLint check
+above when the push touches the web app's JavaScript or its lint setup.
 
 ## Architecture
 

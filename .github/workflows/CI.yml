@@ -75,3 +75,29 @@ jobs:
       # live-network adapter — are [ExcludeFromCodeCoverage] with justifications.
       working-directory: ${{ github.workspace }}
       run: python3 tools/coverage/check_threshold.py 95 90 TestResults/merged-web/Cobertura.xml
+
+  lint-web:
+    # The browser script in apps/RustPlusApi.CredentialsWeb/wwwroot has no .NET analyzer behind it, and
+    # Sonar.yml only analyzes develop after the merge. This runs the same JavaScript rules (the app's
+    # eslint.config.mjs mirrors SonarQube's) on every push and PR, so a smell fails here first.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/RustPlusApi.CredentialsWeb
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v7
+
+    - name: Setup Node
+      uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        cache: npm
+        cache-dependency-path: apps/RustPlusApi.CredentialsWeb/package-lock.json
+
+    - name: Install lint toolchain
+      run: npm ci
+
+    - name: Lint wwwroot/app.js
+      run: npm run lint

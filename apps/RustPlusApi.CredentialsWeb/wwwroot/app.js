@@ -355,7 +355,8 @@ document.getElementById("pasted-url").addEventListener("paste", () => {
     // The field's value is not updated until after this event, so read it on the next tick.
     setTimeout(() => {
         if (document.getElementById("pasted-url").value.includes("/callback/")) {
-            submitPaste();
+            // submitPaste reports its own failures beside the field, so there is nothing to catch here.
+            void submitPaste();
         }
     }, 0);
 });
@@ -372,7 +373,8 @@ document.addEventListener("click", event => {
     const button = event.target.closest("button.copy");
     if (button) {
         const value = document.getElementById(button.dataset.copy);
-        copyText(value.textContent, button, value);
+        // copyText reports its own failures on the button and status line, so there is nothing to catch here.
+        void copyText(value.textContent, button, value);
     }
 });
 

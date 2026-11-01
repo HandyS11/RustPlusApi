@@ -30,3 +30,15 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  - package-ecosystem: "npm"
+    # The lint toolchain for apps/RustPlusApi.CredentialsWeb/wwwroot/app.js (ESLint + typescript-eslint
+    # + eslint-plugin-sonarjs), the local mirror of SonarQube's JavaScript rules. Dev-only: nothing
+    # from it ships in the app.
+    directory: "/apps/RustPlusApi.CredentialsWeb"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm:
+        patterns:
+          - "*"
