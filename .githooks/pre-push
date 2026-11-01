@@ -100,7 +100,14 @@ dotnet jb cleanupcode RustPlusApi.sln \
     --profile="ReformatAndReorder" \
     --include="$include" \
     --no-build \
-    --verbosity=ERROR || exit 1
+    --verbosity=ERROR
+rc=$?
+# Exit code 3 is ReSharper's "No items were found to cleanup": the push touched
+# only .csproj/.props/.targets files, which the cleanup profile has no items
+# for. There is nothing to compare, so that is a pass, not a rejection.
+if [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ]; then
+    exit 1
+fi
 
 after=$(hash_diffs)
 
