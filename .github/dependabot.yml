@@ -35,6 +35,10 @@ updates:
     # The lint toolchain for apps/RustPlusApi.CredentialsWeb/wwwroot/app.js (ESLint + typescript-eslint
     # + eslint-plugin-sonarjs), the local mirror of SonarQube's JavaScript rules. Dev-only: nothing
     # from it ships in the app.
+    # package.json `overrides` forces minimatch to ^11.0.4 (GHSA-g3hv-75wg-m249 is only fixed in 11.x)
+    # while eslint, @eslint/config-array, typescript-eslint and eslint-plugin-sonarjs still declare ^10;
+    # they only use the Minimatch constructor/match()/minimatch(), none of the APIs 11.0 removed. Drop the
+    # override once all of them accept ^11.
     directory: "/apps/RustPlusApi.CredentialsWeb"
     schedule:
       interval: "weekly"
