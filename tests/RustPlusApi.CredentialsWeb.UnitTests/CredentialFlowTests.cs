@@ -205,6 +205,28 @@ public sealed class CredentialFlowTests
         Assert.DoesNotContain(events, e => e.Type == "error");
     }
 
+    [Fact]
+    public async Task CompleteRegistrationAsync_CountsAFailedFlowAgainstTheHourlyCap()
+    {
+        // The Steam token is only checked by Facepunch at step 5, after the Google/Expo device
+        // registration (steps 1-3) has already run, and a callback's token and steamId are only
+        // checked for shape. So a made-up callback that fails at step 5 must still spend the
+        // address's hourly budget, or one address could drive device registrations without limit.
+        var h = NewHarness();
+        using var _s = h.Store;
+        h.Steps.CompanionFailure = new HttpRequestException("401 (Unauthorized)");
+
+        for (var attempt = 0; attempt < h.Options.MaxCompletionsPerIpPerHour; attempt++)
+        {
+            Assert.True(h.Store.TryCreate("203.0.113.7", isLocal: false, out var session, out _));
+            await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
+            Assert.Equal(SessionState.Failed, session!.State);
+        }
+
+        Assert.False(h.Store.TryCreate("203.0.113.7", isLocal: false, out _, out var failure));
+        Assert.Equal(SessionCreateFailure.HourlyLimit, failure);
+    }
+
     private sealed record Harness(
         CredentialFlow Flow,
         SessionStore Store,

@@ -124,7 +124,7 @@ variable, `--CredentialsWeb:Name` on the command line).
 | `KnownProxies__0`, `__1`, ... | *(empty)* | Reverse proxy addresses whose `X-Forwarded-For` is trusted. Required behind a proxy — see above for what happens without it |
 | `MaxConcurrentSessions` | `200` | Global cap on live sessions, in any state |
 | `MaxConcurrentPairings` | `50` | Global cap on live MCS sockets held open waiting for a pairing |
-| `MaxCompletionsPerIpPerHour` | `5` | Rolling per-IP cap on completed flows |
+| `MaxCompletionsPerIpPerHour` | `5` | Rolling per-IP cap on registration attempts: every flow that reaches the Google/Expo device registration counts, completed or not |
 | `CreatedTtl` | `00:10:00` | Lifetime of a session before the Steam login completes. Ten minutes covers a real Steam login, two-factor included, plus a copy and a paste. |
 | `SessionTtl` | `00:15:00` | Lifetime of a session once the Steam login has completed |
 | `PairingTtl` | `00:10:00` | Maximum time an MCS socket is held waiting for a pairing push |
@@ -174,5 +174,8 @@ Three things worth knowing if you're pasting an address into this page, or anyon
 
 The steps run in the order `4 → 1,2,3 → 5`, not the console app's `1,2,3 → 4 → 5`. Putting the
 Steam login first means a page load cannot trigger Google device registrations: they cost one
-dictionary entry with a ten-minute TTL and nothing else. Step 6, the pairing wait, is an opt-in
+dictionary entry with a ten-minute TTL and nothing else. The callback itself is only checked for
+shape, though — Facepunch first validates the Steam token at step 5, after steps 1-3 have run — so
+every attempt that reaches the device registration is charged against `MaxCompletionsPerIpPerHour`,
+whether it then completes or not. Step 6, the pairing wait, is an opt-in
 continuation because it is the only step that holds a socket open.

@@ -104,13 +104,17 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
                && _bySessionId.TryGetValue(sessionId, out session);
     }
 
-    /// <summary>Records that <paramref name="clientIp"/> finished a flow, for the rolling hourly cap.
-    /// Runs under the same gate as <see cref="TryCreate"/> rather than a per-list lock: a per-list
-    /// lock lets a completion race the exact moment <see cref="CountCompletionsUnderGate"/> prunes
-    /// that address's list to empty and unlinks it from the map, silently losing the completion.
-    /// A single gate removes that interleaving entirely instead of patching around it.</summary>
+    /// <summary>Records that <paramref name="clientIp"/> started a registration — the Google/Expo
+    /// device registration of steps 1-3 — for the rolling hourly cap. It is charged when the
+    /// upstream work starts, not when the flow succeeds: the Steam token is only checked by
+    /// Facepunch at step 5, after that work has run, so a made-up callback that fails there must
+    /// still spend the budget. Runs under the same gate as <see cref="TryCreate"/> rather than a
+    /// per-list lock: a per-list lock lets an attempt race the exact moment
+    /// <see cref="CountCompletionsUnderGate"/> prunes that address's list to empty and unlinks it
+    /// from the map, silently losing the attempt. A single gate removes that interleaving entirely
+    /// instead of patching around it.</summary>
     /// <param name="clientIp">The caller's address.</param>
-    internal void RecordCompletion(string clientIp)
+    internal void RecordRegistrationAttempt(string clientIp)
     {
         lock (_createGate)
         {
@@ -256,9 +260,10 @@ internal sealed class SessionStore(AppOptions options, TimeProvider timeProvider
     internal bool TryGet(string sessionId, [NotNullWhen(true)] out Session? session) =>
         _bySessionId.TryGetValue(sessionId, out session);
 
-    /// <summary>Completions by this address inside the trailing hour, pruning older entries as it goes.
+    /// <summary>Registration attempts by this address inside the trailing hour, pruning older entries
+    /// as it goes.
     /// This bounds an address's own list only when that address calls <see cref="TryCreate"/> again —
-    /// it is the only caller, so an address that keeps calling <see cref="RecordCompletion"/> without
+    /// it is the only caller, so an address that keeps calling <see cref="RecordRegistrationAttempt"/> without
     /// ever retrying <see cref="TryCreate"/> keeps growing its list, since nothing else visits it to
     /// prune. Must be called while already holding <see cref="_createGate"/>: it does no locking of
     /// its own and relies on the caller for exclusive access to <see cref="_completionsByIp"/>.</summary>
