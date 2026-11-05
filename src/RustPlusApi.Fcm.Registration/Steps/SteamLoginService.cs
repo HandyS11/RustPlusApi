@@ -237,6 +237,22 @@ public sealed class SteamLoginService(int port = 3000)
         return builder.ToString();
     }
 
+    /// <summary>Builds the <see cref="ProcessStartInfo"/> that opens <paramref name="url"/> in the
+    /// system browser. Shell-executes the URL itself on every platform, rather than launching a
+    /// bare opener name (<c>xdg-open</c>/<c>open</c>) with <see cref="ProcessStartInfo.UseShellExecute"/>
+    /// off: the .NET Unix launcher resolves a bare program name from the current working directory
+    /// before <c>PATH</c>, so a <c>./xdg-open</c> left in the directory the user ran registration
+    /// from would run as that user and be handed the login URL. With shell-execute on, the runtime
+    /// resolves the system opener through <c>PATH</c> instead. The URL is library-built from
+    /// constants, so it is never attacker-influenced.</summary>
+    /// <param name="url">The login URL to open.</param>
+    /// <returns>The start info to pass to <see cref="Process.Start(ProcessStartInfo)"/>.</returns>
+    internal static ProcessStartInfo BuildBrowserStartInfo(string url) =>
+        new(url)
+        {
+            UseShellExecute = true
+        };
+
     /// <summary>Opens the user's default browser at <paramref name="url"/>, ignoring any failure.</summary>
     /// <param name="url">The login URL to open.</param>
     /// <remarks>Excluded from coverage: launches a real browser process, and failure is by design
@@ -247,24 +263,7 @@ public sealed class SteamLoginService(int port = 3000)
     {
         try
         {
-            ProcessStartInfo startInfo;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                startInfo = new ProcessStartInfo(url)
-                {
-                    UseShellExecute = true
-                };
-            }
-            else
-            {
-                var opener = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "open" : "xdg-open";
-                startInfo = new ProcessStartInfo(opener, url)
-                {
-                    UseShellExecute = false
-                };
-            }
-
-            Process.Start(startInfo)?.Dispose();
+            Process.Start(BuildBrowserStartInfo(url))?.Dispose();
         }
         catch (Exception ex)
         {

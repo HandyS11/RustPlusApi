@@ -206,6 +206,21 @@ public class SteamLoginServiceTests
     }
 
     [Fact]
+    public void BrowserStartInfo_ShellExecutesTheUrlItself_NotABareOpenerName()
+    {
+        // The opener must never be launched as a bare program name with UseShellExecute=false: the
+        // .NET Unix launcher resolves a bare name from the current working directory before PATH,
+        // so a ./xdg-open planted in the directory the user ran registration from would run as them
+        // and receive the login URL. Shell-executing the URL itself makes the runtime resolve the
+        // system opener through PATH instead, on every platform.
+        var info = SteamLoginService.BuildBrowserStartInfo("https://companion-rust.facepunch.com/login?returnUrl=x");
+
+        Assert.True(info.UseShellExecute);
+        Assert.Equal("https://companion-rust.facepunch.com/login?returnUrl=x", info.FileName);
+        Assert.Empty(info.ArgumentList);
+    }
+
+    [Fact]
     public async Task LoginAsync_NotFoundBodyNeverDisclosesTheCallbackNonce()
     {
         // The nonce in the callback path is the listener's only anti-forgery secret. Any local

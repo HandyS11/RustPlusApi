@@ -280,10 +280,11 @@ the pattern.
 
 **File:** `src/RustPlusApi.Fcm.Registration/Steps/SteamLoginService.cs`
 
-**Justification:** Launches a real OS browser process (`Process.Start`, platform-specific
-`xdg-open`/`open`/shell-execute), and failure is by design unobservable from the caller — the
-login URL has already been reported through `LoginAsync`'s `onLoginUrl` callback before this runs,
-so a headless host can always open the link by hand. This is the only member excluded from the
+**Justification:** Launches a real OS browser process (`Process.Start`), and failure is by design
+unobservable from the caller — the login URL has already been reported through `LoginAsync`'s
+`onLoginUrl` callback before this runs, so a headless host can always open the link by hand. The
+choice of what to launch is factored out into `BuildBrowserStartInfo`, which is pure and covered by
+a test; only the `Process.Start` call itself is excluded. This is the only member excluded from the
 coverage gate in this class.
 
 **Residual gaps, not excluded, not currently reached by `SteamLoginServiceTests`** (recorded here
