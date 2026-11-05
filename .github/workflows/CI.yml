@@ -101,3 +101,7 @@ jobs:
 
     - name: Lint wwwroot/app.js
       run: npm run lint
+
+    - name: Test wwwroot/app.js
+      # Node's built-in runner, no dependencies: loads app.js against a stand-in DOM (test/app.test.mjs).
+      run: node --test test/app.test.mjs

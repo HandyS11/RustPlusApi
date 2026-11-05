@@ -166,4 +166,27 @@ public sealed class PairingEndpointTests
         var store = factory.Services.GetRequiredService<SessionStore>();
         Assert.Equal(0, store.ActivePairings);
     }
+
+    [Fact]
+    public async Task Pairing_DoesNotLeakItsSlot_WhenTheSessionWasDisposedAfterLookup()
+    {
+        // The sweeper can dispose a session after StartPairing's lookup has already found it:
+        // Dispose leaves State at Ready and disposes Lifetime. Whatever the endpoint does next, the
+        // pairing slot it takes must come back, or each such race permanently shrinks
+        // MaxConcurrentPairings for every visitor of the instance.
+        await using var factory = new CredentialsWebFactory();
+        var session = await ReadySessionAsync(factory);
+        using var client = factory.CreateClient();
+        session.Dispose();
+
+        var response = await client.PostAsync(PairingUri(session.SessionId), null);
+        if (session.BackgroundWork is { } work)
+        {
+            await work;
+        }
+
+        Assert.NotEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+        var store = factory.Services.GetRequiredService<SessionStore>();
+        Assert.Equal(0, store.ActivePairings);
+    }
 }

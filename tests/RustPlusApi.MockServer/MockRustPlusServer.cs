@@ -94,6 +94,30 @@ public sealed class MockRustPlusServer : IAsyncDisposable
         return SendAsync(socket, MockResponses.Broadcast(broadcast), _cts.Token);
     }
 
+    /// <summary>Pushes raw bytes to the connected client as one binary message, bypassing protobuf
+    /// serialization, so a test can send a payload larger than any real message. Throws if no
+    /// client is connected.</summary>
+    /// <param name="payload">The exact bytes to send as a single binary WebSocket message.</param>
+    /// <exception cref="InvalidOperationException">Thrown when no client is connected.</exception>
+    public async Task BroadcastRawAsync(byte[] payload)
+    {
+        var socket = _activeSocket
+                     ?? throw new InvalidOperationException("No client is connected to the mock server.");
+        await _sendLock.WaitAsync(_cts.Token);
+        try
+        {
+            await socket.SendAsync(
+                new ArraySegment<byte>(payload),
+                WebSocketMessageType.Binary,
+                endOfMessage: true,
+                _cts.Token);
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
+    }
+
     private async Task AcceptLoopAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)

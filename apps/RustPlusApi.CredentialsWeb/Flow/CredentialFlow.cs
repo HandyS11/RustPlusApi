@@ -5,10 +5,13 @@ using System.Globalization;
 
 namespace RustPlusApi.CredentialsWeb.Flow;
 
-/// <summary>Drives the credential flow in the order 4 → 1,2,3 → 5, so that a real Steam login gates
-/// every upstream call. An unauthenticated visitor costs one dictionary entry and nothing else.</summary>
+/// <summary>Drives the credential flow in the order 4 → 1,2,3 → 5, so that no upstream call runs
+/// until a Steam callback has landed. That callback is only checked for shape — Facepunch first
+/// validates the Steam token at step 5 — so what actually bounds the Google/Expo work of steps 1-3
+/// is that each attempt is charged against the address's hourly budget before it starts. A visitor
+/// who never reaches the callback costs one dictionary entry and nothing else.</summary>
 /// <param name="steps">The upstream seam.</param>
-/// <param name="store">The session registry, for completion accounting and pairing slots.</param>
+/// <param name="store">The session registry, for registration-attempt accounting and pairing slots.</param>
 /// <param name="options">TTLs and caps.</param>
 /// <param name="timeProvider">Clock.</param>
 /// <param name="logger">Diagnostics. Never receives a secret.</param>
@@ -31,6 +34,9 @@ internal sealed class CredentialFlow(
         session.SetSteamLogin(login);
         session.Advance(SessionState.Authenticated, Deadline(options.SessionTtl));
         session.Advance(SessionState.Registering, Deadline(options.SessionTtl));
+
+        // Charged before any upstream call, and whatever the outcome: see RecordRegistrationAttempt.
+        store.RecordRegistrationAttempt(session.ClientIp);
 
         var step = "device registration";
 
@@ -60,7 +66,6 @@ internal sealed class CredentialFlow(
 
             session.ClearSteamToken();
             session.SetCredentials(credentials);
-            store.RecordCompletion(session.ClientIp);
             session.Advance(SessionState.Ready, Deadline(options.SessionTtl));
 
             session.Events.Publish(new SessionEvent("credentials", new CredentialsPayload(

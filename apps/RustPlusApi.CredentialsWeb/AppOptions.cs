@@ -30,7 +30,10 @@ internal sealed class AppOptions
     /// <summary>Global cap on concurrent MCS sockets — the genuinely scarce resource.</summary>
     internal int MaxConcurrentPairings { get; set; } = 50;
 
-    /// <summary>Per-IP cap on completed flows in a rolling hour. Bounds Google device registrations.</summary>
+    /// <summary>Per-IP cap on registration attempts in a rolling hour — every flow that reaches the
+    /// Google/Expo device registration counts, whether or not it then completes. Bounds Google
+    /// device registrations. (The name predates attempts being counted; it is kept so existing
+    /// configuration keeps working.)</summary>
     internal int MaxCompletionsPerIpPerHour { get; set; } = 5;
 
     /// <summary>Lifetime of a session that has not yet completed the Steam login. It has to cover a

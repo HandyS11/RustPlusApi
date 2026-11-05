@@ -119,6 +119,28 @@ internal sealed class Session(
         RunCleanupStep(Lifetime.Dispose);
     }
 
+    /// <summary>Reads <see cref="Lifetime"/>'s token without throwing once the session is disposed.
+    /// A request can still hold a session the sweeper or an eviction has just disposed, and
+    /// <see cref="Dispose"/> disposes <see cref="Lifetime"/>, after which its <c>Token</c> getter
+    /// throws. Reading under <see cref="_gate"/> is safe: <see cref="Dispose"/> sets
+    /// <see cref="_disposed"/> under it before disposing <see cref="Lifetime"/>.</summary>
+    /// <param name="token">The lifetime token, when the session is not yet disposed.</param>
+    /// <returns><see langword="false"/> once the session has been disposed.</returns>
+    internal bool TryGetLifetimeToken(out CancellationToken token)
+    {
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                token = default;
+                return false;
+            }
+
+            token = Lifetime.Token;
+            return true;
+        }
+    }
+
     /// <summary>Runs one <see cref="Dispose"/> cleanup step, swallowing any exception it raises so
     /// that the remaining steps still run and <see cref="Dispose"/> itself never throws. Not logged:
     /// a swallowed exception here indicates a bug in whatever registered a throwing callback on

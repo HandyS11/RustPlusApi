@@ -47,30 +47,30 @@ public sealed class SessionStoreCapsTests
     }
 
     [Fact]
-    public void TryCreate_CarriesTheEvictedCreatedSessionsReturnTokenOntoTheReplacement()
+    public void TryCreate_RetiresTheEvictedCreatedSessionsReturnToken()
     {
-        // The evicted session's visitor may be on Steam's login page right now, holding an address
-        // that names that token. Dropping it with the session answers their paste with "already
-        // used" and strands a Steam login that actually succeeded — and pressing Start in a fresh
-        // tab, which is how they get back to the paste box, is exactly what causes the eviction.
+        // Same address is not same visitor: a NAT, a proxy without KnownProxies, or the Docker
+        // bridge put unrelated visitors behind one address. Carrying the evicted session's live
+        // token onto the replacement would complete the first visitor's Steam login onto a session
+        // whose handle only the second requester holds — so the token dies with its session, and
+        // the in-flight login fails closed instead.
         var (store, _) = NewStore();
         using var _s = store;
-        store.TryCreate("203.0.113.7", isLocal: false, out var abandoned, out _);
+        store.TryCreate("203.0.113.7", isLocal: false, out var evicted, out _);
 
         Assert.True(store.TryCreate("203.0.113.7", isLocal: false, out var replacement, out _));
 
-        Assert.Equal(abandoned!.ReturnToken, replacement!.ReturnToken);
-        Assert.NotEqual(abandoned.SessionId, replacement.SessionId);
-        Assert.True(store.TryConsumeReturnToken(abandoned.ReturnToken, out var resolved));
+        Assert.NotEqual(evicted!.ReturnToken, replacement!.ReturnToken);
+        Assert.False(store.TryConsumeReturnToken(evicted.ReturnToken, out _));
+        Assert.True(store.TryConsumeReturnToken(replacement.ReturnToken, out var resolved));
         Assert.Same(replacement, resolved);
     }
 
     [Fact]
     public void TryCreate_MintsAFreshReturnToken_WhenTheEvictedSessionsTokenWasAlreadyConsumed()
     {
-        // Only a token still live is worth carrying over. One that has been consumed is spent, and
-        // re-mapping it onto the replacement would make an address that already ran the flow work a
-        // second time.
+        // A consumed token stays spent: the replacement never revives it, so an address that
+        // already ran the flow cannot run it a second time.
         var (store, _) = NewStore();
         using var _s = store;
         store.TryCreate("203.0.113.7", isLocal: false, out var spent, out _);
@@ -137,8 +137,8 @@ public sealed class SessionStoreCapsTests
     {
         var (store, _) = NewStore(o => o.MaxCompletionsPerIpPerHour = 2);
         using var _s = store;
-        store.RecordCompletion("203.0.113.7");
-        store.RecordCompletion("203.0.113.7");
+        store.RecordRegistrationAttempt("203.0.113.7");
+        store.RecordRegistrationAttempt("203.0.113.7");
 
         Assert.False(store.TryCreate("203.0.113.7", isLocal: true, out _, out var failure));
         Assert.Equal(SessionCreateFailure.HourlyLimit, failure);
@@ -149,7 +149,7 @@ public sealed class SessionStoreCapsTests
     {
         var (store, time) = NewStore(o => o.MaxCompletionsPerIpPerHour = 1);
         using var _s = store;
-        store.RecordCompletion("203.0.113.7");
+        store.RecordRegistrationAttempt("203.0.113.7");
         Assert.False(store.TryCreate("203.0.113.7", isLocal: true, out _, out _));
 
         time.Advance(TimeSpan.FromMinutes(61));
@@ -159,42 +159,42 @@ public sealed class SessionStoreCapsTests
     }
 
     [Fact]
-    public void RecordCompletion_IsScopedToOneAddress()
+    public void RecordRegistrationAttempt_IsScopedToOneAddress()
     {
         var (store, _) = NewStore(o => o.MaxCompletionsPerIpPerHour = 1);
         using var _s = store;
-        store.RecordCompletion("203.0.113.7");
+        store.RecordRegistrationAttempt("203.0.113.7");
 
         Assert.True(store.TryCreate("203.0.113.8", isLocal: true, out _, out _));
     }
 
     [Fact]
-    public void RecordCompletion_CountsAgain_AfterItsAddressWasPrunedAndUnlinked()
+    public void RecordRegistrationAttempt_CountsAgain_AfterItsAddressWasPrunedAndUnlinked()
     {
         var (store, time) = NewStore(o => o.MaxCompletionsPerIpPerHour = 1);
         using var _s = store;
-        store.RecordCompletion("203.0.113.7");
+        store.RecordRegistrationAttempt("203.0.113.7");
 
         time.Advance(TimeSpan.FromMinutes(61));
 
         // The stale entry is now more than an hour old. This TryCreate's hourly check prunes
         // "203.0.113.7"'s completions list to empty and unlinks it from the per-IP map — the exact
-        // moment a same-address RecordCompletion must not lose its write.
+        // moment a same-address RecordRegistrationAttempt must not lose its write.
         Assert.True(store.TryCreate("203.0.113.7", isLocal: true, out var session, out _));
         store.Remove(session!.SessionId);
 
-        store.RecordCompletion("203.0.113.7");
+        store.RecordRegistrationAttempt("203.0.113.7");
 
         Assert.False(store.TryCreate("203.0.113.7", isLocal: true, out _, out var failure));
         Assert.Equal(SessionCreateFailure.HourlyLimit, failure);
     }
 
     [Fact]
-    public void RecordCompletion_NeverLosesAWrite_UnderConcurrentPruning()
+    public void RecordRegistrationAttempt_NeverLosesAWrite_UnderConcurrentPruning()
     {
         // No clock manipulation: the vulnerable window in the pre-fix code is the gap between
-        // RecordCompletion's GetOrAdd returning a reference to an address's (still-empty,
-        // not-yet-populated) completions list and that same RecordCompletion call taking the
+        // RecordRegistrationAttempt's GetOrAdd returning a reference to an address's (still-empty,
+        // not-yet-populated) completions list and that same RecordRegistrationAttempt call taking the
         // list's own lock to add to it. A concurrent CountCompletionsUnderGate call (driven here
         // by TryCreate, its only caller) can observe the list as empty in that gap and unlink it
         // from the map, so the pending write lands in an orphaned list nothing can reach again.
@@ -270,7 +270,7 @@ public sealed class SessionStoreCapsTests
                 // needs to cut in front of while the list is still empty.
                 while ((unit = Interlocked.Increment(ref nextRecordUnit)) < recordTotal)
                 {
-                    store.RecordCompletion(addresses[unit / recordersPerAddress]);
+                    store.RecordRegistrationAttempt(addresses[unit / recordersPerAddress]);
                 }
             }
 
@@ -366,7 +366,7 @@ public sealed class SessionStoreCapsTests
         //
         // The window between TryCreate's read and its eventual Dispose() spans several dictionary
         // operations under _createGate (much wider than the nanosecond-scale race in
-        // RecordCompletion_NeverLosesAWrite_UnderConcurrentPruning above), so a modest number of
+        // RecordRegistrationAttempt_NeverLosesAWrite_UnderConcurrentPruning above), so a modest number of
         // gated two-thread trials is enough to hit it reliably against the pre-fix code (verified
         // empirically — see the fix report).
         const int trials = 500;

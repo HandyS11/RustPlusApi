@@ -125,6 +125,15 @@ internal static class SessionEndpoints
                 "This session is not ready to wait for a pairing."));
         }
 
+        // Read before the slot is taken: the sweeper may already have disposed this session, and
+        // nothing that can fail may sit between acquiring a slot and handing it to
+        // CredentialFlow.WaitForPairingAsync, the only code that releases it. A disposal after this
+        // read is still safe: the flow's claim then fails and gives the slot straight back.
+        if (!session.TryGetLifetimeToken(out var lifetime))
+        {
+            return Results.NotFound();
+        }
+
         // The slot is taken here rather than inside the flow so that a refusal is a plain 429
         // with nothing started; CredentialFlow.WaitForPairingAsync always releases it.
         if (!store.TryAcquirePairingSlot())
@@ -132,7 +141,7 @@ internal static class SessionEndpoints
             return Results.Json(new ErrorPayload(PairingBusyMessage), statusCode: 429);
         }
 
-        session.BackgroundWork = flow.WaitForPairingAsync(session, session.Lifetime.Token);
+        session.BackgroundWork = flow.WaitForPairingAsync(session, lifetime);
         return Results.Accepted();
     }
 }

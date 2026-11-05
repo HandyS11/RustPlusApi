@@ -9,15 +9,21 @@ namespace RustPlusApi.Camera;
 /// (sized from <see cref="CameraInfo"/>), feed each <see cref="CameraFrame"/> via
 /// <see cref="AddRays"/>, then call <see cref="Render"/> for the current image.
 /// </summary>
-/// <param name="width">Camera image width in pixels, from <see cref="CameraInfo.Width"/>.</param>
-/// <param name="height">Camera image height in pixels, from <see cref="CameraInfo.Height"/>.</param>
 /// <remarks>
 /// The ray decode, sample shuffle and colouring are ported from liamcottle/rustplus.js and
 /// validated against frames captured from a live server (see the golden render test in
 /// <c>RustPlusApi.Camera.UnitTests</c>, fixture captured 2026-06-12).
 /// </remarks>
-public sealed class CameraRenderer(int width, int height)
+public sealed class CameraRenderer
 {
+    /// <summary>Largest width or height accepted. Sample positions are stored as <see cref="short"/>,
+    /// so a coordinate of 32768 or more would truncate; real cameras are 160x90.</summary>
+    private const int MaxDimension = 32768;
+
+    /// <summary>Largest pixel count accepted, bounding the ~28-bytes-per-pixel allocation and the
+    /// per-render work. 4096 x 4096 is far above any real camera.</summary>
+    private const int MaxPixels = 4096 * 4096;
+
     private static readonly float[][] Colours =
     [
         [0.5f, 0.5f, 0.5f], [0.8f, 0.7f, 0.7f], [0.3f, 0.7f, 1f], [0.6f, 0.6f, 0.6f],
@@ -25,11 +31,50 @@ public sealed class CameraRenderer(int width, int height)
     ];
 
     private static readonly Rgba32 SkyColour = new(208, 230, 252);
+    private readonly int _height;
 
     /// <summary>Raw decoded samples (distance 0-1023, alignment 0-63, material). Normalised at render time.</summary>
-    private readonly (int Distance, int Alignment, int Material)?[] _output = new (int, int, int)?[width * height];
+    private readonly (int Distance, int Alignment, int Material)?[] _output;
 
-    private readonly short[] _samplePositionBuffer = BuildSamplePositionBuffer(width, height);
+    private readonly short[] _samplePositionBuffer;
+
+    private readonly int _width;
+
+    /// <summary>Creates a renderer for a camera of the given dimensions.</summary>
+    /// <param name="width">Camera image width in pixels, from <see cref="CameraInfo.Width"/>.</param>
+    /// <param name="height">Camera image height in pixels, from <see cref="CameraInfo.Height"/>.</param>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="width"/> or
+    /// <paramref name="height"/> is not positive or exceeds <see cref="MaxDimension"/>, or their
+    /// product exceeds <see cref="MaxPixels"/>. The dimensions come from the server's camera
+    /// subscribe reply, so they are untrusted: validating here keeps a hostile or on-path server
+    /// from sizing an unbounded allocation.</exception>
+    public CameraRenderer(int width, int height)
+    {
+        // Plain guards rather than ArgumentOutOfRangeException.ThrowIf*: those statics do not exist
+        // on the netstandard2.0 target this library still ships.
+        if (width is < 1 or > MaxDimension)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(width), width, $"Camera width must be between 1 and {MaxDimension}.");
+        }
+
+        if (height is < 1 or > MaxDimension)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(height), height, $"Camera height must be between 1 and {MaxDimension}.");
+        }
+
+        if ((long)width * height > MaxPixels)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(width), $"Camera dimensions {width}x{height} exceed the {MaxPixels}-pixel limit.");
+        }
+
+        _width = width;
+        _height = height;
+        _output = new (int, int, int)?[width * height];
+        _samplePositionBuffer = BuildSamplePositionBuffer(width, height);
+    }
 
     /// <summary>Decodes a frame's ray data and accumulates its samples into the image buffer.</summary>
     /// <param name="frame">The camera frame whose ray data will be decoded.</param>
@@ -89,10 +134,10 @@ public sealed class CameraRenderer(int width, int height)
                 }
             }
 
-            sampleOffset %= 2 * width * height;
+            sampleOffset %= 2 * _width * _height;
             // Pair-aligned reads (the cursor starts even and advances by 2) always yield
             // x < width and y < height, so the index is in range by construction.
-            var index = _samplePositionBuffer[sampleOffset++] + (_samplePositionBuffer[sampleOffset++] * width);
+            var index = _samplePositionBuffer[sampleOffset++] + (_samplePositionBuffer[sampleOffset++] * _width);
             _output[index] = (t, r, i);
         }
     }
@@ -100,7 +145,7 @@ public sealed class CameraRenderer(int width, int height)
     /// <summary>Renders the accumulated samples to a PNG image.</summary>
     public byte[] Render()
     {
-        using var image = new Image<Rgba32>(width, height);
+        using var image = new Image<Rgba32>(_width, _height);
 
         for (var i = 0; i < _output.Length; i++)
         {
@@ -128,8 +173,8 @@ public sealed class CameraRenderer(int width, int height)
                     ToByte(alignment * palette[2] * 255f));
             }
 
-            var x = i % width;
-            var y = height - 1 - (i / width);
+            var x = i % _width;
+            var y = _height - 1 - (i / _width);
             image[x, y] = colour;
         }
 

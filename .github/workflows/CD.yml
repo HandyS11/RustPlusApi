@@ -23,8 +23,18 @@ jobs:
     - name: Resolve Version from Tag
       run: |
         VERSION="${GITHUB_REF_NAME#v}"
+        # Validate before anything uses it. The prerelease/stable channel must be decided from the
+        # version NuGet actually publishes: a raw "contains a dash" test let v2.0.0+r-1 (a dash only
+        # inside SemVer build metadata, which NuGet drops from the identity) pass as a prerelease and
+        # then publish a stable 2.0.0, and ';'/',' in the value split -p:Version into extra MSBuild
+        # properties. So reject build metadata and both separators: only vMAJOR.MINOR.PATCH[-prerelease].
+        SEMVER='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+        if [[ ! "$VERSION" =~ $SEMVER ]]; then
+          echo "::error::Tag $GITHUB_REF_NAME is not vMAJOR.MINOR.PATCH[-prerelease]."
+          exit 1
+        fi
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        if [[ "$VERSION" == *-* ]]; then
+        if [[ -n "${BASH_REMATCH[4]}" ]]; then
           echo "IS_PRERELEASE=true" >> "$GITHUB_ENV"
           echo "Resolved prerelease version $VERSION."
         else
@@ -56,22 +66,22 @@ jobs:
         dotnet-version: 10.0.x
 
     - name: Pack NuGet Package RustPlusApi
-      run: cd ./src/RustPlusApi/ && dotnet pack --configuration Release -p:Version=$VERSION
+      run: cd ./src/RustPlusApi/ && dotnet pack --configuration Release -p:Version="$VERSION"
 
     - name: Pack NuGet Package RustPlusApi.Fcm
-      run: cd ./src/RustPlusApi.Fcm/ && dotnet pack --configuration Release -p:Version=$VERSION
+      run: cd ./src/RustPlusApi.Fcm/ && dotnet pack --configuration Release -p:Version="$VERSION"
 
     - name: Pack NuGet Package RustPlusApi.Fcm.Registration
-      run: cd ./src/RustPlusApi.Fcm.Registration/ && dotnet pack --configuration Release -p:Version=$VERSION
+      run: cd ./src/RustPlusApi.Fcm.Registration/ && dotnet pack --configuration Release -p:Version="$VERSION"
 
     - name: Pack NuGet Package RustPlusApi.Camera
-      run: cd ./src/RustPlusApi.Camera/ && dotnet pack --configuration Release -p:Version=$VERSION
+      run: cd ./src/RustPlusApi.Camera/ && dotnet pack --configuration Release -p:Version="$VERSION"
 
     - name: Pack NuGet Package RustPlusApi.Extensions.DependencyInjection
-      run: cd ./src/RustPlusApi.Extensions.DependencyInjection/ && dotnet pack --configuration Release -p:Version=$VERSION
+      run: cd ./src/RustPlusApi.Extensions.DependencyInjection/ && dotnet pack --configuration Release -p:Version="$VERSION"
 
     - name: Pack NuGet Package RustPlusApi.Fcm.Extensions.DependencyInjection
-      run: cd ./src/RustPlusApi.Fcm.Extensions.DependencyInjection/ && dotnet pack --configuration Release -p:Version=$VERSION
+      run: cd ./src/RustPlusApi.Fcm.Extensions.DependencyInjection/ && dotnet pack --configuration Release -p:Version="$VERSION"
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v7
@@ -116,8 +126,14 @@ jobs:
     - name: Resolve Version from Tag
       run: |
         VERSION="${GITHUB_REF_NAME#v}"
+        # Same strict validation as the build-and-deploy job: see the comment there.
+        SEMVER='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+        if [[ ! "$VERSION" =~ $SEMVER ]]; then
+          echo "::error::Tag $GITHUB_REF_NAME is not vMAJOR.MINOR.PATCH[-prerelease]."
+          exit 1
+        fi
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        if [[ "$VERSION" == *-* ]]; then
+        if [[ -n "${BASH_REMATCH[4]}" ]]; then
           echo "IS_PRERELEASE=true" >> "$GITHUB_ENV"
         else
           echo "IS_PRERELEASE=false" >> "$GITHUB_ENV"

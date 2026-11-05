@@ -209,6 +209,26 @@ function onCredentials(payload) {
     show("ready");
 }
 
+// Encodes a value as a C# regular string literal. The pairing ip comes from the game server's push,
+// and the snippet is text the visitor pastes into a program: spliced in raw, a double quote would
+// close the literal and turn the rest of the value into code. Backslash and quote are escaped, and
+// every control or line-terminator character (C# treats U+0085, U+2028 and U+2029 as new lines too)
+// is written as a \uXXXX escape.
+function csharpStringLiteral(value) {
+    let literal = "";
+    for (const ch of String(value)) {
+        const code = ch.codePointAt(0);
+        if (ch === "\\" || ch === "\"") {
+            literal += "\\" + ch;
+        } else if (code < 0x20 || code === 0x7f || code === 0x85 || code === 0x2028 || code === 0x2029) {
+            literal += "\\u" + code.toString(16).padStart(4, "0");
+        } else {
+            literal += ch;
+        }
+    }
+    return "\"" + literal + "\"";
+}
+
 function onPaired(payload) {
     document.getElementById("server-name").textContent = payload.name ?? "(unnamed)";
     document.getElementById("pair-ip").textContent = payload.ip;
@@ -216,7 +236,7 @@ function onPaired(payload) {
     document.getElementById("pair-player-id").textContent = payload.playerId;
     document.getElementById("pair-player-token").textContent = payload.playerToken;
     document.getElementById("snippet").textContent =
-        "new RustPlus(new RustPlusConnection(\"" + payload.ip + "\", " + payload.port +
+        "new RustPlus(new RustPlusConnection(" + csharpStringLiteral(payload.ip) + ", " + payload.port +
         ", " + payload.playerId + ", " + payload.playerToken + "));";
     show("paired");
 }

@@ -206,6 +206,46 @@ public class SteamLoginServiceTests
     }
 
     [Fact]
+    public void BrowserStartInfo_ShellExecutesTheUrlItself_NotABareOpenerName()
+    {
+        // The opener must never be launched as a bare program name with UseShellExecute=false: the
+        // .NET Unix launcher resolves a bare name from the current working directory before PATH,
+        // so a ./xdg-open planted in the directory the user ran registration from would run as them
+        // and receive the login URL. Shell-executing the URL itself makes the runtime resolve the
+        // system opener through PATH instead, on every platform.
+        var info = SteamLoginService.BuildBrowserStartInfo("https://companion-rust.facepunch.com/login?returnUrl=x");
+
+        Assert.True(info.UseShellExecute);
+        Assert.Equal("https://companion-rust.facepunch.com/login?returnUrl=x", info.FileName);
+        Assert.Empty(info.ArgumentList);
+    }
+
+    [Fact]
+    public async Task LoginAsync_NotFoundBodyNeverDisclosesTheCallbackNonce()
+    {
+        // The nonce in the callback path is the listener's only anti-forgery secret. Any local
+        // process can connect to the loopback port, so a 404 that names the expected path would
+        // hand that secret to whoever asks, letting them complete the login with an identity of
+        // their choosing.
+        var service = new SteamLoginService(port: 0);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var (login, returnUrl) = await StartLoginAsync(service, cts.Token);
+
+        using var http = new HttpClient();
+        using var probe = await http.GetAsync(
+            new Uri($"{returnUrl.GetLeftPart(UriPartial.Authority)}/anything"), cts.Token);
+        var body = await probe.Content.ReadAsStringAsync(cts.Token);
+
+        Assert.Equal(HttpStatusCode.NotFound, probe.StatusCode);
+        Assert.DoesNotContain(returnUrl.AbsolutePath, body, StringComparison.Ordinal);
+        Assert.DoesNotContain(returnUrl.Segments[^1], body, StringComparison.Ordinal);
+        Assert.False(login.IsCompleted);
+
+        await cts.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => login);
+    }
+
+    [Fact]
     public async Task LoginAsync_KeepsListeningAfterCallbackWithoutToken()
     {
         var service = new SteamLoginService(port: 0);

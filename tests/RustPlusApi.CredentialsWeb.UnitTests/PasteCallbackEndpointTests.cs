@@ -33,13 +33,13 @@ public sealed class PasteCallbackEndpointTests
     }
 
     [Fact]
-    public async Task Paste_StillCompletes_WhenAFreshTabStartedASecondSessionFirst()
+    public async Task Paste_OfAnEvictedSessionsAddress_IsRefused_AndNeverCompletesTheReplacement()
     {
-        // The recovery this flow exists for. The visitor comes back in a tab with no session handle
-        // — a fresh one, or the tab that failed to load — and has to press Start to reach the paste
-        // box at all, which evicts the session they are mid-login on. Their pasted address must
-        // still land, and land on the session that tab is watching, or the Steam login they have
-        // already completed is unrecoverable.
+        // Two requests from one address are not proof of one visitor (NAT, an unconfigured proxy,
+        // the Docker bridge). When a second session evicts the first, the first session's callback
+        // address must fail closed: completing it onto the second session would hand the first
+        // visitor's Steam login, and the credentials registered with it, to whoever holds the
+        // second session's handle.
         await using var factory = new CredentialsWebFactory
         {
             RemoteIpAddress = IPAddress.Parse("203.0.113.7")
@@ -55,15 +55,11 @@ public sealed class PasteCallbackEndpointTests
             Route,
             new PasteCallbackRequest(PastedFrom(firstBody!.LoginUrl)));
 
-        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<PasteCallbackResponse>();
-        Assert.Equal(secondBody!.SessionId, body!.SessionId);
-
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         var store = factory.Services.GetRequiredService<SessionStore>();
-        Assert.True(store.TryGet(secondBody.SessionId, out var session));
-        await session!.BackgroundWork;
-        Assert.Equal(SessionState.Ready, session.State);
-        Assert.Equal("steam-token", factory.Steps.SteamTokenSeen);
+        Assert.True(store.TryGet(secondBody!.SessionId, out var session));
+        Assert.Equal(SessionState.Created, session!.State);
+        Assert.Null(factory.Steps.SteamTokenSeen);
     }
 
     [Fact]
@@ -188,5 +184,18 @@ public sealed class PasteCallbackEndpointTests
         var response = await client.PostAsJsonAsync(Route, new PasteCallbackRequest(null));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Paste_Returns404_WhenTheSessionWasDisposedAfterItsTokenResolved()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+        var session = NewSession(factory);
+        session.Dispose();
+
+        var response = await client.PostAsJsonAsync(Route, new PasteCallbackRequest(Pasted(session.ReturnToken)));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }
