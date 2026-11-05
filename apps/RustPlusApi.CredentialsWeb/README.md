@@ -140,7 +140,13 @@ The Steam auth token really does pass through this server on its way to becoming
 so the guarantees below are worth stating plainly:
 
 - **In memory only.** No database, no session cache, no disk. A restart wipes everything.
-- **The Steam auth token is dropped** the moment your device is registered with Rust Companion.
+- **The Steam auth token goes back to you with your credentials.** It is also the `AuthToken` that
+  Facepunch's companion socket authenticates with, so once your device is registered with Rust
+  Companion the session's own copy is cleared and the token is handed over in the same `credentials`
+  event as `rustplus.config.json` — and the paired page puts it in the connection snippet. Like the
+  rest of that event, it stays in the session's in-memory event history (replayed only to a holder of
+  the session handle, so a dropped connection can resume) until the session expires, `SessionTtl`
+  after your login. It is never logged and never written to disk.
 - **No credential is logged.** Session ids, step names and exception text do appear in the app's
   own logs — but never a Steam token, FCM/GCM/Expo credential or `playerToken`. Asserted by
   `SecretsAreNeverLoggedTests`, not just intended.

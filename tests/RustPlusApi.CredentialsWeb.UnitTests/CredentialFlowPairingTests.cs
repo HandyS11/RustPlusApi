@@ -79,7 +79,7 @@ public sealed class CredentialFlowPairingTests
     }
 
     [Fact]
-    public async Task WaitForPairingAsync_ReachesPairedAndPublishesTheFourValues()
+    public async Task WaitForPairingAsync_ReachesPairedAndPublishesTheConnectionValues()
     {
         var (flow, store, _, session) = await ReadySessionAsync();
         using var _s = store;
@@ -97,6 +97,7 @@ public sealed class CredentialFlowPairingTests
         Assert.Equal("76561198249527954", payload.PlayerId);
         Assert.Equal(987654321, payload.PlayerToken);
         Assert.Equal("Test Server", payload.Name);
+        Assert.Equal("089941d9-064e-4628-9c60-eaeb01a943e8", payload.ServerId);
     }
 
     [Fact]

@@ -34,7 +34,8 @@ internal sealed class FakeRegistrationSteps : IRegistrationSteps
         Port = 28082,
         PlayerId = 76561198249527954,
         PlayerToken = 987654321,
-        Name = "Test Server"
+        Name = "Test Server",
+        ServerId = new Guid("089941d9-064e-4628-9c60-eaeb01a943e8")
     };
 
     /// <summary>When set, the pairing wait blocks until this is signalled or cancelled.</summary>
