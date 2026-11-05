@@ -46,21 +46,21 @@ public class CameraRendererTests
     // ──────────────────────────────────────────────────────────────────────────
 
     [Theory]
-    [InlineData(0, 90)]       // zero
-    [InlineData(160, 0)]      // zero
-    [InlineData(-1, -1)]      // negative (silently built a 1-pixel renderer before)
-    [InlineData(-5, 3)]       // negative
-    [InlineData(40000, 1)]    // past the 32768 short-coordinate range
-    [InlineData(1, 40000)]    // past the 32768 short-coordinate range
-    [InlineData(4097, 4097)]  // area past the 4096 x 4096 cap
+    [InlineData(0, 90)] // zero
+    [InlineData(160, 0)] // zero
+    [InlineData(-1, -1)] // negative (silently built a 1-pixel renderer before)
+    [InlineData(-5, 3)] // negative
+    [InlineData(40000, 1)] // past the 32768 short-coordinate range
+    [InlineData(1, 40000)] // past the 32768 short-coordinate range
+    [InlineData(4097, 4097)] // area past the 4096 x 4096 cap
     [InlineData(1, 20_000_000)] // area past the cap along one axis
     public void Constructor_RejectsOutOfRangeServerDimensions(int width, int height) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => new CameraRenderer(width, height));
 
     [Theory]
-    [InlineData(160, 90)]     // every live-captured fixture
-    [InlineData(1, 1)]        // minimum
-    [InlineData(4096, 4096)]  // the cap itself
+    [InlineData(160, 90)] // every live-captured fixture
+    [InlineData(1, 1)] // minimum
+    [InlineData(4096, 4096)] // the cap itself
     public void Constructor_AcceptsDimensionsWithinRange(int width, int height)
     {
         using var image = Decode(new CameraRenderer(width, height).Render());

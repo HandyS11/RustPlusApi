@@ -13,7 +13,10 @@ public class SocketMessageSizeTests
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
     private static RustPlusSocketOptions SmallCap() =>
-        new() { MaxMessageSize = 1024 };
+        new()
+        {
+            MaxMessageSize = 1024
+        };
 
     [Fact]
     public async Task OversizedMessage_RaisesAnErrorAndFailsPendingRequests()
@@ -26,7 +29,10 @@ public class SocketMessageSizeTests
         client.ErrorOccurred += (_, ex) => errors.TrySetResult(ex);
         await client.ConnectAsync().WaitAsync(Timeout);
 
-        var request = client.SendRequestAsync(new AppRequest { GetInfo = new AppEmpty() });
+        var request = client.SendRequestAsync(new AppRequest
+        {
+            GetInfo = new AppEmpty()
+        });
         await Task.Delay(150);
         await server.BroadcastRawAsync(new byte[2048]);
 

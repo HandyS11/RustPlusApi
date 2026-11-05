@@ -24,8 +24,21 @@ public sealed class CameraRenderer
     /// per-render work. 4096 x 4096 is far above any real camera.</summary>
     private const int MaxPixels = 4096 * 4096;
 
-    private readonly int width;
+    private static readonly float[][] Colours =
+    [
+        [0.5f, 0.5f, 0.5f], [0.8f, 0.7f, 0.7f], [0.3f, 0.7f, 1f], [0.6f, 0.6f, 0.6f],
+        [0.7f, 0.7f, 0.7f], [0.8f, 0.6f, 0.4f], [1f, 0.4f, 0.4f], [1f, 0.1f, 0.1f],
+    ];
+
+    private static readonly Rgba32 SkyColour = new(208, 230, 252);
+
+    /// <summary>Raw decoded samples (distance 0-1023, alignment 0-63, material). Normalised at render time.</summary>
+    private readonly (int Distance, int Alignment, int Material)?[] _output;
+
+    private readonly short[] _samplePositionBuffer;
     private readonly int height;
+
+    private readonly int width;
 
     /// <summary>Creates a renderer for a camera of the given dimensions.</summary>
     /// <param name="width">Camera image width in pixels, from <see cref="CameraInfo.Width"/>.</param>
@@ -62,19 +75,6 @@ public sealed class CameraRenderer
         _output = new (int, int, int)?[width * height];
         _samplePositionBuffer = BuildSamplePositionBuffer(width, height);
     }
-
-    private static readonly float[][] Colours =
-    [
-        [0.5f, 0.5f, 0.5f], [0.8f, 0.7f, 0.7f], [0.3f, 0.7f, 1f], [0.6f, 0.6f, 0.6f],
-        [0.7f, 0.7f, 0.7f], [0.8f, 0.6f, 0.4f], [1f, 0.4f, 0.4f], [1f, 0.1f, 0.1f],
-    ];
-
-    private static readonly Rgba32 SkyColour = new(208, 230, 252);
-
-    /// <summary>Raw decoded samples (distance 0-1023, alignment 0-63, material). Normalised at render time.</summary>
-    private readonly (int Distance, int Alignment, int Material)?[] _output;
-
-    private readonly short[] _samplePositionBuffer;
 
     /// <summary>Decodes a frame's ray data and accumulates its samples into the image buffer.</summary>
     /// <param name="frame">The camera frame whose ray data will be decoded.</param>
