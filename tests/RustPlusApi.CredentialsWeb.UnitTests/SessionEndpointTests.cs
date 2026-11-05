@@ -33,6 +33,24 @@ public sealed class SessionEndpointTests
     }
 
     [Fact]
+    public async Task CreateSession_TreatsOneIpv6Slash64AsOneAddress()
+    {
+        // Each /128 inside one /64 must not count as a separate visitor, or a single IPv6
+        // subscriber could hold the whole global session cap.
+        await using var factory = new CredentialsWebFactory
+        {
+            RemoteIpAddress = IPAddress.Parse("2001:db8:abcd:12::1")
+        };
+        using var client = factory.CreateClient();
+
+        await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+        factory.RemoteIpAddress = IPAddress.Parse("2001:db8:abcd:12::2");
+        await client.PostAsync(new Uri("/api/sessions", UriKind.Relative), null);
+
+        Assert.Equal(1, factory.Services.GetRequiredService<SessionStore>().Count);
+    }
+
+    [Fact]
     public async Task CreateSession_ReturnsADifferentReturnTokenForEachVisitor()
     {
         // Asserted across two addresses: a second call from the same address evicts the first
