@@ -10,7 +10,7 @@
     "eslint": "^10.14.0",
     "eslint-plugin-sonarjs": "^4.2.2",
     "globals": "^17.14.0",
-    "typescript": "~7.0.2",
+    "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.1"
   },
   "overrides": {
