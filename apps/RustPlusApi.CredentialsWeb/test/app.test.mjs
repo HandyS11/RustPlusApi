@@ -1,5 +1,5 @@
 // Runs wwwroot/app.js against a minimal stand-in for the browser, so its pure rendering logic can be
-// asserted without a browser or any npm dependency: `node --test test/` (npm test).
+// asserted without a browser or any npm dependency: `node --test test/app.test.mjs`.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

@@ -104,4 +104,4 @@ jobs:
 
     - name: Test wwwroot/app.js
       # Node's built-in runner, no dependencies: loads app.js against a stand-in DOM (test/app.test.mjs).
-      run: node --test test/
+      run: node --test test/app.test.mjs
