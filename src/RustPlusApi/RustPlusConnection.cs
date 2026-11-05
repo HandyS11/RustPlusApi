@@ -12,32 +12,39 @@ namespace RustPlusApi;
 /// <param name="Port">The port dedicated for the Rust+ companion app (not the one used to connect in-game).</param>
 /// <param name="PlayerId">Your Steam ID.</param>
 /// <param name="PlayerToken">Your player token acquired with FCM.</param>
-/// <param name="UseFacepunchProxy">Specifies whether to use the Facepunch proxy.</param>
+/// <param name="UseFacepunchProxy">Routes through Facepunch's legacy relay,
+/// <c>wss://companion-rust.facepunch.com/game/{Server}/{Port}</c>. That relay now refuses every connection
+/// with HTTP 418; set <see cref="ServerId"/> and <see cref="AuthToken"/> to use the companion socket instead.</param>
 /// <remarks>
 /// Setting <see cref="ServerId"/> (with <see cref="AuthToken"/>) routes the connection through
 /// Facepunch's companion socket, <c>wss://companion-rust.facepunch.com/socket/{ServerId}</c>, instead of
-/// <see cref="Server"/>:<see cref="Port"/>. That is the route the official Rust+ app uses since direct
-/// connections to a server's app port were removed; <see cref="Server"/> and <see cref="Port"/> are then
-/// not used to connect.
+/// <see cref="Server"/>:<see cref="Port"/>. That is the route the official Rust+ app uses as Facepunch
+/// phases out direct connections to a server's app port; <see cref="Server"/> and <see cref="Port"/> are
+/// then not used to connect.
 /// </remarks>
 public sealed record RustPlusConnection(
     string Server,
     int Port,
     ulong PlayerId,
     int PlayerToken,
+    // Not [Obsolete] although the relay is dead: [property: Obsolete] would not warn the callers that pass
+    // the flag positionally or by name, and obsoleting the constructor instead would need a second one,
+    // which the configuration binder (AddRustPlus(IConfigurationSection)) refuses to choose between.
     bool UseFacepunchProxy = false)
 {
     /// <summary>
-    /// Facepunch's id for the server — the <c>id</c> field of the server's pairing notification.
-    /// When set, the client connects through the companion socket for this server and takes precedence
-    /// over <see cref="UseFacepunchProxy"/>.
+    /// Facepunch's id for the server — the <c>id</c> field of the server's pairing notification
+    /// (<c>ServerPairing.ServerId</c>). When set, the client connects through the companion socket for
+    /// this server and takes precedence over <see cref="UseFacepunchProxy"/>; it must not be
+    /// <see cref="Guid.Empty"/>.
     /// </summary>
     public Guid? ServerId { get; init; }
 
     /// <summary>
-    /// The Rust+ companion auth token (the <c>Token</c> returned by Facepunch's Steam login, also used to
-    /// register for push notifications). Required by the companion socket when <see cref="ServerId"/> is
-    /// set; ignored otherwise.
+    /// The Rust+ companion auth token — <c>SteamLoginResult.Token</c>, returned by
+    /// <c>FcmRegistration.RegisterWithRustPlusAsync</c> in <c>RustPlusApi.Fcm.Registration</c> (the same token
+    /// that registers the device for push notifications). Required, and checked when the client is
+    /// constructed, when <see cref="ServerId"/> is set; never sent otherwise.
     /// </summary>
     public string? AuthToken { get; init; }
 

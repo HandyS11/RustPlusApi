@@ -18,7 +18,9 @@ namespace RustPlusApi;
 /// Initializes a new instance of the <see cref="RustPlus"/> class,
 /// connecting to a Rust+ server using the specified parameters.
 /// </summary>
-/// <param name="connection">The server endpoint and player credentials to connect as.</param>
+/// <param name="connection">The server endpoint and player credentials to connect as. A connection that
+/// sets <see cref="RustPlusConnection.ServerId"/> must also set <see cref="RustPlusConnection.AuthToken"/>;
+/// otherwise an <see cref="ArgumentException"/> is thrown here rather than at the first connect.</param>
 /// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
 /// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
 /// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>

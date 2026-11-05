@@ -16,7 +16,9 @@ namespace RustPlusApi;
 /// <summary>
 /// A Rust+ API client made in C#.
 /// </summary>
-/// <param name="connection">The server endpoint and player credentials to connect as.</param>
+/// <param name="connection">The server endpoint and player credentials to connect as. A connection that
+/// sets <see cref="RustPlusConnection.ServerId"/> must also set <see cref="RustPlusConnection.AuthToken"/>;
+/// otherwise an <see cref="ArgumentException"/> is thrown here rather than at the first connect.</param>
 /// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
 /// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
 /// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
@@ -66,6 +68,10 @@ public abstract class RustPlusSocket(
             SingleReader = true
         });
 
+    /// <summary>The WebSocket subprotocols every connect offers — resolved at construction, so a
+    /// companion-socket connection missing its auth token fails here rather than at the handshake.</summary>
+    private readonly IReadOnlyList<string> _subProtocols = RustPlusEndpoint.GetSubProtocols(connection);
+
     /// <summary>int (not uint) so Interlocked.Increment works on netstandard2.0, which lacks the uint overload.</summary>
     private int _seq;
 
@@ -87,6 +93,10 @@ public abstract class RustPlusSocket(
     internal int PendingRequestCountForTests => _pendingRequests.Count;
 
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
+
+    /// <summary>Test seam: the companion host the companion-socket and proxy routes dial, so integration
+    /// tests can point them at the in-process mock server instead of Facepunch.</summary>
+    internal Uri CompanionBaseUriForTests { get; set; } = RustPlusEndpoint.CompanionBaseUri;
 
     /// <summary>Test seam: the tracked receive loop, so tests can assert it actually completed on teardown.</summary>
     internal Task? ReceiveLoopForTests { get; private set; }
@@ -208,12 +218,12 @@ public abstract class RustPlusSocket(
 
             var webSocket = new ClientWebSocket();
             webSocket.Options.KeepAliveInterval = _options.KeepAliveInterval;
-            foreach (var subProtocol in RustPlusEndpoint.GetSubProtocols(connection))
+            foreach (var subProtocol in _subProtocols)
             {
                 webSocket.Options.AddSubProtocol(subProtocol);
             }
 
-            var uri = RustPlusEndpoint.GetUri(connection);
+            var uri = RustPlusEndpoint.GetUri(connection, CompanionBaseUriForTests);
 
             Connecting?.Invoke(this, EventArgs.Empty);
 
