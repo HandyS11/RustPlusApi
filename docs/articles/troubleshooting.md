@@ -15,7 +15,7 @@ the server-pairing push notification (`ServerPairing.Port`).
 
 1. Re-pair the server in game (*Rust+* → *Pair with Server*) and capture the `ServerPairing.Port`
    value from the notification — not the game join port.
-2. If the server no longer accepts direct connections (Facepunch is removing them), or you are on a
+2. If the server no longer accepts direct connections (Facepunch is phasing them out), or you are on a
    network that blocks them (corporate firewall, some VPNs), connect through the companion socket
    with the pairing notification's server id and your companion auth token — see
    [Companion socket](rustplus-client.md#companion-socket):
@@ -28,6 +28,7 @@ using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId,
 });
 ```
 
+`serverId` is `ServerPairing.ServerId`; `authToken` is `SteamLoginResult.Token` from the Steam login.
 The older `UseFacepunchProxy: true` relay (`/game/{ip}/{port}`) now rejects every connection with
 HTTP 418.
 

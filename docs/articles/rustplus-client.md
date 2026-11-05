@@ -1,12 +1,12 @@
 # RustPlus Client
 
-`RustPlus` is the core client. It opens a WebSocket to the server's companion port and exposes a
-typed, task-based API.
+`RustPlus` is the core client. It opens a WebSocket to the server's companion port — or, with a
+`ServerId`, to Facepunch's [companion socket](#companion-socket) — and exposes a typed, task-based API.
 
 ## Construct and connect
 
 ```csharp
-using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken, UseFacepunchProxy: false));
+using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken));
 await rustPlus.ConnectAsync();
 ```
 
@@ -18,32 +18,46 @@ await rustPlus.ConnectAsync();
 | `Port` | The Rust+ companion port (not the in-game connect port). |
 | `PlayerId` | Your Steam ID. |
 | `PlayerToken` | The player token from pairing. |
-| `UseFacepunchProxy` | Route through the Facepunch proxy instead of connecting directly. |
+| `UseFacepunchProxy` | *Legacy.* Route through Facepunch's old `/game/{ip}/{port}` relay, which now refuses every connection with HTTP 418. Use `ServerId` + `AuthToken` instead. |
 | `ServerId` | *(init, optional)* Facepunch's server id (`ServerPairing.ServerId`). Connects through the companion socket instead of `Server`/`Port`. |
-| `AuthToken` | *(init, optional)* The Rust+ companion auth token from the Steam login. Required with `ServerId`. |
+| `AuthToken` | *(init, optional)* The Rust+ companion auth token, `SteamLoginResult.Token`. Required with `ServerId`. |
 
 > `RustPlusConnection.ToString()` redacts `PlayerToken` and `AuthToken` (they print as `***`) so the
 > credentials are not accidentally leaked through logs or exceptions.
 
 ### Companion socket
 
-Facepunch removed direct connections to a server's companion port, and the legacy proxy
-(`UseFacepunchProxy`) no longer accepts connections. The official app now connects through
-`wss://companion-rust.facepunch.com/socket/{serverId}`, authenticated with the companion auth token.
-Set `ServerId` and `AuthToken` to use the same route; the other members still identify the player:
+Facepunch is phasing out direct connections to a server's companion port, and the legacy proxy
+(`UseFacepunchProxy`) now refuses every connection with HTTP 418. The official app connects through
+`wss://companion-rust.facepunch.com/socket/{serverId}` instead, authenticated with the companion auth
+token. Set `ServerId` and `AuthToken` to use the same route; the other members still identify the
+player.
+
+Both values come out of the registration chain in
+[`RustPlusApi.Fcm.Registration`](credentials.md): `ServerId` from the server pairing notification,
+and `AuthToken` from the Steam login — `SteamLoginResult.Token`, returned by
+`FcmRegistration.RegisterWithRustPlusAsync`. Keep that token: it is not part of the saved
+`rustplus.config.json`, and it is a credential, so store it like one.
 
 ```csharp
+var steamLogin = await registration.RegisterWithRustPlusAsync(credentials);
+// … pair in game …
+ServerPairing pairing = await listener.WaitForServerPairingAsync();
+
 var connection = new RustPlusConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken)
 {
-    ServerId = pairing.ServerId, // from the server pairing notification
-    AuthToken = authToken,       // the Rust+ companion token from the Steam login
+    ServerId = pairing.ServerId,    // from the server pairing notification
+    AuthToken = steamLogin.Token,   // the Rust+ companion token from the Steam login
 };
 using var rustPlus = new RustPlus(connection);
 await rustPlus.ConnectAsync();
 ```
 
-A handshake that fails with HTTP 403 means the auth token was rejected (sign in again); 404 means
-the server id is unknown. A wrong player token still connects and fails requests with `not_found`.
+The `RustPlus` constructor throws `ArgumentException` when `ServerId` is set without an `AuthToken`,
+or is `Guid.Empty` (what `ServerPairing.ServerId` holds if a push carried no id). The token is only
+ever sent to the companion host — a direct connection never offers it. Once connected, a handshake
+that fails with HTTP 403 means the auth token was rejected (sign in again); 404 means the server id is
+unknown. A wrong player token still connects and fails requests with `not_found`.
 
 ## Connection lifecycle
 
