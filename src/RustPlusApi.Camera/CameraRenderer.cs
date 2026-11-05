@@ -31,14 +31,14 @@ public sealed class CameraRenderer
     ];
 
     private static readonly Rgba32 SkyColour = new(208, 230, 252);
+    private readonly int _height;
 
     /// <summary>Raw decoded samples (distance 0-1023, alignment 0-63, material). Normalised at render time.</summary>
     private readonly (int Distance, int Alignment, int Material)?[] _output;
 
     private readonly short[] _samplePositionBuffer;
-    private readonly int height;
 
-    private readonly int width;
+    private readonly int _width;
 
     /// <summary>Creates a renderer for a camera of the given dimensions.</summary>
     /// <param name="width">Camera image width in pixels, from <see cref="CameraInfo.Width"/>.</param>
@@ -70,8 +70,8 @@ public sealed class CameraRenderer
                 nameof(width), $"Camera dimensions {width}x{height} exceed the {MaxPixels}-pixel limit.");
         }
 
-        this.width = width;
-        this.height = height;
+        _width = width;
+        _height = height;
         _output = new (int, int, int)?[width * height];
         _samplePositionBuffer = BuildSamplePositionBuffer(width, height);
     }
@@ -134,10 +134,10 @@ public sealed class CameraRenderer
                 }
             }
 
-            sampleOffset %= 2 * width * height;
+            sampleOffset %= 2 * _width * _height;
             // Pair-aligned reads (the cursor starts even and advances by 2) always yield
             // x < width and y < height, so the index is in range by construction.
-            var index = _samplePositionBuffer[sampleOffset++] + (_samplePositionBuffer[sampleOffset++] * width);
+            var index = _samplePositionBuffer[sampleOffset++] + (_samplePositionBuffer[sampleOffset++] * _width);
             _output[index] = (t, r, i);
         }
     }
@@ -145,7 +145,7 @@ public sealed class CameraRenderer
     /// <summary>Renders the accumulated samples to a PNG image.</summary>
     public byte[] Render()
     {
-        using var image = new Image<Rgba32>(width, height);
+        using var image = new Image<Rgba32>(_width, _height);
 
         for (var i = 0; i < _output.Length; i++)
         {
@@ -173,8 +173,8 @@ public sealed class CameraRenderer
                     ToByte(alignment * palette[2] * 255f));
             }
 
-            var x = i % width;
-            var y = height - 1 - (i / width);
+            var x = i % _width;
+            var y = _height - 1 - (i / _width);
             image[x, y] = colour;
         }
 

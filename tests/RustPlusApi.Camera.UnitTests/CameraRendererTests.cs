@@ -50,6 +50,8 @@ public class CameraRendererTests
     [InlineData(160, 0)] // zero
     [InlineData(-1, -1)] // negative (silently built a 1-pixel renderer before)
     [InlineData(-5, 3)] // negative
+    [InlineData(32769, 1)] // one past the largest width whose coordinates fit in a short
+    [InlineData(1, 32769)] // one past the largest height whose coordinates fit in a short
     [InlineData(40000, 1)] // past the 32768 short-coordinate range
     [InlineData(1, 40000)] // past the 32768 short-coordinate range
     [InlineData(4097, 4097)] // area past the 4096 x 4096 cap
@@ -67,6 +69,24 @@ public class CameraRendererTests
 
         Assert.Equal(width, image.Width);
         Assert.Equal(height, image.Height);
+    }
+
+    [Fact]
+    public void AddRays_AtTheLargestAcceptedWidth_KeepsEveryCoordinateInRange()
+    {
+        // Sample coordinates are stored as short. A width of 32768 is the largest that fits: its
+        // coordinates run 0..32767, and 32767 is short.MaxValue. Decoding a ray for every sample
+        // reaches each position, so a truncated (negative) coordinate would index out of range.
+        var renderer = new CameraRenderer(32768, 1);
+        var rays = Enumerable.Repeat(FullRay(128, 63, 2), 32768).SelectMany(ray => ray).ToArray();
+
+        renderer.AddRays(new CameraFrame
+        {
+            RayData = rays, SampleOffset = 0
+        });
+
+        using var image = Decode(renderer.Render());
+        Assert.Equal(32768, image.Width);
     }
 
     [Fact]
