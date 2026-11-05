@@ -39,7 +39,9 @@ internal static class CallbackEndpoints
         {
             // Single-use: a callback URL replayed from browser history finds nothing, and an
             // unknown token is indistinguishable from a consumed one.
-            if (!store.TryConsumeReturnToken(returnToken, out var session))
+            // A session evicted or swept after its token resolved is gone for this visitor too.
+            if (!store.TryConsumeReturnToken(returnToken, out var session)
+                || !session.TryGetLifetimeToken(out var lifetime))
             {
                 return Results.NotFound();
             }
@@ -55,10 +57,7 @@ internal static class CallbackEndpoints
                     context.Request.QueryString,
                     out var login))
             {
-                session.BackgroundWork = flow.CompleteRegistrationAsync(
-                    session,
-                    login,
-                    session.Lifetime.Token);
+                session.BackgroundWork = flow.CompleteRegistrationAsync(session, login, lifetime);
             }
             else
             {
@@ -95,12 +94,13 @@ internal static class CallbackEndpoints
 
             // Single-use, exactly as for the redirect: an address pasted twice finds nothing, and an
             // unknown token is indistinguishable from a consumed one.
-            if (!store.TryConsumeReturnToken(returnToken, out var session))
+            if (!store.TryConsumeReturnToken(returnToken, out var session)
+                || !session.TryGetLifetimeToken(out var lifetime))
             {
                 return Results.Json(new ErrorPayload(ConsumedMessage), statusCode: 404);
             }
 
-            session.BackgroundWork = flow.CompleteRegistrationAsync(session, login, session.Lifetime.Token);
+            session.BackgroundWork = flow.CompleteRegistrationAsync(session, login, lifetime);
             return Results.Json(new PasteCallbackResponse(session.SessionId), statusCode: 202);
         });
     }

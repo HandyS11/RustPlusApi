@@ -159,4 +159,19 @@ public sealed class CallbackEndpointTests
         Assert.False(parsed);
         Assert.Null(login);
     }
+
+    [Fact]
+    public async Task Callback_Returns404_WhenTheSessionWasDisposedAfterItsTokenResolved()
+    {
+        // Eviction or the sweeper can dispose a session after its return token resolved. Its
+        // Lifetime is disposed with it, so the handler must not crash reading a token from it.
+        await using var factory = new CredentialsWebFactory();
+        using var client = NoRedirectClient(factory);
+        var session = NewSession(factory);
+        session.Dispose();
+
+        var response = await client.GetAsync(CallbackUri(session.ReturnToken));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }

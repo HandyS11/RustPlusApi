@@ -185,4 +185,17 @@ public sealed class PasteCallbackEndpointTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Paste_Returns404_WhenTheSessionWasDisposedAfterItsTokenResolved()
+    {
+        await using var factory = new CredentialsWebFactory();
+        using var client = factory.CreateClient();
+        var session = NewSession(factory);
+        session.Dispose();
+
+        var response = await client.PostAsJsonAsync(Route, new PasteCallbackRequest(Pasted(session.ReturnToken)));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }
