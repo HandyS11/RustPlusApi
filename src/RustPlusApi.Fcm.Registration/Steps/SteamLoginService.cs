@@ -31,17 +31,18 @@ public sealed class SteamLoginService(int port = 3000)
         "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login failed</title>"
         + "<h1>That callback carried no Rust+ token. Try the login link again.</h1>";
 
-    /// <summary>Builds the 404 body for an unrecognised callback path, naming both the expected and
-    /// the received path so a Facepunch contract change (path stripped, normalised, or otherwise
-    /// altered by the Steam OpenID round-trip) is diagnosable instead of presenting as a silent
-    /// hang while the token sits unconsumed in the browser's URL bar.</summary>
-    /// <param name="expectedPath">The per-run callback path this listener actually expects.</param>
-    /// <param name="actualPath">The path the request carried instead.</param>
-    private static string BuildNotFoundHtml(string expectedPath, string actualPath) =>
+    /// <summary>Builds the 404 body for an unrecognised callback path. It names only the path the
+    /// request carried, so a Facepunch contract change (path stripped, normalised, or otherwise
+    /// altered by the Steam OpenID round-trip) still shows up as a visible error rather than a
+    /// silent hang. It never names the expected path: that embeds the per-run nonce, the listener's
+    /// only anti-forgery secret, and any local process can connect to the loopback port and read
+    /// this response. The expected path still goes to <see cref="Debug"/> output at the call site.</summary>
+    /// <param name="actualPath">The path the request carried.</param>
+    private static string BuildNotFoundHtml(string actualPath) =>
         "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login</title>"
         + "<h1>Unknown callback path.</h1>"
-        + $"<p>Expected <code>{WebUtility.HtmlEncode(expectedPath)}</code> but received "
-        + $"<code>{WebUtility.HtmlEncode(actualPath)}</code>.</p>";
+        + $"<p>Received <code>{WebUtility.HtmlEncode(actualPath)}</code>, which is not this login's "
+        + "callback path.</p>";
 
     /// <summary>Sends the user's browser to the Facepunch Steam login and returns the captured identity.</summary>
     /// <param name="onLoginUrl">Invoked with the login URL before the browser is opened, so callers
@@ -141,7 +142,7 @@ public sealed class SteamLoginService(int port = 3000)
                         $"[{nameof(SteamLoginService)}] Callback path mismatch: expected '{callbackPath}', "
                         + $"received '{requestPath}'.");
                     await RespondAsync(context, HttpStatusCode.NotFound,
-                        BuildNotFoundHtml(callbackPath, requestPath)).ConfigureAwait(false);
+                        BuildNotFoundHtml(requestPath)).ConfigureAwait(false);
                     continue;
                 }
 

@@ -206,6 +206,31 @@ public class SteamLoginServiceTests
     }
 
     [Fact]
+    public async Task LoginAsync_NotFoundBodyNeverDisclosesTheCallbackNonce()
+    {
+        // The nonce in the callback path is the listener's only anti-forgery secret. Any local
+        // process can connect to the loopback port, so a 404 that names the expected path would
+        // hand that secret to whoever asks, letting them complete the login with an identity of
+        // their choosing.
+        var service = new SteamLoginService(port: 0);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var (login, returnUrl) = await StartLoginAsync(service, cts.Token);
+
+        using var http = new HttpClient();
+        using var probe = await http.GetAsync(
+            new Uri($"{returnUrl.GetLeftPart(UriPartial.Authority)}/anything"), cts.Token);
+        var body = await probe.Content.ReadAsStringAsync(cts.Token);
+
+        Assert.Equal(HttpStatusCode.NotFound, probe.StatusCode);
+        Assert.DoesNotContain(returnUrl.AbsolutePath, body, StringComparison.Ordinal);
+        Assert.DoesNotContain(returnUrl.Segments[^1], body, StringComparison.Ordinal);
+        Assert.False(login.IsCompleted);
+
+        await cts.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => login);
+    }
+
+    [Fact]
     public async Task LoginAsync_KeepsListeningAfterCallbackWithoutToken()
     {
         var service = new SteamLoginService(port: 0);
