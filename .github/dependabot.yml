@@ -46,3 +46,11 @@ updates:
       npm:
         patterns:
           - "*"
+    ignore:
+      # typescript-eslint peers on, and eslint-plugin-sonarjs depends on, typescript ">=… <6.1.0": a
+      # newer TypeScript (the 7.x native port included) fails `npm ci` with ERESOLVE and drops the
+      # typescript-eslint parser and plugin from the lockfile. Raise this bound once both packages
+      # accept the newer TypeScript.
+      - dependency-name: "typescript"
+        versions:
+          - ">= 6.1.0"
