@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using RustPlusApi.Fcm.Registration;
+using System.Text.Json;
 
 // The C# analog of `rustplus.js fcm-register`: run it once, log into Steam in the browser,
 // pair in game, and it writes rustplus.config.json + prints the RustPlus(...) args.
@@ -37,8 +38,31 @@ listener.Listening += (_, _) => Console.WriteLine("     Listening for pairing no
 
 var pairing = await listener.WaitForServerPairingAsync();
 
+var connection =
+    $"new RustPlusConnection(\"{pairing.Ip}\", {pairing.Port}, {pairing.PlayerId}, {pairing.PlayerToken})";
+
 Console.WriteLine();
-Console.WriteLine("Paired! Use these arguments:");
 Console.WriteLine(
-    $"  new RustPlus(new RustPlusConnection(\"{pairing.Ip}\", {pairing.Port}, {pairing.PlayerId}, {pairing.PlayerToken}));");
-Console.WriteLine($"  (server: {pairing.Name})");
+    $"Paired with {pairing.Name ?? "the server"}! Connect through Facepunch's companion socket (what the official app uses):");
+Console.WriteLine($"  new RustPlus({connection}");
+Console.WriteLine("  {");
+Console.WriteLine($"      ServerId = new Guid(\"{pairing.ServerId:D}\"),");
+Console.WriteLine($"      AuthToken = \"{steamLogin.Token}\",");
+Console.WriteLine("  });");
+Console.WriteLine("or directly to the server's app port, where the server still accepts that:");
+Console.WriteLine($"  new RustPlus({connection});");
+Console.WriteLine();
+Console.WriteLine("credentials.json for the RustPlus.ConsoleApp and RustPlus.Camera.ConsoleApp samples:");
+Console.WriteLine(JsonSerializer.Serialize(new
+{
+    ip = pairing.Ip,
+    port = pairing.Port,
+    playerId = pairing.PlayerId,
+    playerToken = pairing.PlayerToken,
+    serverId = pairing.ServerId,
+    authToken = steamLogin.Token,
+}, new JsonSerializerOptions
+{
+    WriteIndented = true
+}));
+Console.WriteLine("The auth token is a credential, like the player token: keep both private.");

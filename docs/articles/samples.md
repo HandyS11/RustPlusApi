@@ -30,7 +30,8 @@ dotnet run --project samples/RustPlus.Register.ConsoleApp
 - Works with any browser. If none opens, the sample prints the login URL — open it yourself.
 - After the Steam login, open Rust → join your server → **Pair with Server**.
 - It prints the absolute path of the saved `rustplus.config.json` and the
-  `new RustPlus(new RustPlusConnection(ip, port, playerId, playerToken))` line to use with the other samples.
+  connection to use with the other samples — through Facepunch's companion socket (`ServerId` +
+  `AuthToken`) and directly — plus a ready-to-copy `credentials.json` for the query and camera apps.
 
 ## RustPlus.Fcm.ConsoleApp — listen for notifications
 
@@ -63,8 +64,8 @@ Entity ids (alarm / smart switch / storage monitor) are remembered for the sessi
 Enter at a prompt to reuse the last value.
 
 ```bash
-# Copy credentials.sample.json to credentials.json and fill in the values
-# printed by the Register app (ip / port / playerId / playerToken), then:
+# Copy the credentials.json printed by the Register app (or fill in credentials.sample.json:
+# ip / port / playerId / playerToken, plus serverId / authToken for the companion socket), then:
 dotnet run --project samples/RustPlus.ConsoleApp
 # or pass the path explicitly:
 dotnet run --project samples/RustPlus.ConsoleApp -- /path/to/credentials.json

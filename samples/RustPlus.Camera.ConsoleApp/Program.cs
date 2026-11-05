@@ -1,8 +1,10 @@
 using RustPlus.Camera.ConsoleApp.Features;
 using RustPlus.ConsoleApp.Utils;
 
-// Fill credentials.json (copy credentials.sample.json) with the ip/port/playerId/playerToken
-// printed by the RustPlus.Register.ConsoleApp sample when you "Pair with Server" in game.
+// Fill credentials.json (copy credentials.sample.json) with the values printed by the
+// RustPlus.Register.ConsoleApp sample when you "Pair with Server" in game. With serverId and
+// authToken set it connects through Facepunch's companion socket; leave them null to connect
+// directly to ip:port.
 // Put it next to this project (gitignored), or pass its path as the first argument.
 //
 // Interactive mode (default): prompts for a camera identifier and opens a managed session
@@ -32,8 +34,7 @@ catch (Exception ex)
     return;
 }
 
-using var rustPlus = new RustPlusApi.RustPlus(new RustPlusApi.RustPlusConnection(credentials.Ip, credentials.Port,
-    credentials.PlayerId, credentials.PlayerToken));
+using var rustPlus = new RustPlusApi.RustPlus(credentials.ToConnection());
 
 try
 {
@@ -41,7 +42,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Failed to connect to {credentials.Ip}:{credentials.Port} — {ex.Message}");
+    Console.WriteLine($"Failed to connect to {credentials.Target} — {ex.Message}");
     Console.WriteLine("Check that the server is up and the credentials are current.");
     return;
 }
@@ -50,13 +51,15 @@ if (captureIndex >= 0)
 {
     if (args.Length <= captureIndex + 2 || !int.TryParse(args[captureIndex + 2], out var seconds) || seconds <= 0)
     {
-        Console.WriteLine("Usage: RustPlus.Camera.ConsoleApp [credentialsPath] capture <cameraId> <durationSeconds> [outputDir]");
+        Console.WriteLine(
+            "Usage: RustPlus.Camera.ConsoleApp [credentialsPath] capture <cameraId> <durationSeconds> [outputDir]");
         await rustPlus.DisconnectAsync();
         return;
     }
 
     var outDir = args.Length > captureIndex + 3 ? args[captureIndex + 3] : Environment.CurrentDirectory;
-    var exitCode = await new CameraCapture(rustPlus).RunAsync(args[captureIndex + 1], TimeSpan.FromSeconds(seconds), outDir);
+    var exitCode =
+        await new CameraCapture(rustPlus).RunAsync(args[captureIndex + 1], TimeSpan.FromSeconds(seconds), outDir);
     await rustPlus.DisconnectAsync();
     Environment.Exit(exitCode);
 }
