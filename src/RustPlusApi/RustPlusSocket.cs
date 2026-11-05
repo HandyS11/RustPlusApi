@@ -781,6 +781,8 @@ public abstract class RustPlusSocket(
     /// <param name="webSocket">The connection to read from.</param>
     /// <param name="buffer">A reusable receive buffer, sized from the options.</param>
     /// <returns>The fully accumulated and deserialized <see cref="AppMessage"/>.</returns>
+    /// <exception cref="WebSocketException">The message exceeds
+    /// <see cref="RustPlusSocketOptions.MaxMessageSize"/>.</exception>
     private async Task<AppMessage> ReceiveMessageAsync(ClientWebSocket webSocket, byte[] buffer)
     {
         // Accumulate fragments straight into a stream: no per-read LINQ, no list growth,
@@ -794,6 +796,18 @@ public abstract class RustPlusSocket(
         {
             result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken)
                 .ConfigureAwait(false);
+
+            // The server chooses how many fragments a message spans, and a direct connection is
+            // plaintext ws://, so an unbounded reassembly buffer is attacker-controlled. Stop before
+            // writing the fragment that would carry the total past the cap: the WebSocketException
+            // exits the receive loop through its fault path (surface, fail pending requests, drop
+            // the connection) rather than buffering further.
+            if (messageStream.Length + result.Count > _options.MaxMessageSize)
+            {
+                throw new WebSocketException(
+                    WebSocketError.HeaderError,
+                    $"Server message exceeded the {_options.MaxMessageSize}-byte limit.");
+            }
 #pragma warning disable CA1849, VSTHRD103, S6966 // MemoryStream.Write is in-memory and never blocks; WriteAsync would only add overhead
             messageStream.Write(buffer, 0, result.Count);
 #pragma warning restore CA1849, VSTHRD103, S6966
