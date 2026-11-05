@@ -11,7 +11,7 @@ auto-wires from the host's `ILoggerFactory`; tuning flows through `IOptions<Rust
 // explicit connection
 services.AddRustPlus(new RustPlusConnection("12.34.56.78", 28082, playerId, playerToken));
 
-// or bound from configuration (keys: Server, Port, PlayerId, PlayerToken, UseFacepunchProxy)
+// or bound from configuration (keys: Server, Port, PlayerId, PlayerToken; optional ServerId + AuthToken)
 services.AddRustPlus(configuration.GetSection("Rust"));
 
 // or resolved from the provider

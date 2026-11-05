@@ -111,6 +111,31 @@ public class RustPlusServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void AddRustPlus_WithConfiguration_BindsTheCompanionSocketKeys()
+    {
+        // ServerId and AuthToken are init properties beside the positional constructor: the binder must
+        // still set them, or a configured client would silently fall back to a direct connection.
+        var section = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Rust:Server"] = "1.2.3.4",
+                ["Rust:Port"] = "28082",
+                ["Rust:PlayerId"] = "76561198000000000",
+                ["Rust:PlayerToken"] = "123456789",
+                ["Rust:ServerId"] = "089941d9-064e-4628-9c60-eaeb01a943e8",
+                ["Rust:AuthToken"] = "companion-token",
+            })
+            .Build()
+            .GetSection("Rust");
+
+        var connection = section.Get<RustPlusConnection>();
+
+        Assert.NotNull(connection);
+        Assert.Equal(new Guid("089941d9-064e-4628-9c60-eaeb01a943e8"), connection.ServerId);
+        Assert.Equal("companion-token", connection.AuthToken);
+    }
+
+    [Fact]
     public async Task AddRustPlus_WithEmptyConfigurationSection_ThrowsOnResolve()
     {
         var config = new ConfigurationBuilder().Build();
