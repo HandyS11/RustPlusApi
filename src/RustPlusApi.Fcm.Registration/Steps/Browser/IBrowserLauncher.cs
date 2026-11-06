@@ -11,19 +11,18 @@ internal interface IBrowserSession : IAsyncDisposable
     ICdpTransport Transport { get; }
 }
 
-/// <summary>Starts a browser with a debugging port and connects to its page (a test seam).</summary>
+/// <summary>Starts a browser with a debugging port it picks itself and connects to its page (a test seam).</summary>
 internal interface IBrowserLauncher
 {
     /// <summary>Starts <paramref name="browser"/> and connects to its first page.</summary>
     /// <param name="browser">The browser to start.</param>
-    /// <param name="port">The remote-debugging port to open, on the loopback address.</param>
-    /// <param name="profileDirectory">The throwaway user-data directory.</param>
+    /// <param name="profileDirectory">The throwaway user-data directory. The browser reports the debugging port it
+    /// opened, on the loopback address, in a file there.</param>
     /// <param name="cancellationToken">Cancels the start.</param>
     /// <returns>The running browser; the caller disposes it.</returns>
     /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled.</exception>
     /// <remarks>Any other exception means the browser could not be started or reached; the process is gone by then.</remarks>
     Task<IBrowserSession> LaunchAsync(BrowserInfo browser,
-        int port,
         string profileDirectory,
         CancellationToken cancellationToken);
 }

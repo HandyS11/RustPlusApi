@@ -27,9 +27,6 @@ internal sealed class FakeBrowserLauncher : IBrowserLauncher
     /// <summary>The browser of the last launch.</summary>
     public BrowserInfo? Browser { get; private set; }
 
-    /// <summary>The debugging port of the last launch.</summary>
-    public int Port { get; private set; }
-
     /// <summary>The profile directory of the last launch.</summary>
     public string? ProfileDirectory { get; private set; }
 
@@ -38,13 +35,11 @@ internal sealed class FakeBrowserLauncher : IBrowserLauncher
 
     /// <inheritdoc/>
     public Task<IBrowserSession> LaunchAsync(BrowserInfo browser,
-        int port,
         string profileDirectory,
         CancellationToken cancellationToken)
     {
         Calls++;
         Browser = browser;
-        Port = port;
         ProfileDirectory = profileDirectory;
         OnLaunch?.Invoke();
         if (Failure is not null)

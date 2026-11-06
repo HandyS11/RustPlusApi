@@ -24,8 +24,10 @@ namespace RustPlusApi.Fcm.Registration.Steps;
 /// <para>When no usable browser is found (none installed, Snap only, a headless machine), its temporary profile cannot
 /// be created, or it fails to start, the login falls back to asking for the address by hand through
 /// <see cref="SteamLoginOptions.ReadPastedAddress"/>.</para>
-/// <para>The debugging port listens on the loopback address only, so any local process could attach to it while the
-/// login runs; that is accepted as a local risk.</para>
+/// <para>The browser picks its own debugging port, binding it as it starts, and the library reads it from the
+/// <c>DevToolsActivePort</c> file in the private profile directory, so no other process can take the port first. The
+/// port listens on the loopback address without authentication, so any local process could still attach to it while
+/// the login runs; that is accepted as a local risk.</para>
 /// </remarks>
 #pragma warning disable CS9113 // 'port' is kept for source compatibility with existing callers; the login no longer listens on a port.
 public sealed class SteamLoginService(int port = 3000)
@@ -119,7 +121,7 @@ public sealed class SteamLoginService(int port = 3000)
         try
         {
             browserSession = await launcher
-                .LaunchAsync(browser, GetFreePort(), profile.DirectoryPath, cancellationToken)
+                .LaunchAsync(browser, profile.DirectoryPath, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -318,23 +320,6 @@ public sealed class SteamLoginService(int port = 3000)
         var read = Options.ReadPastedAddress
                    ?? throw new InvalidOperationException($"{reason} {PasteInstructions} Login address: {loginUrl}");
         return ParsePastedAddress(await read(reason, cancellationToken).ConfigureAwait(false));
-    }
-
-    private static int GetFreePort()
-    {
-#pragma warning disable CA2000 // TcpListener is not IDisposable; Stop() + Server.Dispose() is the correct cleanup pattern.
-        var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
-#pragma warning restore CA2000
-        listener.Start();
-        try
-        {
-            return ((IPEndPoint)listener.LocalEndpoint).Port;
-        }
-        finally
-        {
-            listener.Stop();
-            listener.Server.Dispose();
-        }
     }
 
     /// <summary>Parses a URI query string into its decoded key/value pairs. Later duplicates win.</summary>

@@ -23,14 +23,16 @@ public class BrowserLaunchArgumentsTests
         var browser = new BrowserInfo("Microsoft Edge", @"C:\PF\msedge.exe", [], null);
 
         var info = BrowserLaunchArguments.BuildStartInfo(
-            browser, 9333, @"C:\Users\Jöhn Smith\Temp\RustPlusApi.SteamLogin\p1");
+            browser, @"C:\Users\Jöhn Smith\Temp\RustPlusApi.SteamLogin\p1");
 
         Assert.Equal(@"C:\PF\msedge.exe", info.FileName);
         Assert.False(info.UseShellExecute);
         Assert.True(info.RedirectStandardOutput);
         Assert.True(info.RedirectStandardError);
+        // Port 0: the browser binds a free port itself and reports it in DevToolsActivePort, so no other process can
+        // claim a port the library picked before the browser binds it.
         Assert.Equal(
-            "--remote-debugging-port=9333 \"--user-data-dir=C:\\Users\\Jöhn Smith\\Temp\\RustPlusApi.SteamLogin\\p1\" --no-first-run --no-default-browser-check --new-window about:blank",
+            "--remote-debugging-port=0 \"--user-data-dir=C:\\Users\\Jöhn Smith\\Temp\\RustPlusApi.SteamLogin\\p1\" --no-first-run --no-default-browser-check --new-window about:blank",
             info.Arguments);
     }
 
@@ -40,10 +42,12 @@ public class BrowserLaunchArgumentsTests
         var browser = new BrowserInfo("Google Chrome", "/usr/bin/flatpak", ["run", "com.google.Chrome"],
             "com.google.Chrome");
 
-        var info = BrowserLaunchArguments.BuildStartInfo(browser, 9333, "/p");
+        var info = BrowserLaunchArguments.BuildStartInfo(browser, "/p");
 
         Assert.Equal("/usr/bin/flatpak", info.FileName);
-        Assert.StartsWith("run com.google.Chrome --remote-debugging-port=", info.Arguments, StringComparison.Ordinal);
+        Assert.Equal(
+            "run com.google.Chrome --remote-debugging-port=0 --user-data-dir=/p --no-first-run --no-default-browser-check --new-window about:blank",
+            info.Arguments);
     }
 
     [Fact]

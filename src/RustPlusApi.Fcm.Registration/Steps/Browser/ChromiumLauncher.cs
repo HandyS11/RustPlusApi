@@ -6,32 +6,42 @@ using RustPlusApi.Fcm.Registration.Steps.Cdp;
 namespace RustPlusApi.Fcm.Registration.Steps.Browser;
 
 /// <summary>Starts a real Chromium-family browser process and connects to its page over the DevTools Protocol.</summary>
-/// <remarks>Excluded from coverage: every member starts a real browser process, polls its real debugging port or opens
-/// a real WebSocket. The command line it uses (<see cref="BrowserLaunchArguments"/>), the page discovery
-/// (<see cref="DevToolsEndpoint"/>) and everything driven over the connection are unit-tested on their own.</remarks>
+/// <remarks>Excluded from coverage: every member starts a real browser process, reads the port it picked from its real
+/// profile, polls that real debugging port or opens a real WebSocket. The command line it uses
+/// (<see cref="BrowserLaunchArguments"/>), the port file and the page discovery (<see cref="DevToolsEndpoint"/>) and
+/// everything driven over the connection are unit-tested on their own.</remarks>
 [ExcludeFromCodeCoverage]
 internal sealed class ChromiumLauncher : IBrowserLauncher
 {
-    private static readonly TimeSpan PageTimeout = TimeSpan.FromSeconds(45);
+    /// <summary>The budget for the whole start, shared by the wait for the port and the wait for the page.</summary>
+    private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(45);
+
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(300);
     private static readonly TimeSpan ExitTimeout = TimeSpan.FromSeconds(10);
 
     /// <inheritdoc/>
     public async Task<IBrowserSession> LaunchAsync(
         BrowserInfo browser,
-        int port,
         string profileDirectory,
         CancellationToken cancellationToken)
     {
         // BuildStartInfo names the browser by its absolute path with UseShellExecute off, never by a bare program name.
-        var process = Process.Start(BrowserLaunchArguments.BuildStartInfo(browser, port, profileDirectory))
+        var process = Process.Start(BrowserLaunchArguments.BuildStartInfo(browser, profileDirectory))
                       ?? throw new InvalidOperationException("the process did not start");
+        var started = Stopwatch.StartNew();
         try
         {
             // Both streams are redirected; reading them keeps a chatty browser from blocking on a full pipe.
             // Nothing is logged: the output can carry addresses of the pages being visited.
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
+
+            // The browser binds a free port itself and writes it to DevToolsActivePort in the profile, which only this
+            // user can reach: no other process can take the port before the browser does, as it could with a port
+            // picked here and handed over.
+            var port = await DevToolsEndpoint
+                .WaitForActivePortAsync(profileDirectory, Remaining(started), PollInterval, cancellationToken)
+                .ConfigureAwait(false);
 
             // CA2000: the handler is disposed by the HttpClient, which owns it.
             // CA5399: plain HTTP to the browser's own loopback debugging port has no certificate to check.
@@ -41,10 +51,11 @@ internal sealed class ChromiumLauncher : IBrowserLauncher
                 UseProxy = false
             })
             {
-                Timeout = PageTimeout
+                Timeout = StartTimeout
             };
 #pragma warning restore CA2000, CA5399
-            var page = await DevToolsEndpoint.WaitForPageAsync(http, port, PageTimeout, PollInterval, cancellationToken)
+            var page = await DevToolsEndpoint
+                .WaitForPageAsync(http, port, Remaining(started), PollInterval, cancellationToken)
                 .ConfigureAwait(false);
 #pragma warning disable CA2000 // Ownership passes to the returned session, which disposes it.
             var transport = await WebSocketCdpTransport.ConnectAsync(page, cancellationToken).ConfigureAwait(false);
@@ -57,6 +68,14 @@ internal sealed class ChromiumLauncher : IBrowserLauncher
             process.Dispose();
             throw;
         }
+    }
+
+    /// <summary>What is left of <see cref="StartTimeout"/>, never negative.</summary>
+    /// <param name="started">Started when the browser process did.</param>
+    private static TimeSpan Remaining(Stopwatch started)
+    {
+        var left = StartTimeout - started.Elapsed;
+        return left > TimeSpan.Zero ? left : TimeSpan.Zero;
     }
 
     private static void Kill(Process process)

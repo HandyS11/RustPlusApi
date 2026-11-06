@@ -315,7 +315,6 @@ public sealed class SteamLoginServiceTests : IDisposable
         Assert.Equal("a+b", result.Token);
         Assert.Equal(["Fetch.enable", "Page.navigate", "Fetch.fulfillRequest", "Browser.close"], Methods());
         Assert.Equal("Google Chrome", _launcher.Browser!.Name);
-        Assert.True(_launcher.Port > 0);
         Assert.Equal(ProfileRoot, Path.GetDirectoryName(_launcher.ProfileDirectory));
         Assert.True(_launcher.Transport.Disposed);
         Assert.True(_launcher.Session!.Disposed);

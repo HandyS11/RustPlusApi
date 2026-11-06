@@ -281,16 +281,17 @@ the pattern.
 **File:** `src/RustPlusApi.Fcm.Registration/Steps/Browser/ChromiumLauncher.cs`
 
 **Justification:** The whole class is excluded. It starts a real browser process with a fresh
-profile, probes and hands over a real debugging port, and talks to it over a real WebSocket. It is
-validated only by the manual Linux and Windows runs of `RustPlus.Register.ConsoleApp`. Everything it
-plugs into is tested over fakes: the browser search (`BrowserLocator`), the launch arguments
-(`BrowserLaunchArguments`), the profile lifecycle (`LoginProfile`), the endpoint discovery
-(`DevToolsEndpoint`), the CDP session (`CdpSession`) and the login orchestration (`RustPlusAppLogin`,
-`SteamLoginService`). The wait for the browser to exit is the same on both TFMs (`WaitForExit(int)`
-on a worker thread, not .NET 10's `WaitForExitAsync`, which also waits for the redirected output
-streams to close). Its one `#if` fork is in the kill of a browser that is stuck or never opened its
-port: .NET 10 kills the whole process tree, while netstandard2.0 has no `Kill(bool)` and kills the
-started process only.
+profile, waits for the debugging port that browser picks and reports in its `DevToolsActivePort`
+file, and talks to it over a real WebSocket. It is validated only by the manual Linux and Windows
+runs of `RustPlus.Register.ConsoleApp`. Everything it plugs into is tested over fakes: the browser
+search (`BrowserLocator`), the launch arguments (`BrowserLaunchArguments`), the profile lifecycle
+(`LoginProfile`), the port file and the endpoint discovery (`DevToolsEndpoint`, over real temporary
+files and a stub HTTP handler), the CDP session (`CdpSession`) and the login orchestration
+(`RustPlusAppLogin`, `SteamLoginService`). The wait for the browser to exit is the same on both TFMs
+(`WaitForExit(int)` on a worker thread, not .NET 10's `WaitForExitAsync`, which also waits for the
+redirected output streams to close). Its one `#if` fork is in the kill of a browser that is stuck or
+never opened its port: .NET 10 kills the whole process tree, while netstandard2.0 has no
+`Kill(bool)` and kills the started process only.
 
 ### `SteamLoginService.LoginAsync(Action<string>?, CancellationToken)`
 

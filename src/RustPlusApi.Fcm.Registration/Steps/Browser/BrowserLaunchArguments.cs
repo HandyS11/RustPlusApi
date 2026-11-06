@@ -45,11 +45,13 @@ internal static class BrowserLaunchArguments
         return builder.Append('"').ToString();
     }
 
-    /// <summary>Builds the start info for launching <paramref name="browser"/> with a debugging port and a throwaway profile.</summary>
+    /// <summary>Builds the start info for launching <paramref name="browser"/> with remote debugging and a throwaway
+    /// profile. The debugging port is <c>0</c>: the browser binds a free loopback port itself as it starts and reports
+    /// it in the <c>DevToolsActivePort</c> file in <paramref name="profileDirectory"/>, so no other process can take
+    /// the port between it being chosen and the browser binding it.</summary>
     /// <param name="browser">The browser to launch.</param>
-    /// <param name="port">The remote-debugging port.</param>
     /// <param name="profileDirectory">The user-data directory.</param>
-    internal static ProcessStartInfo BuildStartInfo(BrowserInfo browser, int port, string profileDirectory)
+    internal static ProcessStartInfo BuildStartInfo(BrowserInfo browser, string profileDirectory)
     {
         var arguments = new List<string>();
         foreach (var prefix in browser.PrefixArguments)
@@ -57,7 +59,7 @@ internal static class BrowserLaunchArguments
             arguments.Add(Quote(prefix));
         }
 
-        arguments.Add($"--remote-debugging-port={port}");
+        arguments.Add("--remote-debugging-port=0");
         arguments.Add(Quote($"--user-data-dir={profileDirectory}"));
         arguments.Add("--no-first-run");
         arguments.Add("--no-default-browser-check");

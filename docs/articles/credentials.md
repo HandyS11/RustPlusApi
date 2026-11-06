@@ -125,7 +125,8 @@ receive, so the library captures that redirect inside the browser instead.
    Flatpak. Snap browsers are detected and skipped (so is a launcher script that starts one, such as
    Ubuntu's apt `chromium-browser`), and relative `PATH` entries are ignored.
    `SteamLoginOptions.BrowserPath` (an absolute path) overrides the search.
-2. **Start it with a fresh temporary profile** and a DevTools debugging port. You sign in to Steam
+2. **Start it with a fresh temporary profile** and a DevTools debugging port the browser picks
+   itself (it reports the port in a `DevToolsActivePort` file in the profile). You sign in to Steam
    in that window, so you are not signed in there already. The profile lives in
    `<temp>/RustPlusApi.SteamLogin/<random>` on Windows and macOS,
    `$XDG_CACHE_HOME/RustPlusApi.SteamLogin/<random>` (or `~/.cache/…`) on Linux, and
@@ -196,8 +197,10 @@ leading `Location:` label are tolerated. Without the callback, `LoginAsync` thro
 
 While the login runs, the browser's DevTools debugging port listens on `127.0.0.1` without
 authentication, so any local process could attach to the login window during that time. This is an
-accepted local risk, as it was in the pre-September-2026 version of this login. The port is probed
-free and then handed to the browser, a small race; if it fails, the paste fallback is used.
+accepted local risk, as it was in the pre-September-2026 version of this login. The browser picks
+the port itself as it starts, and the library reads it from the `DevToolsActivePort` file the
+browser writes into the private profile directory, so no other process can take the port before the
+browser binds it.
 
 `port` (`SteamLoginService(port)`, `FcmRegistration(steamLoginPort: …)`) is kept for source
 compatibility and is unused.

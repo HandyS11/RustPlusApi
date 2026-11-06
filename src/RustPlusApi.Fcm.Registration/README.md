@@ -53,8 +53,9 @@ var rustPlus = new RustPlus(new RustPlusConnection(pairing.Ip, pairing.Port, pai
   That may break again.
 - **Debugging port.** While the login runs, the browser's DevTools port listens on `127.0.0.1`
   without authentication, so any local process could attach in that window. This is an accepted
-  local risk. The port is probed free and then handed to the browser; if another process wins that
-  small race, the paste fallback is used.
+  local risk. The browser picks the port itself as it starts, and the library reads it from the
+  `DevToolsActivePort` file the browser writes into the private profile directory, so no other
+  process can take the port before the browser binds it.
 - `steamLoginPort` / `SteamLoginService(port)` are kept for source compatibility and unused. The
   Rust+ auth token lives 14 days.
 - **Upstream-fragile.** Every step depends on live Google/Expo/Facepunch services and drifts when
