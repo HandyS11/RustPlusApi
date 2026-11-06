@@ -17,8 +17,9 @@ internal sealed class CdpException : Exception
 
     /// <summary>Initializes a new instance of the <see cref="CdpException"/> class.</summary>
     /// <param name="message">The error message.</param>
-    /// <param name="innerException">The underlying exception.</param>
-    public CdpException(string message, Exception innerException) : base(message, innerException)
+    /// <param name="innerException">The underlying exception, or <see langword="null"/> when there is none (for
+    /// example when the browser closed the connection normally).</param>
+    public CdpException(string message, Exception? innerException) : base(message, innerException)
     {
     }
 }

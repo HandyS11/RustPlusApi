@@ -167,11 +167,14 @@ internal sealed class CdpSession : IAsyncDisposable
                 reply.TrySetException(ClosedException());
             }
 
-            _eventSignal.Release();
+            // Wake every reader that is waiting, not just one: raise the signal to its maximum. Nothing releases it
+            // after this point (Dispatch only runs inside the loop above), so this cannot overflow, and a reader
+            // that wakes finds the session closed, drains any queued events, then returns null.
+            _eventSignal.Release(int.MaxValue - _eventSignal.CurrentCount);
         }
     }
 
-    private CdpException ClosedException(Exception? cause = null) => new(ClosedMessage, cause ?? _fault!);
+    private CdpException ClosedException(Exception? cause = null) => new(ClosedMessage, cause ?? _fault);
 
     private void Dispatch(string message)
     {

@@ -130,6 +130,45 @@ public class CdpSessionTests
     }
 
     [Fact]
+    public async Task Close_WakesEveryConcurrentReader()
+    {
+        var transport = new FakeCdpTransport();
+        await using var session = new CdpSession(transport);
+        var readers = Enumerable.Range(0, 3)
+            .Select(_ => session.ReadEventAsync(CancellationToken.None))
+            .ToArray();
+
+        // Let every reader block on the event signal before the connection closes.
+        await Task.Delay(TimeSpan.FromMilliseconds(200));
+        Assert.All(readers, reader => Assert.False(reader.IsCompleted));
+
+        transport.Close();
+
+        foreach (var reader in readers)
+        {
+            Assert.Null(await reader.WaitAsync(TestTimeout));
+        }
+    }
+
+    [Fact]
+    public async Task Close_WithoutFault_ClosedExceptionHasNoInnerException()
+    {
+        var sent = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var transport = new FakeCdpTransport
+        {
+            AutoReply = false, OnCommand = _ => sent.SetResult(true)
+        };
+        await using var session = new CdpSession(transport);
+        var pending = session.SendAsync("A", null, CancellationToken.None);
+        await sent.Task.WaitAsync(TestTimeout);
+
+        transport.Close();
+
+        var ex = await Assert.ThrowsAsync<CdpException>(() => pending.WaitAsync(TestTimeout));
+        Assert.Null(ex.InnerException);
+    }
+
+    [Fact]
     public async Task Close_PendingSendThrows_AndReadEventDrainsThenReturnsNull()
     {
         var sent = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
