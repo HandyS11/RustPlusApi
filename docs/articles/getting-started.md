@@ -21,25 +21,11 @@ dotnet add package RustPlusApi.Fcm.Extensions.DependencyInjection   # DI registr
 
 ## 1. Get your credentials
 
-You need credentials to connect. The quickest way — no .NET SDK required — is the
-[Rust+ credentials website](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md):
-a browser flow that logs you into Steam and hands back the four pairing values plus a downloadable
-`rustplus.config.json`.
-
-Run it yourself — it needs no configuration:
-
-```bash
-docker run -p 127.0.0.1:8080:8080 ghcr.io/handys11/rustplusapi-credentials
-```
-
-Browse to it from that same machine and Steam signs you in automatically. Reached from anywhere else
-— a LAN address, or a hosted instance if one is ever stood up and its address added to the website's
-README — it walks you through pasting one address back instead. See that README for both modes and
-the full command.
-
-If you'd rather stay entirely in .NET, the native [RustPlusApi.Fcm.Registration](credentials.md)
-package does the same thing from your own code — no Node.js required. The quickest path is the
-`RustPlus.Register.ConsoleApp` sample:
+You need credentials to connect. The way that works today is the native
+[RustPlusApi.Fcm.Registration](credentials.md) package, driven from your own code — no Node.js
+required. The quickest path is the `RustPlus.Register.ConsoleApp` sample, which opens a browser
+window for the Steam login (Edge, Chrome, Brave or Chromium) and falls back to asking you to paste
+one address when no browser can be driven:
 
 ```bash
 dotnet run --project samples/RustPlus.Register.ConsoleApp
@@ -47,6 +33,11 @@ dotnet run --project samples/RustPlus.Register.ConsoleApp
 
 It writes `rustplus.config.json` (the FCM credentials) and, after you choose **Pair with Server**
 in game, prints the four values for the `RustPlus` constructor.
+
+> [!NOTE]
+> There is also a [Rust+ credentials website](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md),
+> but it has been broken since Facepunch's October 2026 change to its login. Use the console tool
+> until it is fixed.
 
 ### What the four values are
 

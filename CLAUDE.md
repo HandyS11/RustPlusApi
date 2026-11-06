@@ -66,8 +66,9 @@ above when the push touches the web app's JavaScript or its lint setup.
   over TLS to `mtalk.google.com:5228`; `RustPlusFcm` decrypts notifications and raises pairing/
   alarm events.
 - **`RustPlusApi.Fcm.Registration`** — native credential acquisition replacing the rustplus.js
-  CLI: GCM check-in → Firebase/FCM/Expo registration (`Steps/`), Steam login via a browser redirect
-  to a loopback callback (`SteamLoginService`), Rust Companion registration, `CredentialsStore`
+  CLI: GCM check-in → Firebase/FCM/Expo registration (`Steps/`), Steam login in a browser the
+  library drives over the Chrome DevTools Protocol, capturing Facepunch's `rust-plus://` app redirect
+  (`SteamLoginService`), Rust Companion registration, `CredentialsStore`
   persistence.
 - **Two `*.Extensions.DependencyInjection`** packages — `AddRustPlus`/`AddRustPlusFcm` + factories.
 - **`apps/RustPlusApi.CredentialsWeb`** — a **net10.0-only** ASP.NET Core app (not a NuGet package)

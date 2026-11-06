@@ -1,177 +1,170 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.IO;
 using System.Net;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Text;
+using RustPlusApi.Fcm.Registration.Steps.Browser;
+using RustPlusApi.Fcm.Registration.Steps.Cdp;
 
 namespace RustPlusApi.Fcm.Registration.Steps;
 
 /// <summary>
-/// Step 5 — interactive Steam login. Sends the user's own browser to the Facepunch login page with
-/// a loopback <c>returnUrl</c>, and captures the <c>steamId</c> and <c>token</c> Facepunch appends
-/// when it redirects back.
+/// Step 5 — interactive Steam login. Opens a Chromium-family browser window the library controls (Edge on Windows,
+/// otherwise Chrome, Brave or Chromium, including Flatpak) on Facepunch's Rust+ app login, and reads the
+/// <c>steamId</c> and <c>token</c> from Facepunch's final <c>rust-plus://rust-auth-session</c> redirect over the
+/// Chrome DevTools Protocol.
 /// </summary>
-/// <param name="port">The loopback port the callback listener binds to; <c>0</c> picks a free one.</param>
+/// <param name="port">Kept so existing callers keep compiling; no longer used. The browser's debugging port is picked
+/// automatically on every login.</param>
 /// <remarks>
-/// Any browser works — the flow is an ordinary redirect, with no page scripting involved. The
-/// callback path carries a per-run nonce so a page the user happens to be browsing cannot feed a
-/// token of its own choosing into the loopback listener.
+/// <para>The browser runs with a fresh, temporary profile, so the user signs in to Steam in that window even if they are
+/// signed in elsewhere. The profile is deleted when the login ends, whichever way it ends; if deletion still fails
+/// after retries (a browser helper process can hold files briefly) the login still succeeds and the next login removes
+/// the leftover. If the host process is killed hard (debugger stop, <c>kill</c>), the browser window may stay open
+/// until the user closes it.</para>
+/// <para>When no usable browser is found (none installed, Snap only, a headless machine), its temporary profile cannot
+/// be created, or it fails to start, the login falls back to asking for the address by hand through
+/// <see cref="SteamLoginOptions.ReadPastedAddress"/>.</para>
+/// <para>The debugging port listens on the loopback address only, so any local process could attach to it while the
+/// login runs; that is accepted as a local risk.</para>
 /// </remarks>
+#pragma warning disable CS9113 // 'port' is kept for source compatibility with existing callers; the login no longer listens on a port.
 public sealed class SteamLoginService(int port = 3000)
+#pragma warning restore CS9113
 {
-    private const string SuccessHtml =
-        "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login complete</title>"
-        + "<script>history.replaceState(null,'',location.pathname);</script>"
-        + "<h1>Done. You can close this window.</h1>";
+    /// <summary>Instructions for obtaining the Rust+ login redirect by hand, for hosts that cannot
+    /// capture it automatically.</summary>
+    public const string PasteInstructions =
+        "Open the login address in any browser and sign in to Steam. Then open the browser's developer tools (F12), "
+        + "go to the Network panel, and find the last request whose name starts with app?returnUrl=rust-plus. "
+        + "Copy the value of its Location response header: it starts with rust-plus://rust-auth-session. "
+        + "On Windows, first switch the developer tools to a non-Windows user agent, otherwise Facepunch answers \"Login Failed\".";
 
-    private const string FailureHtml =
-        "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login failed</title>"
-        + "<h1>That callback carried no Rust+ token. Try the login link again.</h1>";
+    private const string BrowserRejectedMessage = "The browser rejected a debugging command during the Steam login.";
 
-    /// <summary>Builds the 404 body for an unrecognised callback path. It names only the path the
-    /// request carried, so a Facepunch contract change (path stripped, normalised, or otherwise
-    /// altered by the Steam OpenID round-trip) still shows up as a visible error rather than a
-    /// silent hang. It never names the expected path: that embeds the per-run nonce, the listener's
-    /// only anti-forgery secret, and any local process can connect to the loopback port and read
-    /// this response. The expected path still goes to <see cref="Debug"/> output at the call site.</summary>
-    /// <param name="actualPath">The path the request carried.</param>
-    private static string BuildNotFoundHtml(string actualPath) =>
-        "<!doctype html><meta charset=\"utf-8\"><title>Rust+ login</title>"
-        + "<h1>Unknown callback path.</h1>"
-        + $"<p>Received <code>{WebUtility.HtmlEncode(actualPath)}</code>, which is not this login's "
-        + "callback path.</p>";
+    private const string NotTheLoginAddressMessage =
+        "That is not the Rust+ login address. Paste the address that starts with "
+        + RegistrationConstants.RustPlusAuthRedirectPrefix + ".";
 
-    /// <summary>Sends the user's browser to the Facepunch Steam login and returns the captured identity.</summary>
-    /// <param name="onLoginUrl">Invoked with the login URL before the browser is opened, so callers
-    /// can print it. Always invoked, including when a browser is opened successfully.</param>
-    /// <param name="cancellationToken">Token to cancel the operation.</param>
-    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a callback arrives.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when the callback port cannot be bound.</exception>
+    private const int ProfileDeleteAttempts = 20;
+    private static readonly TimeSpan ProfileDeleteDelay = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan BrowserCloseTimeout = TimeSpan.FromSeconds(5);
+
+    /// <summary>Gets the optional inputs: a paste callback for when no browser can be driven, and an explicit browser path.</summary>
+    public SteamLoginOptions Options { get; init; } = new();
+
+    /// <summary>Runs the Steam login in a browser window the library opens, and returns the captured identity.</summary>
+    /// <param name="onLoginUrl">Invoked with the login URL first, before any browser is looked for, so callers
+    /// can print it. Always invoked.</param>
+    /// <param name="cancellationToken">Token to cancel the operation. The browser is still closed and its profile
+    /// deleted.</param>
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the user closes the browser window before the login
+    /// finishes, Facepunch refuses the login, the browser rejects a debugging command, the redirect carries no usable
+    /// <c>token</c> or <c>steamId</c>, <see cref="SteamLoginOptions.BrowserPath"/> does not exist, or no browser can be
+    /// driven and <see cref="SteamLoginOptions.ReadPastedAddress"/> is not set (the message then explains how to get
+    /// the address by hand). Messages never contain the token.</exception>
+    /// <remarks>Excluded from coverage: a one-line composition root that wires in the real operating system and the
+    /// real browser launcher, so calling it starts a browser. The orchestration it delegates to is unit-tested over
+    /// fakes.</remarks>
+    [ExcludeFromCodeCoverage]
     public Task<SteamLoginResult> LoginAsync(Action<string>? onLoginUrl = null,
         CancellationToken cancellationToken = default) =>
-        LoginAsync(RegistrationConstants.SteamLoginUrl, onLoginUrl, openBrowser: true, cancellationToken);
+        LoginAsync(onLoginUrl, SystemBrowserEnvironment.Instance, new ChromiumLauncher(), cancellationToken);
 
-    /// <summary>Drives the login against an arbitrary login page, optionally without opening a browser.</summary>
-    /// <param name="loginUrlBase">The login page to send the user to.</param>
-    /// <param name="onLoginUrl">Invoked with the login URL before any browser is opened.</param>
-    /// <param name="openBrowser">Whether to attempt to open the user's default browser.</param>
+    /// <summary>Runs the login over the given operating-system and launcher seams.</summary>
+    /// <param name="onLoginUrl">Invoked with the login URL first.</param>
+    /// <param name="environment">The operating system, for the browser lookup and the profile location.</param>
+    /// <param name="launcher">Starts the browser.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled before a callback arrives.</exception>
-    /// <exception cref="InvalidOperationException">Thrown when the callback port cannot be bound.</exception>
-    internal async Task<SteamLoginResult> LoginAsync(string loginUrlBase,
-        Action<string>? onLoginUrl,
-        bool openBrowser,
+    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is cancelled.</exception>
+    /// <exception cref="InvalidOperationException">See the public overload.</exception>
+    internal async Task<SteamLoginResult> LoginAsync(Action<string>? onLoginUrl,
+        IBrowserEnvironment environment,
+        IBrowserLauncher launcher,
         CancellationToken cancellationToken)
     {
-        // HttpListener cannot bind port 0, so a free port is resolved up front by opening and
-        // immediately closing a probe socket on it (GetFreePort). The window between that probe
-        // closing and listener.Start() below binding the same port is inherently racy — another
-        // process could claim the port in between — but there is no API to resolve and bind a free
-        // port as one atomic step.
-        var boundPort = port == 0 ? GetFreePort() : port;
-        var nonce = CreateNonce();
-        var callbackPath = "/callback/" + nonce;
-#pragma warning disable S6618 // string.Create(IFormatProvider, ...) needs DefaultInterpolatedStringHandler, unavailable on netstandard2.0
-        var returnUrl = FormattableString.Invariant($"http://localhost:{boundPort}{callbackPath}");
+        var loginUrl = BuildLoginUrl(RegistrationConstants.RustPlusAppReturnUrl);
+        onLoginUrl?.Invoke(loginUrl);
 
-        using var listener = new HttpListener();
-        listener.Prefixes.Add(FormattableString.Invariant($"http://localhost:{boundPort}/"));
-#pragma warning restore S6618
-
-        try
+        var search = new BrowserLocator(environment).Find(Options.BrowserPath);
+        if (search.Browser is not { } browser)
         {
-            listener.Start();
-        }
-        catch (HttpListenerException ex)
-        {
-            var guidance = port == 0
-                ? "It was free when probed via GetFreePort, but something else claimed it before the "
-                  + "listener could bind — an inherent race, since there is no API to probe and bind a "
-                  + "free port as one atomic step. Retry; a fresh free port is probed on each attempt."
-                : $"Another process is probably using port {boundPort} — pass steamLoginPort: 0 to pick a "
-                  + "free port automatically.";
-            throw new InvalidOperationException(
-                $"Could not bind the Steam login callback listener to http://localhost:{boundPort}/. "
-                + guidance, ex);
+            var reason = search.SkippedSnapPaths.Count > 0
+                ? $"Snap browsers are not supported ({string.Join(", ", search.SkippedSnapPaths)})."
+                : "No Chrome, Edge, Brave or Chromium browser was found.";
+            return await ReadPastedAddressAsync(reason, loginUrl, cancellationToken).ConfigureAwait(false);
         }
 
-        // GetContextAsync takes no cancellation token: stopping the listener is the only way to
-        // unblock the wait promptly, so cancellation must not have to wait for the next request.
-#pragma warning disable RCS1261 // CancellationTokenRegistration.DisposeAsync is not available on netstandard2.0
-        using var cancellationRegistration = cancellationToken.Register(listener.Stop);
-#pragma warning restore RCS1261
-
+        // A cancelled login must not flash a browser window: the launcher would only notice once the process runs.
+        cancellationToken.ThrowIfCancellationRequested();
+        var root = BrowserLaunchArguments.GetProfileRoot(browser, environment);
+        LoginProfile profile;
         try
         {
-            var loginUrl = BuildLoginUrl(loginUrlBase, returnUrl);
-            onLoginUrl?.Invoke(loginUrl);
-            if (openBrowser)
-            {
-                TryOpenBrowser(loginUrl);
-            }
+            LoginProfile.SweepStale(root);
+#pragma warning disable CA2000 // Disposed by the using declaration right after this try; nothing can throw in between.
+            profile = LoginProfile.Create(root);
+#pragma warning restore CA2000
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // An unwritable or blocked profile root: no browser can run, so the login falls back to pasting.
+            var reason = $"Could not create the temporary browser profile: {ex.Message.TrimEnd('.')}.";
+            return await ReadPastedAddressAsync(reason, loginUrl, cancellationToken).ConfigureAwait(false);
+        }
 
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                HttpListenerContext context;
-                try
-                {
-                    context = await listener.GetContextAsync().ConfigureAwait(false);
-                }
-                catch (Exception ex) when (ex is HttpListenerException or ObjectDisposedException
-                                               or InvalidOperationException)
-                {
-                    // The listener was stopped under the wait — by the cancellation registration
-                    // above (expected; rethrow as cancellation) or by an unrelated teardown. The
-                    // InvalidOperationException case covers the narrow window between the loop
-                    // condition observing "not yet cancelled" and this call actually starting:
-                    // Stop() may already have run by then, and GetContextAsync on a stopped-but-not-
-                    // disposed listener throws InvalidOperationException rather than one of the other
-                    // two. If the token isn't actually cancelled, this is a genuine failure and the
-                    // rethrow below preserves it unchanged.
-                    cancellationToken.ThrowIfCancellationRequested();
-                    throw;
-                }
+        using var ownedProfile = profile;
 
-                var requestPath = context.Request.Url?.AbsolutePath ?? "(no path)";
-                if (!string.Equals(requestPath, callbackPath, StringComparison.Ordinal))
-                {
-                    Debug.WriteLine(
-                        $"[{nameof(SteamLoginService)}] Callback path mismatch: expected '{callbackPath}', "
-                        + $"received '{requestPath}'.");
-                    await RespondAsync(context, HttpStatusCode.NotFound,
-                        BuildNotFoundHtml(requestPath)).ConfigureAwait(false);
-                    continue;
-                }
+        IBrowserSession browserSession;
+        try
+        {
+            browserSession = await launcher
+                .LaunchAsync(browser, GetFreePort(), profile.DirectoryPath, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            await DeleteProfileAsync(profile, ProfileDeleteAttempts, ProfileDeleteDelay).ConfigureAwait(false);
+            throw;
+        }
+#pragma warning disable CA1031, S2221 // Whatever stopped the browser from starting, the login falls back to pasting.
+        catch (Exception ex)
+#pragma warning restore CA1031, S2221
+        {
+            // The profile goes first: the paste fallback can wait on the user for a long time.
+            await DeleteProfileAsync(profile, ProfileDeleteAttempts, ProfileDeleteDelay).ConfigureAwait(false);
+            var reason = $"Could not start {browser.Name}: {ex.Message.TrimEnd('.')}.";
+            return await ReadPastedAddressAsync(reason, loginUrl, cancellationToken).ConfigureAwait(false);
+        }
 
-                SteamLoginResult result;
-                try
-                {
-                    result = ParseCallback(context.Request.Url!);
-                }
-                catch (InvalidOperationException)
-                {
-                    await RespondAsync(context, HttpStatusCode.BadRequest, FailureHtml).ConfigureAwait(false);
-                    continue;
-                }
-
-                await RespondAsync(context, HttpStatusCode.OK, SuccessHtml).ConfigureAwait(false);
-                return result;
-            }
+#pragma warning disable CA2000 // Disposed in the finally below, after Browser.close and before the browser session.
+        var cdp = new CdpSession(browserSession.Transport);
+#pragma warning restore CA2000
+        try
+        {
+            return await RustPlusAppLogin.RunAsync(cdp, loginUrl, cancellationToken).ConfigureAwait(false);
+        }
+        catch (CdpException ex)
+        {
+            // CdpException is internal; its message is the browser's own error text.
+            throw new InvalidOperationException(BrowserRejectedMessage, ex);
         }
         finally
         {
-            listener.Stop();
+            // None of these take the caller's token, and none throws: cleanup runs in full on every path,
+            // cancellation included, and never replaces the login's own result or exception.
+            await CloseBrowserAsync(cdp).ConfigureAwait(false);
+            await DisposeQuietlyAsync(cdp).ConfigureAwait(false);
+            await DisposeQuietlyAsync(browserSession).ConfigureAwait(false);
+            await DeleteProfileAsync(profile, ProfileDeleteAttempts, ProfileDeleteDelay).ConfigureAwait(false);
         }
-
-        throw new OperationCanceledException(cancellationToken);
     }
 
     /// <summary>Builds the Facepunch login URL that redirects back to <paramref name="returnUrl"/>
     /// with <c>steamId</c> and <c>token</c> appended as query parameters.</summary>
-    /// <param name="returnUrl">The absolute URL Facepunch should redirect the browser back to.</param>
+    /// <param name="returnUrl">Where Facepunch should send the browser after the Steam sign-in: an absolute URL, or a
+    /// path on Facepunch's own site such as <see cref="RegistrationConstants.RustPlusAppReturnUrl"/>, which the
+    /// library itself uses.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="returnUrl"/> is blank.</exception>
 #pragma warning disable CA1055, CA1054 // Return and parameter types must be string to match the callback parsing contract
     public static string BuildLoginUrl(string returnUrl) =>
@@ -180,7 +173,8 @@ public sealed class SteamLoginService(int port = 3000)
 
     /// <summary>Builds the login URL against an arbitrary base (the Facepunch login in production).</summary>
     /// <param name="loginUrlBase">The login page to send the user to.</param>
-    /// <param name="returnUrl">The absolute URL Facepunch should redirect the browser back to.</param>
+    /// <param name="returnUrl">Where Facepunch should send the browser after the Steam sign-in: an absolute URL, or a
+    /// path on Facepunch's own site.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="returnUrl"/> is blank.</exception>
     internal static string BuildLoginUrl(string loginUrlBase, string returnUrl)
     {
@@ -221,54 +215,109 @@ public sealed class SteamLoginService(int port = 3000)
         return new SteamLoginResult(steamId, token);
     }
 
-    /// <summary>Generates the per-run callback nonce as lowercase hex.</summary>
-    private static string CreateNonce()
+    /// <summary>Extracts the Steam identity from a pasted <c>rust-plus://rust-auth-session</c> address,
+    /// tolerating surrounding whitespace, double quotes and a leading <c>Location:</c> label.</summary>
+    /// <param name="pasted">The text the user copied.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="pasted"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the text is not the Rust+ login redirect,
+    /// or carries no usable <c>token</c> or <c>steamId</c>.</exception>
+    public static SteamLoginResult ParsePastedAddress(string pasted)
     {
-        var bytes = new byte[16];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(bytes);
-
-        var builder = new StringBuilder(bytes.Length * 2);
-        foreach (var value in bytes)
+#pragma warning disable CA1510 // ArgumentNullException.ThrowIfNull is not available on netstandard2.0
+        if (pasted is null)
         {
-            builder.Append(value.ToString("x2", CultureInfo.InvariantCulture));
+            throw new ArgumentNullException(nameof(pasted));
+        }
+#pragma warning restore CA1510
+
+        var value = pasted.Trim();
+        const string label = "location:";
+        if (value.StartsWith(label, StringComparison.OrdinalIgnoreCase))
+        {
+            value = value[label.Length..].Trim();
         }
 
-        return builder.ToString();
+        if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
+        {
+            value = value[1..^1];
+        }
+
+        // A text with the right prefix can still fail to parse (a space in it, a bad port): that is the same mistake
+        // to the user, and the message stays fixed because the text carries the token.
+        if (!value.StartsWith(RegistrationConstants.RustPlusAuthRedirectPrefix, StringComparison.OrdinalIgnoreCase)
+            || !Uri.TryCreate(value, UriKind.Absolute, out var address))
+        {
+            throw new InvalidOperationException(NotTheLoginAddressMessage);
+        }
+
+        return ParseCallback(address);
     }
 
-    /// <summary>Builds the <see cref="ProcessStartInfo"/> that opens <paramref name="url"/> in the
-    /// system browser. Shell-executes the URL itself on every platform, rather than launching a
-    /// bare opener name (<c>xdg-open</c>/<c>open</c>) with <see cref="ProcessStartInfo.UseShellExecute"/>
-    /// off: the .NET Unix launcher resolves a bare program name from the current working directory
-    /// before <c>PATH</c>, so a <c>./xdg-open</c> left in the directory the user ran registration
-    /// from would run as that user and be handed the login URL. With shell-execute on, the runtime
-    /// resolves the system opener through <c>PATH</c> instead. The URL is library-built from
-    /// constants, so it is never attacker-influenced.</summary>
-    /// <param name="url">The login URL to open.</param>
-    /// <returns>The start info to pass to <see cref="Process.Start(ProcessStartInfo)"/>.</returns>
-    internal static ProcessStartInfo BuildBrowserStartInfo(string url) =>
-        new(url)
+    /// <summary>Releases and deletes a login profile, retrying while the browser still holds its files. A profile that
+    /// cannot be deleted is left for the next login's sweep: a valid login must not fail because of it.</summary>
+    /// <param name="profile">The profile to delete.</param>
+    /// <param name="attempts">The maximum number of delete attempts.</param>
+    /// <param name="delay">The wait between attempts.</param>
+    internal static async Task DeleteProfileAsync(LoginProfile profile, int attempts, TimeSpan delay)
+    {
+        if (!await profile.TryDeleteAsync(attempts, delay).ConfigureAwait(false))
         {
-            UseShellExecute = true
-        };
+            Debug.WriteLine(
+                $"[{nameof(SteamLoginService)}] Could not delete the temporary browser profile '{profile.DirectoryPath}'; "
+                + "the next login removes it.");
+        }
+    }
 
-    /// <summary>Opens the user's default browser at <paramref name="url"/>, ignoring any failure.</summary>
-    /// <param name="url">The login URL to open.</param>
-    /// <remarks>Excluded from coverage: launches a real browser process, and failure is by design
-    /// unobservable — the URL has already been reported through <c>onLoginUrl</c>, so a headless
-    /// host simply opens it by hand.</remarks>
-    [ExcludeFromCodeCoverage]
-    private static void TryOpenBrowser(string url)
+    /// <summary>Asks the browser to close, within its own timeout. A window that is already gone, or a browser that
+    /// does not answer in time, is fine: disposing the browser session ends the process either way.</summary>
+    /// <param name="cdp">The DevTools session.</param>
+    private static async Task CloseBrowserAsync(CdpSession cdp)
+    {
+        using var timeout = new CancellationTokenSource(BrowserCloseTimeout);
+        try
+        {
+            await cdp.SendAsync("Browser.close", null, timeout.Token).ConfigureAwait(false);
+        }
+#pragma warning disable CA1031, S2221 // Best effort: the browser session's disposal ends the process regardless.
+        catch (Exception ex)
+#pragma warning restore CA1031, S2221
+        {
+            Debug.WriteLine(
+                $"[{nameof(SteamLoginService)}] The browser did not confirm it was closing ({ex.GetType().Name}).");
+        }
+    }
+
+    /// <summary>Disposes a cleanup step without letting its failure escape. Only the exception type is logged.</summary>
+    /// <param name="disposable">The resource to dispose.</param>
+    private static async Task DisposeQuietlyAsync(IAsyncDisposable disposable)
     {
         try
         {
-            Process.Start(BuildBrowserStartInfo(url))?.Dispose();
+            await disposable.DisposeAsync().ConfigureAwait(false);
         }
+#pragma warning disable CA1031, S2221 // Cleanup must never replace the login's own result or exception.
         catch (Exception ex)
+#pragma warning restore CA1031, S2221
         {
-            Debug.WriteLine($"[{nameof(SteamLoginService)}] Could not open a browser: {ex.Message}");
+            Debug.WriteLine(
+                $"[{nameof(SteamLoginService)}] Could not shut the browser down cleanly ({ex.GetType().Name}).");
         }
+    }
+
+    /// <summary>The paste fallback: reads the address the user copied by hand, or explains how to get it.</summary>
+    /// <param name="reason">Why no browser can be driven, as a full sentence. Passed to the paste callback, or it
+    /// starts the exception message.</param>
+    /// <param name="loginUrl">The login URL the user must open.</param>
+    /// <param name="cancellationToken">Passed to the paste callback.</param>
+    /// <exception cref="InvalidOperationException">Thrown when no paste callback is set, or the pasted text is not
+    /// the Rust+ login address.</exception>
+    private async Task<SteamLoginResult> ReadPastedAddressAsync(string reason,
+        string loginUrl,
+        CancellationToken cancellationToken)
+    {
+        var read = Options.ReadPastedAddress
+                   ?? throw new InvalidOperationException($"{reason} {PasteInstructions} Login address: {loginUrl}");
+        return ParsePastedAddress(await read(reason, cancellationToken).ConfigureAwait(false));
     }
 
     private static int GetFreePort()
@@ -285,51 +334,6 @@ public sealed class SteamLoginService(int port = 3000)
         {
             listener.Stop();
             listener.Server.Dispose();
-        }
-    }
-
-    /// <summary>Writes an HTML response to a callback request. The write is best-effort: the browser
-    /// may already have dropped the connection (tab closed, navigation cancelled, or a local page
-    /// issuing <c>fetch(...).then(c =&gt; c.abort())</c>), which surfaces as <see cref="HttpListenerException"/>
-    /// or <see cref="IOException"/> from <c>OutputStream.WriteAsync</c>. That must not be fatal: on the
-    /// success path the caller has already parsed a valid token before calling this, so a failed write
-    /// must not lose it, and on the 404/400 paths it must not abort the accept loop either. Cancellation
-    /// is never swallowed, and <see cref="HttpListenerResponse.Close()"/> always runs so the context is
-    /// released regardless of how the write went.</summary>
-    /// <param name="context">The listener context carrying the response to write to.</param>
-    /// <param name="status">The HTTP status code to respond with.</param>
-    /// <param name="html">The HTML body to write.</param>
-    private static async Task RespondAsync(HttpListenerContext context, HttpStatusCode status, string html)
-    {
-        try
-        {
-            var buffer = Encoding.UTF8.GetBytes(html);
-            context.Response.StatusCode = (int)status;
-            context.Response.ContentType = "text/html; charset=utf-8";
-            context.Response.Headers[HttpResponseHeader.CacheControl] = "no-store";
-            context.Response.ContentLength64 = buffer.Length;
-#if NET10_0_OR_GREATER
-            await context.Response.OutputStream.WriteAsync(buffer.AsMemory()).ConfigureAwait(false);
-#else
-            await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
-#endif
-        }
-        catch (Exception ex) when (ex is HttpListenerException or IOException)
-        {
-            Debug.WriteLine($"[{nameof(SteamLoginService)}] Could not write the callback response: {ex.Message}");
-        }
-        finally
-        {
-            // Close() itself can throw the same "connection already gone" exceptions as the write
-            // above; swallow those here too so a dropped connection can never escape this method.
-            try
-            {
-                context.Response.Close();
-            }
-            catch (Exception ex) when (ex is HttpListenerException or IOException)
-            {
-                Debug.WriteLine($"[{nameof(SteamLoginService)}] Could not close the callback response: {ex.Message}");
-            }
         }
     }
 

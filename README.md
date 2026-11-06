@@ -61,11 +61,9 @@ dotnet run --project samples/RustPlus.Register.ConsoleApp
 See [`samples/`](samples/README.md) for the full walkthrough. (You can still use
 `npx @liamcottle/rustplus.js fcm-register` as a fallback.)
 
-Prefer a browser to a terminal? The [Rust+ credentials website](apps/RustPlusApi.CredentialsWeb/README.md)
-is the same registration flow behind a single-page app — no .NET SDK needed. Run it yourself with a
-single `docker run` and no configuration; its README has the command. The app is also built to be
-hosted for other people, and if a public instance is ever stood up its address will be added there —
-until then, self-hosting is the route.
+The [Rust+ credentials website](apps/RustPlusApi.CredentialsWeb/README.md) is the same registration
+flow behind a single-page app, but it has been broken since Facepunch's October 2026 change to its
+login. Use the console tool above until it is fixed.
 
 **2. Talk to the server:**
 

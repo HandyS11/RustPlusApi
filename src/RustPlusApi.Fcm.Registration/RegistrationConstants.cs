@@ -60,8 +60,21 @@ public static class RegistrationConstants
     /// <summary>Rust Companion device registration endpoint.</summary>
     public const string CompanionRegisterUrl = "https://companion-rust.facepunch.com/api/push/register";
 
-    /// <summary>Facepunch Steam login page for the Rust Companion login redirect flow.</summary>
+    /// <summary>Facepunch Steam login page. After Steam sign-in it ends in Facepunch's Rust+ app redirect
+    /// (<see cref="RustPlusAppReturnUrl"/>), which answers with a <c>rust-plus://</c> <c>Location</c>.</summary>
     public const string SteamLoginUrl = "https://companion-rust.facepunch.com/login";
+
+    /// <summary>The <c>returnUrl</c> that makes Facepunch's <c>/app</c> endpoint redirect to the Rust+ app scheme.</summary>
+    public const string RustPlusAppReturnUrl = "/app?returnUrl=rust-plus://rust-auth-session";
+
+    /// <summary>Prefix of the <c>rust-plus://</c> redirect that carries <c>steamId</c> and <c>token</c>.</summary>
+    public const string RustPlusAuthRedirectPrefix = "rust-plus://rust-auth-session";
+
+    /// <summary>URL prefix of Facepunch's <c>/app</c> endpoint, which issues the Rust+ app redirect.</summary>
+    public const string CompanionAppUrlPrefix = "https://companion-rust.facepunch.com/app";
+
+    /// <summary>URL prefix of Facepunch's <c>/login-failed</c> page.</summary>
+    public const string CompanionLoginFailedUrlPrefix = "https://companion-rust.facepunch.com/login-failed";
 
     /// <summary>Chrome identity used for the GCM check-in (mirrors push-receiver).</summary>
     public const string ChromeVersion = "63.0.3234.0";

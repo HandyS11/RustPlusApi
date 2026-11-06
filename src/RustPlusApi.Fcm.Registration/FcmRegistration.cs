@@ -8,17 +8,23 @@ namespace RustPlusApi.Fcm.Registration;
 /// Orchestrates the native credential acquisition flow, replacing the Node CLI.
 /// </summary>
 /// <param name="httpClient">Optional <see cref="HttpClient"/> to use for all HTTP requests; a new instance is created if <see langword="null"/>.</param>
-/// <param name="steamLoginPort">The loopback port the Steam login callback listener binds to.</param>
+/// <param name="steamLoginPort">Kept so existing callers keep compiling; no longer used. The Steam login runs in a
+/// browser window the library controls and picks its own debugging port.</param>
 /// <remarks>
 /// Every network step hits live Google / Expo / Facepunch services and is upstream-fragile;
 /// it cannot be validated offline. See <see cref="RegistrationConstants"/>.
 /// </remarks>
+#pragma warning disable CS9113 // 'steamLoginPort' is kept for source compatibility with existing callers; the Steam login no longer listens on a port.
 public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLoginPort = 3000)
+#pragma warning restore CS9113
 {
     private readonly AndroidFcmRegister _androidFcmRegister = new(httpClient);
     private readonly ExpoPushClient _expoPushClient = new(httpClient);
     private readonly RustCompanionClient _rustCompanionClient = new(httpClient);
-    private readonly SteamLoginService _steamLoginService = new(steamLoginPort);
+
+    /// <summary>Gets the optional inputs for the Steam login in <see cref="RegisterWithRustPlusAsync"/>: a paste
+    /// callback for when no browser can be driven, and an explicit browser path.</summary>
+    public SteamLoginOptions SteamLoginOptions { get; init; } = new();
 
     /// <summary>
     /// Steps 1–4: GCM check-in, Firebase install, FCM register and Expo token. Returns the
@@ -46,13 +52,15 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
     /// Companion so it receives pairing pushes. Returns the captured Steam identity.
     /// </summary>
     /// <param name="credentials">Credentials obtained from <see cref="AcquireCredentialsAsync"/>.</param>
-    /// <param name="onLoginUrl">Invoked with the Steam login URL before the browser is opened, so
-    /// callers can print it — the flow still completes on a headless host if the user opens it by hand.</param>
+    /// <param name="onLoginUrl">Invoked with the Steam login URL first, before the browser window is opened, so
+    /// callers can print it. On a host where no browser can be driven, the user opens it by hand and pastes the
+    /// result back through <see cref="SteamLoginOptions.ReadPastedAddress"/>.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    /// <exception cref="InvalidOperationException">Thrown when <paramref name="credentials"/> is missing the Expo push token.</exception>
-    /// <remarks>Excluded from coverage: post-guard flow drives live Steam login and Companion
-    /// registration; the guard (missing ExpoPushToken) is unit-tested, the remainder is only
-    /// validatable by a real run against the live endpoints.</remarks>
+    /// <exception cref="InvalidOperationException">Thrown when <paramref name="credentials"/> is missing the Expo push
+    /// token, or when the Steam login fails (see <see cref="SteamLoginService.LoginAsync(Action{string}?, CancellationToken)"/>).</exception>
+    /// <remarks>Excluded from coverage: past the guard it drives a real browser and the live Companion
+    /// endpoint; the guard (missing ExpoPushToken) is unit-tested, and the Steam login orchestration is
+    /// unit-tested over fakes in <see cref="SteamLoginService"/>.</remarks>
     [ExcludeFromCodeCoverage]
     public async Task<SteamLoginResult> RegisterWithRustPlusAsync(Credentials credentials,
         Action<string>? onLoginUrl = null,
@@ -67,7 +75,11 @@ public sealed class FcmRegistration(HttpClient? httpClient = null, int steamLogi
                 "Credentials are missing the Expo push token; call AcquireCredentialsAsync first.");
         }
 
-        var steamLogin = await _steamLoginService.LoginAsync(onLoginUrl, cancellationToken).ConfigureAwait(false);
+        var steamLoginService = new SteamLoginService
+        {
+            Options = SteamLoginOptions
+        };
+        var steamLogin = await steamLoginService.LoginAsync(onLoginUrl, cancellationToken).ConfigureAwait(false);
         await _rustCompanionClient
             .RegisterAsync(steamLogin.Token, expoPushToken, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
