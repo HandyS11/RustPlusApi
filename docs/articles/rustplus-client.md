@@ -37,7 +37,8 @@ Both values come out of the registration chain in
 [`RustPlusApi.Fcm.Registration`](credentials.md): `ServerId` from the server pairing notification,
 and `AuthToken` from the Steam login — `SteamLoginResult.Token`, returned by
 `FcmRegistration.RegisterWithRustPlusAsync`. Keep that token: it is not part of the saved
-`rustplus.config.json`, and it is a credential, so store it like one.
+`rustplus.config.json`, and it is a credential, so store it like one. It expires 14 days after the
+login (its own `exp` claim says so), so a long-running app must sign in again before then.
 
 ```csharp
 var steamLogin = await registration.RegisterWithRustPlusAsync(credentials);
