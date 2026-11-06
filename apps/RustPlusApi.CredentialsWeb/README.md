@@ -3,6 +3,11 @@
 A single-page web app that walks you from nothing to working Rust+ credentials — no .NET SDK
 required.
 
+> [!WARNING]
+> **This app has been broken since Facepunch's October 2026 change to its login.** Use the console
+> tool (`samples/RustPlus.Register.ConsoleApp`) until it is fixed. The rest of this README describes
+> the app as designed, and is not recommended over the console tool.
+
 **There is no public instance yet.** The app is built to be one — see
 [Two modes, chosen automatically](#two-modes-chosen-automatically) — and when the maintainer stands
 one up, its address will be filled in here. Until then, the route that works is running it yourself,
@@ -17,7 +22,7 @@ docker run -p 127.0.0.1:8080:8080 ghcr.io/handys11/rustplusapi-credentials
 No environment variables needed — the app has no required setting. Open <http://localhost:8080> in
 a browser **on that same machine**, and Steam signs you in with the ordinary automatic redirect:
 your browser resolves `localhost` to the published port, and the app treats the request as local.
-That is the shortest version of this flow, and the one to prefer if it is available to you.
+That was designed to be the shortest version of this flow.
 
 For local development without a container:
 

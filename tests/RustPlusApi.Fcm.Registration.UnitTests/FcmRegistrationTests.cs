@@ -90,4 +90,31 @@ public class FcmRegistrationTests
         };
         await Assert.ThrowsAsync<InvalidOperationException>(() => registration.RegisterWithRustPlusAsync(credentials));
     }
+
+    [Fact]
+    public void SteamLoginOptions_DefaultsToEmptyOptions()
+    {
+        var options = new FcmRegistration().SteamLoginOptions;
+
+        Assert.Null(options.ReadPastedAddress);
+        Assert.Null(options.BrowserPath);
+    }
+
+    [Fact]
+    public void SteamLoginOptions_InitRoundTrips()
+    {
+        Func<string, CancellationToken, Task<string>> read = (_, _) => Task.FromResult(string.Empty);
+        var options = new SteamLoginOptions
+        {
+            ReadPastedAddress = read, BrowserPath = "/opt/chrome/chrome"
+        };
+
+        var registration = new FcmRegistration
+        {
+            SteamLoginOptions = options
+        };
+
+        Assert.Same(options, registration.SteamLoginOptions);
+        Assert.Same(read, registration.SteamLoginOptions.ReadPastedAddress);
+    }
 }
