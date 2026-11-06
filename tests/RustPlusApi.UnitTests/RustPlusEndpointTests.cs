@@ -53,8 +53,10 @@ public class RustPlusEndpointTests
     [Fact]
     public void UnsupportedConnectionType_IsRejected_WhenTheClientIsBuilt()
     {
-        // Nothing outside the library can normally derive from RustPlusConnection, but the record's
-        // protected copy constructor leaves a way; such a type must fail loudly, not pick a route.
+        // Outside the library, RustPlusConnection's constructor is out of reach, but the record's
+        // protected copy constructor still lets a type derive from it; such a type must fail loudly, not
+        // pick a route. UnknownConnection takes that same path rather than the friend-assembly access
+        // this test project has.
         var connection = new UnknownConnection();
 
         var uri = Assert.Throws<ArgumentException>(() =>
@@ -86,5 +88,10 @@ public class RustPlusEndpointTests
     public void ToBase64Url_EncodesUtf8_WithoutPaddingOrUnsafeCharacters(string value, string expected) =>
         Assert.Equal(expected, RustPlusEndpoint.ToBase64Url(value));
 
-    private sealed record UnknownConnection() : RustPlusConnection(1UL, 2);
+    private sealed record UnknownConnection : RustPlusConnection
+    {
+        public UnknownConnection() : base(new DirectConnection("h", 1, 1UL, 2))
+        {
+        }
+    }
 }

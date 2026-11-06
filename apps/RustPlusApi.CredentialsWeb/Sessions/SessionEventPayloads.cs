@@ -17,14 +17,15 @@ internal sealed record CredentialsPayload(string SteamId, string ConfigJson, str
 /// <param name="PlayerId">Steam64 as a string, for the same reason as <see cref="CredentialsPayload.SteamId"/>.</param>
 /// <param name="PlayerToken">The pairing token. Full Rust+ account access.</param>
 /// <param name="Name">Server name, when the push carried one.</param>
-/// <param name="ServerId">Facepunch's server id (<c>CompanionConnection.ServerId</c>), as a hyphenated GUID.</param>
+/// <param name="ServerId">Facepunch's server id (<c>CompanionConnection.ServerId</c>), as a hyphenated GUID, or
+/// <see langword="null"/> when the push carried none.</param>
 internal sealed record PairedPayload(
     string Ip,
     int Port,
     string PlayerId,
     int PlayerToken,
     string? Name,
-    string ServerId);
+    string? ServerId);
 
 /// <summary>Payload of an <c>error</c> event. Always a fixed, non-reflective message: never an
 /// exception message, which could carry upstream response content.</summary>

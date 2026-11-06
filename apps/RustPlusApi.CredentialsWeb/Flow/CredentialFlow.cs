@@ -144,7 +144,8 @@ internal sealed class CredentialFlow(
                 pairing.PlayerId.ToString(CultureInfo.InvariantCulture),
                 pairing.PlayerToken,
                 pairing.Name,
-                pairing.ServerId.ToString("D"))));
+                // Guid.Empty means the push carried no id: send none rather than an id nothing accepts.
+                pairing.ServerId == Guid.Empty ? null : pairing.ServerId.ToString("D"))));
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

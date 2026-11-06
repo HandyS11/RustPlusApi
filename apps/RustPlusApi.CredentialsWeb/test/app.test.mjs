@@ -88,6 +88,17 @@ test("with the auth token and a server id, the snippet connects through the comp
     assert.equal(app.element("pair-auth-token").textContent, "steam-token");
 });
 
+test("without a server id, the snippet connects directly even with the auth token", () => {
+    // The server sends null when the pairing push carried no id: no companion snippet, no id shown.
+    const app = loadApp();
+    app.context.onCredentials(credentials);
+    app.context.onPaired({ ...pairing, serverId: null });
+    assert.equal(
+        app.element("snippet").textContent,
+        "new RustPlus(new DirectConnection(\"10.0.0.1\", 28082, 76561198000000001, 123456789));");
+    assert.equal(app.element("pair-server-id").textContent, "");
+});
+
 test("the companion snippet escapes the auth token and server id as C# string literals", () => {
     // Neither value is expected to carry a quote, but both are spliced into code the visitor runs.
     const app = loadApp();

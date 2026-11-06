@@ -101,6 +101,26 @@ public sealed class CredentialFlowPairingTests
     }
 
     [Fact]
+    public async Task WaitForPairingAsync_PublishesNoServerId_WhenThePushCarriedNone()
+    {
+        // A push without an id maps to Guid.Empty. Sent as "00000000-…", the page would show it as a real
+        // id and build a CompanionConnection snippet whose constructor rejects it; send nothing instead.
+        var (flow, store, steps, session) = await ReadySessionAsync();
+        using var _s = store;
+        steps.PairingToReturn = steps.PairingToReturn with
+        {
+            ServerId = Guid.Empty
+        };
+        store.TryAcquirePairingSlot();
+
+        await flow.WaitForPairingAsync(session, CancellationToken.None);
+
+        var events = await EventsOfAsync(session);
+        var payload = Assert.IsType<PairedPayload>(Assert.Single(events, e => e.Type == "paired").Data);
+        Assert.Null(payload.ServerId);
+    }
+
+    [Fact]
     public async Task WaitForPairingAsync_ReleasesThePairingSlotOnSuccess()
     {
         var (flow, store, _, session) = await ReadySessionAsync();
