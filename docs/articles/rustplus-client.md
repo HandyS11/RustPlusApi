@@ -18,7 +18,6 @@ await rustPlus.ConnectAsync();
 | `Port` | The Rust+ companion port (not the in-game connect port). |
 | `PlayerId` | Your Steam ID. |
 | `PlayerToken` | The player token from pairing. |
-| `UseFacepunchProxy` | *Legacy.* Route through Facepunch's old `/game/{ip}/{port}` relay, which now refuses every connection with HTTP 418. Use `ServerId` + `AuthToken` instead. |
 | `ServerId` | *(init, optional)* Facepunch's server id (`ServerPairing.ServerId`). Connects through the companion socket instead of `Server`/`Port`. |
 | `AuthToken` | *(init, optional)* The Rust+ companion auth token, `SteamLoginResult.Token`. Required with `ServerId`. |
 
@@ -27,8 +26,9 @@ await rustPlus.ConnectAsync();
 
 ### Companion socket
 
-Facepunch is phasing out direct connections to a server's companion port, and the legacy proxy
-(`UseFacepunchProxy`) now refuses every connection with HTTP 418. The official app connects through
+Facepunch is phasing out direct connections to a server's companion port, and its old relay,
+`/game/{ip}/{port}`, now refuses every connection with HTTP 418. The `UseFacepunchProxy` option that
+routed through it is gone; use `ServerId` and `AuthToken` instead. The official app connects through
 `wss://companion-rust.facepunch.com/socket/{serverId}` instead, authenticated with the companion auth
 token. Set `ServerId` and `AuthToken` to use the same route; the other members still identify the
 player.

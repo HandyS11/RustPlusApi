@@ -12,9 +12,6 @@ namespace RustPlusApi;
 /// <param name="Port">The port dedicated for the Rust+ companion app (not the one used to connect in-game).</param>
 /// <param name="PlayerId">Your Steam ID.</param>
 /// <param name="PlayerToken">Your player token acquired with FCM.</param>
-/// <param name="UseFacepunchProxy">Routes through Facepunch's legacy relay,
-/// <c>wss://companion-rust.facepunch.com/game/{Server}/{Port}</c>. That relay now refuses every connection
-/// with HTTP 418; set <see cref="ServerId"/> and <see cref="AuthToken"/> to use the companion socket instead.</param>
 /// <remarks>
 /// Setting <see cref="ServerId"/> (with <see cref="AuthToken"/>) routes the connection through
 /// Facepunch's companion socket, <c>wss://companion-rust.facepunch.com/socket/{ServerId}</c>, instead of
@@ -26,17 +23,12 @@ public sealed record RustPlusConnection(
     string Server,
     int Port,
     ulong PlayerId,
-    int PlayerToken,
-    // Not [Obsolete] although the relay is dead: [property: Obsolete] would not warn the callers that pass
-    // the flag positionally or by name, and obsoleting the constructor instead would need a second one,
-    // which the configuration binder (AddRustPlus(IConfigurationSection)) refuses to choose between.
-    bool UseFacepunchProxy = false)
+    int PlayerToken)
 {
     /// <summary>
     /// Facepunch's id for the server — the <c>id</c> field of the server's pairing notification
     /// (<c>ServerPairing.ServerId</c>). When set, the client connects through the companion socket for
-    /// this server and takes precedence over <see cref="UseFacepunchProxy"/>; it must not be
-    /// <see cref="Guid.Empty"/>.
+    /// this server instead of <see cref="Server"/>:<see cref="Port"/>; it must not be <see cref="Guid.Empty"/>.
     /// </summary>
     public Guid? ServerId { get; init; }
 
@@ -62,7 +54,6 @@ public sealed record RustPlusConnection(
             .Append(", ").Append(nameof(Port)).Append(" = ").Append(Port.ToString(CultureInfo.InvariantCulture))
             .Append(", ").Append(nameof(PlayerId)).Append(" = ").Append(PlayerId.ToString(CultureInfo.InvariantCulture))
             .Append(", ").Append(nameof(PlayerToken)).Append(" = ***")
-            .Append(", ").Append(nameof(UseFacepunchProxy)).Append(" = ").Append(UseFacepunchProxy)
             .Append(", ").Append(nameof(ServerId)).Append(" = ").Append(ServerId)
             .Append(", ").Append(nameof(AuthToken)).Append(" = ").Append(AuthToken is null ? string.Empty : "***");
         return true;

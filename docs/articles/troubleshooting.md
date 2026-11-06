@@ -29,8 +29,8 @@ using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId,
 ```
 
 `serverId` is `ServerPairing.ServerId`; `authToken` is `SteamLoginResult.Token` from the Steam login.
-The older `UseFacepunchProxy: true` relay (`/game/{ip}/{port}`) now rejects every connection with
-HTTP 418.
+Facepunch's old relay (`/game/{ip}/{port}`) now rejects every connection with HTTP 418, so the
+`UseFacepunchProxy` option that used it has been removed.
 
 See [Getting Started](getting-started.md) for the full connection example and [Credentials](credentials.md)
 for how to obtain the correct port from the pairing notification.

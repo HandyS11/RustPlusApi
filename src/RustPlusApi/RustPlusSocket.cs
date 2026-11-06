@@ -94,8 +94,8 @@ public abstract class RustPlusSocket(
 
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
-    /// <summary>Test seam: the companion host the companion-socket and proxy routes dial, so integration
-    /// tests can point them at the in-process mock server instead of Facepunch.</summary>
+    /// <summary>Test seam: the companion host the companion socket dials, so integration tests can point
+    /// it at the in-process mock server instead of Facepunch.</summary>
     internal Uri CompanionBaseUriForTests { get; set; } = RustPlusEndpoint.CompanionBaseUri;
 
     /// <summary>Test seam: the tracked receive loop, so tests can assert it actually completed on teardown.</summary>

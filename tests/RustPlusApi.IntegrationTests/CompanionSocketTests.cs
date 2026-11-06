@@ -4,9 +4,9 @@ using Xunit;
 namespace RustPlusApi.IntegrationTests;
 
 /// <summary>
-/// The routes that reach Facepunch's companion host — the companion socket and the legacy proxy —
-/// dialled against the in-process mock through <see cref="RustPlusSocket.CompanionBaseUriForTests"/>,
-/// so the handshake the client actually sends can be asserted without any live network call.
+/// The companion socket, dialled against the in-process mock through
+/// <see cref="RustPlusSocket.CompanionBaseUriForTests"/> so the handshake the client actually sends can be
+/// asserted without any live network call, and the direct route it must not leak the token to.
 /// </summary>
 public class CompanionSocketTests
 {
@@ -37,24 +37,6 @@ public class CompanionSocketTests
 
         // "a?b>" is YT9iPg== in standard base64; the token travels unpadded and URL-safe.
         Assert.Equal(["rustplus.auth.v1", "YT9iPg"], handshake.SubProtocols);
-    }
-
-    [Fact]
-    public async Task ConnectAsync_WithFacepunchProxy_DialsTheLegacyGamePathWithoutSubProtocols()
-    {
-        await using var server = new MockRustPlusServer();
-        server.Start();
-        await using var client =
-            new RustPlus(new RustPlusConnection("12.34.56.78", 28083, 1, 1, UseFacepunchProxy: true))
-            {
-                CompanionBaseUriForTests = new Uri($"ws://{MockRustPlusServer.Host}:{server.Port}/")
-            };
-
-        await client.ConnectAsync().WaitAsync(Timeout);
-
-        var handshake = Assert.IsType<MockHandshake>(server.LastHandshake);
-        Assert.Equal("/game/12.34.56.78/28083", handshake.Path);
-        Assert.Empty(handshake.SubProtocols);
     }
 
     [Fact]

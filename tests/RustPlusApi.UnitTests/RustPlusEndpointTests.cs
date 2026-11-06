@@ -17,20 +17,9 @@ public class RustPlusEndpointTests
     }
 
     [Fact]
-    public void GetUri_Proxy_UsesLegacyGamePath()
+    public void GetUri_ServerId_UsesCompanionSocket()
     {
-        var connection = new RustPlusConnection("12.34.56.78", 28082, 1, 2, UseFacepunchProxy: true);
-
-        Assert.Equal(new Uri("wss://companion-rust.facepunch.com/game/12.34.56.78/28082"),
-            RustPlusEndpoint.GetUri(connection, RustPlusEndpoint.CompanionBaseUri));
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void GetUri_ServerId_UsesCompanionSocket_RegardlessOfProxyFlag(bool useFacepunchProxy)
-    {
-        var connection = new RustPlusConnection("12.34.56.78", 28082, 1, 2, useFacepunchProxy)
+        var connection = new RustPlusConnection("12.34.56.78", 28082, 1, 2)
         {
             ServerId = ServerId
         };
@@ -106,19 +95,16 @@ public class RustPlusEndpointTests
     }
 
     [Fact]
-    public void GetUri_CompanionRoutes_ResolveAgainstTheGivenBase()
+    public void GetUri_CompanionSocket_ResolvesAgainstTheGivenBase()
     {
         var companionBase = new Uri("ws://127.0.0.1:5000/");
         var socket = new RustPlusConnection("12.34.56.78", 28082, 1, 2)
         {
             ServerId = ServerId
         };
-        var proxy = new RustPlusConnection("12.34.56.78", 28082, 1, 2, UseFacepunchProxy: true);
 
         Assert.Equal(new Uri("ws://127.0.0.1:5000/socket/089941d9-064e-4628-9c60-eaeb01a943e8"),
             RustPlusEndpoint.GetUri(socket, companionBase));
-        Assert.Equal(new Uri("ws://127.0.0.1:5000/game/12.34.56.78/28082"),
-            RustPlusEndpoint.GetUri(proxy, companionBase));
     }
 
     [Fact]

@@ -93,14 +93,13 @@ public class RustPlusServiceCollectionExtensionsTests
                 ["Rust:Port"] = "28082",
                 ["Rust:PlayerId"] = "76561198000000000",
                 ["Rust:PlayerToken"] = "123456789",
-                ["Rust:UseFacepunchProxy"] = "true",
             })
             .Build();
         var section = config.GetSection("Rust");
 
         // The binder materialises the positional record (documents the binding contract)…
         Assert.Equal(
-            new RustPlusConnection("1.2.3.4", 28082, 76561198000000000UL, 123456789, true),
+            new RustPlusConnection("1.2.3.4", 28082, 76561198000000000UL, 123456789),
             section.Get<RustPlusConnection>());
 
         // …and the registration resolves a client from it.

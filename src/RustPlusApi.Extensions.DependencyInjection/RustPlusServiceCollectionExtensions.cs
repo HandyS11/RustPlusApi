@@ -73,7 +73,7 @@ public static class RustPlusServiceCollectionExtensions
     /// Registers a single configured <see cref="IRustPlus"/> client as a container-disposed singleton,
     /// binding its <see cref="RustPlusConnection"/> from <paramref name="connectionSection"/>
     /// (keys: <c>Server</c>, <c>Port</c>, <c>PlayerId</c>, <c>PlayerToken</c>; optional <c>ServerId</c> and
-    /// <c>AuthToken</c> for the companion socket, and the legacy <c>UseFacepunchProxy</c>).
+    /// <c>AuthToken</c> for the companion socket).
     /// </summary>
     /// <remarks>No-op if an <see cref="IRustPlus"/> is already registered (first registration wins);
     /// <paramref name="configureOptions"/> delegates always compose regardless.</remarks>

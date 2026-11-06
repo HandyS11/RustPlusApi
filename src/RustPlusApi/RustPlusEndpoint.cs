@@ -12,15 +12,15 @@ internal static class RustPlusEndpoint
     /// <summary>The WebSocket subprotocol that announces a companion auth token as the next subprotocol.</summary>
     internal const string AuthSubProtocol = "rustplus.auth.v1";
 
-    /// <summary>Facepunch's companion host, serving both the legacy proxy and the companion socket.</summary>
+    /// <summary>Facepunch's companion host, which serves the companion socket.</summary>
     internal static readonly Uri CompanionBaseUri = new("wss://companion-rust.facepunch.com/");
 
     /// <summary>
     /// Gets the WebSocket address for <paramref name="connection"/>: the companion socket when a
-    /// <see cref="RustPlusConnection.ServerId"/> is set, else the legacy proxy or the server's app port.
+    /// <see cref="RustPlusConnection.ServerId"/> is set, else the server's app port.
     /// </summary>
     /// <param name="connection">The connection to resolve.</param>
-    /// <param name="companionBaseUri">The companion host the socket and proxy routes resolve against —
+    /// <param name="companionBaseUri">The companion host the companion socket resolves against —
     /// <see cref="CompanionBaseUri"/> outside tests.</param>
     /// <returns>The address to open the WebSocket against.</returns>
     internal static Uri GetUri(RustPlusConnection connection, Uri companionBaseUri)
@@ -30,16 +30,14 @@ internal static class RustPlusEndpoint
             return new Uri(companionBaseUri, $"socket/{serverId:D}");
         }
 
-        return connection.UseFacepunchProxy
-            ? new Uri(companionBaseUri, $"game/{connection.Server}/{connection.Port}")
-            : new Uri($"ws://{connection.Server}:{connection.Port}");
+        return new Uri($"ws://{connection.Server}:{connection.Port}");
     }
 
     /// <summary>
     /// Gets the WebSocket subprotocols for <paramref name="connection"/>, validating the companion-socket
     /// settings on the way. The companion socket takes the auth token as a subprotocol (browsers cannot
-    /// set headers on a WebSocket), base64url-encoded so it is a valid protocol token; the other routes
-    /// take none.
+    /// set headers on a WebSocket), base64url-encoded so it is a valid protocol token; a direct connection
+    /// takes none.
     /// </summary>
     /// <param name="connection">The connection to resolve.</param>
     /// <returns>The subprotocols to offer, in order; empty when none apply.</returns>

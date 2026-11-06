@@ -20,7 +20,6 @@ public class RustPlusConnectionTests
         Assert.Contains("Server = 12.34.56.78", text, StringComparison.Ordinal);
         Assert.Contains("Port = 28082", text, StringComparison.Ordinal);
         Assert.Contains("PlayerId = 76561198000000000", text, StringComparison.Ordinal);
-        Assert.Contains("UseFacepunchProxy = False", text, StringComparison.Ordinal);
         Assert.Contains("ServerId = ,", text, StringComparison.Ordinal);
         Assert.EndsWith("AuthToken =  }", text, StringComparison.Ordinal);
     }
