@@ -1,7 +1,7 @@
 # RustPlusApi — Agent Instructions
 
 Six NuGet packages for the Rust+ companion app API, multi-targeting **netstandard2.0 + net10.0**.
-See [CLAUDE.md](../CLAUDE.md) for the full architecture overview.
+See [AGENTS.md](../AGENTS.md) for the full architecture overview.
 
 ## Build & Test
 
