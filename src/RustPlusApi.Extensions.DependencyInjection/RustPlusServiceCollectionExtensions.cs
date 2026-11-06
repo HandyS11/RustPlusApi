@@ -5,6 +5,8 @@ using Microsoft.Extensions.Options;
 using RustPlusApi;
 using RustPlusApi.Extensions.DependencyInjection;
 using RustPlusApi.Interfaces;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 
 #pragma warning disable IDE0130 // Namespace does not match folder structure — MS convention for DI extension methods
 namespace Microsoft.Extensions.DependencyInjection;
@@ -71,9 +73,10 @@ public static class RustPlusServiceCollectionExtensions
 
     /// <summary>
     /// Registers a single configured <see cref="IRustPlus"/> client as a container-disposed singleton,
-    /// binding its <see cref="RustPlusConnection"/> from <paramref name="connectionSection"/>
-    /// (keys: <c>Server</c>, <c>Port</c>, <c>PlayerId</c>, <c>PlayerToken</c>; optional <c>ServerId</c> and
-    /// <c>AuthToken</c> for the companion socket).
+    /// binding its <see cref="RustPlusConnection"/> from <paramref name="connectionSection"/>. A section with a
+    /// <c>ServerId</c> key binds a <see cref="CompanionConnection"/> (keys: <c>ServerId</c>, <c>AuthToken</c>,
+    /// <c>PlayerId</c>, <c>PlayerToken</c>); any other binds a <see cref="DirectConnection"/> (keys:
+    /// <c>Server</c>, <c>Port</c>, <c>PlayerId</c>, <c>PlayerToken</c>).
     /// </summary>
     /// <remarks>No-op if an <see cref="IRustPlus"/> is already registered (first registration wins);
     /// <paramref name="configureOptions"/> delegates always compose regardless.</remarks>
@@ -92,11 +95,7 @@ public static class RustPlusServiceCollectionExtensions
             throw new ArgumentNullException(nameof(connectionSection));
         }
 
-        return services.AddRustPlus(
-            _ => connectionSection.Get<RustPlusConnection>()
-                 ?? throw new InvalidOperationException(
-                     "The configuration section could not be bound to a RustPlusConnection — is the section empty?"),
-            configureOptions);
+        return services.AddRustPlus(_ => BindConnection(connectionSection), configureOptions);
     }
 
     /// <summary>
@@ -136,5 +135,34 @@ public static class RustPlusServiceCollectionExtensions
             sp.GetRequiredService<IOptions<RustPlusSocketOptions>>().Value,
             sp.GetService<ILoggerFactory>()));
         return services;
+    }
+
+    /// <summary>Binds the connection type the section describes: a <c>ServerId</c> key means the companion
+    /// socket, anything else a direct connection.</summary>
+    /// <param name="section">The configuration section to bind.</param>
+    /// <returns>The bound connection.</returns>
+    /// <exception cref="InvalidOperationException">The section is empty, or a key the chosen type's
+    /// constructor needs is missing.</exception>
+    /// <exception cref="ArgumentException">A value the constructor refuses, such as a blank
+    /// <c>AuthToken</c>.</exception>
+    internal static RustPlusConnection BindConnection(IConfiguration section)
+    {
+        RustPlusConnection? connection = null;
+        try
+        {
+            connection = string.IsNullOrEmpty(section[nameof(CompanionConnection.ServerId)])
+                ? section.Get<DirectConnection>()
+                : section.Get<CompanionConnection>();
+        }
+        catch (TargetInvocationException ex)
+        {
+            // The binder calls the constructor through reflection, which wraps what it throws (a reflection
+            // call always sets the inner exception); surface the constructor's own exception, which names the
+            // bad parameter, with its original stack trace.
+            ExceptionDispatchInfo.Capture(ex.InnerException!).Throw();
+        }
+
+        return connection ?? throw new InvalidOperationException(
+            "The configuration section could not be bound to a RustPlusConnection — is the section empty?");
     }
 }

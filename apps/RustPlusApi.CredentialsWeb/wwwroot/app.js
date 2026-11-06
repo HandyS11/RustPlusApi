@@ -241,16 +241,14 @@ function onPaired(payload) {
     document.getElementById("pair-server-id").textContent = payload.serverId ?? "";
     document.getElementById("pair-auth-token").textContent = authToken ?? "";
 
-    const connection = "new RustPlusConnection(" + csharpStringLiteral(payload.ip) + ", " + payload.port +
-        ", " + payload.playerId + ", " + payload.playerToken + ")";
+    const player = ", " + payload.playerId + ", " + payload.playerToken + ")";
     // With both values the snippet uses Facepunch's companion socket, the route the official app
     // takes; without them (a pairing pushed before this page carried them) it connects directly.
-    document.getElementById("snippet").textContent = payload.serverId && authToken
-        ? "new RustPlus(" + connection + "\n{\n"
-            + "    ServerId = new Guid(" + csharpStringLiteral(payload.serverId) + "),\n"
-            + "    AuthToken = " + csharpStringLiteral(authToken) + ",\n"
-            + "});"
-        : "new RustPlus(" + connection + ");";
+    const connection = payload.serverId && authToken
+        ? "new CompanionConnection(new Guid(" + csharpStringLiteral(payload.serverId) + "), "
+            + csharpStringLiteral(authToken) + player
+        : "new DirectConnection(" + csharpStringLiteral(payload.ip) + ", " + payload.port + player;
+    document.getElementById("snippet").textContent = "new RustPlus(" + connection + ");";
     show("paired");
 }
 

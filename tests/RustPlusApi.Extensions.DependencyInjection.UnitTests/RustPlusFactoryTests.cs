@@ -7,7 +7,7 @@ namespace RustPlusApi.Extensions.DependencyInjection.UnitTests;
 
 public class RustPlusFactoryTests
 {
-    private static RustPlusConnection AnyConnection() => new("127.0.0.1", 28082, 1UL, 1);
+    private static DirectConnection AnyConnection() => new("127.0.0.1", 28082, 1UL, 1);
 
     [Fact]
     public void AddRustPlusFactory_RegistersASingletonFactory()

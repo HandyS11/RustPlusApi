@@ -9,9 +9,10 @@ auto-wires from the host's `ILoggerFactory`; tuning flows through `IOptions<Rust
 
 ```csharp
 // explicit connection
-services.AddRustPlus(new RustPlusConnection("12.34.56.78", 28082, playerId, playerToken));
+services.AddRustPlus(new DirectConnection("12.34.56.78", 28082, playerId, playerToken));
 
-// or bound from configuration (keys: Server, Port, PlayerId, PlayerToken; optional ServerId + AuthToken)
+// or bound from configuration: Server, Port, PlayerId, PlayerToken binds a DirectConnection;
+// ServerId, AuthToken, PlayerId, PlayerToken binds a CompanionConnection
 services.AddRustPlus(configuration.GetSection("Rust"));
 
 // or resolved from the provider

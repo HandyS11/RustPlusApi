@@ -16,60 +16,35 @@ internal static class RustPlusEndpoint
     internal static readonly Uri CompanionBaseUri = new("wss://companion-rust.facepunch.com/");
 
     /// <summary>
-    /// Gets the WebSocket address for <paramref name="connection"/>: the companion socket when a
-    /// <see cref="RustPlusConnection.ServerId"/> is set, else the server's app port.
+    /// Gets the WebSocket address for <paramref name="connection"/>: the companion socket for a
+    /// <see cref="CompanionConnection"/>, the server's app port for a <see cref="DirectConnection"/>.
     /// </summary>
     /// <param name="connection">The connection to resolve.</param>
     /// <param name="companionBaseUri">The companion host the companion socket resolves against —
     /// <see cref="CompanionBaseUri"/> outside tests.</param>
     /// <returns>The address to open the WebSocket against.</returns>
-    internal static Uri GetUri(RustPlusConnection connection, Uri companionBaseUri)
+    /// <exception cref="ArgumentException"><paramref name="connection"/> is neither of the two types.</exception>
+    internal static Uri GetUri(RustPlusConnection connection, Uri companionBaseUri) => connection switch
     {
-        if (connection.ServerId is { } serverId)
-        {
-            return new Uri(companionBaseUri, $"socket/{serverId:D}");
-        }
-
-        return new Uri($"ws://{connection.Server}:{connection.Port}");
-    }
+        CompanionConnection companion => new Uri(companionBaseUri, $"socket/{companion.ServerId:D}"),
+        DirectConnection direct => new Uri($"ws://{direct.Server}:{direct.Port}"),
+        _ => throw Unsupported(connection),
+    };
 
     /// <summary>
-    /// Gets the WebSocket subprotocols for <paramref name="connection"/>, validating the companion-socket
-    /// settings on the way. The companion socket takes the auth token as a subprotocol (browsers cannot
-    /// set headers on a WebSocket), base64url-encoded so it is a valid protocol token; a direct connection
-    /// takes none.
+    /// Gets the WebSocket subprotocols for <paramref name="connection"/>. The companion socket takes the
+    /// auth token as a subprotocol (browsers cannot set headers on a WebSocket), base64url-encoded so it is
+    /// a valid protocol token; a direct connection takes none, so the token can never reach a game server.
     /// </summary>
     /// <param name="connection">The connection to resolve.</param>
     /// <returns>The subprotocols to offer, in order; empty when none apply.</returns>
-    /// <exception cref="ArgumentException"><see cref="RustPlusConnection.ServerId"/> is set but is
-    /// <see cref="Guid.Empty"/>, or <see cref="RustPlusConnection.AuthToken"/> is null, empty or
-    /// whitespace — the companion socket would reject the handshake with a bare 404 or 403.</exception>
-    internal static IReadOnlyList<string> GetSubProtocols(RustPlusConnection connection)
+    /// <exception cref="ArgumentException"><paramref name="connection"/> is neither of the two types.</exception>
+    internal static IReadOnlyList<string> GetSubProtocols(RustPlusConnection connection) => connection switch
     {
-        if (connection.ServerId is not { } serverId)
-        {
-            return [];
-        }
-
-        if (serverId == Guid.Empty)
-        {
-            throw new ArgumentException(
-                $"{nameof(RustPlusConnection.ServerId)} is Guid.Empty; pass the server id from the pairing notification.",
-                nameof(connection));
-        }
-
-        // A pattern rather than string.IsNullOrWhiteSpace alone: netstandard2.0's reference assembly
-        // lacks [NotNullWhen(false)], so only the pattern proves the token non-null on both TFMs.
-        if (connection.AuthToken is not { } authToken || string.IsNullOrWhiteSpace(authToken))
-        {
-            throw new ArgumentException(
-                $"{nameof(RustPlusConnection.AuthToken)} is required when {nameof(RustPlusConnection.ServerId)} is set: "
-                + "the companion socket authenticates with the Rust+ auth token from the Steam login.",
-                nameof(connection));
-        }
-
-        return [AuthSubProtocol, ToBase64Url(authToken)];
-    }
+        CompanionConnection companion => [AuthSubProtocol, ToBase64Url(companion.AuthToken)],
+        DirectConnection => [],
+        _ => throw Unsupported(connection),
+    };
 
     /// <summary>Encodes <paramref name="value"/> as unpadded base64url (RFC 4648 §5) of its UTF-8 bytes.</summary>
     /// <param name="value">The text to encode.</param>
@@ -79,4 +54,9 @@ internal static class RustPlusEndpoint
             .TrimEnd('=')
             .Replace('+', '-')
             .Replace('/', '_');
+
+    private static ArgumentException Unsupported(RustPlusConnection connection) => new(
+        $"{connection.GetType().Name} is not a supported connection; use a {nameof(DirectConnection)} or a "
+        + $"{nameof(CompanionConnection)}.",
+        nameof(connection));
 }

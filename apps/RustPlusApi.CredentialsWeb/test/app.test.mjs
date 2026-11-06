@@ -59,7 +59,7 @@ test("the snippet names the pairing's connection values", () => {
     app.context.onPaired(pairing);
     assert.equal(
         app.element("snippet").textContent,
-        "new RustPlus(new RustPlusConnection(\"10.0.0.1\", 28082, 76561198000000001, 123456789));");
+        "new RustPlus(new DirectConnection(\"10.0.0.1\", 28082, 76561198000000001, 123456789));");
 });
 
 test("the snippet escapes the pushed ip as a C# string literal", () => {
@@ -69,7 +69,7 @@ test("the snippet escapes the pushed ip as a C# string literal", () => {
     app.context.onPaired({ ...pairing, ip: "1.2.3.4\", 1, 1, 1)); Evil(); _ = (\"x\\y\nz" });
     assert.equal(
         app.element("snippet").textContent,
-        "new RustPlus(new RustPlusConnection(\"1.2.3.4\\\", 1, 1, 1)); Evil(); _ = (\\\"x\\\\y\\u000az\", "
+        "new RustPlus(new DirectConnection(\"1.2.3.4\\\", 1, 1, 1)); Evil(); _ = (\\\"x\\\\y\\u000az\", "
         + "28082, 76561198000000001, 123456789));");
 });
 
@@ -82,11 +82,8 @@ test("with the auth token and a server id, the snippet connects through the comp
     app.context.onPaired({ ...pairing, serverId });
     assert.equal(
         app.element("snippet").textContent,
-        "new RustPlus(new RustPlusConnection(\"10.0.0.1\", 28082, 76561198000000001, 123456789)\n"
-        + "{\n"
-        + "    ServerId = new Guid(\"089941d9-064e-4628-9c60-eaeb01a943e8\"),\n"
-        + "    AuthToken = \"steam-token\",\n"
-        + "});");
+        "new RustPlus(new CompanionConnection(new Guid(\"089941d9-064e-4628-9c60-eaeb01a943e8\"), "
+        + "\"steam-token\", 76561198000000001, 123456789));");
     assert.equal(app.element("pair-server-id").textContent, serverId);
     assert.equal(app.element("pair-auth-token").textContent, "steam-token");
 });
@@ -97,6 +94,6 @@ test("the companion snippet escapes the auth token and server id as C# string li
     app.context.onCredentials({ ...credentials, authToken: "a\"b\\c" });
     app.context.onPaired({ ...pairing, serverId: "x\"); Evil(); //" });
     const snippet = app.element("snippet").textContent;
-    assert.ok(snippet.includes("ServerId = new Guid(\"x\\\"); Evil(); //\"),"), snippet);
-    assert.ok(snippet.includes("AuthToken = \"a\\\"b\\\\c\","), snippet);
+    assert.ok(snippet.includes("new Guid(\"x\\\"); Evil(); //\"), "), snippet);
+    assert.ok(snippet.includes(", \"a\\\"b\\\\c\", "), snippet);
 });

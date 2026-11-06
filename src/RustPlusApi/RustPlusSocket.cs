@@ -16,9 +16,9 @@ namespace RustPlusApi;
 /// <summary>
 /// A Rust+ API client made in C#.
 /// </summary>
-/// <param name="connection">The server endpoint and player credentials to connect as. A connection that
-/// sets <see cref="RustPlusConnection.ServerId"/> must also set <see cref="RustPlusConnection.AuthToken"/>;
-/// otherwise an <see cref="ArgumentException"/> is thrown here rather than at the first connect.</param>
+/// <param name="connection">The player to connect as and the route to the server: a
+/// <see cref="DirectConnection"/> or a <see cref="CompanionConnection"/>. Any other type throws an
+/// <see cref="ArgumentException"/> here rather than at the first connect.</param>
 /// <param name="options">Tuning options (timeouts, keep-alive, buffer size); defaults are used when <see langword="null"/>.</param>
 /// <param name="loggerFactory">Routes the client's diagnostics into your logging stack; logging is
 /// disabled (a no-op <c>NullLogger</c>) when <see langword="null"/>.</param>
@@ -68,8 +68,8 @@ public abstract class RustPlusSocket(
             SingleReader = true
         });
 
-    /// <summary>The WebSocket subprotocols every connect offers — resolved at construction, so a
-    /// companion-socket connection missing its auth token fails here rather than at the handshake.</summary>
+    /// <summary>The WebSocket subprotocols every connect offers — resolved at construction, so an
+    /// unsupported connection type fails here rather than at the handshake.</summary>
     private readonly IReadOnlyList<string> _subProtocols = RustPlusEndpoint.GetSubProtocols(connection);
 
     /// <summary>int (not uint) so Interlocked.Increment works on netstandard2.0, which lacks the uint overload.</summary>

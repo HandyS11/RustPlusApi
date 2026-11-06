@@ -73,7 +73,7 @@ public class EntityClientTests
     {
         var server = new MockRustPlusServer(EntityResponder);
         server.Start();
-        var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        var client = new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         return (server, client);
     }
@@ -82,7 +82,7 @@ public class EntityClientTests
     {
         var server = new MockRustPlusServer();
         server.Start();
-        var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+        var client = new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         return (server, client);
     }
@@ -123,7 +123,7 @@ public class EntityClientTests
         });
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetAlarmInfoAsync(1).WaitAsync(Timeout);
@@ -156,7 +156,7 @@ public class EntityClientTests
         });
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetStorageMonitorInfoAsync(1).WaitAsync(Timeout);
@@ -230,7 +230,7 @@ public class EntityClientTests
             : MockResponses.Default(req));
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.SetSmartSwitchValueAsync(42, true).WaitAsync(Timeout);
@@ -257,7 +257,7 @@ public class EntityClientTests
             : MockResponses.Default(req));
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.StrobeSmartSwitchAsync(42, timeoutMilliseconds: 10, value: true)
@@ -386,7 +386,7 @@ public class EntityClientTests
         });
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetMapMarkersAsync().WaitAsync(Timeout);
@@ -437,7 +437,7 @@ public class EntityClientTests
         });
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetSmartDeviceInfoAsync(1).WaitAsync(Timeout);
@@ -471,7 +471,7 @@ public class EntityClientTests
         });
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         // The server answered successfully with the entity's actual type (Alarm); the strict
@@ -490,7 +490,7 @@ public class EntityClientTests
         await using var server = new MockRustPlusServer();
         server.Start();
         await using var client =
-            new SelectorProbeRustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId,
+            new SelectorProbeRustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId,
                 PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 

@@ -49,9 +49,8 @@ internal static class CredentialsReaderUtility
             ServerId is { } serverId ? $"the companion socket for server {serverId}" : $"{Ip}:{Port}";
 
         public RustPlusApi.RustPlusConnection ToConnection() =>
-            new(Ip, Port, PlayerId, PlayerToken)
-            {
-                ServerId = ServerId, AuthToken = AuthToken
-            };
+            ServerId is { } serverId
+                ? new RustPlusApi.CompanionConnection(serverId, AuthToken!, PlayerId, PlayerToken)
+                : new RustPlusApi.DirectConnection(Ip, Port, PlayerId, PlayerToken);
     }
 }

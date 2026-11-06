@@ -19,11 +19,7 @@ public class CompanionSocketTests
         await using var server = new MockRustPlusServer();
         server.Start();
 
-        // Server/Port name a host that does not exist: with ServerId set they must not be dialled.
-        await using var client = new RustPlus(new RustPlusConnection("example.invalid", 28083, 1, 1)
-        {
-            ServerId = ServerId, AuthToken = "a?b>"
-        })
+        await using var client = new RustPlus(new CompanionConnection(ServerId, "a?b>", 1, 1))
         {
             CompanionBaseUriForTests = new Uri($"ws://{MockRustPlusServer.Host}:{server.Port}/")
         };
@@ -40,16 +36,13 @@ public class CompanionSocketTests
     }
 
     [Fact]
-    public async Task ConnectAsync_Direct_NeverOffersTheAuthToken()
+    public async Task ConnectAsync_Direct_OffersNoSubProtocols()
     {
-        // The auth token is for Facepunch's companion host only: a direct connection goes to whatever
-        // the game server's app port is, so it must not carry the token even when one is set.
+        // A direct connection goes to whatever the game server's app port is. It has no auth token to
+        // leak, and the handshake must not announce one.
         await using var server = new MockRustPlusServer();
         server.Start();
-        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1)
-        {
-            AuthToken = "secret-companion-token"
-        });
+        await using var client = new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, 1, 1));
 
         await client.ConnectAsync().WaitAsync(Timeout);
 

@@ -1,41 +1,46 @@
 # RustPlus Client
 
-`RustPlus` is the core client. It opens a WebSocket to the server's companion port — or, with a
-`ServerId`, to Facepunch's [companion socket](#companion-socket) — and exposes a typed, task-based API.
+`RustPlus` is the core client. It opens a WebSocket to the server's companion port, or to Facepunch's
+[companion socket](#companion-socket), and exposes a typed, task-based API.
 
 ## Construct and connect
 
 ```csharp
-using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken));
+using var rustPlus = new RustPlus(new DirectConnection(server, port, playerId, playerToken));
 await rustPlus.ConnectAsync();
 ```
 
-`RustPlusConnection` is a record grouping the connection identity:
+What you pass is a `RustPlusConnection`: the player every request is issued as, plus the route to the
+server, chosen by which of its two types you build.
 
-| Property | Meaning |
+| Type | Connects to | Constructor |
+| --- | --- | --- |
+| `DirectConnection` | The server's app port, `ws://{server}:{port}`. | `(server, port, playerId, playerToken)` |
+| `CompanionConnection` | Facepunch's [companion socket](#companion-socket). | `(serverId, authToken, playerId, playerToken)` |
+
+| Value | Meaning |
 | --- | --- |
-| `Server` | The server's IP address. |
-| `Port` | The Rust+ companion port (not the in-game connect port). |
-| `PlayerId` | Your Steam ID. |
-| `PlayerToken` | The player token from pairing. |
-| `ServerId` | *(init, optional)* Facepunch's server id (`ServerPairing.ServerId`). Connects through the companion socket instead of `Server`/`Port`. |
-| `AuthToken` | *(init, optional)* The Rust+ companion auth token, `SteamLoginResult.Token`. Required with `ServerId`. |
+| `server` | The server's IP address. |
+| `port` | The Rust+ companion port (not the in-game connect port). |
+| `serverId` | Facepunch's server id, `ServerPairing.ServerId`. |
+| `authToken` | The Rust+ companion auth token, `SteamLoginResult.Token`. |
+| `playerId` | Your Steam ID. |
+| `playerToken` | The player token from pairing. |
 
-> `RustPlusConnection.ToString()` redacts `PlayerToken` and `AuthToken` (they print as `***`) so the
+> `ToString()` on either type redacts `PlayerToken` and `AuthToken` (they print as `***`) so the
 > credentials are not accidentally leaked through logs or exceptions.
 
 ### Companion socket
 
 Facepunch is phasing out direct connections to a server's companion port, and its old relay,
-`/game/{ip}/{port}`, now refuses every connection with HTTP 418. The `UseFacepunchProxy` option that
-routed through it is gone; use `ServerId` and `AuthToken` instead. The official app connects through
+`/game/{ip}/{port}`, now refuses every connection with HTTP 418 (the `UseFacepunchProxy` option that
+routed through it is gone). The official app connects through
 `wss://companion-rust.facepunch.com/socket/{serverId}` instead, authenticated with the companion auth
-token. Set `ServerId` and `AuthToken` to use the same route; the other members still identify the
-player.
+token. A `CompanionConnection` uses the same route.
 
 Both values come out of the registration chain in
-[`RustPlusApi.Fcm.Registration`](credentials.md): `ServerId` from the server pairing notification,
-and `AuthToken` from the Steam login — `SteamLoginResult.Token`, returned by
+[`RustPlusApi.Fcm.Registration`](credentials.md): `serverId` from the server pairing notification,
+and `authToken` from the Steam login — `SteamLoginResult.Token`, returned by
 `FcmRegistration.RegisterWithRustPlusAsync`. Keep that token: it is not part of the saved
 `rustplus.config.json`, and it is a credential, so store it like one. It expires 14 days after the
 login (its own `exp` claim says so), so a long-running app must sign in again before then.
@@ -45,20 +50,21 @@ var steamLogin = await registration.RegisterWithRustPlusAsync(credentials);
 // … pair in game …
 ServerPairing pairing = await listener.WaitForServerPairingAsync();
 
-var connection = new RustPlusConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken)
-{
-    ServerId = pairing.ServerId,    // from the server pairing notification
-    AuthToken = steamLogin.Token,   // the Rust+ companion token from the Steam login
-};
+var connection = new CompanionConnection(
+    pairing.ServerId,   // from the server pairing notification
+    steamLogin.Token,   // the Rust+ companion token from the Steam login
+    pairing.PlayerId,
+    pairing.PlayerToken);
 using var rustPlus = new RustPlus(connection);
 await rustPlus.ConnectAsync();
 ```
 
-The `RustPlus` constructor throws `ArgumentException` when `ServerId` is set without an `AuthToken`,
-or is `Guid.Empty` (what `ServerPairing.ServerId` holds if a push carried no id). The token is only
-ever sent to the companion host — a direct connection never offers it. Once connected, a handshake
-that fails with HTTP 403 means the auth token was rejected (sign in again); 404 means the server id is
-unknown. A wrong player token still connects and fails requests with `not_found`.
+The `CompanionConnection` constructor throws `ArgumentException` when `serverId` is `Guid.Empty`
+(what `ServerPairing.ServerId` holds if a push carried no id) or `authToken` is blank, and
+`ArgumentNullException` when `authToken` is `null`. The token is only ever sent to the companion
+host; a `DirectConnection` has no token to send. A handshake that fails with HTTP 403 means the auth
+token was rejected (sign in again); 404 means the server id is unknown. A wrong player token still
+connects and fails requests with `not_found`.
 
 ## Connection lifecycle
 

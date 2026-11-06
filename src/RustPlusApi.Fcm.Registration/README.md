@@ -29,12 +29,11 @@ CredentialsStore.Save("rustplus.config.json", credentials);
 
 using var listener = new PairingListener(credentials);
 ServerPairing pairing = await listener.WaitForServerPairingAsync(); // pair in game
-var rustPlus = new RustPlus(new RustPlusConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken)
-{
-    // Optional: connect through Facepunch's companion socket rather than the server's app port.
-    ServerId = pairing.ServerId,
-    AuthToken = steamLogin.Token, // a credential — CredentialsStore does not save it
-});
+// Through Facepunch's companion socket. steamLogin.Token is a credential: CredentialsStore does not save it.
+var rustPlus = new RustPlus(
+    new CompanionConnection(pairing.ServerId, steamLogin.Token, pairing.PlayerId, pairing.PlayerToken));
+// Or straight to the server's app port, where it still accepts that:
+// new RustPlus(new DirectConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken));
 ```
 
 ## Requirements & caveats

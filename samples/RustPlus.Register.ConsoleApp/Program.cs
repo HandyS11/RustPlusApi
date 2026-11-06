@@ -73,19 +73,14 @@ try
 
     var pairing = await listener.WaitForServerPairingAsync(cancellationToken);
 
-    var connection =
-        $"new RustPlusConnection(\"{pairing.Ip}\", {pairing.Port}, {pairing.PlayerId}, {pairing.PlayerToken})";
-
     Console.WriteLine();
     Console.WriteLine(
         $"Paired with {pairing.Name ?? "the server"}! Connect through Facepunch's companion socket (what the official app uses):");
-    Console.WriteLine($"  new RustPlus({connection}");
-    Console.WriteLine("  {");
-    Console.WriteLine($"      ServerId = new Guid(\"{pairing.ServerId:D}\"),");
-    Console.WriteLine($"      AuthToken = \"{steamLogin.Token}\",");
-    Console.WriteLine("  });");
+    Console.WriteLine(
+        $"  new RustPlus(new CompanionConnection(new Guid(\"{pairing.ServerId:D}\"), \"{steamLogin.Token}\", {pairing.PlayerId}, {pairing.PlayerToken}));");
     Console.WriteLine("or directly to the server's app port, where the server still accepts that:");
-    Console.WriteLine($"  new RustPlus({connection});");
+    Console.WriteLine(
+        $"  new RustPlus(new DirectConnection(\"{pairing.Ip}\", {pairing.Port}, {pairing.PlayerId}, {pairing.PlayerToken}));");
     Console.WriteLine();
     Console.WriteLine("credentials.json for the RustPlus.ConsoleApp and RustPlus.Camera.ConsoleApp samples:");
     Console.WriteLine(JsonSerializer.Serialize(new

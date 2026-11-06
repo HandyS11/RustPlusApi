@@ -4,58 +4,45 @@ using System.Text;
 namespace RustPlusApi;
 
 /// <summary>
-/// Connection identity for a <see cref="RustPlus"/> client: the server endpoint and the player
-/// credentials a request is issued as. Grouping these into one value keeps the
-/// <see cref="RustPlus"/> constructor readable at the call site.
+/// What a <see cref="RustPlus"/> client connects as: the player every request is issued as, plus the route
+/// to the server, chosen by the concrete type.
+/// <list type="bullet">
+/// <item><see cref="DirectConnection"/> connects to the server's app port.</item>
+/// <item><see cref="CompanionConnection"/> connects through Facepunch's companion socket, the route the
+/// official Rust+ app uses as Facepunch phases out direct connections.</item>
+/// </list>
 /// </summary>
-/// <param name="Server">The IP address of the Rust+ server.</param>
-/// <param name="Port">The port dedicated for the Rust+ companion app (not the one used to connect in-game).</param>
-/// <param name="PlayerId">Your Steam ID.</param>
-/// <param name="PlayerToken">Your player token acquired with FCM.</param>
-/// <remarks>
-/// Setting <see cref="ServerId"/> (with <see cref="AuthToken"/>) routes the connection through
-/// Facepunch's companion socket, <c>wss://companion-rust.facepunch.com/socket/{ServerId}</c>, instead of
-/// <see cref="Server"/>:<see cref="Port"/>. That is the route the official Rust+ app uses as Facepunch
-/// phases out direct connections to a server's app port; <see cref="Server"/> and <see cref="Port"/> are
-/// then not used to connect.
-/// </remarks>
-public sealed record RustPlusConnection(
-    string Server,
-    int Port,
-    ulong PlayerId,
-    int PlayerToken)
+/// <remarks>Only those two types derive from this one; <see cref="RustPlus"/> rejects any other.</remarks>
+public abstract record RustPlusConnection
 {
-    /// <summary>
-    /// Facepunch's id for the server — the <c>id</c> field of the server's pairing notification
-    /// (<c>ServerPairing.ServerId</c>). When set, the client connects through the companion socket for
-    /// this server instead of <see cref="Server"/>:<see cref="Port"/>; it must not be <see cref="Guid.Empty"/>.
-    /// </summary>
-    public Guid? ServerId { get; init; }
+    /// <summary>Initializes the player identity shared by every route.</summary>
+    /// <param name="playerId">Your Steam ID.</param>
+    /// <param name="playerToken">Your player token, from the server pairing.</param>
+    private protected RustPlusConnection(ulong playerId, int playerToken)
+    {
+        PlayerId = playerId;
+        PlayerToken = playerToken;
+    }
+
+    /// <summary>Your Steam ID.</summary>
+    public ulong PlayerId { get; }
+
+    /// <summary>Your player token, from the server pairing. A credential: <see cref="object.ToString"/>
+    /// prints it as <c>***</c>.</summary>
+    public int PlayerToken { get; }
 
     /// <summary>
-    /// The Rust+ companion auth token — <c>SteamLoginResult.Token</c>, returned by
-    /// <c>FcmRegistration.RegisterWithRustPlusAsync</c> in <c>RustPlusApi.Fcm.Registration</c> (the same token
-    /// that registers the device for push notifications). Required, and checked when the client is
-    /// constructed, when <see cref="ServerId"/> is set; never sent otherwise.
-    /// </summary>
-    public string? AuthToken { get; init; }
-
-    /// <summary>
-    /// Redacts <see cref="PlayerToken"/> and <see cref="AuthToken"/> (credentials) from the record's string
-    /// form so they cannot leak through logs, exceptions, or string interpolation. Equality is unaffected —
-    /// the generated <c>Equals</c>/<c>GetHashCode</c> still use every member, including the tokens.
+    /// Redacts <see cref="PlayerToken"/> (a credential) from the record's string form so it cannot leak
+    /// through logs, exceptions, or string interpolation. Equality is unaffected: the generated
+    /// <c>Equals</c>/<c>GetHashCode</c> still use every member, including the tokens.
     /// </summary>
     /// <param name="builder">The builder the record's <c>ToString</c> writes its members into.</param>
     /// <returns><see langword="true"/> so the record renders its members between braces.</returns>
-    private bool PrintMembers(StringBuilder builder)
+    protected virtual bool PrintMembers(StringBuilder builder)
     {
         builder
-            .Append(nameof(Server)).Append(" = ").Append(Server)
-            .Append(", ").Append(nameof(Port)).Append(" = ").Append(Port.ToString(CultureInfo.InvariantCulture))
-            .Append(", ").Append(nameof(PlayerId)).Append(" = ").Append(PlayerId.ToString(CultureInfo.InvariantCulture))
-            .Append(", ").Append(nameof(PlayerToken)).Append(" = ***")
-            .Append(", ").Append(nameof(ServerId)).Append(" = ").Append(ServerId)
-            .Append(", ").Append(nameof(AuthToken)).Append(" = ").Append(AuthToken is null ? string.Empty : "***");
+            .Append(nameof(PlayerId)).Append(" = ").Append(PlayerId.ToString(CultureInfo.InvariantCulture))
+            .Append(", ").Append(nameof(PlayerToken)).Append(" = ***");
         return true;
     }
 }

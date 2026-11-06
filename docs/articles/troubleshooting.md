@@ -21,11 +21,7 @@ the server-pairing push notification (`ServerPairing.Port`).
    [Companion socket](rustplus-client.md#companion-socket):
 
 ```csharp
-using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken)
-{
-    ServerId = serverId,
-    AuthToken = authToken,
-});
+using var rustPlus = new RustPlus(new CompanionConnection(serverId, authToken, playerId, playerToken));
 ```
 
 `serverId` is `ServerPairing.ServerId`; `authToken` is `SteamLoginResult.Token` from the Steam login.

@@ -93,10 +93,9 @@ CredentialsStore.Save("rustplus.config.json", credentials);
 // Step 8: pair in game; one await yields the RustPlus constructor args.
 using var listener = new PairingListener(credentials);
 ServerPairing pairing = await listener.WaitForServerPairingAsync();
-// new RustPlus(new RustPlusConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken)
-// {
-//     ServerId = pairing.ServerId, AuthToken = steamLogin.Token, // companion socket
-// })
+// new RustPlus(new CompanionConnection(pairing.ServerId, steamLogin.Token, pairing.PlayerId, pairing.PlayerToken))
+// or, where the server still accepts direct connections:
+// new RustPlus(new DirectConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken))
 ```
 
 | Step | Component | Result |

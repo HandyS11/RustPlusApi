@@ -23,7 +23,7 @@ public class SocketErrorTests
         // timeout (default 30 s). Killing the transport must fault it right away instead.
         var server = new MockRustPlusServer(_ => null);
         server.Start();
-        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1));
+        await using var client = new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, 1, 1));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var requestTask = client.SendRequestAsync(new AppRequest
@@ -47,7 +47,7 @@ public class SocketErrorTests
         // No response can arrive after the close, so the request must fail fast, not time out.
         await using var server = new MockRustPlusServer(_ => null);
         server.Start();
-        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1));
+        await using var client = new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, 1, 1));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var requestTask = client.SendRequestAsync(new AppRequest
@@ -73,7 +73,7 @@ public class SocketErrorTests
             RequestTimeout = TimeSpan.FromMilliseconds(500)
         };
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1), options);
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, 1, 1), options);
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var ex = await Assert.ThrowsAsync<TimeoutException>(() =>
@@ -85,7 +85,7 @@ public class SocketErrorTests
     public async Task ConnectAsync_ToDeadPort_RaisesErrorOccurredAndThrows()
     {
         // Port 1 (or any closed loopback port) makes the WebSocket connect throw -> ErrorOccurred + rethrow.
-        await using var client = new RustPlus(new RustPlusConnection("127.0.0.1", 1, 1, 1));
+        await using var client = new RustPlus(new DirectConnection("127.0.0.1", 1, 1, 1));
         var error = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
         client.ErrorOccurred += (_, ex) => error.TrySetResult(ex);
 
@@ -103,7 +103,7 @@ public class SocketErrorTests
     {
         var server = new MockRustPlusServer();
         server.Start();
-        await using var client = new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1));
+        await using var client = new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, 1, 1));
         var signalled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         client.ErrorOccurred += (_, _) => signalled.TrySetResult(true);
 
@@ -124,7 +124,7 @@ public class SocketErrorTests
         // Fail fast with a clear error instead of queueing into a 30s TimeoutException
         // (and instead of transmitting the stale request on a later reconnect).
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, 1, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, 1, PlayerId, PlayerToken));
 
         var thrown = await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetInfoAsync());
         Assert.Contains("Not connected", thrown.Message, StringComparison.Ordinal);
@@ -136,7 +136,7 @@ public class SocketErrorTests
         await using var server = new MockRustPlusServer(MockResponses.Default);
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.DisconnectAsync();
 
@@ -152,7 +152,7 @@ public class SocketErrorTests
         var server = new MockRustPlusServer(MockResponses.Default);
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.DisconnectAsync();
         await server.DisposeAsync(); // free the endpoint so the reconnect below is refused
@@ -172,7 +172,7 @@ public class SocketErrorTests
         var server = new MockRustPlusServer(MockResponses.Default);
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
 
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.DisconnectAsync();
@@ -211,7 +211,7 @@ public class SocketErrorTests
         });
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         await client.DisconnectAsync();
 
