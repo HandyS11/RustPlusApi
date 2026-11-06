@@ -3,7 +3,8 @@
 The solution is formatted with the **ReSharper command-line formatter**
 ([`JetBrains.ReSharper.GlobalTools`](https://www.jetbrains.com/help/resharper/CleanupCode.html)),
 pinned in the dotnet tool manifest (`.config/dotnet-tools.json`) so every contributor runs the
-same version. Formatting rules come from the repository `.editorconfig`.
+same version. Whitespace rules come from the repository `.editorconfig`; the member layout and the
+cleanup profile live in `RustPlusApi.sln.DotSettings`.
 
 ---
 
@@ -11,11 +12,12 @@ same version. Formatting rules come from the repository `.editorconfig`.
 
 ```sh
 dotnet tool restore
-dotnet jb cleanupcode RustPlusApi.sln --profile="Built-in: Reformat Code"
+dotnet jb cleanupcode RustPlusApi.sln --profile="ReformatAndReorder"
 ```
 
-The *Built-in: Reformat Code* profile only reformats — it never applies code-style rewrites or
-syntax changes.
+The *ReformatAndReorder* profile reformats and puts type members in the configured order (fields,
+properties, events, then methods, each grouped by accessibility). It never applies code-style
+rewrites or syntax changes.
 
 ---
 

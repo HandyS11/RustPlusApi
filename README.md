@@ -87,6 +87,13 @@ browse the [Recipes](https://handys11.github.io/RustPlusApi/articles/recipes.htm
 [Troubleshooting](https://handys11.github.io/RustPlusApi/articles/troubleshooting.html) page if something isn't working.
 Runnable examples are in [`samples/`](samples/README.md).
 
+## Contributing
+
+Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the checks a pull
+request has to pass and how pull request titles feed the release notes. Everyone taking part follows
+the [Code of Conduct](CODE_OF_CONDUCT.md), and security issues are reported privately as described in
+[SECURITY.md](SECURITY.md).
+
 ## Credits
 
 _This project is grandly inspired by [liamcottle/rustplus.js](https://github.com/liamcottle/rustplus.js)._
