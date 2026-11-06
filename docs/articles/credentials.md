@@ -10,40 +10,9 @@ To use Rust+ you need credentials. There are two kinds:
 The `RustPlusApi.Fcm.Registration` package acquires both natively, replacing the
 `rustplus.js` Node CLI.
 
-## The credentials website
-
-> [!WARNING]
-> The credentials website has been broken since Facepunch's October 2026 change to its login. Use
-> the console tool (`RustPlus.Register.ConsoleApp`, or `RustPlusApi.Fcm.Registration` from your own
-> code, described below) until the website is fixed. The description of the website that follows
-> is how it was designed to work.
-
-A way to get both kinds of credentials — no .NET SDK required — is the
-[Rust+ credentials website](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md):
-a single-page app that walks you through the Steam login in a browser and hands back the four
-pairing values plus a downloadable `rustplus.config.json`.
-
-Run it yourself — it needs no configuration:
-
-```bash
-docker run -p 127.0.0.1:8080:8080 ghcr.io/handys11/rustplusapi-credentials
-```
-
-Then browse to <http://localhost:8080> from that same machine and Steam signs you in with the
-ordinary automatic redirect.
-
-The app is also built to be hosted for other people, and if a public instance is ever stood up its
-address will be added to the
-[website's README](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md).
-Reached that way — or simply on a LAN address — the Steam login takes one extra step: because you're
-not browsing from the same machine as the server, Facepunch hands your browser a loopback address
-that nothing is listening on rather than redirecting you straight back, so you'll see a connection
-failure with that dead address in your browser's bar. You copy the whole thing and paste it back
-into the page, and it picks up from there. The website's README documents both modes and every
-setting.
-
-Everything below documents the registration chain driven directly from your own code, the route
-that works today: the console sample, or `RustPlusApi.Fcm.Registration` integrated into your own app.
+The quickest route is the console sample, `RustPlus.Register.ConsoleApp`: run it once, sign in to
+Steam in the browser window it opens, and pair in game. Everything below documents the registration
+chain it drives, which you can also call from your own code.
 
 ## The flow
 
@@ -123,9 +92,8 @@ the Rust+ app's own address, `rust-plus://rust-auth-session?…`, which no ordin
 receive, so the library captures that redirect inside the browser instead.
 
 > [!NOTE]
-> The credentials website has been broken since Facepunch's October 2026 change. Earlier versions
-> of this section described a loopback `returnUrl` and an `HttpListener`; that route is gone from the
-> library and the website has not been moved off it yet. Use the console tool until it is.
+> Before Facepunch's October 2026 change, this section described a loopback `returnUrl` and an
+> `HttpListener`. Facepunch no longer redirects there, and that route is gone from the library.
 
 1. **Find a browser.** Edge on Windows first, otherwise Chrome, Brave or Chromium, including
    Flatpak. Snap browsers are detected and skipped (so is a launcher script that starts one, such as

@@ -34,11 +34,6 @@ dotnet run --project samples/RustPlus.Register.ConsoleApp
 It writes `rustplus.config.json` (the FCM credentials) and, after you choose **Pair with Server**
 in game, prints the four values for the `RustPlus` constructor.
 
-> [!NOTE]
-> There is also a [Rust+ credentials website](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md),
-> but it has been broken since Facepunch's October 2026 change to its login. Use the console tool
-> until it is fixed.
-
 ### What the four values are
 
 All four arrive together in the server-pairing push notification.

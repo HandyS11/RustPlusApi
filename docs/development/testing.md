@@ -101,9 +101,8 @@ ReportGenerator into `TestResults/merged/Cobertura.xml`, prints per-class gaps, 
 **ReportGenerator-merged Cobertura line-rate/branch-rate** (not per-TFM opencover numbers). CI
 (`.github/workflows/CI.yml`) runs it at **line 95 / branch 90**.
 
-Achieved at the time of writing: **≈ 97.2–97.5% line / 94.2–94.3% branch** for the libraries and
-**99.56% line / 98.54% branch** for the web app (merged Cobertura aggregates across all test
-projects and both TFMs).
+Achieved at the time of writing: **≈ 97.2–97.5% line / 94.2–94.3% branch** (merged Cobertura
+aggregates across all test projects and both TFMs).
 
 The library figure is quoted as a range because it genuinely is one: three consecutive runs of the
 same commit produced 97.22, 97.33 and 97.45% line. The variance is entirely `RustPlusSocket`
@@ -151,55 +150,6 @@ omitted for Sonar: with it on, coverlet writes `raw.githubusercontent.com` URLs 
 paths and SonarQube cannot match them against the files it indexed. Keeping the exclusions in sync
 is what makes SonarQube measure the same thing the local gate does — if you change one file's
 `Exclude`/`ExcludeByFile`/`ExcludeByAttribute` rules, change both.
-
-### Why `sonar.coverage.exclusions` is not just `samples`/`tests`/`tools`
-
-Keeping the runsettings in sync is necessary but not sufficient, because SonarQube does **not** take
-its "lines to cover" denominator from the coverage report. Each language analyzer computes the
-executable lines itself, and any line the report says nothing about is counted as uncovered. Two
-consequences, both of which the exclusion list has to absorb:
-
-| Pattern | Why |
-| --- | --- |
-| `**/wwwroot/**` | `apps/RustPlusApi.CredentialsWeb/wwwroot/app.js` is ~400 lines of browser JavaScript. Sonar's JS analyzer indexes it and reports 197 executable lines; coverlet, being a .NET tool, cannot produce coverage for it at any TFM. Left in, it read as a flat 0% and single-handedly moved the project from ~97% to 91.7% — a .NET coverage figure dominated by a file no .NET test can reach. **This is a real, acknowledged gap, not a solved one:** `app.js` has no tests. Closing it means feeding `sonar.javascript.lcov.reportPaths` from a JavaScript test runner, which is a deliberate future decision, not an oversight. The app directory does carry a small Node toolchain already, but for linting only: `npm run lint` there runs ESLint with typescript-eslint and eslint-plugin-sonarjs (`eslint.config.mjs`), the local mirror of the JavaScript rules SonarQube applies, so a JS code smell fails in CI and in the pre-push hook instead of surfacing on develop after the merge. |
-| `**/apps/**/Program.cs` | SonarC# honours `[ExcludeFromCodeCoverage]` when it computes executable lines, which is why `PairingListener` and `FcmRegistration` read 100% despite their excluded members. It does not connect the attribute to **top-level statements**: `Program.cs`'s statements are not syntactically inside the `partial class Program;` part that carries the attribute, so all 36 lines were counted even though coverlet excludes them correctly (they never appear in the local web gap list). The file-level exclusion restates, for Sonar, the exclusion the attribute already expresses. |
-
-Neither entry weakens the local gate — `tools/coverage/report.sh` never saw either file to begin
-with. They exist to stop SonarQube measuring something different from what CI gates on.
-
----
-
-## Credentials web app
-
-`apps/RustPlusApi.CredentialsWeb` targets `net10.0` only — it is an ASP.NET Core app, not a
-multi-targeted library — so it sits outside the multi-TFM parity mechanism described above and is
-exercised on a single TFM host rather than two.
-
-It is gated separately, at the same **95% line / 90% branch** bar as the libraries, via a second
-ReportGenerator merge that `tools/coverage/report.sh` produces and checks alongside the library one:
-`TestResults/merged-web/Cobertura.xml`, filtered to just `RustPlusApi.CredentialsWeb`. The library
-merge (`TestResults/merged/Cobertura.xml`) explicitly filters the app assembly *out*, so the
-library gate stays exactly what it was before the app existed — folding a net10.0-only app into
-that aggregate would change the bar the libraries have to clear.
-
-Two members are excluded from the app's coverage gate:
-
-- **`Program`** (`apps/RustPlusApi.CredentialsWeb/Program.cs`) — host wiring: composition only,
-  exercised end to end by the endpoint tests.
-- **`LiveRegistrationSteps`** (`apps/RustPlusApi.CredentialsWeb/Upstream/LiveRegistrationSteps.cs`)
-  — a live-network seam: every member drives Google, Expo, Facepunch or the MCS socket and cannot
-  be validated offline. All logic above it is tested against the `IRegistrationSteps` abstraction.
-
-`SessionSweeper` (`apps/RustPlusApi.CredentialsWeb/Sessions/SessionSweeper.cs`) is **not** excluded,
-but its per-class figures in `tools/coverage/report.sh`'s gap list (currently ~75% line / 50%
-branch) are expected rather than a regression to chase. `ExecuteAsync`'s `catch (Exception ex)`
-around `store.SweepExpired()` is retained defensive coding — the right response if a future change
-to what `SessionStore.SweepExpired()`/`Session.Dispose()` can throw ever reintroduces a failure
-mode — but nothing reachable today throws there: `Session.Dispose()` was fixed to never throw (see
-`Session.Dispose`'s remarks), which was the only source of an exception on that path. The branch is
-therefore permanently unreachable through legitimate application behaviour, and inventing a
-contrived throw just to exercise it would test nothing real. The app's aggregate gate absorbs this
-without difficulty (headroom same as the libraries, above).
 
 ---
 
