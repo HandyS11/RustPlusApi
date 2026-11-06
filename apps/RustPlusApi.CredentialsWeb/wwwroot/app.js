@@ -15,6 +15,8 @@ const view = {
 
 let sessionId = null;
 let configJson = null;
+// The Steam login's Rust+ auth token, from the credentials event: the companion socket authenticates with it.
+let authToken = null;
 let callbackMode = "redirect";
 let pairingAvailable = true;
 // The stream this tab is currently following, kept only so adopting another session can close it.
@@ -204,6 +206,7 @@ function onStep(payload) {
 
 function onCredentials(payload) {
     configJson = payload.configJson;
+    authToken = payload.authToken ?? null;
     document.getElementById("config-json").textContent = configJson;
     document.getElementById("steam-id").textContent = payload.steamId;
     show("ready");
@@ -235,9 +238,17 @@ function onPaired(payload) {
     document.getElementById("pair-port").textContent = payload.port;
     document.getElementById("pair-player-id").textContent = payload.playerId;
     document.getElementById("pair-player-token").textContent = payload.playerToken;
-    document.getElementById("snippet").textContent =
-        "new RustPlus(new RustPlusConnection(" + csharpStringLiteral(payload.ip) + ", " + payload.port +
-        ", " + payload.playerId + ", " + payload.playerToken + "));";
+    document.getElementById("pair-server-id").textContent = payload.serverId ?? "";
+    document.getElementById("pair-auth-token").textContent = authToken ?? "";
+
+    const player = ", " + payload.playerId + ", " + payload.playerToken + ")";
+    // With both values the snippet uses Facepunch's companion socket, the route the official app
+    // takes; without them (a pairing pushed before this page carried them) it connects directly.
+    const connection = payload.serverId && authToken
+        ? "new CompanionConnection(new Guid(" + csharpStringLiteral(payload.serverId) + "), "
+            + csharpStringLiteral(authToken) + player
+        : "new DirectConnection(" + csharpStringLiteral(payload.ip) + ", " + payload.port + player;
+    document.getElementById("snippet").textContent = "new RustPlus(" + connection + ");";
     show("paired");
 }
 

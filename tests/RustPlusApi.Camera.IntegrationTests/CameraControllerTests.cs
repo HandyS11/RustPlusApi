@@ -61,7 +61,7 @@ public class CameraControllerTests
     private static async Task<RustPlus> ConnectAsync(MockRustPlusServer server)
     {
         var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
         return client;
     }

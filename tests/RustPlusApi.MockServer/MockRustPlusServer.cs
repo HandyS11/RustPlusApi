@@ -22,6 +22,8 @@ public sealed class MockRustPlusServer : IAsyncDisposable
 
     private WebSocket? _activeSocket;
 
+    private MockHandshake? _lastHandshake;
+
     /// <summary>
     /// Creates a server on a free loopback port.
     /// </summary>
@@ -41,6 +43,11 @@ public sealed class MockRustPlusServer : IAsyncDisposable
 
     /// <summary>The host the client should connect to (always loopback).</summary>
     public static string Host => "127.0.0.1";
+
+    /// <summary>The most recent WebSocket upgrade request the server accepted, or <see langword="null"/>
+    /// before the first. Recorded before the handshake completes, so it is visible as soon as the
+    /// client's <c>ConnectAsync</c> returns.</summary>
+    public MockHandshake? LastHandshake => Volatile.Read(ref _lastHandshake);
 
     public async ValueTask DisposeAsync()
     {
@@ -141,7 +148,13 @@ public sealed class MockRustPlusServer : IAsyncDisposable
                     continue;
                 }
 
-                var wsContext = await context.AcceptWebSocketAsync(subProtocol: null);
+                var offered = (context.Request.Headers["Sec-WebSocket-Protocol"] ?? string.Empty)
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                Volatile.Write(ref _lastHandshake, new MockHandshake(context.Request.Url!.AbsolutePath, offered));
+
+                // Echo the first offered subprotocol, as a server must for a client that offers any
+                // (browsers fail the handshake otherwise); none offered, none selected.
+                var wsContext = await context.AcceptWebSocketAsync(offered.Length > 0 ? offered[0] : null);
                 _ = Task.Run(() => HandleClientAsync(wsContext.WebSocket, ct), ct);
             }
             catch (Exception) when (ct.IsCancellationRequested)

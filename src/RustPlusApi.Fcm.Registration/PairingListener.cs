@@ -106,7 +106,8 @@ public sealed class PairingListener(
             Port = server?.Port ?? 0,
             PlayerId = notification.PlayerId,
             PlayerToken = notification.PlayerToken,
-            Name = server?.Name
+            Name = server?.Name,
+            ServerId = notification.ServerId
         };
     }
 }

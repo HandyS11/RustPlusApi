@@ -23,7 +23,7 @@ public class RustPlusClientTests
         await using var server = new MockRustPlusServer();
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetInfoAsync().WaitAsync(Timeout);
@@ -42,7 +42,7 @@ public class RustPlusClientTests
         await using var server = new MockRustPlusServer();
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetTimeAsync().WaitAsync(Timeout);
@@ -59,7 +59,7 @@ public class RustPlusClientTests
         await using var server = new MockRustPlusServer(request => MockResponses.Error(request.Seq, "not_found"));
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetInfoAsync().WaitAsync(Timeout);
@@ -76,7 +76,7 @@ public class RustPlusClientTests
         await using var server = new MockRustPlusServer();
         server.Start();
         await using var client =
-            new RustPlus(new RustPlusConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
+            new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, PlayerId, PlayerToken));
 
         var received = new TaskCompletionSource<TeamMessageEventArg>(
             TaskCreationOptions.RunContinuationsAsynchronously);

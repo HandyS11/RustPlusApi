@@ -7,7 +7,7 @@ namespace RustPlusApi.UnitTests;
 
 public class RustPlusLoggingTests
 {
-    private static RustPlusConnection AnyConnection() => new("127.0.0.1", 1, 1UL, 1);
+    private static DirectConnection AnyConnection() => new("127.0.0.1", 1, 1UL, 1);
 
     [Fact]
     public void Constructor_WithNoOptions_DoesNotThrow()
@@ -46,7 +46,7 @@ public class RustPlusLoggingTests
     /// <summary>Exposes the protected ParseNotification so the unknown-broadcast path can be driven.</summary>
     /// <param name="loggerFactory">The logger factory under test.</param>
     private sealed class TestableRustPlus(ILoggerFactory loggerFactory)
-        : RustPlus(new RustPlusConnection("127.0.0.1", 1, 1UL, 1), loggerFactory: loggerFactory)
+        : RustPlus(new DirectConnection("127.0.0.1", 1, 1UL, 1), loggerFactory: loggerFactory)
     {
         public void InvokeParseNotification(AppBroadcast broadcast) => ParseNotification(broadcast);
     }

@@ -111,6 +111,25 @@ public sealed class CredentialFlowTests
     }
 
     [Fact]
+    public async Task CompleteRegistrationAsync_HandsTheSteamTokenToTheVisitorWithTheCredentials()
+    {
+        // The companion socket authenticates with the Steam login's token, so the visitor needs it back.
+        // It rides in the credentials event — the session's own field is still cleared (above).
+        var h = NewHarness();
+        using var _s = h.Store;
+        h.Store.TryCreate("203.0.113.7", isLocal: true, out var session, out _);
+
+        await h.Flow.CompleteRegistrationAsync(session!, Login(), CancellationToken.None);
+
+        var events = await EventsOfAsync(session!);
+        var payload = Assert.IsType<CredentialsPayload>(
+            Assert.Single(events, e => e.Type == "credentials").Data);
+
+        Assert.Equal("steam-token", payload.AuthToken);
+        Assert.Null(session!.SteamToken);
+    }
+
+    [Fact]
     public async Task CompleteRegistrationAsync_RecordsACompletionForTheAddress()
     {
         var h = NewHarness();

@@ -212,7 +212,7 @@ public sealed class EventEndpointTests
         await using var factory = new CredentialsWebFactory();
         using var client = factory.CreateClient();
         var session = NewSession(factory);
-        session.Events.Publish(new SessionEvent("credentials", new CredentialsPayload(steam64, "{}")));
+        session.Events.Publish(new SessionEvent("credentials", new CredentialsPayload(steam64, "{}", "token")));
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         using var response = await client.GetAsync(
@@ -226,6 +226,6 @@ public sealed class EventEndpointTests
         await reader.ReadLineAsync(timeout.Token);
         var dataLine = await reader.ReadLineAsync(timeout.Token);
 
-        Assert.Equal($$"""data: {"steamId":"{{steam64}}","configJson":"{}"}""", dataLine);
+        Assert.Equal($$"""data: {"steamId":"{{steam64}}","configJson":"{}","authToken":"token"}""", dataLine);
     }
 }

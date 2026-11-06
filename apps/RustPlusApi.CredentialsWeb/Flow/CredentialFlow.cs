@@ -68,9 +68,13 @@ internal sealed class CredentialFlow(
             session.SetCredentials(credentials);
             session.Advance(SessionState.Ready, Deadline(options.SessionTtl));
 
+            // The token leaves the session's own field above, but goes back to the visitor here: the
+            // companion socket authenticates with it. The event history keeps it, beside the GCM/FCM
+            // credentials, until the session expires — see "What it does with credentials" in the README.
             session.Events.Publish(new SessionEvent("credentials", new CredentialsPayload(
                 session.SteamId.ToString(CultureInfo.InvariantCulture),
-                CredentialsStore.Serialize(credentials))));
+                CredentialsStore.Serialize(credentials),
+                steamToken)));
         }
         catch (OperationCanceledException)
         {
@@ -139,7 +143,9 @@ internal sealed class CredentialFlow(
                 pairing.Port,
                 pairing.PlayerId.ToString(CultureInfo.InvariantCulture),
                 pairing.PlayerToken,
-                pairing.Name)));
+                pairing.Name,
+                // Guid.Empty means the push carried no id: send none rather than an id nothing accepts.
+                pairing.ServerId == Guid.Empty ? null : pairing.ServerId.ToString("D"))));
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

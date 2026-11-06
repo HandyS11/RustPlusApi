@@ -68,7 +68,7 @@ login. Use the console tool above until it is fixed.
 **2. Talk to the server:**
 
 ```csharp
-using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken));
+using var rustPlus = new RustPlus(new DirectConnection(server, port, playerId, playerToken));
 await rustPlus.ConnectAsync();
 
 var info = await rustPlus.GetInfoAsync();

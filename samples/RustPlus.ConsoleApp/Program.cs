@@ -1,8 +1,10 @@
 using RustPlus.ConsoleApp.Features;
 using RustPlus.ConsoleApp.Utils;
 
-// Fill credentials.json (copy credentials.sample.json) with the ip/port/playerId/playerToken
-// printed by the RustPlus.Register.ConsoleApp sample when you "Pair with Server" in game.
+// Fill credentials.json (copy credentials.sample.json) with the values printed by the
+// RustPlus.Register.ConsoleApp sample when you "Pair with Server" in game. With serverId and
+// authToken set it connects through Facepunch's companion socket; leave them null to connect
+// directly to ip:port.
 // Put it next to this project (gitignored), or pass its path as the first argument.
 // Camera features live in the dedicated RustPlus.Camera.ConsoleApp sample.
 var configFilePath = args.Length > 0
@@ -26,8 +28,7 @@ catch (Exception ex)
     return;
 }
 
-using var rustPlus = new RustPlusApi.RustPlus(new RustPlusApi.RustPlusConnection(credentials.Ip, credentials.Port,
-    credentials.PlayerId, credentials.PlayerToken));
+using var rustPlus = new RustPlusApi.RustPlus(credentials.ToConnection());
 
 try
 {
@@ -35,7 +36,7 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Failed to connect to {credentials.Ip}:{credentials.Port} — {ex.Message}");
+    Console.WriteLine($"Failed to connect to {credentials.Target} — {ex.Message}");
     Console.WriteLine("Check that the server is up and the credentials are current.");
     return;
 }

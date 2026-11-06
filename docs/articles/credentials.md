@@ -69,7 +69,7 @@ sequenceDiagram
     Note over App: 7. CredentialsStore.Save("rustplus.config.json")
     Game->>FP: 8. "Pair with Server" in game
     FP->>G: push notification
-    G-->>App: ServerPairing (ip/port/playerId/playerToken)
+    G-->>App: ServerPairing (ip/port/playerId/playerToken/serverId)
 ```
 
 `FcmRegistration` orchestrates the whole chain:
@@ -93,7 +93,9 @@ CredentialsStore.Save("rustplus.config.json", credentials);
 // Step 8: pair in game; one await yields the RustPlus constructor args.
 using var listener = new PairingListener(credentials);
 ServerPairing pairing = await listener.WaitForServerPairingAsync();
-// new RustPlus(new RustPlusConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken))
+// new RustPlus(new CompanionConnection(pairing.ServerId, steamLogin.Token, pairing.PlayerId, pairing.PlayerToken))
+// or, where the server still accepts direct connections:
+// new RustPlus(new DirectConnection(pairing.Ip, pairing.Port, pairing.PlayerId, pairing.PlayerToken))
 ```
 
 | Step | Component | Result |
@@ -102,12 +104,16 @@ ServerPairing pairing = await listener.WaitForServerPairingAsync();
 | 2 | `AndroidFcmRegister.InstallAsync` | Firebase installation token |
 | 3 | `AndroidFcmRegister.RegisterFcmAsync` | FCM token |
 | 4 | `ExpoPushClient.GetTokenAsync` | Expo push token |
-| 5 | `SteamLoginService.LoginAsync` | Steam auth token + Steam64 id |
+| 5 | `SteamLoginService.LoginAsync` | Steam auth token + Steam64 id (`SteamLoginResult`) |
 | 6 | `RustCompanionClient.RegisterAsync` | device subscribed to pairing pushes |
 | 7 | `CredentialsStore.Save` | `rustplus.config.json` |
-| 8 | `PairingListener` | `ServerPairing` (ip/port/playerId/playerToken) |
+| 8 | `PairingListener` | `ServerPairing` (ip/port/playerId/playerToken/serverId) |
 
 Steps 1–7 run once. Step 8 happens every time you pair a new server in game.
+
+The Steam auth token from step 5 (`SteamLoginResult.Token`) is also the `AuthToken` that the
+[companion socket](rustplus-client.md#companion-socket) authenticates with, alongside the pairing's
+`ServerId`. `CredentialsStore` does not save it — keep it yourself if you connect that way.
 
 ## How the Steam login works
 
