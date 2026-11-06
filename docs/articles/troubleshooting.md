@@ -137,69 +137,6 @@ npx @liamcottle/rustplus.js fcm-register
 
 See [Credentials — upstream fragility](credentials.md#upstream-fragility) for more context.
 
-## Credentials website
-
-Issues specific to the [Rust+ credentials website](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md)
-rather than the library.
-
-> [!WARNING]
-> The credentials website has been broken since Facepunch's October 2026 change to its login. Use
-> the console tool until it is fixed. The entries below describe the website as designed.
-
-**The callback returns 404.** The return token in the callback URL is single-use: once it has been
-consumed — by a redirect that landed, or by a successful paste — that exact URL will always 404
-afterwards. Refreshing the page, going back, reopening a bookmarked callback link, or pasting the
-same address a second time all hit an already-consumed token. Start the flow over from the
-beginning; there is no way to resume a used callback URL.
-
-**Steam says "Failed to send login message to the Rust+ app".** This means a login URL was built
-with a `returnUrl` that isn't loopback-shaped — Facepunch decides purely from the address's shape,
-not whether anything can reach it, and hands anything that doesn't look loopback to a
-`ReactNativeWebView` bridge that exists only inside the Rust+ mobile app. An ordinary browser has
-nowhere to put that message, the callback is never requested, and the app logs nothing because from
-its point of view nothing happened.
-
-You shouldn't be able to reach this through the credentials website any more: it always builds a
-loopback-shaped `returnUrl`, whether you're local (the redirect lands directly) or reached some
-other way (you paste back the dead loopback address your own browser fails to reach). If you land
-here through the website anyway, something in front of it — a proxy rewriting the callback, most
-likely — is interfering with that URL before Facepunch's redirect can complete. There is no
-proxy configuration that fixes a non-loopback `returnUrl` — see
-[#126](https://github.com/HandyS11/RustPlusApi/issues/126).
-
-**The paste says the address couldn't be read.** The page only recognises a genuine Facepunch
-callback: something ending in `/callback/<32 hex characters>` with `steamId` and `token` in its
-query string. Copy the *whole* address from the page that failed to load, starting with `http://`,
-rather than retyping or trimming it. A rejected paste consumes nothing, so just try again with a
-cleaner copy.
-
-**The paste says it was already used.** The address is single-use — see *The callback returns 404*
-above, which is the same restriction surfacing through the paste box instead of a bare 404 page.
-Start the flow over from the beginning; there's no way to redo just the paste. Pressing **Start**
-again in a fresh tab is not what causes this: the session that starts takes over the return token of
-the abandoned one it replaces, so an address you were still holding lands on the session that new
-tab is watching.
-
-**There's no "wait for my pairing" option.** The pairing wait holds a socket open to Google per
-visitor, so by default it's offered to local visitors only — reached any other way, including a
-public instance, you still get your credentials, just not that button. Run the app on your own
-machine to get the four pairing values that way instead, or use `PairingListener` from
-`RustPlusApi.Fcm.Registration` directly with the credentials you already have. Self-hosting on a
-LAN address for people you trust? Set `CredentialsWeb__AllowRemotePairing=true` to turn the button
-back on.
-
-**I get a 429.** The instance is at capacity — either its global session/pairing caps are full, or
-more flows have completed in the last hour than the per-IP limit allows. On a public or otherwise
-widely-reachable instance these caps are real and load-bearing — they're the whole abuse defence, so
-expect to occasionally hit one there. On your own self-hosted instance you're unlikely to hit them
-unless a stale session from an earlier attempt is still counted against you. Wait a few minutes and
-try again, or self-host your own copy if it's a shared instance that's full.
-
-**The pairing never arrives.** The wait for a pairing push is capped at the instance's `PairingTtl`
-(10 minutes by default). Make sure you press **Pair with Server** in game *while* the page still
-says it is waiting. Your credentials remain valid even if the wait times out, so retry just the
-pairing step rather than starting the whole flow — including the Steam login — over again.
-
 ## Entity events never fire
 
 **Symptom:** `OnSmartDeviceTriggered` or `OnStorageMonitorTriggered` never fires even when the

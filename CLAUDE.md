@@ -24,14 +24,7 @@ dotnet test RustPlusApi.sln -f net8.0
 dotnet test RustPlusApi.sln -f net10.0
 
 # Coverage with per-class gap report + CI gate (line 95 / branch 90):
-# Runs two gates: the libraries (unchanged since before apps/RustPlusApi.CredentialsWeb existed)
-# and the net10.0-only web app, merged and checked separately so the app can't move the library bar.
 tools/coverage/report.sh
-
-# Lint the credentials web app's browser JavaScript (ESLint mirror of SonarQube's JS rules; also run by
-# CI's lint-web job and by the pre-push hook when wwwroot/*.js or the lint setup changes):
-npm --prefix apps/RustPlusApi.CredentialsWeb ci
-npm --prefix apps/RustPlusApi.CredentialsWeb run lint
 
 # Formatting + member reordering (ReSharper CLI; whitespace rules from .editorconfig, the
 # ReformatAndReorder cleanup profile + member layout live in RustPlusApi.sln.DotSettings):
@@ -47,8 +40,7 @@ docfx docs/docfx.json --serve
 
 A committed **pre-push hook** (`.githooks/pre-push`, wired up automatically by the first
 `dotnet build`) runs the ReSharper formatter **and member reordering** on outgoing files and
-**rejects the push** if it changes anything — format before pushing. It also runs the ESLint check
-above when the push touches the web app's JavaScript or its lint setup.
+**rejects the push** if it changes anything — format before pushing.
 
 ## Architecture
 
@@ -71,19 +63,6 @@ above when the push touches the web app's JavaScript or its lint setup.
   (`SteamLoginService`), Rust Companion registration, `CredentialsStore`
   persistence.
 - **Two `*.Extensions.DependencyInjection`** packages — `AddRustPlus`/`AddRustPlusFcm` + factories.
-- **`apps/RustPlusApi.CredentialsWeb`** — a **net10.0-only** ASP.NET Core app (not a NuGet package)
-  that consumes `RustPlusApi.Fcm.Registration`'s public API to walk a browser visitor through the
-  same registration chain as the console app, but reordered to `4 → 1,2,3 → 5`: the Steam login
-  runs first so an anonymous visitor can't trigger a Google device registration without first
-  authenticating. Being net10.0-only, it sits outside the netstandard2.0 multi-TFM parity story
-  that governs `src/`; see `docs/development/testing.md`. Two modes, derived per request rather
-  than configured: a visitor whose request both arrives from a non-routable address (loopback, or a
-  container gateway — the documented `docker run` is reached across the Docker bridge and never over
-  loopback) and names a loopback `Host` gets Facepunch's ordinary automatic redirect, while everyone
-  else — a LAN address, a reverse-proxied hostname, a public instance —
-  is walked through pasting back the dead loopback address their own browser lands on, since
-  Facepunch only ever redirects to a loopback-shaped `returnUrl` regardless of whether anything is
-  listening there. See the app README.
 
 ### Protobuf contracts
 
