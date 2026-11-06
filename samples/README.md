@@ -18,15 +18,18 @@ See the [Samples article](https://handys11.github.io/RustPlusApi/articles/sample
 ## 1. RustPlus.Register.ConsoleApp — get your credentials (start here)
 
 The native, C#-only replacement for `npx @liamcottle/rustplus.js fcm-register`. It performs the
-GCM/Firebase/FCM/Expo registration, opens **your default browser** for Steam login, registers with
-Rust Companion, writes `rustplus.config.json`, then waits for you to pair in game.
+GCM/Firebase/FCM/Expo registration, opens a **browser window it drives itself** for the Steam login,
+registers with Rust Companion, writes `rustplus.config.json`, then waits for you to pair in game.
 
 ```bash
 dotnet run --project samples/RustPlus.Register.ConsoleApp
 ```
 
-- **Any browser works.** If none opens (container, SSH), the sample prints the login URL — open it
-  yourself and the flow continues.
+- **Sign in to Steam in the window that opens.** It is Edge on Windows, otherwise Chrome, Brave or
+  Chromium (Flatpak included), started with a fresh temporary profile, so you are not signed in
+  there already. The profile is deleted when the login ends.
+- **Firefox-only, Snap-browser and headless machines** (containers, SSH) cannot be driven. The
+  sample then prints why and how to get the login address by hand, and asks you to paste it.
 - After Steam login, open Rust → join a server → **Pair with Server**.
 - It prints the absolute path of the saved `rustplus.config.json` and the
   connection to use with the other samples — through Facepunch's companion socket (`ServerId` +

@@ -24,7 +24,7 @@ var registration = new FcmRegistration();
 var credentials = await registration.AcquireCredentialsAsync();   // GCM/Firebase/FCM/Expo
 var steamLogin = await registration.RegisterWithRustPlusAsync(    // Steam login + Rust Companion
     credentials,
-    onLoginUrl: url => Console.WriteLine($"Open this URL to log in: {url}"));
+    onLoginUrl: url => Console.WriteLine($"Steam login address: {url}"));
 CredentialsStore.Save("rustplus.config.json", credentials);
 
 using var listener = new PairingListener(credentials);
@@ -39,14 +39,30 @@ var rustPlus = new RustPlus(new RustPlusConnection(pairing.Ip, pairing.Port, pai
 
 ## Requirements & caveats
 
-- **Steam login opens your default browser.** The flow is an ordinary redirect: the login page is
-  opened with a `returnUrl` pointing at a loopback listener, and Facepunch redirects back with the
-  Steam id and auth token. Any browser works. If no browser can be opened (containers, SSH), the
-  URL is handed to the `onLoginUrl` callback so you can open it yourself — but it must be opened on
-  the **same machine** running registration, since `returnUrl` points at that machine's own
-  `localhost`. To finish registration from a different device, forward the port instead: an SSH
-  tunnel (`ssh -L 3000:localhost:3000 host`) or a published container port both make the loopback
-  callback reachable from wherever you open the link.
+- **Steam login opens its own browser window.** The library starts Edge (Windows first), Chrome,
+  Brave or Chromium (Flatpak included) with a fresh temporary profile, drives it over the Chrome
+  DevTools Protocol, and captures Facepunch's `rust-plus://` redirect, which carries the Steam id
+  and auth token. You sign in to Steam in that window. The `rust-plus:` redirect is never followed,
+  so the official Rust+ desktop app is not launched. The profile is deleted afterwards (if that
+  fails the login still succeeds and the next login sweeps it); a process killed hard can leave
+  the window open for you to close. Snap browsers are detected and skipped, and
+  `SteamLoginOptions.BrowserPath` (absolute path only) overrides the search.
+- **Paste fallback.** With no usable browser (Firefox only, Snap only, no display), set
+  `FcmRegistration.SteamLoginOptions.ReadPastedAddress`. It receives the reason the browser route
+  was not used; show it with `SteamLoginService.PasteInstructions`, then return the
+  `rust-plus://rust-auth-session?…` address the user copies by hand. Without the callback,
+  `RegisterWithRustPlusAsync` throws `InvalidOperationException` with the reason, the instructions
+  and the login address.
+- **Windows.** The library reports a non-Windows browser to Facepunch on its `/app` steps only,
+  because Facepunch appears to block Windows browsers deliberately (it answers "Login Failed").
+  That may break again.
+- **Debugging port.** While the login runs, the browser's DevTools port listens on `127.0.0.1`
+  without authentication, so any local process could attach in that window. This is an accepted
+  local risk. The browser picks the port itself as it starts, and the library reads it from the
+  `DevToolsActivePort` file the browser writes into the private profile directory, so no other
+  process can take the port before the browser binds it.
+- `steamLoginPort` / `SteamLoginService(port)` are kept for source compatibility and unused. The
+  Rust+ auth token lives 14 days.
 - **Upstream-fragile.** Every step depends on live Google/Expo/Facepunch services and drifts when
   those apps change. Ported from rustplus.js / `@liamcottle/push-receiver`; if registration breaks,
   re-check `RegistrationConstants` against those sources.
