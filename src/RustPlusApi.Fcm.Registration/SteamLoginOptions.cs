@@ -6,8 +6,6 @@ namespace RustPlusApi.Fcm.Registration;
 /// <see cref="FcmRegistration.SteamLoginOptions"/>).</summary>
 public sealed class SteamLoginOptions
 {
-    private readonly string? _browserPath;
-
     /// <summary>
     /// Gets the callback that asks the user for the login address by hand. It is used only when no browser can be
     /// driven: none was found, only Snap browsers were found, its temporary profile could not be created, or the
@@ -37,8 +35,8 @@ public sealed class SteamLoginOptions
     /// <remarks>The login throws an <see cref="InvalidOperationException"/> when the file does not exist.</remarks>
     public string? BrowserPath
     {
-        get => _browserPath;
-        init => _browserPath = string.IsNullOrEmpty(value) || Path.IsPathRooted(value)
+        get;
+        init => field = string.IsNullOrEmpty(value) || Path.IsPathRooted(value)
             ? value
             : throw new ArgumentException("The browser path must be absolute.", nameof(value));
     }

@@ -30,7 +30,7 @@ public class RustPlusAppLoginTests
                 ["requestId"] = id,
                 ["request"] = new JsonObject
                 {
-                    ["url"] = url, ["headers"] = headers ?? new JsonObject()
+                    ["url"] = url, ["headers"] = headers ?? []
                 },
             },
         }.ToJsonString();
