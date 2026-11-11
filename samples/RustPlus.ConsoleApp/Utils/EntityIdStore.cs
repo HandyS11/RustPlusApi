@@ -6,7 +6,7 @@ namespace RustPlus.ConsoleApp.Utils;
 /// </summary>
 internal sealed class EntityIdStore
 {
-    private readonly Dictionary<string, string> _lastUsed = new();
+    private readonly Dictionary<string, string> _lastUsed = [];
 
     /// <summary>Prompts for a string id, reusing the remembered value on empty input.</summary>
     /// <param name="kind">Human-readable label for the id (e.g. "smartSwitchId").</param>

@@ -720,11 +720,11 @@ public abstract class RustPlusFcmSocket(
     /// server its frames were received. Outgoing stream ids are implicit (frame count), never set.
     /// </summary>
     /// <param name="ping">The <see cref="HeartbeatPing"/> message received from the server.</param>
-    private async Task HandlePingAsync(HeartbeatPing? ping)
+    private Task HandlePingAsync(HeartbeatPing? ping)
     {
         if (ping == null)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         Logger.LogRespondingToPing(ping.StreamId, ping.LastStreamIdReceived, ping.Status);
@@ -733,7 +733,7 @@ public abstract class RustPlusFcmSocket(
             LastStreamIdReceived = _streamIdIn
         };
 
-        await SendPacketAsync(pingResponse).ConfigureAwait(false);
+        return SendPacketAsync(pingResponse);
     }
 
     /// <summary>
@@ -742,7 +742,7 @@ public abstract class RustPlusFcmSocket(
     /// ack the server treats the message as undelivered, closes the connection after a few
     /// minutes to force redelivery, and replays the message on the next connect.
     /// </summary>
-    private async Task SendStreamAckAsync()
+    private Task SendStreamAckAsync()
     {
         var streamAck = new IqStanza
         {
@@ -755,7 +755,7 @@ public abstract class RustPlusFcmSocket(
             LastStreamIdReceived = _streamIdIn
         };
 
-        await SendPacketAsync(streamAck).ConfigureAwait(false);
+        return SendPacketAsync(streamAck);
     }
 
     /// <summary>

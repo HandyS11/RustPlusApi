@@ -85,7 +85,7 @@ internal sealed class CdpSession : IAsyncDisposable
 
             var command = new JsonObject
             {
-                ["id"] = id, ["method"] = method, ["params"] = parameters ?? new JsonObject()
+                ["id"] = id, ["method"] = method, ["params"] = parameters ?? []
             };
             await _sendLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try

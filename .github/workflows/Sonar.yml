@@ -41,26 +41,31 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # ~/.sonar/cache holds the scanner engine and the analyzer plugins, both served by the SonarQube
+      # server for its own version, so the cache is keyed on that version. A fixed key is saved once and
+      # never overwritten, which left every run after a server upgrade downloading the new plugins and
+      # then discarding them. No restore-keys: after an upgrade the cache starts empty rather than
+      # carrying the previous version's jars forward. The version is hashed so the job log does not
+      # reveal the version of a server whose address is kept in a secret.
+      - name: Resolve SonarQube server version
+        id: sonar-server
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          version="$(curl -fsS --retry 3 "${SONAR_HOST_URL%/}/api/server/version")"
+          echo "cache-key=$(printf '%s' "$version" | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
       - name: Cache SonarQube packages
         uses: actions/cache@v6
         with:
           path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
+          key: ${{ runner.os }}-sonar-${{ steps.sonar-server.outputs.cache-key }}
 
-      - name: Cache SonarQube scanner
-        id: cache-sonar-scanner
-        uses: actions/cache@v6
-        with:
-          path: ./.sonar/scanner
-          key: ${{ runner.os }}-sonar-scanner
-          restore-keys: ${{ runner.os }}-sonar-scanner
-
-      - name: Install SonarQube scanner
-        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p ./.sonar/scanner
-          dotnet tool update dotnet-sonarscanner --tool-path ./.sonar/scanner
+      # dotnet-sonarscanner is pinned in .config/dotnet-tools.json, where Dependabot bumps it with the
+      # other NuGet packages. It used to be installed into a tool-path cache with a fixed key, and the
+      # install step only ran on a cache miss, so the scanner never moved past the first version cached.
+      - name: Restore .NET tools
+        run: dotnet tool restore
 
       - name: Build and analyze
         # Coverage is handed to SonarQube as ONE pre-merged report rather than the raw per-project,
@@ -69,22 +74,28 @@ jobs:
         # both reports, and SonarQube does not union them — it settles on one, and every line the
         # other TFM covered reads as uncovered. ReportGenerator merges them properly first (the same
         # merge tools/coverage/report.sh gates on), then emits SonarQube's generic coverage format.
+        # The junit logger writes one file per test assembly and TFM for the Codecov test-results upload.
         run: |
-          ./.sonar/scanner/dotnet-sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.scanner.skipJreProvisioning=true /d:sonar.exclusions="**/samples/**" /d:sonar.coverage.exclusions="**/samples/**,**/tests/**,**/tools/**" /d:sonar.coverageReportPaths="TestResults/sonarqube/SonarQube.xml"
+          dotnet tool run dotnet-sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.scanner.skipJreProvisioning=true /d:sonar.exclusions="**/samples/**" /d:sonar.coverage.exclusions="**/samples/**,**/tests/**,**/tools/**" /d:sonar.coverageReportPaths="TestResults/sonarqube/SonarQube.xml"
           dotnet build
-          dotnet test --no-build --settings tools/coverage/sonar.runsettings --results-directory ./TestResults --blame-hang-timeout 60s
-          dotnet tool restore
+          dotnet test --no-build --settings tools/coverage/sonar.runsettings --results-directory ./TestResults --blame-hang-timeout 60s --logger "junit;LogFileName={assembly}.{framework}.junit.xml"
           dotnet tool run reportgenerator -- "-reports:TestResults/**/coverage.opencover.xml" "-targetdir:TestResults/sonarqube" "-reporttypes:SonarQube"
-          ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+          dotnet tool run dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
+      # Codecov Test Analytics reads only JUnit XML, which `dotnet test` did not produce, so this step
+      # used to find nothing to send and still pass. It now names the junit logger's files, skips the
+      # filename search, and fails the job if nothing is uploaded.
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
+          files: ./TestResults/*.junit.xml
+          disable_search: true
+          fail_ci_if_error: true

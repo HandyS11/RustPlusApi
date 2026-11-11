@@ -31,7 +31,9 @@ internal static class CredentialsReaderUtilities
         {
             var native = JsonSerializer.Deserialize<Credentials>(json, NativeOptions);
             if (native?.Gcm is { AndroidId: not 0 })
+            {
                 return native;
+            }
         }
         catch (JsonException)
         {

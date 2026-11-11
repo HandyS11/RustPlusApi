@@ -38,7 +38,7 @@ catch (Exception ex)
 var persistentIdsPath = Path.Combine(AppContext.BaseDirectory, "persistent-ids.json");
 var persistentIds = File.Exists(persistentIdsPath)
     ? JsonSerializer.Deserialize<HashSet<string>>(await File.ReadAllTextAsync(persistentIdsPath)) ?? []
-    : new HashSet<string>();
+    : [];
 Console.WriteLine($"Loaded {persistentIds.Count} persistent id(s).");
 
 using var listener = new RustPlusFcm(credentials, persistentIds);
