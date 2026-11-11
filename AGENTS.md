@@ -1,52 +1,70 @@
 # RustPlusApi — Agent Instructions
 
-Six NuGet packages for the Rust+ companion app API, multi-targeting **netstandard2.0 + net10.0**.
-See [CLAUDE.md](CLAUDE.md) for the full architecture overview.
+A C# library for the Rust+ companion app API, shipped as six NuGet packages from `src/`. All
+libraries multi-target **netstandard2.0 + net10.0** (usable from .NET Framework 4.6.2+ through
+.NET 10); `Polyfills/` directories and `#if NET10_0_OR_GREATER` forks bridge the gap. Package
+versions are managed centrally in `Directory.Packages.props`. The base branch for PRs is `develop`.
+
+Human contributors: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Build & Test
 
 ```bash
-dotnet build                           # strict: TreatWarningsAsErrors + Roslynator/Sonar/VSTHRD analyzers
+dotnet build                           # strict: TreatWarningsAsErrors + latest-all analyzers (Roslynator, Sonar, VSTHRD, IDE*)
 dotnet test RustPlusApi.sln            # both TFMs (net8.0 host → netstandard2.0 build; net10.0 host → net10.0 build)
 dotnet test RustPlusApi.sln -f net8.0  # netstandard2.0 build only
 dotnet test RustPlusApi.sln -f net10.0 # net10.0 build only
 dotnet test RustPlusApi.sln --filter "FullyQualifiedName~ClassName.MethodName"
 
-tools/coverage/report.sh               # full suite + merged coverage report + CI gate (line 95 / branch 90)
+tools/coverage/report.sh               # full suite + per-class gap report + CI gate (line 95 / branch 90)
 
+# Formatting + member reordering (ReSharper CLI; whitespace rules from .editorconfig, the
+# ReformatAndReorder cleanup profile + member layout live in RustPlusApi.sln.DotSettings):
 dotnet tool restore
 dotnet jb cleanupcode RustPlusApi.sln --profile="ReformatAndReorder"
 
-npm --prefix apps/RustPlusApi.CredentialsWeb ci        # lint toolchain for the web app's wwwroot/app.js
-npm --prefix apps/RustPlusApi.CredentialsWeb run lint  # ESLint mirror of SonarQube's JavaScript rules
+# Mutation testing (run from the unit-test project directory):
+cd tests/RustPlusApi.Fcm.UnitTests && dotnet stryker --config-file stryker-config.json --project RustPlusApi.Fcm.csproj
+
+# Docs site (DocFX, needs `dotnet tool install --global docfx`):
+docfx docs/docfx.json --serve
 ```
 
 ## Critical Conventions
 
-- **Never bump versions in project files.** `Version=1.0.0` is the local placeholder; CD injects real versions via `-p:Version=<tag>`.
-- **Format before pushing.** The pre-push hook (`.githooks/pre-push`, wired by `dotnet build`) runs the ReSharper formatter and **rejects** the push on any diff. Run `dotnet jb cleanupcode` first. When the push touches `apps/RustPlusApi.CredentialsWeb/wwwroot/*.js`, the hook also runs that app's `npm run lint` (SonarQube's JavaScript rules) and rejects the push on any finding.
+- **Never bump versions in project files.** `Version=1.0.0` is the local placeholder; CD injects real versions via `-p:Version=<tag>` on release.
+- **Format before pushing.** The pre-push hook (`.githooks/pre-push`, wired by the first `dotnet build`) runs the ReSharper formatter **and member reordering** on outgoing files and **rejects** the push on any diff. Run `dotnet jb cleanupcode` first.
 - **100% line/branch coverage is expected** for all new code. Exclusions require `[ExcludeFromCodeCoverage]` *with a justification comment*, and the member must be added to the exclusion list in [docs/development/testing.md](docs/development/testing.md).
 - **`#if NET10_0_OR_GREATER` forks must be pinned by tests** asserting identical results on both TFMs. See the `HtmlColorParser` pattern in [docs/development/testing.md](docs/development/testing.md).
 - **Stryker cannot mutate `RustPlusApi.csproj`** (protobuf-net.BuildTools breaks Stryker's rollback compiler). Pin core behavior with exact-assertion unit tests instead.
+- **PR titles follow Conventional Commits** (`feat:`, `fix:`, `docs:`, `chore:` …, `!` for breaking). The PR Labels workflow turns the type into a label, and the label decides the release-notes section (`.github/release.yml`).
 
 ## Package Architecture
 
 | Package | Key files | Role |
 |---|---|---|
-| `RustPlusApi` | `RustPlusSocket.cs`, `RustPlus.cs` | WebSocket client; `RustPlusSocket` = base (connect/send/receive), `RustPlus` = typed API + events |
-| `RustPlusApi.Camera` | `CameraController.cs`, `CameraRenderer.cs` | Subscribe/keep-alive/input over a `RustPlus` instance; ImageSharp rendering |
-| `RustPlusApi.Fcm` | `RustPlusFcmSocket.cs`, `RustPlusFcm.cs` | MCS protocol over TLS to `mtalk.google.com:5228`; FCM notification decryption |
-| `RustPlusApi.Fcm.Registration` | `Steps/`, `SteamLoginService.cs` | GCM check-in → Firebase/FCM/Expo registration; Steam login via browser redirect to a loopback callback |
+| `RustPlusApi` | `RustPlusSocket.cs`, `RustPlus.cs` | WebSocket client for a Rust server's app port (or Facepunch's companion socket) |
+| `RustPlusApi.Camera` | `CameraController.cs`, `CameraRenderer.cs` | Subscribe/keep-alive/input over a `RustPlus` instance, capability-gated movement; frame → image via ImageSharp |
+| `RustPlusApi.Fcm` | `RustPlusFcmSocket.cs`, `RustPlusFcm.cs` | MCS protocol over TLS to `mtalk.google.com:5228`; FCM notification decryption, pairing/alarm events |
+| `RustPlusApi.Fcm.Registration` | `Steps/`, `SteamLoginService.cs`, `CredentialsStore.cs` | Native credential acquisition (replaces the rustplus.js CLI) |
 | `*.Extensions.DependencyInjection` | `*ServiceCollectionExtensions.cs` | `AddRustPlus`/`AddRustPlusFcm` + factories |
 
-Protobuf contracts for core are **generated at compile time** by `protobuf-net.BuildTools` from `src/RustPlusApi/Protobuf/RustPlusContracts.proto`. Don't edit generated files in `obj/`.
+- **Core is two layers.** `RustPlusSocket` (abstract) owns the connect/dispose lifecycle, the channel-based send loop, the receive loop, request/response correlation by `seq`, and the raw `AppRequest`/`AppMessage` events. `RustPlus` sits on top: typed `Response<T>` methods such as `GetInfoAsync`, plus broadcast-driven events such as `OnTeamChatReceived`. `Data/` holds the public DTOs; `Extensions/` holds the protobuf → DTO mappers.
+- **Registration** runs GCM check-in → Firebase/FCM/Expo registration (`Steps/`), then a Steam login in a browser the library drives over the Chrome DevTools Protocol, capturing Facepunch's `rust-plus://` app redirect (`SteamLoginService`), then Rust Companion registration. `CredentialsStore` persists the result.
+
+### Protobuf contracts
+
+- Core contracts are **generated at compile time** by `protobuf-net.BuildTools` from `src/RustPlusApi/Protobuf/RustPlusContracts.proto`. Don't edit generated files in `obj/`.
+- That proto is **authoritative**: it is regenerated by decompiling the actual Rust dedicated server via `tools/update-proto/update-proto.sh` (see its README). The `ProtoRefresh.yml` workflow runs the diff gate monthly and opens a `proto-drift` issue.
+- `RustPlusApi.Fcm` and `.Fcm.Registration` instead use **hand-written code-first** protobuf-net classes (`ProtoBuf/Mcs.cs`, `Protobuf/CheckinContracts.cs`).
 
 ## Test Strategy
 
-See [docs/development/testing.md](docs/development/testing.md) for the full guide.
+See [docs/development/testing.md](docs/development/testing.md) for the full guide — read it before touching tests.
 
+- **Multi-TFM parity:** test projects target `net8.0;net10.0`. The net8.0 host can't load a net10.0 library asset, so it resolves the **netstandard2.0 build** — the same xUnit suite validates both compiled outputs.
 - **Unit tests** live in `tests/RustPlusApi*.UnitTests/`; **integration tests** use the shared in-process WebSocket server in `tests/RustPlusApi.MockServer/`.
-- Live-network paths (TLS connect, Steam login, MCS handshake) are excluded from coverage with per-member justifications. Test them via internal seams (`InternalsVisibleTo`).
+- Live-network paths (TLS connect, Steam login, MCS handshake) are `[ExcludeFromCodeCoverage]` with per-member justifications. The pipelines they feed are tested through `internal` seams (`InternalsVisibleTo`, e.g. `RunReceiveLoopOverStream`, `*ForTests` members).
 - `tests/RustPlusApi.NetFrameworkSmoke/` is compile-only (net48); it cannot run on Linux.
 - Mutation testing: run per-package from the matching unit-test directory with `dotnet stryker --config-file stryker-config.json --project <PackageName>.csproj`. The core package cannot be mutated (see above).
 
@@ -55,4 +73,3 @@ See [docs/development/testing.md](docs/development/testing.md) for the full guid
 - C# `latest`, `Nullable enable`, `ImplicitUsings enable`
 - 4-space indent, 120-column max, LF line endings (enforced by `.editorconfig`)
 - All analyzer warnings are errors — fix them, don't suppress
-- The web app's browser JavaScript (`apps/RustPlusApi.CredentialsWeb/wwwroot/app.js`) is linted by ESLint (`eslint.config.mjs` beside it, mirroring SonarQube's JS rules); an intentionally unawaited Promise is marked with `void` and a comment saying where its failures are handled

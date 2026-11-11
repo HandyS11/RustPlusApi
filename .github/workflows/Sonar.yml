@@ -76,7 +76,7 @@ jobs:
         # merge tools/coverage/report.sh gates on), then emits SonarQube's generic coverage format.
         # The junit logger writes one file per test assembly and TFM for the Codecov test-results upload.
         run: |
-          dotnet tool run dotnet-sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.scanner.skipJreProvisioning=true /d:sonar.exclusions="**/samples/**" /d:sonar.coverage.exclusions="**/samples/**,**/tests/**,**/tools/**,**/wwwroot/**,**/apps/**/Program.cs" /d:sonar.coverageReportPaths="TestResults/sonarqube/SonarQube.xml"
+          dotnet tool run dotnet-sonarscanner begin /k:"${{ secrets.SONAR_PROJECT_KEY }}" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="${{ secrets.SONAR_HOST_URL }}" /d:sonar.scanner.skipJreProvisioning=true /d:sonar.exclusions="**/samples/**" /d:sonar.coverage.exclusions="**/samples/**,**/tests/**,**/tools/**" /d:sonar.coverageReportPaths="TestResults/sonarqube/SonarQube.xml"
           dotnet build
           dotnet test --no-build --settings tools/coverage/sonar.runsettings --results-directory ./TestResults --blame-hang-timeout 60s --logger "junit;LogFileName={assembly}.{framework}.junit.xml"
           dotnet tool run reportgenerator -- "-reports:TestResults/**/coverage.opencover.xml" "-targetdir:TestResults/sonarqube" "-reporttypes:SonarQube"

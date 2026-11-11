@@ -24,7 +24,7 @@ public class SocketMessageSizeTests
         await using var server = new MockRustPlusServer(_ => null);
         server.Start();
         await using var client = new RustPlus(
-            new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1), SmallCap());
+            new DirectConnection(MockRustPlusServer.Host, server.Port, 1, 1), SmallCap());
         var errors = new TaskCompletionSource<Exception>();
         client.ErrorOccurred += (_, ex) => errors.TrySetResult(ex);
         await client.ConnectAsync().WaitAsync(Timeout);
@@ -49,7 +49,7 @@ public class SocketMessageSizeTests
         await using var server = new MockRustPlusServer();
         server.Start();
         await using var client = new RustPlus(
-            new RustPlusConnection(MockRustPlusServer.Host, server.Port, 1, 1), SmallCap());
+            new DirectConnection(MockRustPlusServer.Host, server.Port, 1, 1), SmallCap());
         await client.ConnectAsync().WaitAsync(Timeout);
 
         var response = await client.GetInfoAsync().WaitAsync(Timeout);

@@ -9,7 +9,7 @@ namespace RustPlusApi.Extensions.DependencyInjection.UnitTests;
 
 public class RustPlusServiceCollectionExtensionsTests
 {
-    private static RustPlusConnection AnyConnection() => new("127.0.0.1", 28082, 76561198000000000UL, 123456789);
+    private static DirectConnection AnyConnection() => new("127.0.0.1", 28082, 76561198000000000UL, 123456789);
 
     [Fact]
     public void AddRustPlus_WithConnection_RegistersIRustPlusAsSingleton()
@@ -84,30 +84,82 @@ public class RustPlusServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task AddRustPlus_WithConfiguration_BindsTheConnection()
+    public async Task AddRustPlus_WithConfiguration_BindsADirectConnection()
     {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Rust:Server"] = "1.2.3.4",
-                ["Rust:Port"] = "28082",
-                ["Rust:PlayerId"] = "76561198000000000",
-                ["Rust:PlayerToken"] = "123456789",
-                ["Rust:UseFacepunchProxy"] = "true",
-            })
-            .Build();
-        var section = config.GetSection("Rust");
+        var section = Section(new Dictionary<string, string?>
+        {
+            ["Rust:Server"] = "1.2.3.4",
+            ["Rust:Port"] = "28082",
+            ["Rust:PlayerId"] = "76561198000000000",
+            ["Rust:PlayerToken"] = "123456789",
+        });
 
-        // The binder materialises the positional record (documents the binding contract)…
+        // No ServerId key: the section describes a direct connection (documents the binding contract)…
         Assert.Equal(
-            new RustPlusConnection("1.2.3.4", 28082, 76561198000000000UL, 123456789, true),
-            section.Get<RustPlusConnection>());
+            new DirectConnection("1.2.3.4", 28082, 76561198000000000UL, 123456789),
+            RustPlusServiceCollectionExtensions.BindConnection(section));
 
         // …and the registration resolves a client from it.
         var services = new ServiceCollection();
         services.AddRustPlus(section);
         await using var provider = services.BuildServiceProvider();
         Assert.NotNull(provider.GetRequiredService<IRustPlus>());
+    }
+
+    [Fact]
+    public async Task AddRustPlus_WithConfiguration_BindsACompanionConnection_WhenServerIdIsSet()
+    {
+        // Server and Port are not needed for the companion socket; leftovers from a direct setup are ignored.
+        var section = Section(new Dictionary<string, string?>
+        {
+            ["Rust:Server"] = "1.2.3.4",
+            ["Rust:Port"] = "28082",
+            ["Rust:PlayerId"] = "76561198000000000",
+            ["Rust:PlayerToken"] = "123456789",
+            ["Rust:ServerId"] = "089941d9-064e-4628-9c60-eaeb01a943e8",
+            ["Rust:AuthToken"] = "companion-token",
+        });
+
+        Assert.Equal(
+            new CompanionConnection(new Guid("089941d9-064e-4628-9c60-eaeb01a943e8"), "companion-token",
+                76561198000000000UL, 123456789),
+            RustPlusServiceCollectionExtensions.BindConnection(section));
+
+        var services = new ServiceCollection();
+        services.AddRustPlus(section);
+        await using var provider = services.BuildServiceProvider();
+        Assert.NotNull(provider.GetRequiredService<IRustPlus>());
+    }
+
+    [Fact]
+    public void BindConnection_ServerIdWithoutAuthToken_NamesTheMissingKey()
+    {
+        // A ServerId alone must not quietly become a direct connection: the binder refuses and says why.
+        var section = Section(new Dictionary<string, string?>
+        {
+            ["Rust:PlayerId"] = "76561198000000000",
+            ["Rust:PlayerToken"] = "123456789",
+            ["Rust:ServerId"] = "089941d9-064e-4628-9c60-eaeb01a943e8",
+        });
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            RustPlusServiceCollectionExtensions.BindConnection(section));
+        Assert.Contains("authToken", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void BindConnection_BlankAuthToken_IsRejectedByTheConstructor()
+    {
+        var section = Section(new Dictionary<string, string?>
+        {
+            ["Rust:PlayerId"] = "76561198000000000",
+            ["Rust:PlayerToken"] = "123456789",
+            ["Rust:ServerId"] = "089941d9-064e-4628-9c60-eaeb01a943e8",
+            ["Rust:AuthToken"] = "   ",
+        });
+
+        var ex = Assert.Throws<ArgumentException>(() => RustPlusServiceCollectionExtensions.BindConnection(section));
+        Assert.Equal("authToken", ex.ParamName);
     }
 
     [Fact]
@@ -143,7 +195,7 @@ public class RustPlusServiceCollectionExtensionsTests
     public async Task AddRustPlus_WithConnectionFactory_ResolvesItFromTheProvider()
     {
         var services = new ServiceCollection();
-        services.AddSingleton(new RustPlusConnection("9.9.9.9", 1, 1UL, 1));
+        services.AddSingleton<RustPlusConnection>(new DirectConnection("9.9.9.9", 1, 1UL, 1));
         services.AddRustPlus(sp => sp.GetRequiredService<RustPlusConnection>());
         await using var provider = services.BuildServiceProvider();
 
@@ -174,4 +226,8 @@ public class RustPlusServiceCollectionExtensionsTests
         Assert.Throws<ArgumentNullException>(() =>
             services.AddRustPlus((Func<IServiceProvider, RustPlusConnection>)null!));
     }
+
+
+    private static IConfigurationSection Section(Dictionary<string, string?> values) =>
+        new ConfigurationBuilder().AddInMemoryCollection(values).Build().GetSection("Rust");
 }

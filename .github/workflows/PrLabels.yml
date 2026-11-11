@@ -1,0 +1,65 @@
+name: PR Labels
+
+permissions:
+  contents: read
+
+# GitHub's generated release notes sort pull requests by label (.github/release.yml), and nobody labels
+# them by hand, so every change used to land in one flat list. This labels a pull request from its
+# Conventional Commits title: feat and perf → enhancement, fix → bug, docs → documentation. Other types
+# (chore, refactor, test, build, ci, style) get no label and land in the Internal section.
+on:
+  # pull_request_target, not pull_request: a pull request from a fork gets a read-only token under
+  # pull_request. This job never checks out or runs the pull request's code, and reads the title only
+  # through the environment.
+  pull_request_target:
+    types: [ opened, edited, reopened ]
+
+# A newer event for the same pull request (a second title edit) supersedes an older one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    # A normal run takes a few seconds.
+    timeout-minutes: 5
+    # No issues: write. On a pull request, the /issues/{n}/labels endpoints below accept
+    # pull-requests: write too, and all three labels already exist in the repository.
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Label from the title
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          # Set only when this event renamed the pull request.
+          OLD_TITLE: ${{ github.event.changes.title.from }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        # The REST labels endpoints, not gh pr edit, which also queries classic Projects and can fail on that.
+        run: |
+          set -euo pipefail
+          label_for() {
+            case "$(printf '%s\n' "$1" | sed -nE 's/^([a-z]+)(\([^)]*\))?!?: .*/\1/p')" in
+              feat|perf) echo enhancement ;;
+              fix) echo bug ;;
+              docs) echo documentation ;;
+            esac
+          }
+          new="$(label_for "$TITLE")"
+          old="$(label_for "$OLD_TITLE")"
+          # Remove only the label an earlier title called for, so a label set by hand stays. Removing a
+          # label the pull request no longer has returns 404, hence the check against the labels it had
+          # at this event.
+          if [ -n "$old" ] && [ "$old" != "$new" ] \
+              && jq -e --arg label "$old" 'index($label) != null' <<<"$LABELS" >/dev/null; then
+            gh api --method DELETE "repos/$GH_REPO/issues/$NUMBER/labels/$old" >/dev/null
+          fi
+          if [ -n "$new" ]; then
+            gh api --method POST "repos/$GH_REPO/issues/$NUMBER/labels" -f "labels[]=$new" >/dev/null
+          fi
+          # Not the title itself: the runner would read a title shaped like ::command:: as a workflow command.
+          echo "Label: ${new:-none}"

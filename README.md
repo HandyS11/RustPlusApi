@@ -61,16 +61,10 @@ dotnet run --project samples/RustPlus.Register.ConsoleApp
 See [`samples/`](samples/README.md) for the full walkthrough. (You can still use
 `npx @liamcottle/rustplus.js fcm-register` as a fallback.)
 
-Prefer a browser to a terminal? The [Rust+ credentials website](apps/RustPlusApi.CredentialsWeb/README.md)
-is the same registration flow behind a single-page app — no .NET SDK needed. Run it yourself with a
-single `docker run` and no configuration; its README has the command. The app is also built to be
-hosted for other people, and if a public instance is ever stood up its address will be added there —
-until then, self-hosting is the route.
-
 **2. Talk to the server:**
 
 ```csharp
-using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken));
+using var rustPlus = new RustPlus(new DirectConnection(server, port, playerId, playerToken));
 await rustPlus.ConnectAsync();
 
 var info = await rustPlus.GetInfoAsync();
@@ -92,6 +86,13 @@ Full guides and the API reference live on the **[documentation site](https://han
 browse the [Recipes](https://handys11.github.io/RustPlusApi/articles/recipes.html) for common patterns, or check the
 [Troubleshooting](https://handys11.github.io/RustPlusApi/articles/troubleshooting.html) page if something isn't working.
 Runnable examples are in [`samples/`](samples/README.md).
+
+## Contributing
+
+Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the setup, the checks a pull
+request has to pass and how pull request titles feed the release notes. Everyone taking part follows
+the [Code of Conduct](CODE_OF_CONDUCT.md), and security issues are reported privately as described in
+[SECURITY.md](SECURITY.md).
 
 ## Credits
 

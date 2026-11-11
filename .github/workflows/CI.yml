@@ -44,64 +44,18 @@ jobs:
     - name: Restore .NET tools
       run: dotnet tool restore
 
-    - name: Merge coverage reports (libraries)
+    - name: Merge coverage reports
       run: >
         dotnet tool run reportgenerator --
         "-reports:${{ github.workspace }}/TestResults/**/coverage.opencover.xml"
         "-targetdir:${{ github.workspace }}/TestResults/merged"
-        "-assemblyfilters:-RustPlusApi.CredentialsWeb"
         "-reporttypes:Cobertura"
 
-    - name: Merge coverage reports (web app)
-      run: >
-        dotnet tool run reportgenerator --
-        "-reports:${{ github.workspace }}/TestResults/**/coverage.opencover.xml"
-        "-targetdir:${{ github.workspace }}/TestResults/merged-web"
-        "-assemblyfilters:+RustPlusApi.CredentialsWeb"
-        "-reporttypes:Cobertura"
-
-    - name: Enforce coverage threshold (libraries)
+    - name: Enforce coverage threshold
       # Merged aggregate across every library test project and both TFMs (ReportGenerator union).
-      # Two things are kept out of this number: the web app, filtered out above so it cannot
-      # dilute the libraries' figure, and ProtoGen.UnitTests, which covers the build-time proto
-      # tool and is excluded via coverlet.runsettings.
+      # ProtoGen.UnitTests is kept out of this number: it covers the build-time proto tool and is
+      # excluded via coverlet.runsettings.
       # Metric: ReportGenerator-merged Cobertura line-rate/branch-rate.
       # Gate floor: line 95 / branch 90 — keep in sync with docs/development/testing.md.
       working-directory: ${{ github.workspace }}
       run: python3 tools/coverage/check_threshold.py 95 90
-
-    - name: Enforce coverage threshold (web app)
-      # Same floor. The app can meet it because its two untestable regions — host wiring and the
-      # live-network adapter — are [ExcludeFromCodeCoverage] with justifications.
-      working-directory: ${{ github.workspace }}
-      run: python3 tools/coverage/check_threshold.py 95 90 TestResults/merged-web/Cobertura.xml
-
-  lint-web:
-    # The browser script in apps/RustPlusApi.CredentialsWeb/wwwroot has no .NET analyzer behind it, and
-    # Sonar.yml only analyzes develop after the merge. This runs the same JavaScript rules (the app's
-    # eslint.config.mjs mirrors SonarQube's) on every push and PR, so a smell fails here first.
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/RustPlusApi.CredentialsWeb
-
-    steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v7
-
-    - name: Setup Node
-      uses: actions/setup-node@v7
-      with:
-        node-version: 24
-        cache: npm
-        cache-dependency-path: apps/RustPlusApi.CredentialsWeb/package-lock.json
-
-    - name: Install lint toolchain
-      run: npm ci
-
-    - name: Lint wwwroot/app.js
-      run: npm run lint
-
-    - name: Test wwwroot/app.js
-      # Node's built-in runner, no dependencies: loads app.js against a stand-in DOM (test/app.test.mjs).
-      run: node --test test/app.test.mjs

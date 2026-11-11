@@ -18,18 +18,22 @@ See the [Samples article](https://handys11.github.io/RustPlusApi/articles/sample
 ## 1. RustPlus.Register.ConsoleApp — get your credentials (start here)
 
 The native, C#-only replacement for `npx @liamcottle/rustplus.js fcm-register`. It performs the
-GCM/Firebase/FCM/Expo registration, opens **your default browser** for Steam login, registers with
-Rust Companion, writes `rustplus.config.json`, then waits for you to pair in game.
+GCM/Firebase/FCM/Expo registration, opens a **browser window it drives itself** for the Steam login,
+registers with Rust Companion, writes `rustplus.config.json`, then waits for you to pair in game.
 
 ```bash
 dotnet run --project samples/RustPlus.Register.ConsoleApp
 ```
 
-- **Any browser works.** If none opens (container, SSH), the sample prints the login URL — open it
-  yourself and the flow continues.
+- **Sign in to Steam in the window that opens.** It is Edge on Windows, otherwise Chrome, Brave or
+  Chromium (Flatpak included), started with a fresh temporary profile, so you are not signed in
+  there already. The profile is deleted when the login ends.
+- **Firefox-only, Snap-browser and headless machines** (containers, SSH) cannot be driven. The
+  sample then prints why and how to get the login address by hand, and asks you to paste it.
 - After Steam login, open Rust → join a server → **Pair with Server**.
 - It prints the absolute path of the saved `rustplus.config.json` and the
-  `new RustPlus(new RustPlusConnection(ip, port, playerId, playerToken))` line to use with the other samples.
+  connection to use with the other samples — through Facepunch's companion socket (`ServerId` +
+  `AuthToken`) and directly — plus a ready-to-copy `credentials.json` for the query and camera apps.
 
 ## 2. RustPlus.Fcm.ConsoleApp — listen for FCM notifications
 
@@ -60,8 +64,8 @@ Entity ids (alarm / smart switch / storage monitor) are remembered for the sessi
 Enter at the prompt to reuse the last value.
 
 ```bash
-# Copy credentials.sample.json to credentials.json and fill in the values
-# printed by the Register app (ip / port / playerId / playerToken), then:
+# Copy the credentials.json printed by the Register app (or fill in credentials.sample.json:
+# ip / port / playerId / playerToken, plus serverId / authToken for the companion socket), then:
 dotnet run --project samples/RustPlus.ConsoleApp
 # or pass the path explicitly:
 dotnet run --project samples/RustPlus.ConsoleApp -- /path/to/credentials.json

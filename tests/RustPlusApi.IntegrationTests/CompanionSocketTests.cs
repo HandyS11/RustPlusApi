@@ -1,0 +1,53 @@
+using RustPlusApi.MockServer;
+using Xunit;
+
+namespace RustPlusApi.IntegrationTests;
+
+/// <summary>
+/// The companion socket, dialled against the in-process mock through
+/// <see cref="RustPlusSocket.CompanionBaseUriForTests"/> so the handshake the client actually sends can be
+/// asserted without any live network call, and the direct route it must not leak the token to.
+/// </summary>
+public class CompanionSocketTests
+{
+    private static readonly Guid ServerId = new("089941d9-064e-4628-9c60-eaeb01a943e8");
+    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
+
+    [Fact]
+    public async Task ConnectAsync_WithServerId_DialsTheCompanionSocketWithTheAuthSubProtocols()
+    {
+        await using var server = new MockRustPlusServer();
+        server.Start();
+
+        await using var client = new RustPlus(new CompanionConnection(ServerId, "a?b>", 1, 1))
+        {
+            CompanionBaseUriForTests = new Uri($"ws://{MockRustPlusServer.Host}:{server.Port}/")
+        };
+
+        await client.ConnectAsync().WaitAsync(Timeout);
+        var response = await client.GetInfoAsync().WaitAsync(Timeout);
+
+        Assert.True(response.IsSuccess);
+        var handshake = Assert.IsType<MockHandshake>(server.LastHandshake);
+        Assert.Equal("/socket/089941d9-064e-4628-9c60-eaeb01a943e8", handshake.Path);
+
+        // "a?b>" is YT9iPg== in standard base64; the token travels unpadded and URL-safe.
+        Assert.Equal(["rustplus.auth.v1", "YT9iPg"], handshake.SubProtocols);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_Direct_OffersNoSubProtocols()
+    {
+        // A direct connection goes to whatever the game server's app port is. It has no auth token to
+        // leak, and the handshake must not announce one.
+        await using var server = new MockRustPlusServer();
+        server.Start();
+        await using var client = new RustPlus(new DirectConnection(MockRustPlusServer.Host, server.Port, 1, 1));
+
+        await client.ConnectAsync().WaitAsync(Timeout);
+
+        var handshake = Assert.IsType<MockHandshake>(server.LastHandshake);
+        Assert.Equal("/", handshake.Path);
+        Assert.Empty(handshake.SubProtocols);
+    }
+}

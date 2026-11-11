@@ -3,7 +3,8 @@
 The solution is formatted with the **ReSharper command-line formatter**
 ([`JetBrains.ReSharper.GlobalTools`](https://www.jetbrains.com/help/resharper/CleanupCode.html)),
 pinned in the dotnet tool manifest (`.config/dotnet-tools.json`) so every contributor runs the
-same version. Formatting rules come from the repository `.editorconfig`.
+same version. Whitespace rules come from the repository `.editorconfig`; the member layout and the
+cleanup profile live in `RustPlusApi.sln.DotSettings`.
 
 ---
 
@@ -11,11 +12,12 @@ same version. Formatting rules come from the repository `.editorconfig`.
 
 ```sh
 dotnet tool restore
-dotnet jb cleanupcode RustPlusApi.sln --profile="Built-in: Reformat Code"
+dotnet jb cleanupcode RustPlusApi.sln --profile="ReformatAndReorder"
 ```
 
-The *Built-in: Reformat Code* profile only reformats — it never applies code-style rewrites or
-syntax changes.
+The *ReformatAndReorder* profile reformats and puts type members in the configured order (fields,
+properties, events, then methods, each grouped by accessibility). It never applies code-style
+rewrites or syntax changes.
 
 ---
 
@@ -31,15 +33,6 @@ keeps unformatted code from leaving your machine:
    your working tree — review them, amend or commit, then push again.
 
 Pre-existing local edits are ignored: only files the formatter itself modifies fail the check.
-
-The same hook also lints the credentials web app's browser script when the push touches
-`apps/RustPlusApi.CredentialsWeb/wwwroot/*.js` or that app's lint setup (`eslint.config.mjs`,
-`tsconfig.json`, `package.json`, `package-lock.json`). It runs `npm run lint` in the app directory
-(installing the pinned toolchain from the lockfile on first use) and rejects the push on any
-finding. The ESLint configuration there mirrors the JavaScript rules SonarQube applies to `develop`
-— typescript-eslint's type-aware promise rules plus SonarSource's `eslint-plugin-sonarjs` — so a
-code smell fails on your machine rather than on the SonarQube dashboard after the merge. This step
-needs Node.js; CI (`CI.yml`, job `lint-web`) runs the same lint on every push and pull request.
 
 ### Setup
 

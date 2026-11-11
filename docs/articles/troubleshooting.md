@@ -15,12 +15,18 @@ the server-pairing push notification (`ServerPairing.Port`).
 
 1. Re-pair the server in game (*Rust+* → *Pair with Server*) and capture the `ServerPairing.Port`
    value from the notification — not the game join port.
-2. If you are on a network that blocks direct WebSocket connections (corporate firewall, some VPNs),
-   pass `useFacepunchProxy: true` to route traffic through Facepunch's relay:
+2. If the server no longer accepts direct connections (Facepunch is phasing them out), or you are on a
+   network that blocks them (corporate firewall, some VPNs), connect through the companion socket
+   with the pairing notification's server id and your companion auth token — see
+   [Companion socket](rustplus-client.md#companion-socket):
 
 ```csharp
-using var rustPlus = new RustPlus(new RustPlusConnection(server, port, playerId, playerToken, UseFacepunchProxy: true));
+using var rustPlus = new RustPlus(new CompanionConnection(serverId, authToken, playerId, playerToken));
 ```
+
+`serverId` is `ServerPairing.ServerId`; `authToken` is `SteamLoginResult.Token` from the Steam login.
+Facepunch's old relay (`/game/{ip}/{port}`) now rejects every connection with HTTP 418, so the
+`UseFacepunchProxy` option that used it has been removed.
 
 See [Getting Started](getting-started.md) for the full connection example and [Credentials](credentials.md)
 for how to obtain the correct port from the pairing notification.
@@ -48,31 +54,61 @@ for how to obtain the correct port from the pairing notification.
 
 See [FCM Notifications](fcm-notifications.md) for the complete event table and reconnect strategy.
 
-## The browser doesn't open during registration
+## No browser can be driven during registration
 
-**Symptom:** registration prints the Steam login URL and then waits, but no browser window appears.
-Common on containers, SSH sessions, WSL and minimal desktop installs.
+**Symptom:** the sample prints a reason such as "No Chrome, Edge, Brave or Chromium browser was
+found.", "Snap browsers are not supported", "Could not create the temporary browser profile: …" or
+"Could not start …", followed by instructions and a "Paste the address here:" prompt. From your
+own code, `RegisterWithRustPlusAsync` throws `InvalidOperationException` with that reason, the
+instructions and a login address instead.
 
-**Fix:** open the printed URL yourself, in any browser, **on the same machine that is running
-registration** — the callback is served from that machine's own `localhost`, so opening the link on
-a different device resolves `localhost` to *that* device instead and the callback never arrives. To
-finish registration from a different device (e.g. a container or a headless remote host), forward
-the port to it first: an SSH tunnel (`ssh -L 3000:localhost:3000 host`) or a published container
-port both make the loopback callback reachable from wherever you open the link.
+**Cause:** the library opens its own Edge (Windows first), Chrome, Brave or Chromium window and drives
+it. Firefox-only machines, Snap browsers (detected and skipped), and headless hosts (containers,
+SSH, WSL without a browser) cannot be driven.
 
-`SteamLoginService` reports the URL through the `onLoginUrl` callback *before* attempting to open a
-browser, and never fails just because no browser could be launched.
+**Fix:** either install a supported browser, or point `SteamLoginOptions.BrowserPath` at an
+absolute browser path, or use the paste fallback: open the login address in any browser, sign in to
+Steam, open the developer tools (F12) Network panel, find the last request whose name starts with
+`app?returnUrl=rust-plus`, and paste the value of its `Location` response header (it starts with
+`rust-plus://rust-auth-session`). On Windows, first switch the developer tools to a non-Windows user
+agent. In your own code, supply `FcmRegistration.SteamLoginOptions.ReadPastedAddress` to receive the
+pasted line; see [Credentials — how the Steam login works](credentials.md#how-the-steam-login-works).
 
-## Port already in use during registration
+## "Facepunch refused the Steam login" during the Steam login
 
-**Symptom:** `FcmRegistration.RegisterWithRustPlusAsync` throws `InvalidOperationException` saying
-the callback listener could not bind to `http://localhost:3000/`.
+**Symptom:** the browser window closes, and registration throws `InvalidOperationException` with
+one of these messages:
 
-**Fix:** pass a different port, or `0` to pick a free one automatically:
+- "Facepunch refused the Steam login at its last step (it answered with a page instead of the
+  sign-in redirect). Facepunch may have changed its login." On Windows it can instead read
+  "…, although the browser was reported as non-Windows. Facepunch may have changed its login."
+- "Facepunch showed its Login Failed page (reason: …). Start the login again."
+- "Facepunch answered HTTP … at its last step."
 
-```csharp
-var registration = new FcmRegistration(steamLoginPort: 0);
-```
+**Cause:** Facepunch refused the login. Behind the first message is Facepunch's "Login Failed"
+page, which the window shows only for a moment before the library closes it. Facepunch appears to
+block Windows browsers deliberately, so on Windows the library reports a non-Windows browser to it
+on the `/app` steps; that workaround may stop working when Facepunch changes its check (the
+"reported as non-Windows" wording means exactly that). If the reason is `cancelled`, the login did
+not complete (for example a Steam sign-in that was abandoned).
+
+**Fix:** run the registration again from the beginning; a `cancelled` login cannot be resumed. If it
+keeps failing on Windows, use the paste fallback described above, and report it.
+
+## "The browser window was closed before the Steam login finished."
+
+**Cause:** the login window was closed before Steam handed back the credentials.
+
+**Fix:** run the registration again and leave the window open until it closes by itself. If a window
+or temporary profile (`RustPlusApi.SteamLogin` in your temp or cache directory) is left behind
+after a hard kill, close the window; the next login sweeps the leftover profile.
+
+## "The browser rejected a debugging command during the Steam login."
+
+**Cause:** the browser refused one of the commands the library sends over the Chrome DevTools
+Protocol, typically an unusual or very old build.
+
+**Fix:** set `SteamLoginOptions.BrowserPath` to a current Chrome, Edge, Brave or Chromium.
 
 ## Registration fails partway through the chain
 
@@ -100,67 +136,6 @@ npx @liamcottle/rustplus.js fcm-register
    both formats — see [Samples](samples.md).
 
 See [Credentials — upstream fragility](credentials.md#upstream-fragility) for more context.
-
-## Credentials website
-
-Issues specific to the [Rust+ credentials website](https://github.com/HandyS11/RustPlusApi/blob/develop/apps/RustPlusApi.CredentialsWeb/README.md)
-rather than the library.
-
-**The callback returns 404.** The return token in the callback URL is single-use: once it has been
-consumed — by a redirect that landed, or by a successful paste — that exact URL will always 404
-afterwards. Refreshing the page, going back, reopening a bookmarked callback link, or pasting the
-same address a second time all hit an already-consumed token. Start the flow over from the
-beginning; there is no way to resume a used callback URL.
-
-**Steam says "Failed to send login message to the Rust+ app".** This means a login URL was built
-with a `returnUrl` that isn't loopback-shaped — Facepunch decides purely from the address's shape,
-not whether anything can reach it, and hands anything that doesn't look loopback to a
-`ReactNativeWebView` bridge that exists only inside the Rust+ mobile app. An ordinary browser has
-nowhere to put that message, the callback is never requested, and the app logs nothing because from
-its point of view nothing happened.
-
-You shouldn't be able to reach this through the credentials website any more: it always builds a
-loopback-shaped `returnUrl`, whether you're local (the redirect lands directly) or reached some
-other way (you paste back the dead loopback address your own browser fails to reach). If you land
-here through the website anyway, something in front of it — a proxy rewriting the callback, most
-likely — is interfering with that URL before Facepunch's redirect can complete. If you're driving
-`SteamLoginService` yourself, pass it a loopback `returnUrl` (see
-[Credentials — how the Steam login works](credentials.md#how-the-steam-login-works)); there is no
-proxy configuration that fixes a non-loopback one — see
-[#126](https://github.com/HandyS11/RustPlusApi/issues/126).
-
-**The paste says the address couldn't be read.** The page only recognises a genuine Facepunch
-callback: something ending in `/callback/<32 hex characters>` with `steamId` and `token` in its
-query string. Copy the *whole* address from the page that failed to load, starting with `http://`,
-rather than retyping or trimming it. A rejected paste consumes nothing, so just try again with a
-cleaner copy.
-
-**The paste says it was already used.** The address is single-use — see *The callback returns 404*
-above, which is the same restriction surfacing through the paste box instead of a bare 404 page.
-Start the flow over from the beginning; there's no way to redo just the paste. Pressing **Start**
-again in a fresh tab is not what causes this: the session that starts takes over the return token of
-the abandoned one it replaces, so an address you were still holding lands on the session that new
-tab is watching.
-
-**There's no "wait for my pairing" option.** The pairing wait holds a socket open to Google per
-visitor, so by default it's offered to local visitors only — reached any other way, including a
-public instance, you still get your credentials, just not that button. Run the app on your own
-machine to get the four pairing values that way instead, or use `PairingListener` from
-`RustPlusApi.Fcm.Registration` directly with the credentials you already have. Self-hosting on a
-LAN address for people you trust? Set `CredentialsWeb__AllowRemotePairing=true` to turn the button
-back on.
-
-**I get a 429.** The instance is at capacity — either its global session/pairing caps are full, or
-more flows have completed in the last hour than the per-IP limit allows. On a public or otherwise
-widely-reachable instance these caps are real and load-bearing — they're the whole abuse defence, so
-expect to occasionally hit one there. On your own self-hosted instance you're unlikely to hit them
-unless a stale session from an earlier attempt is still counted against you. Wait a few minutes and
-try again, or self-host your own copy if it's a shared instance that's full.
-
-**The pairing never arrives.** The wait for a pairing push is capped at the instance's `PairingTtl`
-(10 minutes by default). Make sure you press **Pair with Server** in game *while* the page still
-says it is waiting. Your credentials remain valid even if the wait times out, so retry just the
-pairing step rather than starting the whole flow — including the Steam login — over again.
 
 ## Entity events never fire
 

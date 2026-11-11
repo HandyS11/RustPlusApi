@@ -13,7 +13,7 @@ namespace RustPlusApi.UnitTests;
 /// </summary>
 public sealed class RustPlusSocketBaseTests
 {
-    private static RustPlusConnection AnyConnection() => new("localhost", 28082, 76561198000000000, 123456789);
+    private static DirectConnection AnyConnection() => new("localhost", 28082, 76561198000000000, 123456789);
 
     [Fact]
     public void Dispose_WithDisposingFalse_ReleasesNothingManaged()
