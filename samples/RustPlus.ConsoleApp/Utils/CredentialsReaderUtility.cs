@@ -7,10 +7,9 @@ internal static class CredentialsReaderUtility
     public static Credentials GetConfig(this string configFilePath)
     {
         var configContent = File.ReadAllText(configFilePath);
-        var config = JsonSerializer.Deserialize<Credentials>(configContent, JsonUtilities.JsonConfigOptions);
+        var config = JsonSerializer.Deserialize<Credentials>(configContent, JsonUtilities.JsonConfigOptions)
+                     ?? throw new InvalidOperationException("Invalid config file - unable to deserialize");
 
-        if (config == null)
-            throw new InvalidOperationException("Invalid config file - unable to deserialize");
         if (string.IsNullOrEmpty(config.Ip) ||
             config.Port <= 0 ||
             config.PlayerId <= 0 ||

@@ -53,6 +53,8 @@
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
+    <!-- JUnit XML results for Codecov Test Analytics, which reads no other format (Sonar.yml). -->
+    <PackageVersion Include="JunitXml.TestLogger" Version="8.1.0" />
   </ItemGroup>
   <ItemGroup>
     <!-- Samples only: console sink so library diagnostics (e.g. skipped FCM notifications) are visible. -->
