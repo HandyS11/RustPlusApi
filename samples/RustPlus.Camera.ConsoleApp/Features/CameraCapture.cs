@@ -15,11 +15,11 @@ namespace RustPlus.Camera.ConsoleApp.Features;
 internal sealed class CameraCapture(IRustPlus rustPlus)
 {
     private static readonly TimeSpan ResubscribeInterval = TimeSpan.FromSeconds(5);
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    internal sealed record CapturedFrame(int SampleOffset, string RayDataBase64);
-
-    internal sealed record CaptureFixture(string CameraId, int Width, int Height, List<CapturedFrame> Frames);
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true
+    };
 
     /// <summary>Subscribes to <paramref name="cameraId"/>, captures frames for <paramref name="duration"/>, and writes the fixture to <paramref name="outputDirectory"/>.</summary>
     /// <param name="cameraId">The identifier of the camera to subscribe to.</param>
@@ -31,7 +31,8 @@ internal sealed class CameraCapture(IRustPlus rustPlus)
         var response = await CameraController.SubscribeAsync(rustPlus, cameraId, ResubscribeInterval);
         if (!response.IsSuccess)
         {
-            Console.WriteLine($"SubscribeToCamera('{cameraId}') failed: {response.Error?.Code} {response.Error?.Message}");
+            Console.WriteLine(
+                $"SubscribeToCamera('{cameraId}') failed: {response.Error?.Code} {response.Error?.Message}");
             return 1;
         }
 
@@ -49,7 +50,7 @@ internal sealed class CameraCapture(IRustPlus rustPlus)
             }
         }
 
-        void OnRenewalFailed(object? _, ErrorMessage error) =>
+        static void OnRenewalFailed(object? _, ErrorMessage error) =>
             Console.WriteLine($"Warning: re-subscribe failed: {error.Code} {error.Message}");
 
         controller.OnFrameReceived += OnRays;
@@ -89,9 +90,14 @@ internal sealed class CameraCapture(IRustPlus rustPlus)
         await File.WriteAllTextAsync(jsonPath, JsonSerializer.Serialize(fixture, JsonOptions));
         await File.WriteAllBytesAsync(pngPath, renderer.Render());
 
-        Console.WriteLine($"Captured {fixture.Frames.Count} frames at {info.Width}x{info.Height} ({info.ControlFlags}).");
+        Console.WriteLine(
+            $"Captured {fixture.Frames.Count} frames at {info.Width}x{info.Height} ({info.ControlFlags}).");
         Console.WriteLine($"Fixture: {jsonPath}");
         Console.WriteLine($"Image:   {pngPath}");
         return fixture.Frames.Count > 0 ? 0 : 2;
     }
+
+    internal sealed record CapturedFrame(int SampleOffset, string RayDataBase64);
+
+    internal sealed record CaptureFixture(string CameraId, int Width, int Height, List<CapturedFrame> Frames);
 }

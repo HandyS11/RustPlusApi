@@ -8,16 +8,23 @@ internal sealed class LiveEvents(IRustPlus rustPlus)
 {
     public Task RunAsync()
     {
-        void OnSmartDevice(object? _, SmartDeviceEventArg e) =>
+        static void OnSmartDevice(object? _, SmartDeviceEventArg e) =>
             DisplayUtilities.DisplayEvent("SmartDeviceTriggered", e);
 
-        void OnStorageMonitor(object? _, StorageMonitorEventArg e) =>
+        static void OnStorageMonitor(object? _, StorageMonitorEventArg e) =>
             DisplayUtilities.DisplayEvent("StorageMonitorTriggered", e);
 
-        void OnTeamChat(object? _, TeamMessageEventArg e) => DisplayUtilities.DisplayEvent("TeamChatReceived", e);
-        void OnClanChat(object? _, ClanMessageEventArg e) => DisplayUtilities.DisplayEvent("ClanChatReceived", e);
-        void OnTeamChanged(object? _, TeamChangedEventArg e) => DisplayUtilities.DisplayEvent("TeamChanged", e);
-        void OnClanChanged(object? _, ClanChangedEventArg e) => DisplayUtilities.DisplayEvent("ClanChanged", e);
+        static void OnTeamChat(object? _, TeamMessageEventArg e) =>
+            DisplayUtilities.DisplayEvent("TeamChatReceived", e);
+
+        static void OnClanChat(object? _, ClanMessageEventArg e) =>
+            DisplayUtilities.DisplayEvent("ClanChatReceived", e);
+
+        static void OnTeamChanged(object? _, TeamChangedEventArg e) =>
+            DisplayUtilities.DisplayEvent("TeamChanged", e);
+
+        static void OnClanChanged(object? _, ClanChangedEventArg e) =>
+            DisplayUtilities.DisplayEvent("ClanChanged", e);
 
         rustPlus.OnSmartDeviceTriggered += OnSmartDevice;
         rustPlus.OnStorageMonitorTriggered += OnStorageMonitor;
