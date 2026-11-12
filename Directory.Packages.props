@@ -8,19 +8,19 @@
          and the netstandard2.0 build a net8.0/net9.0 process then loads is not binary compatible
          with it (see the matching ignore rule in .github/dependabot.yml). -->
     <!-- netstandard2.0 polyfill: provides IAsyncDisposable + ValueTask (in-box on net10.0). -->
-    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.15" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.15" />
     <PackageVersion Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
     <!-- 3.3.0+ ships the .proto source generator inside protobuf-net.Core; the standalone
          protobuf-net.BuildTools package is redundant and loading both duplicates the generator. -->
     <PackageVersion Include="protobuf-net" Version="3.4.40" />
-    <PackageVersion Include="System.Text.Json" Version="10.0.14" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.15" />
     <!-- netstandard2.0: Channels is in-box on net10.0; ns2.0 needs the package. -->
-    <PackageVersion Include="System.Threading.Channels" Version="10.0.14" />
+    <PackageVersion Include="System.Threading.Channels" Version="10.0.15" />
     <!-- ImageSharp 2.1.x is the last line supporting netstandard2.0 (3.x requires net6+). -->
     <PackageVersion Include="SixLabors.ImageSharp" Version="2.1.13" />
   </ItemGroup>
@@ -49,8 +49,8 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Test stack -->
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.15" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
@@ -60,6 +60,6 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Samples only: console sink so library diagnostics (e.g. skipped FCM notifications) are visible. -->
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.15" />
   </ItemGroup>
 </Project>
